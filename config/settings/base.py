@@ -73,7 +73,12 @@ DJANGO_APPS = [
     "django.contrib.sites",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.gis",
     # "django.contrib.humanize", # Handy template tags
+    "unfold",
+    "unfold.contrib.filters",  # optional, if special filters are needed
+    "unfold.contrib.forms",  # optional, if special form elements are needed
+    "unfold.contrib.inlines",  # optional, if special inlines are needed
     "django.contrib.admin",
     "django.forms",
 ]
@@ -89,6 +94,7 @@ THIRD_PARTY_APPS = [
 
 LOCAL_APPS = [
     "walkquest.users",
+    "walkquest.walk",
     # Your stuff: custom apps go here
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
