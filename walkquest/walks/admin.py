@@ -10,8 +10,10 @@ from unfold.contrib.filters.admin import (
     MultipleChoicesDropdownFilter
 )
 from django.utils.html import format_html
+import tagulous.admin
+from tagulous.admin import TagModelAdmin
 
-from .models import Adventure, Walk
+from .models import Adventure, Walk, WalkCategoryTag
 
 class GISModelAdmin(ModelAdmin):
     default_lon = -5.051355
@@ -50,7 +52,6 @@ class GISModelAdmin(ModelAdmin):
             'walkquest_admin/js/map_styling.js',
         ]
 
-@admin.register(Adventure)
 class AdventureAdmin(ModelAdmin):
     formfield_overrides = {
         models.TextField: {
@@ -87,20 +88,23 @@ class AdventureAdmin(ModelAdmin):
         }),
     )
 
-@admin.register(Walk)
-class WalkAdmin(GISModelAdmin):
+    @admin.display(description=_("Categories"))
+    def get_related_categories(self, obj):
+        return str(obj.related_categories)
+
+class WalkAdmin(GISModelAdmin, TagModelAdmin):
     search_fields = ('walk_name', 'walk_id', 'highlights')
-    list_display = ('walk_name', 'adventure', 'distance', 'steepness_level', 'amenities_summary', 'get_categories')
+    list_display = ('walk_name', 'adventure', 'distance', 'steepness_level', 'amenities_summary', 'get_related_categories')
     list_filter = (
         ('steepness_level', ChoicesDropdownFilter),
         ('footwear_category', ChoicesDropdownFilter),
-        ('related_categories', MultipleChoicesDropdownFilter),
         'has_pub', 
         'has_cafe', 
         'has_bus_access'
     )
     readonly_fields = ('created_at', 'updated_at')
     raw_id_fields = ('adventure',)
+    prepopulated_fields = {'walk_id': ('walk_name',)}  # Corrected fields
 
     formfield_overrides = {
         gis_models.GeometryField: {
@@ -179,14 +183,8 @@ class WalkAdmin(GISModelAdmin):
     )
 
     @admin.display(description=_("Categories"))
-    def get_categories(self, obj):
-        if not obj.related_categories:
-            return "-"
-        categories = []
-        for cat in obj.related_categories:
-            cat_dict = dict(Walk.WALK_CATEGORIES)
-            categories.append(format_html('<span class="badge badge-info">{}</span>', cat_dict.get(cat, cat)))
-        return format_html('&nbsp;'.join(categories))
+    def get_related_categories(self, obj):
+        return str(obj.related_categories)
 
     class Media:
         css = {
@@ -204,8 +202,6 @@ class WalkAdmin(GISModelAdmin):
 
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
-        if 'related_categories' in form.base_fields:
-            form.base_fields['related_categories'].widget.choices = Walk.WALK_CATEGORIES
         return form
 
     @admin.display(description="Amenities")
@@ -221,3 +217,14 @@ class WalkAdmin(GISModelAdmin):
             amenities.append(format_html('<span class="amenity-icon stile">🚧</span>'))
         return format_html('<div class="amenities-container">{}</div>', 
                          format_html(''.join(amenities)) if amenities else "None")
+
+class WalkCategoryTagAdmin(TagModelAdmin):
+    list_display = ['name', 'count', 'protected']
+    list_filter = ['protected']
+    exclude = ['count']
+    actions = ['merge_tags']
+
+# Register models with Tagulous - only register each model once
+tagulous.admin.register(WalkCategoryTag, WalkCategoryTagAdmin)
+tagulous.admin.register(Adventure, AdventureAdmin)
+tagulous.admin.register(Walk, WalkAdmin)

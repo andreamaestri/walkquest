@@ -1,0 +1,218 @@
+[
+  {
+    "model": "walks.walkcategorytag",
+    "fields": {
+      "name": "Circular walks",
+      "slug": "circular-walks",
+      "count": 296,
+      "protected": false
+    }
+  },
+  {
+    "model": "walks.walkcategorytag",
+    "fields": {
+      "name": "Coastal walks",
+      "slug": "coastal-walks",
+      "count": 184,
+      "protected": false
+    }
+  },
+  {
+    "model": "walks.walkcategorytag",
+    "fields": {
+      "name": "Moorland walks",
+      "slug": "moorland-walks",
+      "count": 17,
+      "protected": false
+    }
+  },
+  {
+    "model": "walks.walkcategorytag",
+    "fields": {
+      "name": "One-way coastal walks",
+      "slug": "one-way-coastal-walks",
+      "count": 14,
+      "protected": false
+    }
+  },
+  {
+    "model": "walks.walkcategorytag",
+    "fields": {
+      "name": "Pub walks",
+      "slug": "pub-walks",
+      "count": 202,
+      "protected": false
+    }
+  },
+  {
+    "model": "walks.walkcategorytag",
+    "fields": {
+      "name": "Riverside walks",
+      "slug": "riverside-walks",
+      "count": 86,
+      "protected": false
+    }
+  },
+  {
+    "model": "walks.walkcategorytag",
+    "fields": {
+      "name": "Walks including the Saints Way",
+      "slug": "walks-including-the-saints-way",
+      "count": 8,
+      "protected": false
+    }
+  },
+  {
+    "model": "walks.walkcategorytag",
+    "fields": {
+      "name": "Walks least likely to have deep mud",
+      "slug": "walks-least-likely-to-have-deep-mud",
+      "count": 31,
+      "protected": false
+    }
+  },
+  {
+    "model": "walks.walkcategorytag",
+    "fields": {
+      "name": "Walks off the beaten track",
+      "slug": "walks-off-the-beaten-track",
+      "count": 53,
+      "protected": false
+    }
+  },
+  {
+    "model": "walks.walkcategorytag",
+    "fields": {
+      "name": "Walks on the Clay Trails",
+      "slug": "walks-on-the-clay-trails",
+      "count": 5,
+      "protected": false
+    }
+  },
+  {
+    "model": "walks.walkcategorytag",
+    "fields": {
+      "name": "Walks on the Mining Trails",
+      "slug": "walks-on-the-mining-trails",
+      "count": 7,
+      "protected": false
+    }
+  },
+  {
+    "model": "walks.walkcategorytag",
+    "fields": {
+      "name": "Walks visiting a church",
+      "slug": "walks-visiting-a-church",
+      "count": 102,
+      "protected": false
+    }
+  },
+  {
+    "model": "walks.walkcategorytag",
+    "fields": {
+      "name": "Walks with a beach",
+      "slug": "walks-with-a-beach",
+      "count": 151,
+      "protected": false
+    }
+  },
+  {
+    "model": "walks.walkcategorytag",
+    "fields": {
+      "name": "Walks with a caf\u00e9",
+      "slug": "walks-with-a-cafe",
+      "count": 212,
+      "protected": false
+    }
+  },
+  {
+    "model": "walks.walkcategorytag",
+    "fields": {
+      "name": "Walks with a fishing village",
+      "slug": "walks-with-a-fishing-village",
+      "count": 36,
+      "protected": false
+    }
+  },
+  {
+    "model": "walks.walkcategorytag",
+    "fields": {
+      "name": "Walks with a good degree of shade",
+      "slug": "walks-with-a-good-degree-of-shade",
+      "count": 34,
+      "protected": false
+    }
+  },
+  {
+    "model": "walks.walkcategorytag",
+    "fields": {
+      "name": "Walks with a holy well",
+      "slug": "walks-with-a-holy-well",
+      "count": 24,
+      "protected": false
+    }
+  },
+  {
+    "model": "walks.walkcategorytag",
+    "fields": {
+      "name": "Walks with a lighthouse or daymark",
+      "slug": "walks-with-a-lighthouse-or-daymark",
+      "count": 26,
+      "protected": false
+    }
+  },
+  {
+    "model": "walks.walkcategorytag",
+    "fields": {
+      "name": "Walks with a shipwreck",
+      "slug": "walks-with-a-shipwreck",
+      "count": 25,
+      "protected": false
+    }
+  },
+  {
+    "model": "walks.walkcategorytag",
+    "fields": {
+      "name": "Walks with mining/quarrying heritage",
+      "slug": "walks-with-mining-quarrying-heritage",
+      "count": 50,
+      "protected": false
+    }
+  },
+  {
+    "model": "walks.walkcategorytag",
+    "fields": {
+      "name": "Walks with nice autumn colours",
+      "slug": "walks-with-nice-autumn-colours",
+      "count": 53,
+      "protected": false
+    }
+  },
+  {
+    "model": "walks.walkcategorytag",
+    "fields": {
+      "name": "Walks with prehistoric remains",
+      "slug": "walks-with-prehistoric-remains",
+      "count": 19,
+      "protected": false
+    }
+  },
+  {
+    "model": "walks.walkcategorytag",
+    "fields": {
+      "name": "Walks without stiles",
+      "slug": "walks-without-stiles",
+      "count": 82,
+      "protected": false
+    }
+  },
+  {
+    "model": "walks.walkcategorytag",
+    "fields": {
+      "name": "Woodland walks",
+      "slug": "woodland-walks",
+      "count": 80,
+      "protected": false
+    }
+  }
+]

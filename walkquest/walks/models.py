@@ -1,9 +1,19 @@
 import uuid
-from uuid import uuid4
 from django.contrib.gis.db import models
 from django.utils.translation import gettext_lazy as _
-from django.contrib.postgres.fields import ArrayField
+from tagulous.models import TagModel, TagField
 
+
+class WalkCategoryTag(TagModel):
+    class TagMeta:
+        # TagModel specific configuration
+        force_lowercase = True
+        space_delimiter = False
+        
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['slug'], name='unique_category_slug')
+        ]
 
 class Adventure(models.Model):
     DIFFICULTY_CHOICES = [
@@ -36,6 +46,11 @@ class Adventure(models.Model):
         help_text=_("Choose your challenge level"),
         db_index=True,
     )
+    related_categories = TagField(
+        to=WalkCategoryTag,
+        blank=True,
+        help_text=_("Categories related to this adventure")
+    )
     created_at = models.DateTimeField(_("Created"), auto_now_add=True)
     updated_at = models.DateTimeField(_("Updated"), auto_now=True)
 
@@ -44,8 +59,8 @@ class Adventure(models.Model):
         verbose_name_plural = _("adventures")
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["difficulty_level"]),
-            models.Index(fields=["start_date", "end_date"]),
+            models.Index(fields=["difficulty_level"], name="walks_adv_diff_lvl_idx"),  # Shortened name
+            models.Index(fields=["start_date", "end_date"], name="walks_adv_start_end_idx"),  # Shortened name
         ]
         permissions = [
             ("can_create_featured_adventure", "Can create featured adventure"),
@@ -102,6 +117,19 @@ class Walk(models.Model):
         max_length=255,
         db_index=True,
         default="Unnamed Walk"
+    )
+    title = models.CharField(
+        _("Title"), 
+        max_length=255,
+        default=_("Untitled Walking Route"),
+        help_text=_("The title of this walking route")
+    )
+    description = models.TextField(
+        _("Description"),
+        help_text=_("Full description of the walking route and experience"),
+        default=_("This historic walking route is waiting for its story to be told. "
+                 "Check back soon for a detailed description of the path, terrain, and journey."),
+        blank=False
     )
     latitude = models.FloatField(
         _("Latitude"),
@@ -174,11 +202,10 @@ class Walk(models.Model):
         ),
         blank=True
     )
-    related_categories = ArrayField(
-        models.CharField(max_length=50, choices=WALK_CATEGORIES),
+    related_categories = TagField(
+        to=WalkCategoryTag,
         blank=True,
-        default=list,
-        help_text=_("Select all categories that apply to this walk")
+        help_text=_("Categories related to this walk")
     )
     has_stiles = models.BooleanField(default=False)
     has_cafe = models.BooleanField(default=False)
@@ -191,10 +218,10 @@ class Walk(models.Model):
         verbose_name_plural = _("walks")
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=['walk_id']),
-            models.Index(fields=['walk_name']),
-            models.Index(fields=['distance']),
-            models.Index(fields=['created_at']),
+            models.Index(fields=['walk_id'], name="walks_walk_walk_id_idx"),
+            models.Index(fields=['walk_name'], name="walks_walk_walk_name_idx"),
+            models.Index(fields=['distance'], name="walks_walk_distance_idx"),
+            models.Index(fields=['created_at'], name="walks_walk_created_at_idx"),
         ]
 
     def __str__(self):
