@@ -1,0 +1,17 @@
+
+.geometry_map {
+    width: 100% !important;
+    height: 500px !important;
+}
+
+.olMap {
+    min-height: 500px !important;
+}
+
+.dj_map {
+    height: 500px !important;
+    width: 100% !important;
+    position: relative !important;
+    vertical-align: top;
+    margin-bottom: 10px;
+}

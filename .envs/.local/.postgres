@@ -1,7 +1,7 @@
 # PostgreSQL
 # ------------------------------------------------------------------------------
-POSTGRES_HOST=postgres
+POSTGRES_HOST=aws-0-eu-west-1.pooler.supabase.com
 POSTGRES_PORT=5432
-POSTGRES_DB=walkquest
-POSTGRES_USER=xtWngaqUGynSJXqrkCTIYtpTbtMuBayV
-POSTGRES_PASSWORD=fcg3rlN2Bd4lemYTPlG91LPTwheF83fyo57GwcVmqqwfOEDwG3lvETiqAjVONrvk
+POSTGRES_DB=postgres
+POSTGRES_USER=postgres.hxmdqzaypgyllbujxczt
+POSTGRES_PASSWORD=J0pVTmFu2FoM9okQ
