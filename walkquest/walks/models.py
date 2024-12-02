@@ -2,7 +2,7 @@ import uuid
 from uuid import uuid4
 from django.contrib.gis.db import models
 from django.utils.translation import gettext_lazy as _
-from django.contrib.gis.geos import LineString
+from django.contrib.postgres.fields import ArrayField
 
 
 class Adventure(models.Model):
@@ -24,7 +24,8 @@ class Adventure(models.Model):
         _("Title"), max_length=255, help_text=_("Name of your epic quest")
     )
     description = models.TextField(
-        _("Description"), help_text=_("Chronicle your adventure's tale")
+        _("Description"), 
+        help_text=_("Chronicle your adventure's tale")
     )
     start_date = models.DateField(_("Start Date"), help_text=_("When the walk begins"))
     end_date = models.DateField(_("End Date"), help_text=_("When the walk concludes"))
@@ -67,6 +68,17 @@ class Walk(models.Model):
         ('TRAIL RANGER', 'Trail Ranger'),
         ("WARDEN'S ASCENT", "Warden's Ascent"),
         ('MASTER WAYFARER', 'Master Wayfarer')
+    ]
+
+    WALK_CATEGORIES = [
+        ('circular', 'Circular walks'),
+        ('coastal', 'Coastal walks'),
+        ('pub', 'Pub walks'),
+        ('beach', 'Walks with a beach'),
+        ('cafe', 'Walks with a café'),
+        ('fishing', 'Walks with a fishing village'),
+        ('lighthouse', 'Walks with a lighthouse or daymark'),
+        ('shipwreck', 'Walks with a shipwreck'),
     ]
 
     id = models.UUIDField(
@@ -162,7 +174,12 @@ class Walk(models.Model):
         ),
         blank=True
     )
-    related_categories = models.JSONField(default=list)
+    related_categories = ArrayField(
+        models.CharField(max_length=50, choices=WALK_CATEGORIES),
+        blank=True,
+        default=list,
+        help_text=_("Select all categories that apply to this walk")
+    )
     has_stiles = models.BooleanField(default=False)
     has_cafe = models.BooleanField(default=False)
     has_bus_access = models.BooleanField(default=False)

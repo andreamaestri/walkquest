@@ -1,0 +1,52 @@
+{% extends "gis/admin/osm.html" %}
+{% load static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style type="text/css">
+    .geometry_map {
+        width: 100% !important;
+        max-width: 1400px !important;
+        height: 700px !important;
+    }
+</style>
+{% endblock %}
+
+{% block map_code %}
+{{ block.super }}
+<script type="text/javascript">
+    window.addEventListener('load', function() {
+        if (typeof {{ module }} !== 'undefined' && {{ module }}.map) {
+            // Set initial zoom if no geometry exists
+            if (!{{ module }}.vector_layer.getSource().getFeatures().length) {
+                {{ module }}.map.getView().setZoom({{ attrs.initial_zoom|default:20 }});
+            }
+
+            const vectorStyle = new ol.style.Style({
+                stroke: new ol.style.Stroke({
+                    color: '#0f766e',
+                    width: 8,
+                    lineCap: 'round',
+                    lineJoin: 'round'
+                })
+            });
+
+            // Function to style vector layers
+            const applyVectorStyle = (layer) => {
+                if (layer instanceof ol.layer.Vector) {
+                    console.log('Applying style to vector layer');
+                    layer.setStyle(vectorStyle);
+                }
+            };
+
+            // Apply to existing layers
+            {{ module }}.map.getLayers().forEach(applyVectorStyle);
+
+            // Listen for new layers
+            {{ module }}.map.getLayers().on('add', function(event) {
+                applyVectorStyle(event.element);
+            });
+        }
+    });
+</script>
+{% endblock %}

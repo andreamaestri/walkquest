@@ -71,7 +71,6 @@ DJANGO_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.gis",
-    # "django.contrib.humanize", # Handy template tags
     "unfold",
     "unfold.contrib.filters",  # optional, if special filters are needed
     "unfold.contrib.forms",  # optional, if special form elements are needed
@@ -87,6 +86,7 @@ THIRD_PARTY_APPS = [
     "allauth.mfa",
     "allauth.socialaccount",
     "django_celery_beat",
+    "corsheaders",
 ]
 
 LOCAL_APPS = [
@@ -142,6 +142,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # https://docs.djangoproject.com/en/dev/ref/settings/#middleware
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",  # Add this line before CommonMiddleware
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
@@ -255,7 +256,7 @@ LOGGING = {
     "disable_existing_loggers": False,
     "formatters": {
         "verbose": {
-            "format": "%(levelname)s %(asctime)s %(module)s %(process)d %(thread)d %(message)s",
+            "format": "%(levelname)s %(asctime)s %(module)s %(process%d %(thread)d %(message)s",
         },
     },
     "handlers": {
@@ -336,6 +337,30 @@ STATICFILES_FINDERS = [
     'django.contrib.staticfiles.finders.FileSystemFinder',
     'django.contrib.staticfiles.finders.AppDirectoriesFinder',
     'compressor.finders.CompressorFinder',
+]
+
+# Maps
+THUNDERFOREST_API_KEY = env("THUNDERFOREST_API_KEY", default=None)
+THUNDERFOREST_TILE_URL = "https://tile.thunderforest.com/outdoors/{z}/{x}/{y}.png"
+# Fallback to OSM tiles if Thunderforest API key is not available
+OSM_TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+
+# Use Thunderforest only if API key is available
+MAP_TILE_URL = f"{THUNDERFOREST_TILE_URL}?apikey={THUNDERFOREST_API_KEY}" if THUNDERFOREST_API_KEY else OSM_TILE_URL
+MAP_ATTRIBUTION = '© OpenStreetMap contributors' + ('. Maps © Thunderforest' if THUNDERFOREST_API_KEY else '')
+
+# Make map settings available to templates
+TEMPLATES[0]["OPTIONS"]["context_processors"].append("walkquest.utils.context_processors.map_settings")
+
+# CORS Configuration
+# ------------------------------------------------------------------------------
+CORS_ALLOWED_ORIGINS = [
+    "https://tile.thunderforest.com",
+    "https://tile.openstreetmap.org",
+]
+CORS_URLS_REGEX = r'^/api/.*$'
+CORS_ALLOW_METHODS = [
+    'GET',
 ]
 
 # Your stuff...
