@@ -118,19 +118,8 @@ class Walk(models.Model):
         db_index=True,
         default="Unnamed Walk"
     )
-    title = models.CharField(
-        _("Title"), 
-        max_length=255,
-        default=_("Untitled Walking Route"),
-        help_text=_("The title of this walking route")
-    )
-    description = models.TextField(
-        _("Description"),
-        help_text=_("Full description of the walking route and experience"),
-        default=_("This historic walking route is waiting for its story to be told. "
-                 "Check back soon for a detailed description of the path, terrain, and journey."),
-        blank=False
-    )
+    # title = models.CharField(...)
+    # description = models.TextField(...)
     latitude = models.FloatField(
         _("Latitude"),
         help_text=_("Latitude coordinate of the walk location"),
@@ -232,3 +221,18 @@ class Walk(models.Model):
 
     def get_steepness(self):
         return self.adventure.difficulty_level
+
+    def save(self, *args, **kwargs):
+        if not self.title:
+            self.title = self.walk_name  # Use walk_name as title if title is not set
+        if not self.description:
+            self.description = "This historic walking route is waiting for its story to be told."
+        super().save(*args, **kwargs)
+
+    @property
+    def title(self):
+        return self.walk_name
+
+    @property
+    def description(self):
+        return self.highlights
