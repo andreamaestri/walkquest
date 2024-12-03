@@ -17,89 +17,98 @@
     {% block css %}
     <!-- Use latest Tailwind CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    {% compress css %}
-    <link href="{% static 'css/project.css' %}" rel="stylesheet" />
-    {% endcompress %}
-    {% endblock css %}
-    
-    <!-- Tailwind Config -->
     <script>
       tailwind.config = {
         theme: {
-          extend: {}
-        }
+          extend: {
+            colors: {
+              primary: '#1D4ED8',
+              secondary: '#9333EA',
+            },
+            spacing: {
+              '128': '32rem',
+            },
+          },
+        },
       }
     </script>
+    {% compress css %}
+    <link href="{% static 'css/project.css' %}" rel="stylesheet" />
+    {% endcompress %}
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
+    {% endblock css %}
     
     {% block javascript %}
+    <!-- Scripts loading and error handling -->
+    <script>
+        window.handleScriptError = function(error) {
+            console.error('Script loading error:', error);
+            document.body.innerHTML = `
+                <div class="p-4 bg-red-100 text-red-700">
+                    Failed to load required scripts. Please refresh the page or contact support.
+                </div>
+            `;
+        }
+    </script>
+
+    <!-- Load Mapbox GL JS -->
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js' onerror="handleScriptError(event)"></script>
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
+
+    <!-- Load SolidJS with improved error handling -->
+    <script type="module">
+        try {
+            const modules = {
+                solid: 'https://cdn.skypack.dev/solid-js',
+                solidWeb: 'https://cdn.skypack.dev/solid-js/web',
+                html: 'https://cdn.skypack.dev/solid-js/html'
+            };
+
+            Promise.all(
+                Object.entries(modules).map(([key, url]) => 
+                    import(url).catch(e => {
+                        throw new Error(`Failed to load ${key} from ${url}: ${e.message}`);
+                    })
+                )
+            ).then(([solid, solidWeb, html]) => {
+                window.solidJs = {
+                    createSignal: solid.createSignal,
+                    createMemo: solid.createMemo,
+                    onMount: solid.onMount,
+                    onCleanup: solid.onCleanup
+                };
+                window.solidJsWeb = { render: solidWeb.render };
+                window.html = html.default;
+                window.dispatchEvent(new Event('solid-loaded'));
+            }).catch(handleScriptError);
+        } catch (e) {
+            handleScriptError(e);
+        }
+    </script>
+
     {{ form.media }}
     <script src="{% static 'tinymce/tinymce.min.js' %}"></script>
+
     {% compress js %}
     <script defer src="{% static 'js/project.js' %}"></script>
     {% endcompress %}
     {% endblock javascript %}
   </head>
-  <body class="{% block bodyclass %}{% endblock bodyclass %}">
+  <body class="bg-gray-100">
     {% block body %}
-    <div class="mb-4">
-      <nav class="bg-white border-gray-200 px-4 py-2.5">
-        <div class="container mx-auto flex flex-wrap items-center justify-between">
-          <button class="md:hidden inline-flex items-center p-2 ml-3 text-gray-500 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200"
-                  type="button"
-                  onclick="document.getElementById('navbar-default').classList.toggle('hidden')">
-            <span class="sr-only">Open main menu</span>
-            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path></svg>
-          </button>
-          <a class="text-xl font-semibold" href="{% url 'home' %}">walkquest</a>
-          <div class="hidden w-full md:block md:w-auto" id="navbar-default">
-            <ul class="flex flex-col mt-4 md:flex-row md:space-x-8 md:mt-0 md:font-medium">
-              <li>
-                <a class="block py-2 pr-4 pl-3 text-gray-700 hover:text-blue-700" href="{% url 'home' %}">Home</a>
-              </li>
-              <li>
-                <a class="block py-2 pr-4 pl-3 text-gray-700 hover:text-blue-700" href="{% url 'about' %}">About</a>
-              </li>
-              {% if request.user.is_authenticated %}
-              <li>
-                <a class="block py-2 pr-4 pl-3 text-gray-700 hover:text-blue-700" href="{% url 'users:detail' request.user.username %}">{% translate "My Profile" %}</a>
-              </li>
-              <li>
-                <a class="block py-2 pr-4 pl-3 text-gray-700 hover:text-blue-700" href="{% url 'account_logout' %}">{% translate "Sign Out" %}</a>
-              </li>
-              {% else %}
-              {% if ACCOUNT_ALLOW_REGISTRATION %}
-              <li>
-                <a id="sign-up-link" class="block py-2 pr-4 pl-3 text-gray-700 hover:text-blue-700" href="{% url 'account_signup' %}">{% translate "Sign Up" %}</a>
-              </li>
-              {% endif %}
-              <li>
-                <a id="log-in-link" class="block py-2 pr-4 pl-3 text-gray-700 hover:text-blue-700" href="{% url 'account_login' %}">{% translate "Sign In" %}</a>
-              </li>
-              {% endif %}
-            </ul>
-          </div>
-        </div>
-      </nav>
-    </div>
-    <div class="container mx-auto px-4">
-      {% if messages %}
-      {% for message in messages %}
-      <div class="relative px-4 py-3 {% if message.tags %}{% if message.tags == 'success' %}bg-green-100 text-green-700{% elif message.tags == 'error' %}bg-red-100 text-red-700{% elif message.tags == 'info' %}bg-blue-100 text-blue-700{% elif message.tags == 'warning' %}bg-yellow-100 text-yellow-700{% endif %}{% endif %} rounded mb-4">
+    {% if messages %}
+    {% for message in messages %}
+    <div class="relative px-4 py-3 {% if message.tags %}{% if message.tags == 'success' %}bg-green-100 text-green-700{% elif message.tags == 'error' %}bg-red-100 text-red-700{% elif message.tags == 'info' %}bg-blue-100 text-blue-700{% elif message.tags == 'warning' %}bg-yellow-100 text-yellow-700{% endif %}{% endif %} rounded mb-4">
         {{ message }}
         <button type="button" class="absolute top-0 right-0 px-4 py-3" onclick="this.parentElement.remove()">
           <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 20 20">
             <path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" fill-rule="evenodd"></path>
           </svg>
         </button>
-      </div>
-      {% endfor %}
-      {% endif %}
-      {% block main %}
-      {% block content %}
-      <p>Use this document as a way to quick start any new project.</p>
-      {% endblock content %}
-      {% endblock main %}
     </div>
+    {% endfor %}
+    {% endif %}
+    {% block content %}{% endblock content %}
     {% endblock body %}
     {% block modal %}{% endblock modal %}
     {% block inline_javascript %}{% endblock inline_javascript %}
