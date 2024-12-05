@@ -1,9 +1,10 @@
 import json
 from django.views.generic import ListView
 from django.conf import settings
+from django.shortcuts import render
 from .models import Walk
 
-ICONIFY_MAPPING = {
+FEATURE_ICONS = {
     "coastal": "iconoir:sea-waves",
     "woodland": "ph:tree",
     "historic": "game-icons:spell-book",
@@ -24,7 +25,6 @@ class HomePageView(ListView):
     
     def get_queryset(self):
         walks = Walk.objects.exclude(latitude=None, longitude=None)
-        # Ensure features is a list even if null/blank
         for walk in walks:
             if not walk.features:
                 walk.features = []
@@ -33,8 +33,7 @@ class HomePageView(ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['mapbox_token'] = settings.MAPBOX_TOKEN
-        # Add ICONIFY_MAPPING to context
-        context['feature_icons'] = ICONIFY_MAPPING
+        context['feature_icons'] = FEATURE_ICONS
         return context
 
 def map_view(request):
@@ -43,9 +42,9 @@ def map_view(request):
     walk_data = []
     for walk in walks:
         icon_list = [
-            ICONIFY_MAPPING[feature]
+            FEATURE_ICONS[feature]
             for feature in (walk.features or [])
-            if feature in ICONIFY_MAPPING
+            if feature in FEATURE_ICONS
         ]
         walk_data.append({
             # ...existing fields...

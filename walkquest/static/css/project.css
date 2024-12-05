@@ -1,18 +1,19 @@
 /* These styles are generated from project.scss. */
 
+/* Alert Styles */
 .alert-debug {
-  color: black;
-  background-color: white;
-  border-color: #d6e9c6;
+    color: black;
+    background-color: white;
+    border-color: #d6e9c6;
 }
 
 .alert-error {
-  color: #b94a48;
-  background-color: #f2dede;
-  border-color: #eed3d7;
+    color: #b94a48;
+    background-color: #f2dede;
+    border-color: #eed3d7;
 }
 
-/* Ensure the map container fills its parent */
+/* Map Container */
 #map {
     width: 100%;
     height: 100%;
@@ -20,68 +21,59 @@
     z-index: 1;
 }
 
-/* Customize markers to resemble Google Maps markers */
-.marker {
-/* Use a Google-like marker icon */
-    background-size: cover;
-    width: 50px;
-    height: 50px;
-    cursor: pointer;
+/* Marker Styles */
+.wq-marker {
+    width: 30px;
+    height: 30px;
     position: relative;
-    transform: translate(-50%, -50%);
+    cursor: pointer;
+    outline-offset: 4px;
 }
 
-/* Custom marker styling */
-.marker {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    transform: translate(-50%, -100%); /* Center the marker on the point */
+.wq-marker-pin {
+    width: 100%;
+    height: 100%;
+    background: #1D4ED8;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    transition: transform 0.2s ease;
 }
 
-.marker-main {
-    width: 40px;
-    height: 40px;
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-    background-image: url('../images/map_marker.svg'); /* Adjust path if necessary */
+.wq-marker:hover .wq-marker-pin {
+    transform: scale(1.1);
+    box-shadow: 0 3px 6px rgba(0,0,0,0.3);
 }
 
-.marker-icons {
+.wq-marker-icons {
     position: absolute;
-    bottom: -10px;
     left: 50%;
+    bottom: -24px;
     transform: translateX(-50%);
     background: white;
-    padding: 2px 4px;
-    border-radius: 12px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 4px 6px;
+    border-radius: 4px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
     display: flex;
     gap: 4px;
-    z-index: 2;
+    z-index: 1;
 }
 
-/* Style the sidebar to align with Google Maps UI */
+/* Sidebar Styles */
 .sidebar {
     background-color: rgba(255, 255, 255, 0.9);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     border-radius: 8px;
 }
 
-nav {
+nav, #sidebar {
     z-index: 1001;
-}
-
-#sidebar {
-    z-index: 1000;
 }
 
 /* Mapbox Controls Styling */
 .mapboxgl-ctrl-group {
     background: #fff;
     border-radius: 4px;
-    box-shadow: 0 0 10px 2px rgba(0,0,0,.1);
+    box-shadow: 0 0 10px 2px rgba(0, 0, 0, 0.1);
 }
 
 .mapboxgl-ctrl-group button {
@@ -89,18 +81,16 @@ nav {
     height: 30px;
     display: block;
     padding: 0;
-    outline: none;
-    border: 0;
-    box-sizing: border-box;
+    border: none;
     background-color: transparent;
     cursor: pointer;
+    box-sizing: border-box;
 }
 
 .mapboxgl-ctrl-group button + button {
     border-top: 1px solid #ddd;
 }
 
-/* Ensure controls are above the sidebar but below the nav */
 .mapboxgl-ctrl-top-right {
     top: 3rem !important;
     z-index: 999;
@@ -110,10 +100,30 @@ nav {
     background-color: #fff;
 }
 
-/* Style for popups */
+.mapboxgl-ctrl-scale {
+    border: 2px solid #333;
+    border-top: none;
+    background-color: rgba(255, 255, 255, 0.75);
+    padding: 0 5px;
+    color: #333;
+    font-size: 10px;
+    line-height: 18px;
+    border-radius: 0 0 3px 3px;
+}
+
+.mapboxgl-ctrl-attrib {
+    background-color: rgba(255, 255, 255, 0.8);
+    padding: 0 5px;
+    border-radius: 3px 3px 0 0;
+}
+
+/* Popup Styles */
 .mapboxgl-popup {
     max-width: 300px;
     z-index: 3;
+    transform-origin: center bottom;
+    animation: popup-appear 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.2s ease-out;
 }
 
 .mapboxgl-popup-content {
@@ -121,16 +131,37 @@ nav {
     font-family: system-ui, -apple-system, sans-serif;
     padding: 1rem;
     border-radius: 0.5rem;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
 }
 
-.mapboxgl-popup-content {
-    padding: 15px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+@keyframes popup-appear {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
-.mapboxgl-popup-close-button {
-    padding: 4px 8px;
-    font-size: 16px;
+.walk-item:focus,
+.wq-marker:focus {
+    outline: 2px solid #1D4ED8;
+    outline-offset: 2px;
+}
+
+.walk-item:focus-visible,
+.wq-marker:focus-visible {
+    outline: 2px solid #1D4ED8;
+    outline-offset: 2px;
+}
+
+.mapboxgl-popup.entering {
+    transform: scale(0.9) translateY(5px);
+}
+
+@media (forced-colors: active) {
+    .wq-marker-pin {
+        background: CanvasText;
+        border: 2px solid ButtonText;
+    }
+    
+    .wq-marker-icons {
+        border: 1px solid ButtonText;
+    }
 }

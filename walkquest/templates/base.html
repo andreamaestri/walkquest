@@ -41,71 +41,75 @@
     {% endblock css %}
     
     {% block javascript %}
-    <!-- Scripts loading and error handling -->
-    <script>
-        window.handleScriptError = function(error) {
-            console.error('Script loading error:', error);
-            document.body.innerHTML = `
-                <div class="p-4 bg-red-100 text-red-700">
-                    Failed to load required scripts. Please refresh the page or contact support.
-                </div>
-            `;
-        }
-    </script>
-
-    <!-- Load Dependencies -->
     <script>
         window.depsLoaded = {
             solidJs: false,
             mapboxGl: false,
             iconify: false
         };
-        
-        function initDependencies() {
-            // First load Iconify core
-            const script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/npm/iconify-icon@2.0.0/dist/iconify-icon.min.js';
-            script.onload = () => {
-                window.depsLoaded.iconify = true;
-                loadOtherDependencies();
-            };
-            script.onerror = (error) => {
-                console.error('Failed to load Iconify:', error);
-                handleScriptError(error);
-            };
-            document.head.appendChild(script);
-        }
+    </script>
 
-        function loadOtherDependencies() {
-            Promise.all([
-                // Load SolidJS
-                Promise.all([
-                    import('https://cdn.skypack.dev/solid-js@1.7.11'),
-                    import('https://cdn.skypack.dev/solid-js@1.7.11/web'),
-                    import('https://cdn.skypack.dev/solid-js@1.7.11/html')
-                ]).then(([solid, solidWeb, html]) => {
-                    window.solidJs = solid;
-                    window.solidJsWeb = solidWeb;
-                    window.html = html.default;
-                    window.depsLoaded.solidJs = true;
-                    console.log('SolidJS loaded successfully');
-                }),
-                // Load Mapbox
-                import('https://cdn.skypack.dev/mapbox-gl').then(mapboxModule => {
-                    window.mapboxgl = mapboxModule.default;
-                    window.depsLoaded.mapboxGl = true;
-                    console.log('Mapbox GL loaded successfully');
-                })
-            ]).then(() => {
-                window.dispatchEvent(new Event('deps-loaded'));
-            }).catch(error => {
-                console.error('Failed to load dependencies:', error);
-                handleScriptError(error);
-            });
+    <!-- Import map for module resolution -->
+    <script type="importmap">
+    {
+        "imports": {
+            "@iconify/iconify": "https://cdn.skypack.dev/pin/@iconify/iconify@v3.1.1-0yaXkPRv6tboGyYj5XBb/mode=imports,min/optimized/@iconify/iconify.js",
+            "@iconify/iconify/dist/iconify-icon.js": "https://cdn.skypack.dev/pin/iconify-icon@v2.1.0-hCuXQ4lfcIGup0HG0uzA/mode=imports,min/optimized/iconify-icon.js",
+            "solid-js": "https://cdn.skypack.dev/pin/solid-js@v1.9.3-njmOkbMyeeeOXt20oIXx/mode=imports,min/optimized/solid-js.js",
+            "mapbox-gl": "https://cdn.skypack.dev/pin/mapbox-gl@v3.8.0-WVQL1rs6ltvwDAyZCScj/mode=imports,min/optimized/mapbox-gl.js"
         }
+    }
+    </script>
 
-        // Initialize dependencies loading
-        initDependencies();
+    <script type="module">
+        // Create a Promise that resolves when dependencies are loaded
+        window.depsReady = new Promise((resolve, reject) => {
+            try {
+                const loadModules = async () => {
+                    try {
+                        // Import modules directly to ensure proper initialization
+                        const [{ default: Iconify }, solidJsModule, mapboxModule] = await Promise.all([
+                            import('@iconify/iconify'),
+                            import('solid-js'),
+                            import('mapbox-gl')
+                        ]);
+
+                        // Set global objects with proper initialization
+                        window.Iconify = Iconify;
+                        // Expose all SolidJS exports
+                        window.solidJs = {
+                            createSignal: solidJsModule.createSignal,
+                            createEffect: solidJsModule.createEffect,
+                            onMount: solidJsModule.onMount,
+                            onCleanup: solidJsModule.onCleanup
+                        };
+                        window.mapboxgl = mapboxModule.default || mapboxModule;
+
+                        // Verify dependencies are loaded
+                        if (!window.solidJs?.createSignal) {
+                            throw new Error('SolidJS not properly initialized');
+                        }
+                        if (!window.mapboxgl?.Map) {
+                            throw new Error('Mapbox GL JS not properly initialized');
+                        }
+
+                        // Load Iconify component last
+                        await import('@iconify/iconify/dist/iconify-icon.js');
+
+                        console.log('Dependencies loaded successfully');
+                        resolve();
+                    } catch (error) {
+                        console.error('Module loading error:', error);
+                        reject(error);
+                    }
+                };
+
+                loadModules();
+            } catch (error) {
+                console.error('Critical loading error:', error);
+                reject(error);
+            }
+        });
     </script>
 
     {{ form.media }}
