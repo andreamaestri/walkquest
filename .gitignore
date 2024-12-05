@@ -277,5 +277,4 @@ walkquest/media/
 .pytest_cache/
 .env
 .envs/*
-
-!.envs/.local/
+.envs/.local/
