@@ -41,22 +41,102 @@
 
 {% block inline_javascript %}
 <script>
-async function initializeApp() {
-    try {
-        // Wait for dependencies to be loaded
-        await window.depsReady;
-        
-        // Verify SolidJS is available
-        if (!window.solidJs?.createSignal) {
-            throw new Error('SolidJS not available');
-        }
+    // Add ICONIFY_MAPPING constant at the top of the script
+    const ICONIFY_MAPPING = {
+        'Coastal': 'mdi:waves',
+        'Woodland': 'mdi:forest',
+        'Historical': 'mdi:castle',
+        'Family-friendly': 'mdi:human-male-child',
+        'Challenging': 'mdi:hiking',
+        'Scenic': 'mdi:image-filter-hdr',
+        'Accessible': 'mdi:wheelchair-accessibility'
+    };
 
-        const { createSignal, createEffect, onMount, onCleanup } = window.solidJs;
-        
-        function MapApp() {
-            const [mapInstance, setMapInstance] = createSignal(null);
-            const [walkData, setWalkData] = createSignal([]);
+    async function initializeApp() {
+        try {
+            await window.depsReady;
+            if (!window.solidJs?.createSignal) {
+                throw new Error('SolidJS not available');
+            }
+    
+            const { createSignal, createEffect, onMount } = window.solidJs;
+    
+            function MapApp() {
+                const [map, setMap] = createSignal(null);
+    
+                onMount(() => {
+                    if (!window.mapboxgl) {
+                        throw new Error('Mapbox GL JS not available');
+                    }
+    
+                    const mapInstance = new window.mapboxgl.Map({
+                        container: 'map',
+                        style: 'mapbox://styles/andreamaestri/cm48d1bek014q01sielm24odq?optimize=true', 
+                        accessToken: "{{ mapbox_token }}",
+                        center: [-4.85, 50.40],
+                        zoom: 9,
+                        minZoom: 7,
+                        maxZoom: 17,
+                        attributionControl: false
+                    });
+    
+                    mapInstance.on('load', () => {
+                        const walkData = initializeWalkData();
+                        addMarkersToMap(mapInstance, walkData);
+                        setMapBounds(mapInstance);
+                        addMapControls(mapInstance);
+                    });
 
+                    setMap(mapInstance);
+                });
+            }
+    
+            function addMarkersToMap(mapInstance, walkData) {
+                for (const feature of walkData.features) {
+                    const el = document.createElement('div');
+                    el.className = 'marker';
+                    
+                    const popup = new mapboxgl.Popup({ 
+                        offset: 25, 
+                        closeButton: false, 
+                        maxWidth: '300px' 
+                    }).setHTML(`
+                        <div class="p-3">
+                            <h3 class="font-bold mb-2">${feature.properties.title}</h3>
+                            <p class="text-sm text-gray-600">${feature.properties.description}</p>
+                            <div class="flex gap-2 justify-center mt-2">
+                                ${feature.properties.features.map(feat => {
+                                    const iconName = ICONIFY_MAPPING[feat.trim()];
+                                    return iconName ? `<iconify-icon icon="${iconName}" width="16" height="16"></iconify-icon>` : '';
+                                }).join('')}
+                            </div>
+                        </div>
+                    `);
+
+                    new mapboxgl.Marker(el)
+                        .setLngLat(feature.geometry.coordinates)
+                        .setPopup(popup)
+                        .addTo(mapInstance);
+                }
+            }
+    
+            function setMapBounds(mapInstance) {
+                const cornwallBounds = new mapboxgl.LngLatBounds(
+                    [-5.75, 49.95],
+                    [-4.15, 50.85]
+                );
+                mapInstance.setMaxBounds(cornwallBounds);
+                mapInstance.fitBounds(cornwallBounds, {
+                    padding: { top: 50, bottom: 50, left: 450, right: 50 },
+                    maxZoom: 14,
+                    duration: 0
+                });
+            }
+    
+            function addMapControls(mapInstance) {
+                mapInstance.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
+            }
+    
             function initializeWalkData() {
                 const walkElements = document.querySelectorAll('.walk-item');
                 return {
@@ -76,113 +156,20 @@ async function initializeApp() {
                     }))
                 };
             }
-
-            onMount(() => {
-                const walks = initializeWalkData();
-                if (!window.mapboxgl) {
-                    throw new Error('Mapbox GL JS not available');
-                }
-                
-                const map = new window.mapboxgl.Map({
-                    container: 'map',
-                    style: 'mapbox://styles/andreamaestri/cm48d1bek014q01sielm24odq?optimize=true',
-                    accessToken: "{{ mapbox_token }}",
-                    center: [-4.85, 50.40],
-                    zoom: 9,
-                    bounds: [[-5.75, 49.95], [-4.15, 50.85]],
-                    minZoom: 7,
-                    maxZoom: 17,
-                    attributionControl: false
-                });
-
-                map.on('load', () => {
-                    // Add GeoJSON source
-                    map.addSource('walks', {
-                        type: 'geojson',
-                        data: walks,
-                        generateId: true // Important for feature state
-                    });
-
-                    // Add symbol layer
-                    map.addLayer({
-                        id: 'walk-points',
-                        type: 'symbol',
-                        source: 'walks',
-                        layout: {
-                            'icon-image': 'map_marker',
-                            'icon-size': 1,
-                            'icon-allow-overlap': true,
-                            'icon-ignore-placement': true,
-                            'text-allow-overlap': true,
-                            'symbol-sort-key': ['get', 'id']
-                        }
-                    });
-
-                    // Handle click events
-                    map.on('click', 'walk-points', (e) => {
-                        if (!e.features.length) return;
-                        
-                        const feature = e.features[0];
-                        const coordinates = feature.geometry.coordinates.slice();
-                        const { title, description, features } = feature.properties;
-
-                        new mapboxgl.Popup({ offset: 25, closeButton: false, maxWidth: '300px' })
-                            .setLngLat(coordinates)
-                            .setHTML(`
-                                <div class="p-3">
-                                    <h3 class="font-bold mb-2">${title}</h3>
-                                    <p class="text-sm text-gray-600">${description}</p>
-                                    <div class="flex gap-2 justify-center mt-2">
-                                        ${features.map(feat => {
-                                            const iconName = ICONIFY_MAPPING[feat.trim()];
-                                            return iconName ? `<iconify-icon icon="${iconName}" width="16" height="16"></iconify-icon>` : '';
-                                        }).join('')}
-                                    </div>
-                                </div>
-                            `)
-                            .addTo(map);
-                    });
-
-                    // Change cursor on hover
-                    map.on('mouseenter', 'walk-points', () => {
-                        map.getCanvas().style.cursor = 'pointer';
-                    });
-                    map.on('mouseleave', 'walk-points', () => {
-                        map.getCanvas().style.cursor = '';
-                    });
-
-                    // Set bounds
-                    const cornwallBounds = new mapboxgl.LngLatBounds(
-                        [-5.75, 49.95],
-                        [-4.15, 50.85]
-                    );
-                    map.setMaxBounds(cornwallBounds);
-                    map.fitBounds(cornwallBounds, {
-                        padding: { top: 50, bottom: 50, left: 450, right: 50 },
-                        maxZoom: 14,
-                        duration: 0
-                    });
-                });
-
-                map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
-                setMapInstance(map);
-            });
+    
+            MapApp();
+        } catch (error) {
+            console.error("Failed to initialize application:", error);
+            document.getElementById('map').innerHTML =
+                '<div class="p-4 bg-red-100 text-red-700">Failed to load map. Please refresh the page.</div>';
         }
-
-        MapApp();
-    } catch (error) {
-        console.error("Failed to initialize application:", error);
-        document.getElementById('map').innerHTML = 
-            '<div class="p-4 bg-red-100 text-red-700">Failed to load map. Please refresh the page.</div>';
     }
-}
-
-// Start the application when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeApp);
-} else {
-    initializeApp();
-}
+    
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeApp);
+    } else {
+        initializeApp();
+    }
 </script>
 
 <style>
@@ -203,6 +190,20 @@ if (document.readyState === 'loading') {
 .marker-icons {
     white-space: nowrap;
     z-index: 1;
+}
+.marker {
+    background-color: #e81224;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 0 0 2px rgba(0,0,0,0.25);
+}
+
+.mapboxgl-popup-content {
+    padding: 0;
+    border-radius: 0.5rem;
 }
 </style>
 {% endblock %}
