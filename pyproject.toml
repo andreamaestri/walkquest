@@ -167,11 +167,9 @@ django-anymail = {version = "12.0", extras = ["production"]}
 django-unfold = "^0.42.0"
 psycopg2-binary = "^2.9.10"
 django-cors-headers = "^4.6.0"
-django-tinymce = "^4.1.0"
-django-taggit = "^6.1.0"
-django-autocomplete-light = "^3.11.0"
-django-select2 = "^8.2.1"
 django-tagulous = "^2.1.0"
+rapidfuzz = "^3.10.1"
+geopy = "^2.4.1"
 
 
 [tool.poetry.group.dev.dependencies]

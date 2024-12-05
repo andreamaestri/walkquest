@@ -2,13 +2,21 @@
 {% load static %}
 
 {% block content %}
-<div id="app" class="h-screen w-screen relative">
-    <div id="map" class="fixed inset-0 w-full h-full"></div>
-    <div id="sidebar" class="absolute top-4 right-4 bg-white p-4 rounded-lg shadow-lg max-w-md max-h-[calc(100vh-2rem)] overflow-y-auto">
-        <h2 class="text-xl font-bold mb-4">Available Walks</h2>
+<div class="h-screen w-screen relative">
+    <div id="map" class="fixed top-12 left-0 right-0 bottom-0 w-full"></div>
+    <div id="sidebar" class="absolute top-16 left-4 bg-white p-4 rounded-lg shadow-lg w-[400px] max-h-[calc(100vh-5rem)] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold">Available Walks</h2>
+            <button class="p-2 hover:bg-gray-100 rounded-full" onclick="toggleSidebar()">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
         <div id="walks-list">
             {% for walk in walks %}
             <div class="walk-item mb-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer"
+                 data-id="{{ walk.id }}"
                  data-lat="{{ walk.latitude }}"
                  data-lng="{{ walk.longitude }}"
                  data-title="{{ walk.title }}"
@@ -20,87 +28,214 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block inline_javascript %}
 <script>
-window.addEventListener('solid-loaded', () => {
-    const { createSignal, onMount } = window.solidJs;
+function waitForDependencies(callback, maxAttempts = 10) {
+    let attempts = 0;
     
-    const [map, setMap] = createSignal(null);
-    const walkElements = document.querySelectorAll('.walk-item');
+    function check() {
+        if (window.depsLoaded.solidJs && window.depsLoaded.mapboxGl) {
+            callback();
+        } else if (attempts < maxAttempts) {
+            attempts++;
+            setTimeout(check, 500);
+        } else {
+            console.error('Dependencies failed to load after maximum attempts');
+            handleScriptError(new Error('Dependencies loading timeout'));
+        }
+    }
     
-    onMount(() => {
-        // Calculate bounds first
-        const bounds = new mapboxgl.LngLatBounds();
-        let validCoordinates = false;
+    check();
+}
 
-        walkElements.forEach(el => {
-            const lat = parseFloat(el.dataset.lat);
-            const lng = parseFloat(el.dataset.lng);
-            
-            // Validate coordinates
-            if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-                bounds.extend([lng, lat]);
-                validCoordinates = true;
-                console.log(`Valid coordinates added: [${lng}, ${lat}]`);
-            } else {
-                console.warn(`Invalid coordinates skipped: [${lng}, ${lat}]`);
-            }
-        });
+// Initialize only after all dependencies are loaded
+waitForDependencies(() => {
+    const { createSignal, createEffect, onMount } = window.solidJs;
+    
+    function MapApp() {
+        const [mapInstance, setMapInstance] = createSignal(null);
+        const [walks, setWalks] = createSignal([]);
+        const [sidebarVisible, setSidebarVisible] = createSignal(true);
+        const [performance, setPerformance] = createSignal({});
 
-        if (!validCoordinates) {
-            console.error('No valid coordinates found for bounds');
-            return;
+        // Define initializeWalkData function
+        function initializeWalkData() {
+            const walkElements = document.querySelectorAll('.walk-item');
+            return Array.from(walkElements).map(el => ({
+                id: el.dataset.id,
+                lat: parseFloat(el.dataset.lat),
+                lng: parseFloat(el.dataset.lng),
+                title: el.dataset.title,
+                description: el.dataset.description
+            }));
         }
 
-        console.log('Bounds:', bounds.toString());
+        onMount(() => {
+            const walkData = initializeWalkData();
+            setWalks(walkData);
 
-        // Initialize map with bounds
-        const mapInstance = new mapboxgl.Map({
-            container: 'map',
-            style: 'mapbox://styles/andreamaestri/cm48d1bek014q01sielm24odq',
-            bounds: bounds,
-            fitBoundsOptions: {
-                padding: 50,
-                maxZoom: 14
-            },
-            accessToken: "{{ mapbox_token }}"
-        });
+            const bounds = new mapboxgl.LngLatBounds();
+            walkData.forEach(walk => {
+                if (isValidCoordinate(walk.lat, walk.lng)) {
+                    bounds.extend([walk.lng, walk.lat]);
+                }
+            });
 
-        mapInstance.addControl(new mapboxgl.NavigationControl());
-        setMap(mapInstance);
+            // Initialize map with optimized style URL
+            const map = new mapboxgl.Map({
+                container: 'map',
+                style: 'mapbox://styles/andreamaestri/cm48d1bek014q01sielm24odq?optimize=true',
+                accessToken: "{{ mapbox_token }}",
+                minZoom: 5,
+                maxZoom: 17,
+                attributionControl: false
+            });
 
-        // Add markers
-        walkElements.forEach(el => {
-            const lat = parseFloat(el.dataset.lat);
-            const lng = parseFloat(el.dataset.lng);
-            const title = el.dataset.title;
-            const description = el.dataset.description;
+            // Add performance monitoring
+            map.on('render', () => {
+                setPerformance({
+                    fps: Math.round(map.getFrameRate()),
+                    renderTime: map.getPerformance().renderTime
+                });
+            });
 
-            if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-                new mapboxgl.Marker()
-                    .setLngLat([lng, lat])
-                    .setPopup(
-                        new mapboxgl.Popup({ offset: 25 })
-                            .setHTML(`<h3>${title}</h3><p>${description}</p>`)
-                    )
-                    .addTo(mapInstance);
+            // Optimize map loading
+            map.on('sourcedata', (e) => {
+                if (e.isSourceLoaded) {
+                    // Remove unused layers
+                    const visibleLayers = map.getStyle().layers
+                        .filter(layer => map.getLayoutProperty(layer.id, 'visibility') === 'visible');
+                    
+                    visibleLayers.forEach(layer => {
+                        if (!layer.source) return;
+                        // Set maximum zoom level for performance
+                        map.setLayerZoomRange(layer.id, 5, 17);
+                    });
+                }
+            });
+
+            // Optimize controls
+            const geolocateControl = new mapboxgl.GeolocateControl({
+                positionOptions: { 
+                    enableHighAccuracy: true,
+                    timeout: 6000
+                },
+                trackUserLocation: true,
+                showAccuracyCircle: false // Reduce render complexity
+            });
+
+            map.addControl(geolocateControl, 'top-right');
+            map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
+
+            setMapInstance(map);
+            
+            // Set initial view
+            if (walks().length > 0) {
+                map.fitBounds(bounds, {
+                    padding: { top: 50, bottom: 50, left: 450, right: 50 },
+                    maxZoom: 14,
+                    duration: 0 // Disable animation for initial load
+                });
             }
 
-            // Add click handler
-            el.addEventListener('click', () => {
-                mapInstance.flyTo({
-                    center: [lng, lat],
-                    zoom: 14
+            // Add markers efficiently
+            const markers = [];
+            const addMarkersInViewport = () => {
+                const currentBounds = map.getBounds();
+                walks().forEach(walk => {
+                    if (isValidCoordinate(walk.lat, walk.lng) &&
+                        currentBounds.contains([walk.lng, walk.lat])) {
+                        
+                        const marker = new mapboxgl.Marker({
+                            element: createMarkerElement(walk)
+                        })
+                        .setLngLat([walk.lng, walk.lat])
+                        .setPopup(
+                            new mapboxgl.Popup({ 
+                                offset: 25,
+                                closeButton: false,
+                                maxWidth: '300px'
+                            })
+                            .setHTML(`<h3>${walk.title}</h3><p>${walk.description}</p>`)
+                        );
+                        markers.push(marker);
+                        marker.addTo(map);
+                    }
+                });
+            };
+
+            // Initial markers
+            addMarkersInViewport();
+
+            // Custom marker element for better performance
+            function createMarkerElement(walk) {
+                const el = document.createElement('div');
+                el.className = 'marker';
+                el.style.backgroundImage = `url({% static 'images/marker.png' %})`;
+                el.style.backgroundSize = '100%';
+                el.style.width = '30px';
+                el.style.height = '30px';
+                return el;
+            }
+
+            map.on('moveend', () => {
+                // Remove markers outside viewport
+                markers.forEach(marker => {
+                    const pos = marker.getLngLat();
+                    if (!map.getBounds().contains(pos)) {
+                        marker.remove();
+                    }
+                });
+                addMarkersInViewport();
+            });
+        });
+
+        // Helper function to validate coordinates
+        function isValidCoordinate(lat, lng) {
+            return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+        }
+
+        // Handle walk item clicks
+        createEffect(() => {
+            const map = mapInstance();
+            if (!map) return;
+
+            document.querySelectorAll('.walk-item').forEach(el => {
+                el.addEventListener('click', () => {
+                    const lat = parseFloat(el.dataset.lat);
+                    const lng = parseFloat(el.dataset.lng);
+                    if (isValidCoordinate(lat, lng)) {
+                        map.flyTo({
+                            center: [lng, lat],
+                            zoom: 14
+                        });
+                    }
                 });
             });
         });
 
-        // Verify map is centered correctly
-        mapInstance.on('load', () => {
-            console.log('Map center:', mapInstance.getCenter());
-            console.log('Map bounds:', mapInstance.getBounds().toString());
-        });
-    });
+        // Export toggle function for sidebar
+        window.toggleSidebar = () => {
+            const sidebar = document.getElementById('sidebar');
+            setSidebarVisible(!sidebarVisible());
+            sidebar.classList.toggle('translate-x-[-420px]');
+        };
+    }
+
+    // Initialize the app
+    MapApp();
 });
 </script>
+
+<style>
+    #sidebar {
+        transition: transform 0.3s ease-in-out;
+        z-index: 1000;
+    }
+    .mapboxgl-ctrl-top-right {
+        top: 3rem !important;
+    }
+</style>
 {% endblock %}

@@ -17,6 +17,7 @@
     width: 100%;
     height: 100%;
     border-radius: 8px; /* Optional: Rounded corners */
+    z-index: 1;
 }
 
 /* Customize markers to resemble Google Maps markers */
@@ -33,4 +34,57 @@
     background-color: rgba(255, 255, 255, 0.9);
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     border-radius: 8px;
+}
+
+nav {
+    z-index: 1001;
+}
+
+#sidebar {
+    z-index: 1000;
+}
+
+/* Mapbox Controls Styling */
+.mapboxgl-ctrl-group {
+    background: #fff;
+    border-radius: 4px;
+    box-shadow: 0 0 10px 2px rgba(0,0,0,.1);
+}
+
+.mapboxgl-ctrl-group button {
+    width: 30px;
+    height: 30px;
+    display: block;
+    padding: 0;
+    outline: none;
+    border: 0;
+    box-sizing: border-box;
+    background-color: transparent;
+    cursor: pointer;
+}
+
+.mapboxgl-ctrl-group button + button {
+    border-top: 1px solid #ddd;
+}
+
+/* Ensure controls are above the sidebar but below the nav */
+.mapboxgl-ctrl-top-right {
+    top: 3rem !important;
+    z-index: 999;
+}
+
+.mapboxgl-ctrl-geolocate {
+    background-color: #fff;
+}
+
+/* Style for popups */
+.mapboxgl-popup-content {
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.mapboxgl-popup-close-button {
+    padding: 4px 8px;
+    font-size: 16px;
 }

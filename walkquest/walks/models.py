@@ -196,6 +196,12 @@ class Walk(models.Model):
         blank=True,
         help_text=_("Categories related to this walk")
     )
+    features = models.JSONField(
+        _("Features"),
+        blank=True,
+        null=True,
+        help_text=_("List of features for this walk, e.g., ['coastal', 'historic']")
+    )
     has_stiles = models.BooleanField(default=False)
     has_cafe = models.BooleanField(default=False)
     has_bus_access = models.BooleanField(default=False)
