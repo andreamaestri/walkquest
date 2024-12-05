@@ -24,9 +24,42 @@
 .marker {
 /* Use a Google-like marker icon */
     background-size: cover;
-    width: 30px;
-    height: 30px;
+    width: 50px;
+    height: 50px;
     cursor: pointer;
+    position: relative;
+    transform: translate(-50%, -50%);
+}
+
+/* Custom marker styling */
+.marker {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transform: translate(-50%, -100%); /* Center the marker on the point */
+}
+
+.marker-main {
+    width: 40px;
+    height: 40px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-image: url('../images/map_marker.svg'); /* Adjust path if necessary */
+}
+
+.marker-icons {
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    padding: 2px 4px;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    display: flex;
+    gap: 4px;
+    z-index: 2;
 }
 
 /* Style the sidebar to align with Google Maps UI */
@@ -78,6 +111,19 @@ nav {
 }
 
 /* Style for popups */
+.mapboxgl-popup {
+    max-width: 300px;
+    z-index: 3;
+}
+
+.mapboxgl-popup-content {
+    text-align: center;
+    font-family: system-ui, -apple-system, sans-serif;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
 .mapboxgl-popup-content {
     padding: 15px;
     border-radius: 8px;

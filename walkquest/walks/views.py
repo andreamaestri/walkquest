@@ -23,16 +23,18 @@ class HomePageView(ListView):
     context_object_name = "walks"
     
     def get_queryset(self):
-        return Walk.objects.exclude(latitude=None, longitude=None)
+        walks = Walk.objects.exclude(latitude=None, longitude=None)
+        # Ensure features is a list even if null/blank
+        for walk in walks:
+            if not walk.features:
+                walk.features = []
+        return walks
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['mapbox_token'] = settings.MAPBOX_TOKEN
-        if not context['mapbox_token']:
-            from django.core.exceptions import ImproperlyConfigured
-            raise ImproperlyConfigured(
-                "Mapbox token not found. Please set MAPBOX_TOKEN in your environment."
-            )
+        # Add ICONIFY_MAPPING to context
+        context['feature_icons'] = ICONIFY_MAPPING
         return context
 
 def map_view(request):
