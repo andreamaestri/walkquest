@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <path id="a" fill="none" d="M944.5 468.5h16v16h-16z"/>
+  </defs>
+  <path transform="scale(1 1.4)" vector-effect="non-scaling-stroke" stroke="none" d="M602.5 90.357h700v500h-700z" fill="#fff" font-family="none" font-size="none" font-weight="none" stroke-miterlimit="10" stroke-width="0" text-anchor="none" style="mix-blend-mode:normal"/>
+  <g clip-path="url(#a)" fill="none" fill-rule="none" font-family="none" font-size="none" font-weight="none" stroke-miterlimit="10" text-anchor="none" style="mix-blend-mode:normal">
+    <path d="m952.04 483.34.005.005a.755.755 0 0 0 .912 0l.005-.005.012-.009a6.0117 6.0117 0 0 0 .19-.153 15.6 15.6 0 0 0 2.046-2.082c1.101-1.362 2.291-3.342 2.291-5.597 0-2.7614-2.2386-5-5-5s-5 2.2386-5 5c0 2.255 1.19 4.235 2.292 5.597a15.597 15.597 0 0 0 2.046 2.082l.189.153z" fill="#000" fill-rule="evenodd"/>
+  </g>
+</svg>

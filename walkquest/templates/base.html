@@ -57,7 +57,8 @@
     <script>
         window.depsLoaded = {
             solidJs: false,
-            mapboxGl: false
+            mapboxGl: false,
+            iconify: false
         };
         
         function initDependencies() {
@@ -79,6 +80,12 @@
                     window.mapboxgl = mapboxModule.default;
                     window.depsLoaded.mapboxGl = true;
                     console.log('Mapbox GL loaded successfully');
+                }),
+                // Load Iconify for Solid
+                import('https://cdn.skypack.dev/@iconify-icon/solid').then(iconifyModule => {
+                    window.Icon = iconifyModule.Icon;
+                    window.depsLoaded.iconify = true;
+                    console.log('Iconify for Solid loaded successfully');
                 })
             ]).then(() => {
                 window.dispatchEvent(new Event('deps-loaded'));

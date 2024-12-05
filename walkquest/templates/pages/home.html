@@ -20,7 +20,8 @@
                  data-lat="{{ walk.latitude }}"
                  data-lng="{{ walk.longitude }}"
                  data-title="{{ walk.title }}"
-                 data-description="{{ walk.description }}">
+                 data-description="{{ walk.description }}"
+                 data-features="{{ walk.features|join:',' }}">
                 <h3 class="font-bold">{{ walk.title }}</h3>
                 <p class="text-sm text-gray-600">{{ walk.description }}</p>
             </div>
@@ -172,24 +173,67 @@ waitForDependencies(() => {
             // Custom marker element for better performance
             function createMarkerElement(walk) {
                 const el = document.createElement('div');
-                el.className = 'marker';
-                el.style.backgroundImage = `url({% static 'images/marker.png' %})`;
-                el.style.backgroundSize = '100%';
-                el.style.width = '30px';
-                el.style.height = '30px';
+                el.className = 'marker flex flex-col items-center';
+                
+                // Create container for Solid components
+                const iconContainer = document.createElement('div');
+                const { render } = window.solidJsWeb;
+                
+                // Convert features string to array of icons using ICONIFY_MAPPING
+                const features = walk.dataset.features ? walk.dataset.features.split(',') : [];
+                const icons = features.map(feature => ICONIFY_MAPPING[feature]).filter(Boolean);
+                
+                render(() => {
+                    const Icon = window.Icon;
+                    return (
+                        <>
+                            <Icon 
+                                class="marker-main"
+                                attr:icon="mdi:map-marker" 
+                                attr:width="40" 
+                                attr:height="40" 
+                                style={{ color: '#1D4ED8' }}
+                            />
+                            {icons.length > 0 && (
+                                <div class="icons-container flex gap-1 bg-white p-1 rounded-full shadow-lg" 
+                                     style={{ transform: 'translateY(-50%)' }}>
+                                    {icons.map(icon => (
+                                        <Icon 
+                                            class="feature-icon"
+                                            attr:icon={icon} 
+                                            attr:width="16" 
+                                            attr:height="16" 
+                                            style={{ color: '#4B5563' }}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </>
+                    );
+                }, iconContainer);
+                
+                el.appendChild(iconContainer);
                 return el;
             }
 
-            map.on('moveend', () => {
-                // Remove markers outside viewport
-                markers.forEach(marker => {
-                    const pos = marker.getLngLat();
-                    if (!map.getBounds().contains(pos)) {
-                        marker.remove();
-                    }
-                });
-                addMarkersInViewport();
-            });
+            // Add custom styles for markers
+            const style = document.createElement('style');
+            style.textContent = `
+                .marker {
+                    cursor: pointer;
+                    transition: transform 0.2s;
+                }
+                .marker:hover {
+                    transform: scale(1.1);
+                }
+                .marker-main {
+                    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+                }
+                .feature-icon {
+                    color: #4B5563;
+                }
+            `;
+            document.head.appendChild(style);
         });
 
         // Helper function to validate coordinates
@@ -227,6 +271,23 @@ waitForDependencies(() => {
     // Initialize the app
     MapApp();
 });
+</script>
+
+<script>
+// Define icon mappings in the frontend
+const ICONIFY_MAPPING = {
+    coastal: "iconoir:sea-waves",
+    woodland: "ph:tree",
+    historic: "game-icons:spell-book",
+    pub: "mdi:pub-outline",
+    family_friendly: "bx:child",
+    dog_friendly: "fa6-solid:shield-dog",
+    circular: "material-symbols:refresh",
+    scenic: "material-symbols:landscape",
+    cafe: "bx:coffee",
+    wildlife: "game-icons:deer",
+    accessible: "material-symbols:wheelchair-pickup-rounded"
+};
 </script>
 
 <style>
