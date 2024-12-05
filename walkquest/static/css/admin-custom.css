@@ -1,0 +1,37 @@
+.unfold-tag-select {
+    width: 100%;
+    min-height: 100px;
+    padding: 8px;
+    border-radius: 4px;
+}
+
+.unfold-tag-select .tag {
+    display: inline-block;
+    margin: 2px;
+    padding: 4px 8px;
+    background: var(--primary-50);
+    border-radius: 16px;
+    color: var(--primary-700);
+    font-size: 0.875rem;
+}
+
+.unfold-tag-select .tag:hover {
+    background: var(--primary-100);
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.35em 0.65em;
+    font-size: .75em;
+    font-weight: 500;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: 0.25rem;
+}
+
+.badge-info {
+    color: #fff;
+    background-color: var(--primary-600);
+}

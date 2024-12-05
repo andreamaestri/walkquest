@@ -1,0 +1,117 @@
+{% load static i18n compress%}<!DOCTYPE html>
+{% get_current_language as LANGUAGE_CODE %}
+<html lang="{{ LANGUAGE_CODE }}">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <title>
+      {% block title %}
+      walkquest
+      {% endblock title %}
+    </title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Walk in the quest!" />
+    <meta name="author" content="Andrea Maestri" />
+    <link rel="icon" href="{% static 'images/favicons/favicon.ico' %}" />
+    
+    {% block css %}
+    <!-- Use latest Tailwind CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: '#1D4ED8',
+              secondary: '#9333EA',
+            },
+            spacing: {
+              '128': '32rem',
+            },
+          },
+        },
+      }
+    </script>
+    {% compress css %}
+    <link href="{% static 'css/project.css' %}" rel="stylesheet" />
+    {% endcompress %}
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
+    {% endblock css %}
+    
+    {% block javascript %}
+    <!-- Scripts loading and error handling -->
+    <script>
+        window.handleScriptError = function(error) {
+            console.error('Script loading error:', error);
+            document.body.innerHTML = `
+                <div class="p-4 bg-red-100 text-red-700">
+                    Failed to load required scripts. Please refresh the page or contact support.
+                </div>
+            `;
+        }
+    </script>
+
+    <!-- Load Mapbox GL JS -->
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js' onerror="handleScriptError(event)"></script>
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
+
+    <!-- Load SolidJS with improved error handling -->
+    <script type="module">
+        try {
+            const modules = {
+                solid: 'https://cdn.skypack.dev/solid-js',
+                solidWeb: 'https://cdn.skypack.dev/solid-js/web',
+                html: 'https://cdn.skypack.dev/solid-js/html'
+            };
+
+            Promise.all(
+                Object.entries(modules).map(([key, url]) => 
+                    import(url).catch(e => {
+                        throw new Error(`Failed to load ${key} from ${url}: ${e.message}`);
+                    })
+                )
+            ).then(([solid, solidWeb, html]) => {
+                window.solidJs = {
+                    createSignal: solid.createSignal,
+                    createMemo: solid.createMemo,
+                    onMount: solid.onMount,
+                    onCleanup: solid.onCleanup
+                };
+                window.solidJsWeb = { render: solidWeb.render };
+                window.html = html.default;
+                window.dispatchEvent(new Event('solid-loaded'));
+            }).catch(handleScriptError);
+        } catch (e) {
+            handleScriptError(e);
+        }
+    </script>
+
+    {{ form.media }}
+    <script src="{% static 'tinymce/tinymce.min.js' %}"></script>
+
+    {% compress js %}
+    <script defer src="{% static 'js/project.js' %}"></script>
+    {% endcompress %}
+    {% endblock javascript %}
+  </head>
+  <body class="bg-gray-100">
+    {% block body %}
+    {% if messages %}
+    {% for message in messages %}
+    <div class="relative px-4 py-3 {% if message.tags %}{% if message.tags == 'success' %}bg-green-100 text-green-700{% elif message.tags == 'error' %}bg-red-100 text-red-700{% elif message.tags == 'info' %}bg-blue-100 text-blue-700{% elif message.tags == 'warning' %}bg-yellow-100 text-yellow-700{% endif %}{% endif %} rounded mb-4">
+        {{ message }}
+        <button type="button" class="absolute top-0 right-0 px-4 py-3" onclick="this.parentElement.remove()">
+          <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" fill-rule="evenodd"></path>
+          </svg>
+        </button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% block content %}{% endblock content %}
+    {% endblock body %}
+    {% block modal %}{% endblock modal %}
+    {% block inline_javascript %}{% endblock inline_javascript %}
+    {% block extra_js %}{% endblock extra_js %}
+  </body>
+</html>
