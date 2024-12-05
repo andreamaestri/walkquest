@@ -1,6 +1,0 @@
-
-INSTALLED_APPS = [
-    # ...existing code...
-    'walks.apps.WalksConfig',  # or just 'walks' if you don't have a custom AppConfig
-    # ...existing code...
-]
