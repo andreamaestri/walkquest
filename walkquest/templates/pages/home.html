@@ -136,14 +136,12 @@
         mapboxgl.accessToken = mapboxToken;
     }
 
-    // Enhanced Store Creation
+    // Store creation with proper initialization
     function createWalkStore() {
-        const [uiState, setUiState] = createSignal(APP_CONFIG.ui.states.LOADING);
-        const [walks, setWalks] = createSignal([]);
+        const [walks, setWalks] = createSignal(window.APP_DATA.walks || []);
         const [selectedWalk, setSelectedWalk] = createSignal(null);
         const [searchTerm, setSearchTerm] = createSignal('');
         const [sidebarOpen, setSidebarOpen] = createSignal(true);
-        const [error, setError] = createSignal(null);
         const [isLoading, setIsLoading] = createSignal(true);
 
         const filteredWalks = createMemo(() => {
@@ -155,31 +153,16 @@
             );
         });
 
-        setTimeout(() => {
-            try {
-                const walks = window.APP_DATA.walks;
-                if (!Array.isArray(walks)) {
-                    throw new Error('Invalid walks data format');
-                }
-                setWalks(walks);
-                setUiState(walks.length ? APP_CONFIG.ui.states.READY : APP_CONFIG.ui.states.EMPTY);
-                setIsLoading(false);
-            } catch (err) {
-                setError(err.message);
-                setUiState(APP_CONFIG.ui.states.ERROR);
-                setIsLoading(false);
-            }
-        }, 0);
+        // Initialize immediately
+        setTimeout(() => setIsLoading(false), 0);
 
         return {
-            uiState,
             walks,
             selectedWalk,
             searchTerm,
             sidebarOpen,
-            error,
-            filteredWalks,
             isLoading,
+            filteredWalks,
             setSearchTerm: (term) => {
                 batch(() => {
                     setSearchTerm(term);
@@ -190,19 +173,7 @@
                 const walk = walks().find(w => w.id === walkId);
                 setSelectedWalk(walk);
             },
-            toggleSidebar: () => setSidebarOpen(prev => !prev),
-            reset: () => {
-                batch(() => {
-                    setSearchTerm('');
-                    setSelectedWalk(null);
-                    setError(null);
-                    setUiState(APP_CONFIG.ui.states.LOADING);
-                    setIsLoading(true);
-                    setWalks(initialWalks);
-                    setUiState(initialWalks.length ? APP_CONFIG.ui.states.READY : APP_CONFIG.ui.states.EMPTY);
-                    setIsLoading(false);
-                });
-            }
+            toggleSidebar: () => setSidebarOpen(prev => !prev)
         };
     }
 
@@ -255,24 +226,31 @@
     const VirtualWalkList = (props) => {
         let parentRef;
 
-        if (!props.walks || !props.onSelect) {
-            console.error('Missing required props:', props);
+        // Validate required props
+        if (!props.onSelect) {
+            console.error('Missing required props');
             return null;
         }
 
-        const virtualizer = createVirtualizer({
-            count: () => props.walks().length,
-            getScrollElement: () => parentRef,
-            estimateSize: () => APP_CONFIG.ui.list.itemSize,
-            overscan: APP_CONFIG.ui.list.overscan
-        });
+        // Safe accessor functions
+        const safeWalks = () => {
+            return typeof props.walks === 'function' 
+                ? props.walks()
+                : [];
+        };
 
-        // Safe isLoading check
         const isLoading = () => {
             return typeof props.isLoading === 'function' 
                 ? props.isLoading()
                 : false;
         };
+
+        const virtualizer = createVirtualizer({
+            count: () => safeWalks().length,
+            getScrollElement: () => parentRef,
+            estimateSize: () => APP_CONFIG.ui.list.itemSize,
+            overscan: APP_CONFIG.ui.list.overscan
+        });
 
         const Content = () => {
             if (isLoading()) {
@@ -283,7 +261,7 @@
                 `;
             }
 
-            const walks = props.walks();
+            const walks = safeWalks();
             if (!walks.length) {
                 return html`
                     <div class="p-4 text-center text-gray-500">
@@ -363,17 +341,8 @@
         `;
     };
 
-    const Sidebar = (props) => {
-        const store = props.store;
-
-        if (!store) {
-            console.error('Store is missing in Sidebar');
-            return null;
-        }
-
-        const walks = createMemo(() => store.filteredWalks());
-        const selectedId = createMemo(() => store.selectedWalk()?.id);
-
+    // Sidebar with proper signal passing
+    const Sidebar = ({ store }) => {
         return html`
             <aside class="w-96 h-full bg-white shadow-lg flex flex-col">
                 <div class="p-4 border-b">
@@ -390,8 +359,8 @@
                     />
                 </div>
                 <${VirtualWalkList}
-                    walks=${walks}
-                    selectedId=${selectedId}
+                    walks=${store.filteredWalks}
+                    selectedId=${() => store.selectedWalk()?.id}
                     onSelect=${store.selectWalk}
                     isLoading=${store.isLoading}
                 />
@@ -399,160 +368,31 @@
         `;
     };
 
+    // Map with proper container and markers
     const Map = ({ store }) => {
-        const [error, setError] = createSignal(null);
-        const [isInitialized, setIsInitialized] = createSignal(false);
         let mapContainer;
-        let mapInstance;
-
+        let map;
         const [markers, setMarkers] = createSignal({});
 
-        const createMarker = (walk) => {
-            try {
-                const popup = new mapboxgl.Popup({
-                    closeButton: false,
-                    closeOnClick: true
-                }).setHTML(`
-                    <div class="p-2">
-                        <h3 class="font-bold text-gray-900">${walk.walk_name}</h3>
-                        ${walk.distance ? `
-                            <p class="text-sm text-gray-600">
-                                <span class="font-medium">${walk.distance}</span> miles
-                            </p>
-                        ` : ''}
-                    </div>
-                `);
-
-                const marker = new mapboxgl.Marker({
-                    color: store.selectedWalk()?.id === walk.id 
-                        ? APP_CONFIG.map.markerColors.selected 
-                        : APP_CONFIG.map.markerColors.default
-                })
-                .setLngLat([walk.longitude, walk.latitude])
-                .setPopup(popup);
-
-                marker.getElement().addEventListener('click', () => {
-                    store.selectWalk(walk.id);
-                });
-
-                return { marker, popup };
-            } catch (err) {
-                setError(`Failed to create marker: ${err.message}`);
-                return null;
-            }
-        };
-
-        const updateMarkers = () => {
-            batch(() => {
-                const currentWalks = store.walks();
-                const currentMarkers = markers();
-
-                Object.entries(currentMarkers).forEach(([id, marker]) => {
-                    if (!currentWalks.find(w => w.id === id)) {
-                        marker.popup?.remove();
-                        marker.marker?.remove();
-                        const updatedMarkers = { ...currentMarkers };
-                        delete updatedMarkers[id];
-                        setMarkers(updatedMarkers);
-                    }
-                });
-
-                currentWalks.forEach(walk => {
-                    if (!currentMarkers[walk.id]) {
-                        const newMarker = createMarker(walk);
-                        if (newMarker) {
-                            setMarkers(prev => ({ 
-                                ...prev, 
-                                [walk.id]: newMarker 
-                            }));
-                            newMarker.marker.addTo(mapInstance);
-                        }
-                    }
-                });
-            });
-        };
-
-        const handleResize = createDebounce(() => {
-            if (mapInstance) {
-                mapInstance.resize();
-                const selected = store.selectedWalk();
-                if (selected) {
-                    mapInstance.flyTo({
-                        center: [selected.longitude, selected.latitude],
-                        zoom: APP_CONFIG.map.defaultZoom
-                    });
-                }
-            }
-        }, 250);
-
-        const initializeMap = () => {
-            try {
-                if (!window.APP_DATA.mapboxToken) {
-                    throw new Error('Mapbox token is missing');
-                }
-
-                mapInstance = new mapboxgl.Map({
-                    container: mapContainer,
-                    style: APP_CONFIG.map.style,
-                    center: APP_CONFIG.map.defaultCenter,
-                    zoom: APP_CONFIG.map.defaultZoom
-                });
-
-                mapInstance.on('load', () => {
-                    setIsInitialized(true);
-                    updateMarkers();
-                });
-
-                mapInstance.on('error', (e) => {
-                    setError(`Map error: ${e.error.message}`);
-                });
-
-                window.addEventListener('resize', handleResize);
-
-            } catch (err) {
-                setError(`Failed to initialize map: ${err.message}`);
-            }
-        };
-
         onMount(() => {
-            if (mapContainer) {
-                initializeMap();
-            }
-        });
+            if (!mapContainer) return;
+            
+            map = new mapboxgl.Map({
+                container: mapContainer,
+                style: APP_CONFIG.map.style,
+                center: APP_CONFIG.map.defaultCenter,
+                zoom: APP_CONFIG.map.defaultZoom
+            });
 
-        onCleanup(() => {
-            try {
-                Object.values(markers()).forEach(marker => {
-                    marker.popup?.remove();
-                    marker.marker?.remove();
-                });
-
-                mapInstance?.remove();
-                window.removeEventListener('resize', handleResize);
-
-                setMarkers({});
-                setError(null);
-                setIsInitialized(false);
-            } catch (err) {
-                console.error('Cleanup error:', err);
-            }
+            map.on('load', () => {
+                updateMarkers();
+            });
         });
 
         createEffect(() => {
-            const selected = store.selectedWalk();
-            if (selected && mapInstance) {
-                mapInstance.flyTo({
-                    center: [selected.longitude, selected.latitude],
-                    zoom: 14
-                });
-
-                Object.entries(markers()).forEach(([id, marker]) => {
-                    marker.marker.setColor(
-                        id === selected.id 
-                            ? APP_CONFIG.map.markerColors.selected 
-                            : APP_CONFIG.map.markerColors.default
-                    );
-                });
+            const walks = store.walks();
+            if (map && walks.length) {
+                updateMarkers();
             }
         });
 
@@ -561,16 +401,6 @@
                 <div ref=${el => mapContainer = el}
                      class="absolute inset-0">
                 </div>
-                ${error() && html`
-                    <div class="absolute top-4 right-4 bg-red-100 text-red-700 p-4 rounded-lg shadow-lg">
-                        <h3 class="font-bold">Map Error</h3>
-                        <p>${error()}</p>
-                        <button onclick=${initializeMap} 
-                                class="mt-2 px-3 py-1 bg-red-200 rounded hover:bg-red-300">
-                            Retry
-                        </button>
-                    </div>
-                `}
             </div>
         `;
     };
@@ -593,15 +423,19 @@
         `;
     };
 
-    const App = ({ store }) => html`
-        <${ErrorBoundaryWrapper}>
-            <div class="h-screen w-screen flex relative">
-                ${() => store.isLoading() && html`<${LoadingOverlay} />`}
-                <${Sidebar} store=${store} />
-                <${Map} store=${store} />
+    // Main App component with proper layout
+    const App = () => {
+        const store = createWalkStore();
+        
+        return html`
+            <div class="h-screen w-screen flex overflow-hidden">
+                ${store.sidebarOpen() && html`
+                    <${Sidebar} store=${store} />
+                `}
+                <${Map} store=${store} class="flex-1" />
             </div>
-        <//>
-    `;
+        `;
+    };
 
     function initApp() {
         try {
