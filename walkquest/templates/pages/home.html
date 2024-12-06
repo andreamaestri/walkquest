@@ -52,7 +52,8 @@
         onMount, 
         createMemo,
         batch,
-        For
+        For,
+        ErrorBoundary
     } from "https://cdn.skypack.dev/solid-js";
     import { render } from "https://cdn.skypack.dev/solid-js/web";
     import html from "https://cdn.skypack.dev/solid-js/html";
@@ -106,16 +107,17 @@
         }
     };
 
-    // Store Creation
+    // Store Creation with Validation
     function createWalkStore() {
+        if (!Array.isArray(initialWalks)) {
+            console.error('Invalid initial walks data:', initialWalks);
+        }
+        
         const [isLoading, setIsLoading] = createSignal(true);
         const [walks, setWalks] = createSignal(initialWalks || []);
         const [selectedWalk, setSelectedWalk] = createSignal(null);
         const [searchTerm, setSearchTerm] = createSignal('');
         const [sidebarOpen, setSidebarOpen] = createSignal(true);
-
-        // Initialize store
-        setTimeout(() => setIsLoading(false), 0);
 
         const filteredWalks = createMemo(() => {
             const items = walks();
@@ -124,6 +126,12 @@
                 walk?.walk_name?.toLowerCase().includes(search)
             );
         });
+
+        // Initialize store
+        setTimeout(() => {
+            console.log('Setting initial loading state false');
+            setIsLoading(false);
+        }, 0);
 
         return {
             walks,
@@ -190,18 +198,12 @@
         `;
     };
 
-    // Enhanced VirtualWalkList with loading state
+    // Fixed VirtualWalkList
     const VirtualWalkList = (props) => {
         let parentRef;
         
-        // Validate required props
-        if (!props.walks || !props.onSelect) {
-            console.error('Missing required props in VirtualWalkList');
-            return null;
-        }
-        
         const virtualizer = createVirtualizer({
-            count: () => props.walks.length,
+            count: () => props.walks().length,
             getScrollElement: () => parentRef,
             estimateSize: () => 92,
             overscan: 5
@@ -210,23 +212,36 @@
         return html`
             <div ref=${el => parentRef = el} 
                  class="flex-1 overflow-auto relative">
-                ${props.isLoading ? html`
+                ${() => props.isLoading() ? html`
                     <${WalkCardSkeleton} />
                     <${WalkCardSkeleton} />
                     <${WalkCardSkeleton} />
                 ` : html`
                     <div style="height: ${virtualizer.getTotalSize()}px; position: relative;">
-                        ${() => virtualizer.getVirtualItems().map(virtualRow => html`
-                            <div style="position: absolute; top: 0; left: 0; width: 100%; 
-                                      height: ${virtualRow.size}px; 
-                                      transform: translateY(${virtualRow.start}px);">
-                                <${WalkCard} 
-                                    walk=${props.walks[virtualRow.index]}
-                                    selected=${() => props.selectedId === props.walks[virtualRow.index].id}
-                                    onSelect=${props.onSelect}
-                                />
-                            </div>
-                        `)}
+                        ${() => {
+                            const walks = props.walks();
+                            return virtualizer.getVirtualItems().map(virtualRow => {
+                                const walk = walks[virtualRow.index];
+                                if (!walk) return null;
+                                
+                                return html`
+                                    <div style="position: absolute; top: 0; left: 0; width: 100%; 
+                                              height: ${virtualRow.size}px; 
+                                              transform: translateY(${virtualRow.start}px);">
+                                        <${WalkCard} 
+                                            walk=${walk}
+                                            selected=${() => props.selectedId() === walk.id}
+                                            onSelect=${() => props.onSelect(walk.id)}
+                                        />
+                                    </div>
+                                `;
+                            });
+                        }}
+                    </div>
+                `}
+                ${() => !props.isLoading() && props.walks().length === 0 && html`
+                    <div class="p-4 text-center text-gray-500">
+                        No walks found
                     </div>
                 `}
             </div>
@@ -234,12 +249,14 @@
     };
 
     const WalkCard = (props) => {
+        if (!props.walk) return null;
+
         const isSelected = createMemo(() => props.selected());
         
         return html`
             <div class="p-4 border-b hover:bg-gray-50 cursor-pointer transition-colors
                         ${() => isSelected() ? 'bg-blue-50' : 'bg-white'}"
-                 onclick=${() => props.onSelect()}
+                 onclick=${() => props.onSelect(props.walk.id)}
                  role="button"
                  tabindex="0">
                 <h3 class="text-lg font-semibold truncate">${props.walk.walk_name}</h3>
@@ -272,26 +289,38 @@
         `;
     };
 
-    // Sidebar Component
+    // Updated Sidebar Component
     const Sidebar = (props) => {
         const store = props.store;
         
-        // Protect against undefined store
-        if (!store) return null;
+        if (!store) {
+            console.error('Store is missing in Sidebar');
+            return null;
+        }
+
+        const walks = createMemo(() => store.filteredWalks());
+        const selectedId = createMemo(() => store.selectedWalk()?.id);
         
         return html`
             <aside class="w-96 h-full bg-white shadow-lg flex flex-col">
                 <div class="p-4 border-b">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold">Available Walks</h2>
+                        <button onclick=${store.toggleSidebar}
+                                class="p-2 hover:bg-gray-100 rounded-full">
+                            <iconify-icon icon="mdi:chevron-left" />
+                        </button>
+                    </div>
                     <${SearchInput}
                         value=${store.searchTerm()}
                         onSearch=${store.setSearchTerm}
                     />
                 </div>
                 <${VirtualWalkList}
-                    walks=${store.filteredWalks()}
-                    selectedId=${store.selectedWalk()?.id}
+                    walks=${walks}
+                    selectedId=${selectedId}
                     onSelect=${store.selectWalk}
-                    isLoading=${store.isLoading()}
+                    isLoading=${store.isLoading}
                 />
             </aside>
         `;
@@ -487,29 +516,32 @@
         `;
     };
 
-    const ErrorBoundary = (props) => {
+    const ErrorBoundaryWrapper = (props) => {
         return html`
-            <${ErrorBoundary.catch} fallback=${(err) => html`
-                <div class="p-4 bg-red-100 text-red-700 rounded-lg">
-                    <h2 class="font-bold">Error</h2>
-                    <p>${err.message}</p>
-                    <button onclick="location.reload()" 
-                            class="mt-2 px-3 py-1 bg-red-200 rounded">
-                        Reload Application
-                    </button>
-                </div>
-            `}>
+            <${ErrorBoundary} 
+                fallback=${(err, reset) => html`
+                    <div class="p-4 bg-red-100 text-red-700 rounded-lg">
+                        <h2 class="font-bold">Error</h2>
+                        <p>${err.message}</p>
+                        <button onclick=${reset}
+                                class="mt-2 px-3 py-1 bg-red-200 rounded">
+                            Try Again
+                        </button>
+                    </div>
+                `}>
                 ${props.children}
-            </ErrorBoundary.catch>
+            <//>
         `;
     };
 
     const App = ({ store }) => html`
-        <div class="h-screen w-screen flex relative">
-            ${() => store.isLoading() && html`<${LoadingOverlay} />`}
-            <${Sidebar} store=${store} />
-            <${Map} store=${store} />
-        </div>
+        <${ErrorBoundaryWrapper}>
+            <div class="h-screen w-screen flex relative">
+                ${() => store.isLoading() && html`<${LoadingOverlay} />`}
+                <${Sidebar} store=${store} />
+                <${Map} store=${store} />
+            </div>
+        <//>
     `;
 
     // Initialize app
@@ -535,11 +567,7 @@
             }
 
             console.log('Rendering app...');
-            render(() => html`
-                <${ErrorBoundary}>
-                    <${App} store=${store} />
-                </ErrorBoundary>
-            `, root);
+            render(() => html`<${App} store=${store} />`, root);
             
             console.log('App rendered, hiding loading...');
             document.getElementById('loading')?.classList.add('hidden');
