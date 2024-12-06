@@ -65,6 +65,38 @@
     // Store GeoJSON globally
     window.walks = walksGeoJSON;
 
+    // Add a function to calculate cluster colors before map initialization
+    function getClusterColor(features) {
+        // Count features in cluster
+        const featureCounts = features.reduce((acc, feature) => {
+            const primaryFeature = feature.properties.primaryFeature;
+            acc[primaryFeature] = (acc[primaryFeature] || 0) + 1;
+            return acc;
+        }, {});
+        
+        // Get dominant feature
+        const dominantFeature = Object.entries(featureCounts)
+            .sort((a, b) => b[1] - a[1])[0][0];
+        
+        // Feature color mapping
+        const featureColors = {
+            coastal: '#0EA5E9',    // Sky blue
+            woodland: '#22DA6C',   // Green
+            historic: '#B72903',   // Purple
+            pub: '#FD4000',        // Red
+            family_friendly: '#FFF233', // Pink
+            dog_friendly: '#B91076',    // Orange
+            circular: '#D1DEDC',   // Cyan
+            scenic: '#9CFC00',     // Emerald
+            cafe: '#E9A926',       // Indigo
+            wildlife: '#7E00E7',   // Lime
+            accessible: '#0CF8E2', // Teal
+            default: '#6B7280'     // Gray
+        };
+        
+        return featureColors[dominantFeature] || featureColors.default;
+    }
+
     window.depsReady.then(async () => {
         const map = new mapboxgl.Map({
             container: 'map',
@@ -95,16 +127,81 @@
                 )
             ).catch(console.error);
 
-            // Add walks layer
+            // Update source with adjusted clustering
             map.addSource('walks', {
                 type: 'geojson',
-                data: walksGeoJSON
+                data: walksGeoJSON,
+                cluster: true,
+                clusterMaxZoom: 11,     // Lower max zoom for clustering
+                clusterRadius: 30,      // Smaller radius to create fewer clusters
+                maxzoom: 16
             });
 
+            // Update colored dots layer
+            map.addLayer({
+                id: 'walk-dots',
+                type: 'circle',
+                source: 'walks',
+                maxzoom: 10,            // Show dots until zoom level 10
+                paint: {
+                    'circle-color': [
+                        'case',
+                        ['has', 'cluster'],
+                        [
+                            'step',
+                            ['get', 'point_count'],
+                            '#6B7280',  // Default cluster color
+                            2, '#4B5563',  // Slightly darker for larger clusters
+                            4, '#374151'   // Even darker for largest clusters
+                        ],
+                        [
+                            'match',
+                            ['get', 'primaryFeature'],
+                            'coastal', '#0EA5E9',
+                            'woodland', '#22DA6C',
+                            'historic', '#B72903',
+                            // ... rest of your feature colors ...
+                            '#6B7280' // default color
+                        ]
+                    ],
+                    'circle-radius': [
+                        'case',
+                        ['has', 'cluster'],
+                        [
+                            'step',
+                            ['get', 'point_count'],
+                            6,     // Smaller base size for clusters
+                            2, 8,  // Smaller size for clusters with 2+ points
+                            4, 10  // Smaller size for clusters with 4+ points
+                        ],
+                        [
+                            'interpolate',
+                            ['linear'],
+                            ['zoom'],
+                            6, 3,  // Smaller at low zoom
+                            8, 4,  // Smaller at mid zoom
+                            10, 6  // Smaller at high zoom
+                        ]
+                    ],
+                    'circle-stroke-width': 1.5,
+                    'circle-stroke-color': '#ffffff',
+                    'circle-stroke-opacity': 0.8,
+                    'circle-opacity': [
+                        'interpolate',
+                        ['linear'],
+                        ['zoom'],
+                        9, 1,     // Start fade out later
+                        10, 0     // Complete fade out later
+                    ]
+                }
+            });
+
+            // Update markers layer
             map.addLayer({
                 id: 'walks',
                 type: 'symbol',
                 source: 'walks',
+                filter: ['!', ['has', 'point_count']],
                 layout: {
                     'icon-image': [
                         'case',
@@ -112,48 +209,155 @@
                         ['concat', 'marker-', ['get', 'primaryFeature']],
                         'marker-default'
                     ],
-                    'icon-size': 1,  // Adjust this value based on your marker images
-                    'icon-allow-overlap': true,
-                    'icon-anchor': 'bottom',  // Align marker bottom with coordinate
+                    'icon-size': [
+                        'interpolate',
+                        ['linear'],
+                        ['zoom'],
+                        6, 0.15,   // Show smaller icons at lower zoom
+                        8, 0.2,
+                        10, 0.3,
+                        12, 0.4,
+                        14, 0.45
+                    ],
+                    'icon-anchor': 'bottom',
+                    'icon-allow-overlap': true,         // Enable overlap for better performance
+                    'icon-ignore-placement': true,      // Ignore placement conflicts
+                    'text-allow-overlap': false,        // Keep text clean
+                    'text-ignore-placement': false,     // Respect text placement
+                    'text-optional': true,              // Make text optional to prioritize icons
                     'text-field': ['get', 'title'],
-                    'text-font': ['Open Sans Regular'],
-                    'text-offset': [0, 0.5],  // Adjusted text offset
-                    'text-anchor': 'top',
-                    'text-size': 12,
-                    'text-max-width': 8
+                    'text-variable-anchor': ['top', 'bottom', 'left', 'right'],
+                    'text-radial-offset': 1.5,          // Slightly increased offset for better readability
+                    'text-justify': 'auto',
+                    'icon-padding': 0,                  // Reduce padding to allow more dense packing
+                    'text-padding': 2,                  // Minimal text padding
+                    'text-size': [
+                        'interpolate',
+                        ['linear'],
+                        ['zoom'],
+                        12, 0,     // No text at lower zooms
+                        13, 12     // Show text at higher zooms
+                    ]
                 },
                 paint: {
-                    'text-color': '#404040',
+                    'text-color': '#374151',
                     'text-halo-color': '#ffffff',
-                    'text-halo-width': 2
+                    'text-halo-width': 1.5,
+                    'text-opacity': [
+                        'interpolate',
+                        ['linear'],
+                        ['zoom'],
+                        12, 0,
+                        13, 1
+                    ]
                 }
             });
 
-            // Add popup on click
-            map.on('click', 'walks', (e) => {
-                const props = e.features[0].properties;
-                new mapboxgl.Popup()
-                    .setLngLat(e.features[0].geometry.coordinates)
-                    .setHTML(`
-                        <div class="p-4">
-                            <h3 class="font-bold">${props.title}</h3>
-                            <p class="text-sm text-gray-600">${props.description}</p>
-                            <div class="flex gap-2 mt-2">
-                                ${props.features.map(f => 
-                                    `<iconify-icon icon="${FEATURE_ICONS[f]}" width="16" height="16"></iconify-icon>`
-                                ).join('')}
-                            </div>
-                        </div>
-                    `)
-                    .addTo(map);
+            // Add click handler for clusters
+            map.on('click', 'walk-dots', (e) => {
+                const features = map.queryRenderedFeatures(e.point, {
+                    layers: ['walk-dots']
+                });
+                
+                if (!features.length) return;
+                
+                const feature = features[0];
+                
+                if (feature.properties.cluster) {
+                    const clusterId = feature.properties.cluster_id;
+                    map.getSource('walks').getClusterExpansionZoom(
+                        clusterId,
+                        (err, zoom) => {
+                            if (err) return;
+                            
+                            map.easeTo({
+                                center: feature.geometry.coordinates,
+                                zoom: zoom
+                            });
+                        }
+                    );
+                } else {
+                    handleFeatureClick(e);
+                }
             });
 
-            // Cursor interactions
-            map.on('mouseenter', 'walks', () => {
-                map.getCanvas().style.cursor = 'pointer';
+            // Improved popup
+            const handleFeatureClick = (e) => {
+                const props = e.features[0].properties;
+                const coordinates = e.features[0].geometry.coordinates.slice();
+
+                new mapboxgl.Popup({
+                    closeButton: true,
+                    closeOnClick: false,
+                    maxWidth: '320px',
+                    offset: [0, -5]  // Reduced offset since marker is bottom-anchored
+                })
+                .setLngLat(coordinates)
+                .setHTML(`
+                    <div>
+                        <div class="popup-header">
+                            <h3 class="font-bold text-lg">${props.title}</h3>
+                        </div>
+                        <div class="popup-content">
+                            <p class="text-sm text-gray-600">${props.description}</p>
+                        </div>
+                        <div class="popup-features">
+                            ${props.features.map(f => `
+                                <span class="feature-tag">
+                                    <iconify-icon icon="${FEATURE_ICONS[f]}" width="16" height="16"></iconify-icon>
+                                    ${f.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                </span>
+                            `).join('')}
+                        </div>
+                    </div>
+                `)
+                .addTo(map);
+            };
+
+            map.on('click', 'walk-dots', handleFeatureClick);
+            map.on('click', 'walks', handleFeatureClick);
+
+            // Update cursor for both layers
+            ['walk-dots', 'walks'].forEach(layer => {
+                map.on('mouseenter', layer, () => {
+                    map.getCanvas().style.cursor = 'pointer';
+                });
+                map.on('mouseleave', layer, () => {
+                    map.getCanvas().style.cursor = '';
+                });
             });
+
+            // Enhanced hover effects
+            let hoveredStateId = null;
+
+            map.on('mouseenter', 'walks', (e) => {
+                map.getCanvas().style.cursor = 'pointer';
+                
+                // Highlight effect for marker
+                if (e.features.length > 0) {
+                    if (hoveredStateId !== null) {
+                        map.setFeatureState(
+                            { source: 'walks', id: hoveredStateId },
+                            { hover: false }
+                        );
+                    }
+                    hoveredStateId = e.features[0].id;
+                    map.setFeatureState(
+                        { source: 'walks', id: hoveredStateId },
+                        { hover: true }
+                    );
+                }
+            });
+
             map.on('mouseleave', 'walks', () => {
                 map.getCanvas().style.cursor = '';
+                if (hoveredStateId !== null) {
+                    map.setFeatureState(
+                        { source: 'walks', id: hoveredStateId },
+                        { hover: false }
+                    );
+                }
+                hoveredStateId = null;
             });
         });
 
