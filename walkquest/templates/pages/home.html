@@ -267,10 +267,15 @@
             overscan: APP_CONFIG.ui.list.overscan
         });
 
-        const Content = () => {
-            const loading = props.isLoading && props.isLoading();
+        // Safe isLoading check
+        const isLoading = () => {
+            return typeof props.isLoading === 'function' 
+                ? props.isLoading()
+                : false;
+        };
 
-            if (loading) {
+        const Content = () => {
+            if (isLoading()) {
                 return html`
                     <${WalkCardSkeleton} />
                     <${WalkCardSkeleton} />
