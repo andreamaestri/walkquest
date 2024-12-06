@@ -21,7 +21,7 @@
     </div>
 </div>
 
-{# Data Initialization #}
+{# Data Initialization - Ensure proper JSON encoding #}
 {{ walks_json|json_script:"walks-data" }}
 {{ marker_icons_json|json_script:"marker-icons-data" }}
 {{ feature_icons_json|json_script:"feature-icons-data" }}
@@ -55,19 +55,53 @@
         'circle-stroke-color': '#fff'
     };
 
-    // Utilities
+    // Debug logging
+    console.log('Raw walks element:', document.getElementById('walks-data'));
+    console.log('Raw walks content:', document.getElementById('walks-data')?.textContent);
+
+    // Enhanced Utilities
     const safeJSONParse = (id, fallback = null) => {
         try {
-            return JSON.parse(document.getElementById(id).textContent);
+            const element = document.getElementById(id);
+            if (!element) {
+                console.error(`Element with id '${id}' not found`);
+                return fallback;
+            }
+            
+            const jsonString = element.textContent;
+            console.log(`Attempting to parse ${id}:`, {
+                raw: jsonString,
+                length: jsonString.length,
+                firstChar: jsonString[0],
+                lastChar: jsonString[jsonString.length - 1]
+            });
+            
+            if (!jsonString.trim()) {
+                console.error(`Empty JSON data for '${id}'`);
+                return fallback;
+            }
+            
+            const parsed = JSON.parse(jsonString);
+            console.log(`Successfully parsed ${id}:`, parsed);
+            return parsed;
         } catch (error) {
             console.error(`Error parsing ${id}:`, error);
+            console.error('Raw content:', element?.textContent);
             return fallback;
         }
     };
 
-    // Initialize Data
+    // Initialize Data with validation
     const AppData = {
-        walks: safeJSONParse('walks-data', []),
+        walks: (() => {
+            const walks = safeJSONParse('walks-data', []);
+            console.log('Parsed walks:', walks);
+            if (!Array.isArray(walks)) {
+                console.error('walks_json is not an array:', walks);
+                return [];
+            }
+            return walks;
+        })(),
         markerIcons: safeJSONParse('marker-icons-data', {}),
         featureIcons: safeJSONParse('feature-icons-data', {}),
         features: safeJSONParse('available-features-data', []),
@@ -135,9 +169,7 @@
         const selectedId = createMemo(() => store.selectedWalk()?.id);
 
         return html`
-            <aside class="absolute top-12 transform ${() => isOpen() ? 'translate-x-4' : '-translate-x-full'} 
-                         w-[400px] h-[calc(100vh-4rem)] bg-white shadow-lg rounded-lg mt-4
-                         sidebar-transition flex flex-col z-10">
+            <aside class="w-80 h-full bg-white shadow-lg flex flex-col z-10">
                 <div class="p-4 border-b">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-xl font-bold">Available Walks</h2>
@@ -247,9 +279,9 @@
     };
 
     const App = ({ store }) => html`
-        <div class="h-screen w-screen relative overflow-hidden flex">
-            ${Map({ store })}
+        <div class="h-screen w-screen flex">
             ${Sidebar({ store })}
+            ${Map({ store })}
         </div>
     `;
 
