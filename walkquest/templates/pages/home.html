@@ -105,10 +105,11 @@
         };
     }
 
-    // 4. Unified initialization
-    async function initApp() {
+    // 4. Application initialization - single implementation
+    async function initializeApp() {
         try {
             await waitForIconify();
+            mapboxgl.accessToken = APP_CONFIG.mapboxToken;
             
             const root = document.getElementById('root');
             if (!root) throw new Error('Root element not found');
@@ -126,11 +127,11 @@
         }
     }
 
-    // Start app when ready
+    // Start app when ready - single implementation
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initApp);
+        document.addEventListener('DOMContentLoaded', initializeApp);
     } else {
-        initApp();
+        initializeApp();
     }
 
     const waitForIconify = () => {
@@ -620,24 +621,6 @@
             </div>
         `;
     };
-
-    async function initApp() {
-        const root = document.getElementById('root');
-        if (!root) return;
-
-        try {
-            await waitForIconify();
-            const app = html`
-                <${ErrorBoundaryWrapper}>
-                    <${App} />
-                </${ErrorBoundaryWrapper}>
-            `;
-            render(() => app, root);
-            document.getElementById('loading')?.classList.add('hidden');
-        } catch (error) {
-            handleInitError(error);
-        }
-    }
 
     function handleInitError(error) {
         console.error('Failed to initialize app:', error);
