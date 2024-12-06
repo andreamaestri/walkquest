@@ -186,25 +186,26 @@
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.walk-item {
-    transition: all 0.2s ease;
-    border: 1px solid transparent;
-}
-
-.walk-item:hover,
-.walk-item.active {
-    background: #f8fafc;
-    border-color: #e2e8f0;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-}
-
 .walk-card {
     transition: all 0.2s ease-in-out;
+    background: white;
+    width: 100%;
 }
 
 .walk-card:hover {
     transform: translateY(-2px);
+}
+
+.walk-card.selected {
+    border-color: #3b82f6;
+    background-color: #eff6ff;
+}
+
+/* Remove redundant styles */
+.walk-item,
+.walk-item:hover,
+.walk-item.active {
+    display: none;
 }
 
 /* Animations */

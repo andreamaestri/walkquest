@@ -33,7 +33,7 @@
     mapboxgl.accessToken = mapboxToken;
 
     function createWalkStore() {
-        const [walks, setWalks] = createSignal(walkData || []);
+        const [walks, setWalks] = createSignal(wwalkData || []);
         const [selectedWalk, setSelectedWalk] = createSignal(null);
         const [searchTerm, setSearchTerm] = createSignal('');
         const [sidebarOpen, setSidebarOpen] = createSignal(true);
@@ -65,13 +65,14 @@
         
         return html`
             <div class="walk-card ${() => isSelected() ? 'bg-blue-50' : 'bg-white'} 
-                        p-4 rounded-lg shadow hover:shadow-lg transition-all cursor-pointer"
+                        p-4 rounded-lg shadow-sm hover:shadow transition-all cursor-pointer
+                        border border-gray-100"
                  onclick=${() => props.store.selectWalk(props.walk.id)}>
-                <h3 class="font-bold text-lg">${props.walk.walk_name}</h3>
-                <p class="text-sm text-gray-600 mt-2">${props.walk.description}</p>
+                <h3 class="font-bold text-lg text-gray-900">${props.walk.walk_name}</h3>
+                <p class="text-sm text-gray-600 mt-2 line-clamp-2">${props.walk.description}</p>
                 <div class="flex flex-wrap gap-2 mt-3">
                     ${() => (props.walk.features || []).map(feature => html`
-                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-50 text-blue-700">
                             <iconify-icon icon="${featureIcons[feature]}" class="mr-1"></iconify-icon>
                             ${feature}
                         </span>
@@ -111,9 +112,9 @@
                         transition-all duration-300 flex flex-col z-10">
                 <div class="p-4 border-b">
                     <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xl font-bold">Available Walks</h2>
+                        <h2 class="text-xl font-bold text-gray-900">Available Walks</h2>
                         <button onclick=${() => props.store.toggleSidebar()}
-                                class="p-2 hover:bg-gray-100 rounded-full">
+                                class="p-2 hover:bg-gray-100 rounded-full text-gray-600">
                             <iconify-icon icon="mdi:chevron-left"></iconify-icon>
                         </button>
                     </div>
@@ -122,10 +123,12 @@
                         onSearch: props.store.setSearchTerm
                     })}
                 </div>
-                <div class="flex-1 overflow-y-auto p-4 space-y-4">
-                    ${() => props.store.filteredWalks().map(walk => 
-                        WalkCard({ walk, store: props.store })
-                    )}
+                <div class="flex-1 overflow-y-auto p-4">
+                    <div class="space-y-4">
+                        ${() => props.store.filteredWalks().map(walk => 
+                            WalkCard({ walk, store: props.store })
+                        )}
+                    </div>
                 </div>
             </div>
             ${() => !props.store.sidebarOpen() && html`
