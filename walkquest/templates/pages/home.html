@@ -7,7 +7,37 @@
 {{ block.super }}
 <style>
     .overflow-container { -webkit-overflow-scrolling: touch; }
+    .mapboxgl-popup-content { @apply p-4 rounded-lg shadow-lg; }
 </style>
+{% endblock %}
+
+{% block head %}
+{{ block.super }}
+<script id="app-config" type="application/json">
+    {
+        "walks": {{ walks_json|safe }},
+        "mapboxToken": "{{ mapbox_token|escapejs }}",
+        "featureIcons": {{ feature_icons_json|safe }},
+        "config": {
+            "map": {
+                "style": "mapbox://styles/mapbox/outdoors-v12",
+                "defaultCenter": [-4.85, 50.40],
+                "defaultZoom": 9,
+                "markerColors": {
+                    "default": "#4F46E5",
+                    "selected": "#DC2626"
+                }
+            },
+            "ui": {
+                "list": {
+                    "itemSize": 92,
+                    "overscan": 5,
+                    "debounceMs": 300
+                }
+            }
+        }
+    }
+</script>
 {% endblock %}
 
 {% block content %}
@@ -17,144 +47,42 @@
         <span class="ml-3">Loading...</span>
     </div>
 </div>
-
-<script>
-    window.APP_DATA = {
-        walks: [
-            {% for walk in walks %}
-                {
-                    id: "{{ walk.id }}",
-                    walk_name: "{{ walk.walk_name|escapejs }}",
-                    description: "{{ walk.description|escapejs }}",
-                    latitude: {{ walk.latitude|default:"null" }},
-                    longitude: {{ walk.longitude|default:"null" }},
-                    distance: {{ walk.distance|default:"null" }},
-                    duration: "{{ walk.duration|default:""|escapejs }}",
-                    features: {{ walk.features|safe|default:"[]" }}
-                }{% if not forloop.last %},{% endif %}
-            {% endfor %}
-        ],
-        mapboxToken: "{{ mapbox_token|default:'' }}",
-        featureIcons: {{ feature_icons|safe }}
-    };
-
-    // Validate required data
-    if (!window.APP_DATA.mapboxToken) {
-        console.error('Mapbox token is missing');
-        document.getElementById('loading').innerHTML = '<div class="text-red-600">Error: Map configuration is incomplete</div>';
-    }
-
-    // Debug log
-    console.log('Initial APP_DATA:', window.APP_DATA);
-</script>
 {% endblock %}
 
 {% block inline_javascript %}
 <script type="module">
-    import { 
-        createSignal, 
-        createEffect, 
-        onCleanup, 
-        onMount, 
-        createMemo,
-        batch,
-        For,
-        ErrorBoundary
-    } from "https://cdn.skypack.dev/solid-js";
+    // 1. Import Dependencies
+    import { createSignal, createEffect, onCleanup, onMount, batch, createMemo, ErrorBoundary } from "https://cdn.skypack.dev/solid-js";
     import { render } from "https://cdn.skypack.dev/solid-js/web";
     import html from "https://cdn.skypack.dev/solid-js/html";
     import { createVirtualizer } from "https://cdn.skypack.dev/@tanstack/solid-virtual";
     import mapboxgl from "https://cdn.skypack.dev/mapbox-gl";
 
-    // Application Constants
-    const APP_CONFIG = {
-        ui: {
-            states: {
-                INITIAL: 'initial',
-                LOADING: 'loading',
-                ERROR: 'error',
-                EMPTY: 'empty',
-                READY: 'ready'
-            },
-            list: {
-                itemSize: 92,
-                overscan: 5,
-                debounceMs: 300,
-                loadingItems: 3
-            }
-        },
-        map: {
-            style: 'mapbox://styles/mapbox/outdoors-v12',
-            defaultCenter: [-4.85, 50.40],
-            defaultZoom: 9,
-            markerColors: {
-                default: '#4F46E5',
-                selected: '#DC2626'
-            }
-        }
-    };
+    // 2. Configuration initialization
+    const APP_CONFIG = (() => {
+        const configEl = document.getElementById('app-config');
+        if (!configEl) throw new Error('Configuration element not found');
+        return JSON.parse(configEl.textContent);
+    })();
 
-    // Utility Functions
-    const createDebounce = (fn, delay) => {
-        let timeoutId;
-        return (...args) => {
-            clearTimeout(timeoutId);
-            timeoutId = setTimeout(() => fn(...args), delay);
-        };
-    };
-
-    const safeExecute = (fn, fallback = null) => {
-        try {
-            return fn();
-        } catch (error) {
-            console.error('Operation failed:', error);
-            return fallback;
-        }
-    };
-
-    // Configuration Validation
-    const validateConfig = () => {
-        const required = ['mapboxToken', 'walks'];
-        const missing = required.filter(key => !window.APP_DATA?.[key]);
-
-        if (missing.length > 0) {
-            throw new Error(`Missing required configuration: ${missing.join(', ')}`);
-        }
-
-        if (!Array.isArray(window.APP_DATA.walks)) {
-            throw new Error('Invalid walks data format');
-        }
-
-        return true;
-    };
-
-    // Extract and validate configuration
-    const { walks: initialWalks, mapboxToken, featureIcons } = window.APP_DATA;
-
-    // Initialize Mapbox
-    if (validateConfig()) {
-        mapboxgl.accessToken = mapboxToken;
-    }
-
-    // Store creation with proper initialization
+    // 3. Single store implementation
     function createWalkStore() {
-        const [walks, setWalks] = createSignal(window.APP_DATA.walks || []);
+        const [walks, setWalks] = createSignal(APP_CONFIG.walks || []);
         const [selectedWalk, setSelectedWalk] = createSignal(null);
         const [searchTerm, setSearchTerm] = createSignal('');
         const [sidebarOpen, setSidebarOpen] = createSignal(true);
-        const [isLoading, setIsLoading] = createSignal(true);
+        const [isLoading, setIsLoading] = createSignal(false);
 
         const filteredWalks = createMemo(() => {
             const items = walks();
             const search = searchTerm().toLowerCase().trim();
-            return !search ? items : items.filter(walk => 
-                walk?.walk_name?.toLowerCase().includes(search) || 
-                walk?.description?.toLowerCase().includes(search)
-            );
+            return !search 
+                ? items 
+                : items.filter(walk => 
+                    walk?.walk_name?.toLowerCase().includes(search) || 
+                    walk?.description?.toLowerCase().includes(search)
+                );
         });
-
-        // Initialize immediately
-        setTimeout(() => setIsLoading(false), 0);
 
         return {
             walks,
@@ -176,6 +104,81 @@
             toggleSidebar: () => setSidebarOpen(prev => !prev)
         };
     }
+
+    // 4. Unified initialization
+    async function initApp() {
+        try {
+            await waitForIconify();
+            
+            const root = document.getElementById('root');
+            if (!root) throw new Error('Root element not found');
+
+            const store = createWalkStore();
+            render(() => html`
+                <${ErrorBoundaryWrapper}>
+                    <${App} store=${store} />
+                </${ErrorBoundaryWrapper}>
+            `, root);
+            
+            document.getElementById('loading')?.classList.add('hidden');
+        } catch (error) {
+            handleInitError(error);
+        }
+    }
+
+    // Start app when ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initApp);
+    } else {
+        initApp();
+    }
+
+    const waitForIconify = () => {
+        return new Promise((resolve, reject) => {
+            if (window.customElements.get('iconify-icon')) {
+                resolve();
+            } else {
+                const timeout = setTimeout(() => reject(new Error('Iconify failed to load')), 5000);
+                document.addEventListener('DOMContentLoaded', () => {
+                    if (window.customElements.get('iconify-icon')) {
+                        clearTimeout(timeout);
+                        resolve();
+                    }
+                });
+            }
+        });
+    };
+
+    const Icon = (props) => {
+        return html`
+            <iconify-icon 
+                icon=${props.icon} 
+                class=${props.class || ''} 
+                width=${props.size || '1em'} 
+                height=${props.size || '1em'}>
+            </iconify-icon>
+        `;
+    };
+
+    const validateFeatureIcon = (feature, iconData) => {
+        if (!iconData || !iconData.icon) {
+            console.warn(`Missing icon data for feature: ${feature}`);
+            return false;
+        }
+        return true;
+    };
+
+    // Validate feature icons during initialization
+    if (!APP_CONFIG.featureIcons) {
+        console.warn('Feature icons not properly initialized');
+    } else {
+        Object.entries(APP_CONFIG.featureIcons).forEach(([feature, iconData]) => {
+            validateFeatureIcon(feature, iconData);
+        });
+    }
+
+    // Initialize Mapbox with validated token
+    mapboxgl.accessToken = APP_CONFIG.mapboxToken;
 
     const WalkItem = ({ walk, store, selected }) => html`
         <div class="p-4 border-b hover:bg-gray-50 cursor-pointer ${selected ? 'bg-blue-50' : ''}"
@@ -215,28 +218,59 @@
         }, 300);
 
         return html`
-            <input type="text"
-                   class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                   placeholder="Search walks..."
-                   value=${value}
-                   oninput=${e => debouncedSearch(e.target.value)} />
+            <div class="relative">
+                <${Icon} 
+                    icon="mdi:magnify" 
+                    class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                />
+                <input type="text"
+                       class="w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                       placeholder="Search walks..."
+                       value=${value}
+                       oninput=${e => debouncedSearch(e.target.value)} />
+            </div>
         `;
     };
 
+    const SearchBar = (props) => {
+        let searchTimeout;
+        const debouncedSearch = (value) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                props.onSearch(value);
+            }, APP_CONFIG.ui.list.debounceMs);
+        };
+
+        return html`
+            <div class="p-4 border-b">
+                <input 
+                    type="text" 
+                    placeholder="Search walks..." 
+                    class="w-full px-4 py-2 border rounded" 
+                    oninput=${(e) => debouncedSearch(e.target.value)} />
+            </div>
+        `;
+    }; 
+
+    //VirtualWalkList component 
     const VirtualWalkList = (props) => {
         let parentRef;
 
         // Validate required props
         if (!props.onSelect) {
-            console.error('Missing required props');
+            console.error('Missing required onSelect prop');
             return null;
         }
 
         // Safe accessor functions
         const safeWalks = () => {
-            return typeof props.walks === 'function' 
-                ? props.walks()
-                : [];
+            if (typeof props.walks !== 'function') {
+                console.error('walks prop must be a function');
+                return [];
+            }
+            const w = props.walks();
+            console.log('VirtualWalkList walks:', w); // Debugging
+            return w;
         };
 
         const isLoading = () => {
@@ -300,41 +334,50 @@
         `;
     };
 
+    const getCardClasses = (isSelected) => [
+        'p-4 border-b hover:bg-gray-50 cursor-pointer transition-colors',
+        isSelected ? 'bg-blue-50' : 'bg-white'
+    ].join(' ');
+
     const WalkCard = (props) => {
         if (!props.walk) return null;
 
-        const isSelected = createMemo(() => props.selected());
-
         return html`
-            <div class="p-4 border-b hover:bg-gray-50 cursor-pointer transition-colors
-                        ${() => isSelected() ? 'bg-blue-50' : 'bg-white'}"
-                 onclick=${() => props.onSelect(props.walk.id)}
+            <div class=${() => getCardClasses(props.selected())}
+                 onclick=${(e) => props.onSelect(props.walk.id)}
                  role="button"
                  tabindex="0">
-                <h3 class="text-lg font-semibold truncate">${props.walk.walk_name}</h3>
+                <h3 class="text-lg font-semibold truncate">${() => props.walk.walk_name}</h3>
                 <div class="mt-2 flex items-center gap-4 text-sm text-gray-600">
-                    ${props.walk.distance && html`
+                    ${() => props.walk.distance && html`
                         <span class="flex items-center">
-                            <iconify-icon icon="mdi:map-marker-distance" class="mr-1" />
+                            <${Icon} icon="mdi:map-marker-distance" class="mr-1" />
                             ${props.walk.distance} miles
                         </span>
                     `}
-                    ${props.walk.duration && html`
+                    ${() => props.walk.duration && html`
                         <span class="flex items-center">
-                            <iconify-icon icon="mdi:clock-outline" class="mr-1" />
+                            <${Icon} icon="mdi:clock-outline" class="mr-1" />
                             ${props.walk.duration}
                         </span>
                     `}
                 </div>
-                ${props.walk.features?.length > 0 && html`
+                ${() => props.walk.features?.length > 0 && html`
                     <div class="mt-2 flex flex-wrap gap-1">
-                        ${props.walk.features.map(feature => html`
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full 
-                                       text-xs bg-blue-100 text-blue-800">
-                                <iconify-icon icon="${featureIcons[feature]}" class="mr-1" />
-                                ${feature}
-                            </span>
-                        `)}
+                        ${props.walk.features.map(feature => {
+                            const iconData = featureIcons[feature];
+                            return html`
+                                <span class="inline-flex items-center px-2 py-0.5 
+                                           rounded-full text-xs bg-blue-100 text-blue-800">
+                                    <${Icon} 
+                                        icon=${iconData.icon} 
+                                        class="mr-1"
+                                        size="16px"
+                                    />
+                                    ${feature}
+                                </span>
+                            `;
+                        })}
                     </div>
                 `}
             </div>
@@ -350,7 +393,7 @@
                         <h2 class="text-xl font-bold">Available Walks</h2>
                         <button onclick=${store.toggleSidebar}
                                 class="p-2 hover:bg-gray-100 rounded-full">
-                            <iconify-icon icon="mdi:chevron-left" />
+                            <iconify-icon icon="mdi:chevron-left"></iconify-icon>
                         </button>
                     </div>
                     <${SearchInput}
@@ -359,7 +402,7 @@
                     />
                 </div>
                 <${VirtualWalkList}
-                    walks=${store.filteredWalks}
+                    walks=${() => store.filteredWalks()}  // Ensure it's a function
                     selectedId=${() => store.selectedWalk()?.id}
                     onSelect=${store.selectWalk}
                     isLoading=${store.isLoading}
@@ -380,14 +423,26 @@
             try {
                 const popup = new mapboxgl.Popup({
                     closeButton: false,
-                    closeOnClick: true
+                    closeOnClick: true,
+                    maxWidth: '300px',
+                    className: 'walk-popup'
                 }).setHTML(`
                     <div class="p-2">
                         <h3 class="font-bold text-gray-900">${walk.walk_name}</h3>
                         ${walk.distance ? `
-                            <p class="text-sm text-gray-600">
+                            <p class="text-sm text-gray-600 mt-1">
                                 <span class="font-medium">${walk.distance}</span> miles
                             </p>
+                        ` : ''}
+                        ${walk.features?.length ? `
+                            <div class="flex flex-wrap gap-1 mt-2">
+                                ${walk.features.map(feature => `
+                                    <span class="inline-flex items-center px-2 py-0.5 
+                                               rounded-full text-xs bg-blue-100 text-blue-800">
+                                        ${feature}
+                                    </span>
+                                `).join('')}
+                            </div>
                         ` : ''}
                     </div>
                 `);
@@ -395,18 +450,22 @@
                 const marker = new mapboxgl.Marker({
                     color: store.selectedWalk()?.id === walk.id 
                         ? APP_CONFIG.map.markerColors.selected 
-                        : APP_CONFIG.map.markerColors.default
+                        : APP_CONFIG.map.markerColors.default,
+                    draggable: false
                 })
                 .setLngLat([walk.longitude, walk.latitude])
                 .setPopup(popup);
 
-                marker.getElement().addEventListener('click', () => {
-                    store.selectWalk(walk.id);
+                const element = marker.getElement();
+                element.addEventListener('click', () => store.selectWalk(walk.id));
+                element.addEventListener('mouseenter', () => popup.addTo(mapInstance));
+                element.addEventListener('mouseleave', () => {
+                    if (!popup.isOpen()) popup.remove();
                 });
 
                 return marker;
             } catch (err) {
-                setError(`Failed to create marker: ${err.message}`);
+                setError(`Failed to create marker for ${walk.walk_name}: ${err.message}`);
                 return null;
             }
         };
@@ -446,7 +505,8 @@
                 if (selected) {
                     mapInstance.flyTo({
                         center: [selected.longitude, selected.latitude],
-                        zoom: APP_CONFIG.map.defaultZoom
+                        zoom: APP_CONFIG.map.defaultZoom,
+                        duration: 500
                     });
                 }
             }
@@ -515,21 +575,37 @@
     };
 
     const ErrorBoundaryWrapper = (props) => {
+        const handleError = (err) => {
+            console.error('Error caught by boundary:', err);
+            return err;
+        };
+
+        const sanitizeErrorMessage = (error) => {
+            if (!error) return 'Unknown error';
+            return typeof error === 'string' ? error : String(error.message || error);
+        };
+
         return html`
             <${ErrorBoundary} 
-                fallback=${(err, reset) => html`
-                    <div class="p-4 bg-red-100 text-red-700 rounded-lg">
-                        <h2 class="font-bold">Error</h2>
-                        <p>${err.message}</p>
-                        <button onclick=${reset}
-                                class="mt-2 px-3 py-1 bg-red-200 rounded">
-                            Try Again
-                        </button>
+                fallback=${(err) => html`
+                    <div class="p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <h3 class="font-bold text-red-700">Error</h3>
+                        <p class="mt-1 text-red-600">${sanitizeErrorMessage(err)}</p>
                     </div>
-                `}>
+                `}
+                onError=${handleError}>
                 ${props.children}
-            <//>
+            </${ErrorBoundary}>
         `;
+    };
+
+    const createSafeTemplate = (template, data) => {
+        try {
+            return typeof template === 'function' ? template(data) : template;
+        } catch (error) {
+            console.error('Template creation failed:', error);
+            return '';
+        }
     };
 
     // Main App component with proper layout
@@ -538,47 +614,55 @@
         
         return html`
             <div class="h-screen w-screen flex overflow-hidden">
-                ${store.sidebarOpen() && html`
-                    <${Sidebar} store=${store} />
-                `}
-                <${Map} store=${store} class="flex-1" />
+                ${() => store.sidebarOpen() && html`
+                    <${Sidebar} store=${store} //>`}
+                <${Map} store=${store} class="flex-1" //>
             </div>
         `;
     };
 
-    function initApp() {
+    async function initApp() {
+        const root = document.getElementById('root');
+        if (!root) return;
+
         try {
-            console.log('Starting app initialization');
-
-            validateConfig();
-
-            console.log('Creating store...');
-            const store = createWalkStore();
-
-            const root = document.getElementById('root');
-            if (!root) {
-                throw new Error('Root element not found');
-            }
-
-            console.log('Rendering app...');
-            render(() => html`<${App} store=${store} />`, root);
-
-            console.log('App rendered, hiding loading...');
+            await waitForIconify();
+            const app = html`
+                <${ErrorBoundaryWrapper}>
+                    <${App} />
+                </${ErrorBoundaryWrapper}>
+            `;
+            render(() => app, root);
             document.getElementById('loading')?.classList.add('hidden');
-
         } catch (error) {
-            console.error('App initialization failed:', error);
-            const loading = document.getElementById('loading');
-            if (loading) {
-                loading.innerHTML = `
-                    <div class="text-red-500">
-                        <p class="font-bold">Error:</p>
-                        <p>${error.message}</p>
-                        <pre class="mt-2 text-sm">${error.stack}</pre>
-                    </div>
-                `;
-            }
+            handleInitError(error);
         }
+    }
+
+    function handleInitError(error) {
+        console.error('Failed to initialize app:', error);
+        const loading = document.getElementById('loading');
+        if (!loading) return;
+
+        const fragment = document.createDocumentFragment();
+        
+        const errorContainer = document.createElement('div');
+        errorContainer.className = 'p-4 bg-red-50 border border-red-200 rounded-lg';
+        
+        const errorTitle = document.createElement('h3');
+        errorTitle.className = 'font-bold text-red-700';
+        errorTitle.textContent = 'Application Error';
+        
+        const errorMessage = document.createElement('p');
+        errorMessage.className = 'mt-1 text-red-600';
+        errorMessage.textContent = String(error.message || error);
+        
+        errorContainer.appendChild(errorTitle);
+        errorContainer.appendChild(errorMessage);
+        fragment.appendChild(errorContainer);
+        
+        loading.innerHTML = '';
+        loading.appendChild(fragment);
     }
 
     if (document.readyState === 'loading') {

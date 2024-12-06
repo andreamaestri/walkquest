@@ -1,30 +1,29 @@
+import json
+import logging
 from dataclasses import dataclass
-from typing import Any
 
 from django.conf import settings
-from django.http import JsonResponse
-from django.shortcuts import render
-from django.templatetags.static import static
-from django.views.generic import ListView
 from django.core.serializers.json import DjangoJSONEncoder
-import json
+from django.templatetags.static import static
+from django.utils.encoding import force_str
+from django.utils.functional import Promise
+from django.views.generic import ListView
+from django.shortcuts import render
 
 from .models import Walk
 
+# Configure logging
+logger = logging.getLogger(__name__)
 
 @dataclass
 class FeatureIcon:
-    """Class representing feature icons with their respective markers."""
     icon: str
     marker: str
 
 
 class WalkFeatures:
     """Constants and mappings for walk features."""
-
     FEATURE_ICONS = {
-        "default": FeatureIcon("material-symbols:location-on", "markers.svg"),
-        "coastal": FeatureIcon("iconoir:sea-waves", "sea.png"),
         "woodland": FeatureIcon("ph:tree", "tree.png"),
         "historic": FeatureIcon("game-icons:spell-book", "historic.png"),
         "pub": FeatureIcon("mdi:pub-outline", "pub.png"),
@@ -54,81 +53,117 @@ class WalkFeatures:
         return {k: v.icon for k, v in cls.FEATURE_ICONS.items()}
 
 
-class WalkDataService:
-    """Service class for processing walk data."""
-
-    def __init__(self, walk: Walk):
-        """Initialize with a Walk instance."""
-        self.walk = walk
-
-    def to_dict(self) -> dict[str, Any]:
-        """Convert a walk instance to a dictionary."""
-        return {
-            "id": self.walk.id,
-            "walk_name": self.walk.walk_name,
-            "description": self.walk.description,
-            "latitude": float(self.walk.latitude) if self.walk.latitude else None,
-            "longitude": float(self.walk.longitude) if self.walk.longitude else None,
-            "distance": self.walk.distance,
-            "duration": self._calculate_duration(),
-            "steepness_level": self.walk.steepness_level,
-            "features": self.walk.features or [],
-        }
-
-    def _calculate_duration(self) -> str:
-        """Calculate walk duration based on distance."""
-        if self.walk.distance:
-            return f"{self.walk.distance / 3:.1f} hours"
-        return None
+class CustomJSONEncoder(DjangoJSONEncoder):
+    """Custom JSON encoder for handling Django-specific types"""
+    def default(self, obj):
+        if isinstance(obj, Promise):
+            return force_str(obj)
+        return super().default(obj)
 
 
-class HomePageView(ListView):
-    """View for the home page displaying walks."""
+class BaseWalkListView(ListView):
+    """Base view class with common functionality for walk lists"""
     model = Walk
-    template_name = "pages/home.html"
     context_object_name = "walks"
-    
-    def get_queryset(self):
-        """Get walks with valid coordinates."""
-        return Walk.objects.exclude(latitude=None, longitude=None)
+
+    def serialize_walk(self, walk):
+        """Serialize a single walk instance"""
+        try:
+            return {
+                'id': str(walk.id),
+                'walk_name': walk.walk_name,
+                'description': walk.description,
+                'latitude': float(walk.latitude) if walk.latitude else None,
+                'longitude': float(walk.longitude) if walk.longitude else None,
+                'distance': float(walk.distance) if walk.distance else None,
+                'features': walk.features,
+                'created_at': walk.created_at,
+                'updated_at': walk.updated_at,
+            }
+        except Exception as e:
+            logger.error(f"Error serializing walk {walk.id}: {str(e)}")
+            return None
+
+    def get_serialized_walks(self, walks):
+        """Serialize all walks with error handling"""
+        serialized_walks = []
+        for walk in walks:
+            walk_data = self.serialize_walk(walk)
+            if walk_data:
+                serialized_walks.append(walk_data)
+        return serialized_walks
+
+
+class HomePageView(BaseWalkListView):
+    """Home page view with basic walk list"""
+    template_name = "pages/home.html"
 
     def get_context_data(self, **kwargs):
-        """Prepare context data for template."""
-        context = super().get_context_data(**kwargs)
-        
-        # Debug print
-        walks = self.get_queryset()
-        print(f"Number of walks: {walks.count()}")
-        
-        context.update({
-            'walks': walks,
-            'mapbox_token': settings.MAPBOX_TOKEN,
-            'feature_icons': WalkFeatures.get_icon_mappings(),
-        })
-        
-        # Debug print context
-        print("Context keys:", context.keys())
-        print("Mapbox token present:", bool(context.get('mapbox_token')))
-        
-        return context
+        try:
+            context = super().get_context_data(**kwargs)
+            feature_icons = WalkFeatures.get_icon_mappings()
+            
+            # Serialize walks data
+            walks_data = self.get_serialized_walks(context['walks'])
+            
+            context.update({
+                'walks_json': json.dumps(walks_data, cls=CustomJSONEncoder),
+                'mapbox_token': settings.MAPBOX_TOKEN,
+                'feature_icons_json': json.dumps(feature_icons, cls=CustomJSONEncoder),
+            })
+
+            # Debug logging
+            logger.debug(f"Number of walks: {len(walks_data)}")
+            logger.debug(f"Feature Icons: {feature_icons}")
+            
+            return context
+            
+        except Exception as e:
+            logger.error(f"Error in HomePageView.get_context_data: {str(e)}")
+            # Return basic context to avoid template errors
+            return {
+                'walks': [],
+                'walks_json': '[]',
+                'mapbox_token': settings.MAPBOX_TOKEN,
+                'feature_icons_json': '{}'
+            }
 
 
-def map_view(request):
-    """View for displaying walks on a map."""
-    walks = Walk.objects.all()
-    walk_data = []
+class WalkListView(BaseWalkListView):
+    """Detailed walk list view"""
+    template_name = "walks/walk_list.html"
 
-    for walk in walks:
-        icon_list = [
-            WalkFeatures.FEATURE_ICONS[feature].icon
-            for feature in (walk.features or [])
-            if feature in WalkFeatures.FEATURE_ICONS
-        ]
+    def get_context_data(self, **kwargs):
+        try:
+            context = super().get_context_data(**kwargs)
+            
+            # Serialize walks data
+            walks_data = self.get_serialized_walks(context['walks'])
+            feature_icons = WalkFeatures.get_icon_mappings()
+            
+            context.update({
+                'walks_json': json.dumps(walks_data, cls=CustomJSONEncoder),
+                'mapbox_token': settings.MAPBOX_TOKEN,
+                'feature_icons_json': json.dumps(feature_icons, cls=CustomJSONEncoder),
+            })
+            
+            return context
+            
+        except Exception as e:
+            logger.error(f"Error in WalkListView.get_context_data: {str(e)}")
+            return {
+                'walks': [],
+                'walks_json': '[]',
+                'mapbox_token': settings.MAPBOX_TOKEN,
+                'feature_icons_json': '{}'
+            }
 
-        walk_data.append({
-            "id": walk.id,
-            "name": walk.walk_name,
-            "latitude": walk.latitude,
-            "longitude": walk.longitude
-        })
-    return render(request, "map.html", {"walks": walk_data})
+def home_view(request):
+    # ...existing code...
+
+    context['feature_icons'] = {
+        feature: {'icon': icon.icon, 'marker': icon.marker}
+        for feature, icon in WalkFeatures.FEATURE_ICONS.items()
+    }
+    
+    # ...rest of existing code...
