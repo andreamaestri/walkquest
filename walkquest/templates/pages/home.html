@@ -106,22 +106,22 @@
         }
     };
 
+    // Store Creation
     function createWalkStore() {
-        console.log('Creating store with walks:', initialWalks);
-
+        const [isLoading, setIsLoading] = createSignal(true);
         const [walks, setWalks] = createSignal(initialWalks || []);
         const [selectedWalk, setSelectedWalk] = createSignal(null);
         const [searchTerm, setSearchTerm] = createSignal('');
         const [sidebarOpen, setSidebarOpen] = createSignal(true);
-        const [isLoading, setIsLoading] = createSignal(true);
+
+        // Initialize store
+        setTimeout(() => setIsLoading(false), 0);
 
         const filteredWalks = createMemo(() => {
             const items = walks();
-            console.log('Filtering walks:', items?.length);
             const search = searchTerm().toLowerCase();
             return !search ? items : items.filter(walk => 
-                walk?.walk_name?.toLowerCase().includes(search) || 
-                walk?.description?.toLowerCase().includes(search)
+                walk?.walk_name?.toLowerCase().includes(search)
             );
         });
 
@@ -131,15 +131,14 @@
             searchTerm,
             sidebarOpen,
             filteredWalks,
+            isLoading,
+            setIsLoading,
             toggleSidebar: () => setSidebarOpen(prev => !prev),
             setSearchTerm,
             selectWalk: (walkId) => {
-                console.log('Selecting walk:', walkId);
                 const walk = walks().find(w => w.id === walkId);
                 setSelectedWalk(walk);
-            },
-            isLoading,
-            setIsLoading
+            }
         };
     }
 
@@ -157,47 +156,79 @@
         </div>
     `;
 
-    const SearchInput = ({ value, onSearch }) => html`
-        <input type="text"
-               class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-               placeholder="Search walks..."
-               value=${value}
-               oninput=${e => onSearch(e.target.value)} />
+    const LoadingOverlay = () => html`
+        <div class="absolute inset-0 bg-white bg-opacity-75 
+                    flex items-center justify-center z-50
+                    transition-opacity duration-300">
+            <div class="flex flex-col items-center">
+                <div class="animate-spin rounded-full h-12 w-12 
+                            border-b-2 border-primary"></div>
+                <span class="mt-2">Loading walks...</span>
+            </div>
+        </div>
     `;
 
+    const WalkCardSkeleton = () => html`
+        <div class="p-4 border-b animate-pulse">
+            <div class="h-6 bg-gray-200 rounded w-3/4"></div>
+            <div class="mt-2 h-4 bg-gray-200 rounded w-1/2"></div>
+        </div>
+    `;
+
+    // Enhanced SearchInput with debounced search
+    const SearchInput = ({ value, onSearch }) => {
+        const debouncedSearch = debounce((value) => {
+            onSearch(value);
+        }, 300);
+
+        return html`
+            <input type="text"
+                   class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                   placeholder="Search walks..."
+                   value=${value}
+                   oninput=${e => debouncedSearch(e.target.value)} />
+        `;
+    };
+
+    // Enhanced VirtualWalkList with loading state
     const VirtualWalkList = (props) => {
         let parentRef;
+        
+        // Validate required props
+        if (!props.walks || !props.onSelect) {
+            console.error('Missing required props in VirtualWalkList');
+            return null;
+        }
         
         const virtualizer = createVirtualizer({
             count: () => props.walks.length,
             getScrollElement: () => parentRef,
             estimateSize: () => 92,
-            overscan: 5,
-            paddingStart: 4,
-            paddingEnd: 4,
-            scrollPaddingStart: 4,
-            scrollPaddingEnd: 4,
+            overscan: 5
         });
 
         return html`
             <div ref=${el => parentRef = el} 
-                 class="flex-1 overflow-y-auto overflow-x-hidden relative">
-                <div style="height: ${virtualizer.getTotalSize()}px; width: 100%; position: relative;">
-                    ${() => virtualizer.getVirtualItems().map((virtualItem) => {
-                        const walk = props.walks[virtualItem.index];
-                        return html`
+                 class="flex-1 overflow-auto relative">
+                ${props.isLoading ? html`
+                    <${WalkCardSkeleton} />
+                    <${WalkCardSkeleton} />
+                    <${WalkCardSkeleton} />
+                ` : html`
+                    <div style="height: ${virtualizer.getTotalSize()}px; position: relative;">
+                        ${() => virtualizer.getVirtualItems().map(virtualRow => html`
                             <div style="position: absolute; top: 0; left: 0; width: 100%; 
-                                      height: ${virtualItem.size}px; transform: translateY(${virtualItem.start}px);"
-                                 class="absolute top-0 left-0 w-full transition-colors">
+                                      height: ${virtualRow.size}px; 
+                                      transform: translateY(${virtualRow.start}px);">
                                 <${WalkCard} 
-                                    walk=${walk}
-                                    selected=${() => props.selectedId() === walk.id}
-                                    onSelect=${() => props.onSelect(walk.id)}
+                                    walk=${props.walks[virtualRow.index]}
+                                    selected=${() => props.selectedId === props.walks[virtualRow.index].id}
+                                    onSelect=${props.onSelect}
                                 />
                             </div>
-                        `;
-                    })}
-                </div>
+                        `)}
+                    </div>
+                `}
             </div>
         `;
     };
@@ -241,117 +272,198 @@
         `;
     };
 
+    // Sidebar Component
     const Sidebar = (props) => {
         const store = props.store;
-        const filteredWalks = createMemo(() => store.filteredWalks());
-        const selectedId = createMemo(() => store.selectedWalk()?.id);
-
+        
+        // Protect against undefined store
+        if (!store) return null;
+        
         return html`
-            <aside class=${() => `
-                w-96 h-full bg-white shadow-lg flex flex-col z-10
-                transform transition-transform duration-300 ease-in-out
-                ${props.store.sidebarOpen() ? 'translate-x-0' : '-translate-x-full'}
-            `}>
-                <div class="p-4 border-b shrink-0">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xl font-bold">Available Walks</h2>
-                        <button onclick=${() => store.toggleSidebar()}
-                                class="p-2 hover:bg-gray-100 rounded-full"
-                                aria-label="Toggle sidebar">
-                            <iconify-icon icon="mdi:chevron-left" />
-                        </button>
-                    </div>
+            <aside class="w-96 h-full bg-white shadow-lg flex flex-col">
+                <div class="p-4 border-b">
                     <${SearchInput}
                         value=${store.searchTerm()}
                         onSearch=${store.setSearchTerm}
                     />
                 </div>
                 <${VirtualWalkList}
-                    walks=${filteredWalks()}
-                    selectedId=${selectedId}
+                    walks=${store.filteredWalks()}
+                    selectedId=${store.selectedWalk()?.id}
                     onSelect=${store.selectWalk}
+                    isLoading=${store.isLoading()}
                 />
             </aside>
         `;
     };
 
+    // Map component with enhanced marker management and error handling
     const Map = ({ store }) => {
-        let mapContainer;
-        let mapInstance; // Use a local variable instead of a signal
-        let markers = new Map();
         const [error, setError] = createSignal(null);
+        const [isInitialized, setIsInitialized] = createSignal(false);
+        let mapContainer;
+        let mapInstance;
+        
+        // Create marker store with signal
+        const [markers, setMarkers] = createSignal({});
 
-        // Enhanced marker management
+        // Enhanced marker creation with error handling
         const createMarker = (walk) => {
-            const marker = new mapboxgl.Marker({
-                color: APP_CONFIG.map.markerColors.default
-            })
-            .setLngLat([walk.longitude, walk.latitude])
-            .setPopup(new mapboxgl.Popup().setHTML(`
-                <h3 class="font-bold">${walk.walk_name}</h3>
-                <p class="text-sm">${walk.distance} miles</p>
-            `));
-            
-            marker.getElement().addEventListener('click', () => store.selectWalk(walk.id));
-            return marker;
+            try {
+                const popup = new mapboxgl.Popup({
+                    closeButton: false,
+                    closeOnClick: true
+                }).setHTML(`
+                    <div class="p-2">
+                        <h3 class="font-bold text-gray-900">${walk.walk_name}</h3>
+                        ${walk.distance ? `
+                            <p class="text-sm text-gray-600">
+                                <span class="font-medium">${walk.distance}</span> miles
+                            </p>
+                        ` : ''}
+                    </div>
+                `);
+
+                const marker = new mapboxgl.Marker({
+                    color: store.selectedWalk()?.id === walk.id 
+                        ? APP_CONFIG.map.markerColors.selected 
+                        : APP_CONFIG.map.markerColors.default
+                })
+                .setLngLat([walk.longitude, walk.latitude])
+                .setPopup(popup);
+
+                marker.getElement().addEventListener('click', () => {
+                    store.selectWalk(walk.id);
+                });
+
+                return { marker, popup };
+            } catch (err) {
+                setError(`Failed to create marker: ${err.message}`);
+                return null;
+            }
         };
 
-        onMount(() => {
-            if (!mapContainer || !mapboxToken) {
-                setError('Map initialization failed');
-                return;
+        // Batch update markers
+        const updateMarkers = () => {
+            batch(() => {
+                const currentWalks = store.walks();
+                const currentMarkers = markers();
+
+                // Remove unused markers
+                Object.entries(currentMarkers).forEach(([id, marker]) => {
+                    if (!currentWalks.find(w => w.id === id)) {
+                        marker.popup?.remove();
+                        marker.marker?.remove();
+                        const updatedMarkers = { ...currentMarkers };
+                        delete updatedMarkers[id];
+                        setMarkers(updatedMarkers);
+                    }
+                });
+
+                // Add/update markers
+                currentWalks.forEach(walk => {
+                    if (!currentMarkers[walk.id]) {
+                        const newMarker = createMarker(walk);
+                        if (newMarker) {
+                            setMarkers(prev => ({ 
+                                ...prev, 
+                                [walk.id]: newMarker 
+                            }));
+                            newMarker.marker.addTo(mapInstance);
+                        }
+                    }
+                });
+            });
+        };
+
+        // Debounced resize handler
+        const handleResize = debounce(() => {
+            if (mapInstance) {
+                mapInstance.resize();
+                const selected = store.selectedWalk();
+                if (selected) {
+                    mapInstance.flyTo({
+                        center: [selected.longitude, selected.latitude],
+                        zoom: DEFAULT_ZOOM
+                    });
+                }
             }
+        }, 250);
 
-            mapInstance = new mapboxgl.Map({
-                container: mapContainer,
-                style: MAPBOX_STYLE,
-                center: DEFAULT_CENTER,
-                zoom: DEFAULT_ZOOM
-            });
+        // Initialize map
+        const initializeMap = () => {
+            try {
+                if (!mapboxToken) {
+                    throw new Error('Mapbox token is missing');
+                }
 
-            mapInstance.on('load', () => {
-                initializeLayers();
-            });
+                mapInstance = new mapboxgl.Map({
+                    container: mapContainer,
+                    style: MAPBOX_STYLE,
+                    center: DEFAULT_CENTER,
+                    zoom: DEFAULT_ZOOM
+                });
 
-            onCleanup(() => {
-                markers.forEach(marker => marker.remove());
-                mapInstance?.remove();
-            });
+                mapInstance.on('load', () => {
+                    setIsInitialized(true);
+                    updateMarkers();
+                });
+
+                mapInstance.on('error', (e) => {
+                    setError(`Map error: ${e.error.message}`);
+                });
+
+                window.addEventListener('resize', handleResize);
+
+            } catch (err) {
+                setError(`Failed to initialize map: ${err.message}`);
+            }
+        };
+
+        // Setup and cleanup
+        onMount(() => {
+            if (mapContainer) {
+                initializeMap();
+            }
         });
 
-        const initializeLayers = () => {
-            if (mapInstance.getSource('walks')) return; // Prevent re-adding the source
+        onCleanup(() => {
+            try {
+                // Cleanup markers
+                Object.values(markers()).forEach(marker => {
+                    marker.popup?.remove();
+                    marker.marker?.remove();
+                });
 
-            const walks = store.walks();
-            if (!walks.length) return;
+                // Cleanup map
+                mapInstance?.remove();
+                window.removeEventListener('resize', handleResize);
+                
+                // Reset state
+                setMarkers({});
+                setError(null);
+                setIsInitialized(false);
+            } catch (err) {
+                console.error('Cleanup error:', err);
+            }
+        });
 
-            const geojson = {
-                type: 'FeatureCollection',
-                features: walks.map(walk => ({
-                    type: 'Feature',
-                    geometry: {
-                        type: 'Point',
-                        coordinates: [walk.longitude, walk.latitude]
-                    },
-                    properties: { id: walk.id }
-                }))
-            };
-
-            mapInstance.addSource('walks', { type: 'geojson', data: geojson });
-            mapInstance.addLayer({
-                id: 'walks',
-                type: 'circle',
-                source: 'walks',
-                paint: CIRCLE_STYLE
-            });
-        };
-
+        // Watch selected walk changes
         createEffect(() => {
             const selected = store.selectedWalk();
             if (selected && mapInstance) {
                 mapInstance.flyTo({
                     center: [selected.longitude, selected.latitude],
                     zoom: 14
+                });
+                
+                // Update marker colors
+                Object.entries(markers()).forEach(([id, marker]) => {
+                    marker.marker.setColor(
+                        id === selected.id 
+                            ? APP_CONFIG.map.markerColors.selected 
+                            : APP_CONFIG.map.markerColors.default
+                    );
                 });
             }
         });
@@ -362,8 +474,13 @@
                      class="absolute inset-0">
                 </div>
                 ${error() && html`
-                    <div class="absolute top-4 right-4 bg-red-100 text-red-700 p-4 rounded">
-                        ${error()}
+                    <div class="absolute top-4 right-4 bg-red-100 text-red-700 p-4 rounded-lg shadow-lg">
+                        <h3 class="font-bold">Map Error</h3>
+                        <p>${error()}</p>
+                        <button onclick=${initializeMap} 
+                                class="mt-2 px-3 py-1 bg-red-200 rounded hover:bg-red-300">
+                            Retry
+                        </button>
                     </div>
                 `}
             </div>
@@ -388,7 +505,8 @@
     };
 
     const App = ({ store }) => html`
-        <div class="h-screen w-screen flex">
+        <div class="h-screen w-screen flex relative">
+            ${() => store.isLoading() && html`<${LoadingOverlay} />`}
             <${Sidebar} store=${store} />
             <${Map} store=${store} />
         </div>
