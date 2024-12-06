@@ -33,7 +33,7 @@
     mapboxgl.accessToken = mapboxToken;
 
     function createWalkStore() {
-        const [walks, setWalks] = createSignal(wwalkData || []);
+        const [walks, setWalks] = createSignal(walkData || []);
         const [selectedWalk, setSelectedWalk] = createSignal(null);
         const [searchTerm, setSearchTerm] = createSignal('');
         const [sidebarOpen, setSidebarOpen] = createSignal(true);
@@ -60,28 +60,27 @@
         };
     }
 
-    const WalkCard = (props) => {
+    const WalkItem = (props) => {
         const isSelected = () => props.store.selectedWalk()?.id === props.walk.id;
         
         return html`
-            <div class="walk-card ${() => isSelected() ? 'bg-blue-50' : 'bg-white'} 
-                        p-4 rounded-lg shadow-sm hover:shadow transition-all cursor-pointer
-                        border border-gray-100"
+            <div class="p-4 border-b hover:bg-gray-50 cursor-pointer 
+                        ${() => isSelected() ? 'bg-blue-50' : ''}"
                  onclick=${() => props.store.selectWalk(props.walk.id)}>
-                <h3 class="font-bold text-lg text-gray-900">${props.walk.walk_name}</h3>
-                <p class="text-sm text-gray-600 mt-2 line-clamp-2">${props.walk.description}</p>
-                <div class="flex flex-wrap gap-2 mt-3">
-                    ${() => (props.walk.features || []).map(feature => html`
-                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-50 text-blue-700">
-                            <iconify-icon icon="${featureIcons[feature]}" class="mr-1"></iconify-icon>
-                            ${feature}
+                <h3 class="text-lg font-semibold text-gray-900">${props.walk.walk_name}</h3>
+                <div class="flex items-center mt-2 text-sm text-gray-600">
+                    ${props.walk.distance && html`
+                        <span class="flex items-center mr-4">
+                            <iconify-icon icon="mdi:map-marker-distance" class="mr-1"></iconify-icon>
+                            ${props.walk.distance} miles
                         </span>
-                    `).join('')}
-                </div>
-                <div class="mt-2 text-sm text-gray-500">
-                    ${() => props.walk.distance ? 
-                        html`<span>${props.walk.distance} miles • ${props.walk.duration}</span>` : 
-                        'Distance not specified'}
+                    `}
+                    ${props.walk.duration && html`
+                        <span class="flex items-center">
+                            <iconify-icon icon="mdi:clock-outline" class="mr-1"></iconify-icon>
+                            ${props.walk.duration}
+                        </span>
+                    `}
                 </div>
             </div>
         `;
@@ -123,12 +122,13 @@
                         onSearch: props.store.setSearchTerm
                     })}
                 </div>
-                <div class="flex-1 overflow-y-auto p-4">
-                    <div class="space-y-4">
-                        ${() => props.store.filteredWalks().map(walk => 
-                            WalkCard({ walk, store: props.store })
-                        )}
-                    </div>
+                <div class="flex-1 overflow-y-auto divide-y divide-gray-100">
+                    ${() => {
+                        const filtered = props.store.filteredWalks();
+                        return filtered.length ? 
+                            filtered.map(walk => WalkItem({ walk, store: props.store })) :
+                            html`<div class="p-4 text-center text-gray-500">No walks found</div>`
+                    }}
                 </div>
             </div>
             ${() => !props.store.sidebarOpen() && html`
