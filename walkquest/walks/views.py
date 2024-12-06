@@ -65,12 +65,8 @@ class WalkDataService:
             "id": self.walk.id,
             "walk_name": self.walk.walk_name,
             "description": self.walk.description,
-            "latitude": (
-                float(self.walk.latitude) if self.walk.latitude else None
-            ),
-            "longitude": (
-                float(self.walk.longitude) if self.walk.longitude else None
-            ),
+            "latitude": float(self.walk.latitude) if self.walk.latitude else None,
+            "longitude": float(self.walk.longitude) if self.walk.longitude else None,
             "distance": self.walk.distance,
             "duration": self._calculate_duration(),
             "steepness_level": self.walk.steepness_level,
@@ -86,7 +82,6 @@ class WalkDataService:
 
 class HomePageView(ListView):
     """View for the home page displaying walks."""
-
     model = Walk
     template_name = "pages/home.html"
     context_object_name = "walks"
@@ -95,55 +90,46 @@ class HomePageView(ListView):
         """Get walks with valid coordinates."""
         return Walk.objects.exclude(latitude=None, longitude=None)
 
-    def walks_data(self) -> list[dict[str, Any]]:
+    def walks_data(self):
         """Return list of walks as dictionaries."""
         return [WalkDataService(walk).to_dict() for walk in self.get_queryset()]
 
-    def get_featured_walks(self) -> list[dict[str, Any]]:
-        """Return featured walks."""
-        return [WalkDataService(walk).to_dict() for walk in self.get_queryset()]
-
-    def get_nearby_walks(self, max_distance: int = 10) -> list[dict[str, Any]]:
-        """Get walks within specified distance of user's location."""
-        return self.walks_data()[:3]
-
-    def prepare_json_context(self) -> dict[str, str]:
-        """Prepare JSON context for template."""
-        walks_json = JsonResponse(self.walks_data(), safe=False)
-        marker_icons_json = JsonResponse(
-            WalkFeatures.get_icon_urls(self.request),
-            safe=False,
-        )
-        feature_icons_json = JsonResponse(
-            WalkFeatures.get_icon_mappings(),
-            safe=False,
-        )
-        available_features_json = JsonResponse(
-            sorted(WalkFeatures.FEATURE_ICONS.keys()),
-            safe=False,
-        )
+    def prepare_json_data(self):
+        """Prepare JSON responses for template."""
+        walks_data = self.walks_data()
+        
         return {
-            "walks_json": walks_json.content.decode("utf-8"),
-            "marker_icons_json": marker_icons_json.content.decode("utf-8"),
-            "feature_icons_json": feature_icons_json.content.decode("utf-8"),
-            "available_features_json": available_features_json.content.decode("utf-8"),
-            }
+            'walks': JsonResponse(walks_data, safe=False).content.decode('utf-8'),
+            'marker_icons': JsonResponse(
+                WalkFeatures.get_icon_urls(self.request)
+            ).content.decode('utf-8'),
+            'feature_icons': JsonResponse(
+                WalkFeatures.get_icon_mappings()
+            ).content.decode('utf-8'),
+            'available_features': JsonResponse(
+                sorted(WalkFeatures.FEATURE_ICONS.keys()), 
+                safe=False
+            ).content.decode('utf-8')
+        }
 
-    def get_context_data(self, **kwargs) -> dict[str, Any]:
+    def get_context_data(self, **kwargs):
         """Prepare context data for template."""
         context = super().get_context_data(**kwargs)
+        
+        json_data = self.prepare_json_data()
+        
         context.update({
-            "featured_walks": self.get_featured_walks(),
-            "nearby_walks": self.get_nearby_walks(),
-            "difficulties": [choice[0] for choice in Walk.DIFFICULTY_CHOICES],
-            "selected_features": [],
-            "mapbox_token": settings.MAPBOX_TOKEN,
-            "walks": self.walks_data(),
-            "marker_icons": WalkFeatures.get_icon_urls(self.request),
-            "feature_icons": WalkFeatures.get_icon_mappings(),
-            "available_features": sorted(WalkFeatures.FEATURE_ICONS.keys())
+            'walks_json': json_data['walks'],
+            'marker_icons_json': json_data['marker_icons'],
+            'feature_icons_json': json_data['feature_icons'],
+            'available_features_json': json_data['available_features'],
+            'mapbox_token': settings.MAPBOX_TOKEN,
+            'walks': self.walks_data(),
+            'marker_icons': WalkFeatures.get_icon_urls(self.request),
+            'feature_icons': WalkFeatures.get_icon_mappings(),
+            'available_features': sorted(WalkFeatures.FEATURE_ICONS.keys())
         })
-        context.update(self.prepare_json_context())
+        
         return context
 
 

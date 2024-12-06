@@ -17,6 +17,7 @@
     import { createSignal, createEffect, onCleanup, onMount } from "https://cdn.skypack.dev/solid-js@1.9.3";
     import { render } from "https://cdn.skypack.dev/solid-js@1.9.3/web";
     import html from "https://cdn.skypack.dev/solid-js@1.9.3/html";
+    import mapboxgl from "https://cdn.skypack.dev/mapbox-gl";
 
     // Initialize data from Django context
     const walkData = {{ walks_json|safe }};
@@ -24,6 +25,14 @@
     const featureIcons = {{ feature_icons_json|safe }};
     const availableFeatures = {{ available_features_json|safe }};
     const mapboxToken = '{{ mapbox_token|escapejs }}';
+
+    // Debug log
+    console.log('Walk data:', walkData);
+    console.log('Marker icons:', markerIcons);
+    console.log('Feature icons:', featureIcons);
+
+    // Configure Mapbox
+    mapboxgl.accessToken = mapboxToken;
 
     function createWalkStore() {
         const [walks, setWalks] = createSignal(walkData);
@@ -230,6 +239,10 @@
         const loadingDiv = document.getElementById('loading');
         
         try {
+            if (!Array.isArray(walkData)) {
+                throw new Error('Walk data is not properly formatted');
+            }
+
             const store = createWalkStore();
             const root = document.getElementById('root');
 
@@ -248,6 +261,7 @@
         }
     };
 
+    // Start the app
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initApp);
     } else {
