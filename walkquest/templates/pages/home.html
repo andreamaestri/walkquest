@@ -34,9 +34,15 @@
                 }{% if not forloop.last %},{% endif %}
             {% endfor %}
         ],
-        mapboxToken: "{{ mapbox_token }}",
+        mapboxToken: "{{ mapbox_token|default:'' }}",
         featureIcons: {{ feature_icons|safe }}
     };
+
+    // Validate required data
+    if (!window.APP_DATA.mapboxToken) {
+        console.error('Mapbox token is missing');
+        document.getElementById('loading').innerHTML = '<div class="text-red-600">Error: Map configuration is incomplete</div>';
+    }
     
     // Debug log
     console.log('Initial APP_DATA:', window.APP_DATA);
@@ -60,92 +66,165 @@
     import { createVirtualizer } from "https://cdn.skypack.dev/@tanstack/solid-virtual";
     import mapboxgl from "https://cdn.skypack.dev/mapbox-gl";
 
-    // Debounce function
+    // Utility Functions
     const debounce = (fn, ms) => {
-        let timer;
+        let timeoutId;
         return (...args) => {
-            clearTimeout(timer);
-            timer = setTimeout(() => fn(...args), ms);
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => fn(...args), ms);
         };
     };
 
-    // Map Constants
-    const MAPBOX_STYLE = 'mapbox://styles/mapbox/outdoors-v12';
-    const DEFAULT_CENTER = [-4.85, 50.40]; // Cornwall coordinates
-    const DEFAULT_ZOOM = 9;
-
-    // Map Styles
-    const CIRCLE_STYLE = {
-        'circle-radius': 8,
-        'circle-color': '#4F46E5', // Indigo color
-        'circle-stroke-width': 2,
-        'circle-stroke-color': '#fff'
+    const safeExecute = (fn, fallback = null) => {
+        try {
+            return fn();
+        } catch (error) {
+            console.error('Operation failed:', error);
+            return fallback;
+        }
     };
 
-    // Marker Colors
-    const MARKER_COLORS = {
-        default: '#4F46E5',
-        selected: '#DC2626'
+    // Constants
+    const UI_STATES = {
+        LOADING: 'loading',
+        ERROR: 'error',
+        EMPTY: 'empty',
+        READY: 'ready'
     };
 
-    // Use data from window.APP_DATA
+    const LIST_CONFIG = {
+        itemSize: 92,
+        overscan: 5,
+        debounceMs: 300,
+        loadingItems: 3
+    };
+
+    const MAP_CONFIG = {
+        style: 'mapbox://styles/mapbox/outdoors-v12',
+        defaultCenter: [-4.85, 50.40],
+        defaultZoom: 9,
+        markerColors: {
+            default: '#4F46E5',
+            selected: '#DC2626'
+        }
+    };
+
+    // Extract configuration from window.APP_DATA
     const { walks: initialWalks, mapboxToken, featureIcons } = window.APP_DATA;
 
-    // Configure Mapbox
-    mapboxgl.accessToken = mapboxToken;
+    // Validate configuration before proceeding
+    const validateConfig = () => {
+        const required = ['mapboxToken', 'walks'];
+        const missing = required.filter(key => !window.APP_DATA?.[key]);
+        
+        if (missing.length > 0) {
+            throw new Error(`Missing required configuration: ${missing.join(', ')}`);
+        }
+        
+        if (!Array.isArray(window.APP_DATA.walks)) {
+            throw new Error('Invalid walks data format');
+        }
+        
+        return true;
+    };
 
-    // New Configuration Constants
-    const APP_CONFIG = {
-        map: {
-            style: 'mapbox://styles/mapbox/outdoors-v12',
-            defaultCenter: [-4.85, 50.40],
-            defaultZoom: 9,
-            markerColors: {
-                default: '#4F46E5',
-                selected: '#DC2626'
-            }
+    // Set Mapbox token globally after validation
+    if (validateConfig()) {
+        mapboxgl.accessToken = window.APP_DATA.mapboxToken;
+    }
+
+    // Constants and Configuration
+    const UI_STATES = {
+        LOADING: 'loading',
+        ERROR: 'error',
+        EMPTY: 'empty',
+        READY: 'ready'
+    };
+
+    const LIST_CONFIG = {
+        itemSize: 92,
+        overscan: 5,
+        debounceMs: 300,
+        loadingItems: 3
+    };
+
+    const MAP_CONFIG = {
+        style: 'mapbox://styles/mapbox/outdoors-v12',
+        defaultCenter: [-4.85, 50.40],
+        defaultZoom: 9,
+        markerColors: {
+            default: '#4F46E5',
+            selected: '#DC2626'
         }
     };
 
-    // Store Creation with Validation
+    // Enhanced Store Creation
     function createWalkStore() {
-        if (!Array.isArray(initialWalks)) {
-            console.error('Invalid initial walks data:', initialWalks);
-        }
-        
-        const [isLoading, setIsLoading] = createSignal(true);
-        const [walks, setWalks] = createSignal(initialWalks || []);
+        const [uiState, setUiState] = createSignal(UI_STATES.LOADING);
+        const [walks, setWalks] = createSignal([]);
         const [selectedWalk, setSelectedWalk] = createSignal(null);
         const [searchTerm, setSearchTerm] = createSignal('');
         const [sidebarOpen, setSidebarOpen] = createSignal(true);
+        const [error, setError] = createSignal(null);
+        const [isLoading, setIsLoading] = createSignal(true); // Add loading signal
 
         const filteredWalks = createMemo(() => {
             const items = walks();
-            const search = searchTerm().toLowerCase();
+            const search = searchTerm().toLowerCase().trim();
             return !search ? items : items.filter(walk => 
-                walk?.walk_name?.toLowerCase().includes(search)
+                walk?.walk_name?.toLowerCase().includes(search) || 
+                walk?.description?.toLowerCase().includes(search)
             );
         });
 
-        // Initialize store
+        // Initialize store with validation
         setTimeout(() => {
-            console.log('Setting initial loading state false');
-            setIsLoading(false);
+            try {
+                const walks = window.APP_DATA.walks;
+                if (!Array.isArray(walks)) {
+                    throw new Error('Invalid walks data format');
+                }
+                setWalks(walks);
+                setUiState(walks.length ? UI_STATES.READY : UI_STATES.EMPTY);
+                setIsLoading(false);
+            } catch (err) {
+                setError(err.message);
+                setUiState(UI_STATES.ERROR);
+                setIsLoading(false);
+            }
         }, 0);
 
         return {
+            uiState,
             walks,
             selectedWalk,
             searchTerm,
             sidebarOpen,
+            error,
             filteredWalks,
-            isLoading,
-            setIsLoading,
-            toggleSidebar: () => setSidebarOpen(prev => !prev),
-            setSearchTerm,
+            isLoading, // Expose isLoading signal
+            setSearchTerm: (term) => {
+                batch(() => {
+                    setSearchTerm(term);
+                    if (selectedWalk()) setSelectedWalk(null);
+                });
+            },
             selectWalk: (walkId) => {
                 const walk = walks().find(w => w.id === walkId);
                 setSelectedWalk(walk);
+            },
+            toggleSidebar: () => setSidebarOpen(prev => !prev),
+            reset: () => {
+                batch(() => {
+                    setSearchTerm('');
+                    setSelectedWalk(null);
+                    setError(null);
+                    setUiState(UI_STATES.LOADING);
+                    setIsLoading(true);
+                    setWalks(initialWalks);
+                    setUiState(initialWalks.length ? UI_STATES.READY : UI_STATES.EMPTY);
+                    setIsLoading(false);
+                });
             }
         };
     }
@@ -422,15 +501,15 @@
         // Initialize map
         const initializeMap = () => {
             try {
-                if (!mapboxToken) {
+                if (!window.APP_DATA.mapboxToken) {
                     throw new Error('Mapbox token is missing');
                 }
 
                 mapInstance = new mapboxgl.Map({
                     container: mapContainer,
-                    style: MAPBOX_STYLE,
-                    center: DEFAULT_CENTER,
-                    zoom: DEFAULT_ZOOM
+                    style: MAP_CONFIG.style,
+                    center: MAP_CONFIG.defaultCenter,
+                    zoom: MAP_CONFIG.defaultZoom
                 });
 
                 mapInstance.on('load', () => {
@@ -549,15 +628,9 @@
         try {
             console.log('Starting app initialization');
             
-            if (!mapboxToken) {
-                throw new Error('Mapbox token is not configured');
-            }
+            // Validate configuration first
+            validateConfig();
             
-            if (!Array.isArray(initialWalks)) {
-                console.error('Initial walks data:', initialWalks);
-                throw new Error('Invalid walk data');
-            }
-
             console.log('Creating store...');
             const store = createWalkStore();
             
