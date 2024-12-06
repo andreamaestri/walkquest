@@ -94,37 +94,27 @@ class HomePageView(ListView):
         """Return list of walks as dictionaries."""
         return [WalkDataService(walk).to_dict() for walk in self.get_queryset()]
 
-    def prepare_json_data(self):
-        """Prepare JSON responses for template."""
-        walks_data = self.walks_data()
-        
-        return {
-            'walks': JsonResponse(walks_data, safe=False).content.decode('utf-8'),
-            'marker_icons': JsonResponse(
-                WalkFeatures.get_icon_urls(self.request)
-            ).content.decode('utf-8'),
-            'feature_icons': JsonResponse(
-                WalkFeatures.get_icon_mappings()
-            ).content.decode('utf-8'),
-            'available_features': JsonResponse(
-                sorted(WalkFeatures.FEATURE_ICONS.keys()), 
-                safe=False
-            ).content.decode('utf-8')
-        }
-
     def get_context_data(self, **kwargs):
         """Prepare context data for template."""
         context = super().get_context_data(**kwargs)
+        walks_data = self.walks_data()
         
-        json_data = self.prepare_json_data()
+        print("Debug - Walks data:", walks_data)  # Debug line
         
         context.update({
-            'walks_json': json_data['walks'],
-            'marker_icons_json': json_data['marker_icons'],
-            'feature_icons_json': json_data['feature_icons'],
-            'available_features_json': json_data['available_features'],
+            'walks_json': JsonResponse(walks_data, safe=False).content.decode('utf-8'),
+            'marker_icons_json': JsonResponse(
+                WalkFeatures.get_icon_urls(self.request)
+            ).content.decode('utf-8'),
+            'feature_icons_json': JsonResponse(
+                WalkFeatures.get_icon_mappings()
+            ).content.decode('utf-8'),
+            'available_features_json': JsonResponse(
+                sorted(WalkFeatures.FEATURE_ICONS.keys()), 
+                safe=False
+            ).content.decode('utf-8'),
             'mapbox_token': settings.MAPBOX_TOKEN,
-            'walks': self.walks_data(),
+            'walks': walks_data,
             'marker_icons': WalkFeatures.get_icon_urls(self.request),
             'feature_icons': WalkFeatures.get_icon_mappings(),
             'available_features': sorted(WalkFeatures.FEATURE_ICONS.keys())
