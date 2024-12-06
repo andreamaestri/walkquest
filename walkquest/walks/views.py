@@ -90,19 +90,13 @@ class HomePageView(ListView):
         """Get walks with valid coordinates."""
         return Walk.objects.exclude(latitude=None, longitude=None)
 
-    def walks_data(self):
-        """Return list of walks as dictionaries."""
-        return [WalkDataService(walk).to_dict() for walk in self.get_queryset()]
-
     def get_context_data(self, **kwargs):
         """Prepare context data for template."""
         context = super().get_context_data(**kwargs)
         context.update({
-            'walks_json': self.walks_data(),
-            'marker_icons_json': WalkFeatures.get_icon_urls(self.request),
-            'feature_icons_json': WalkFeatures.get_icon_mappings(),
-            'available_features_json': sorted(WalkFeatures.FEATURE_ICONS.keys()),
+            'walks': self.get_queryset(),  # Direct queryset
             'mapbox_token': settings.MAPBOX_TOKEN,
+            'feature_icons': WalkFeatures.get_icon_mappings(),
         })
         return context
 
