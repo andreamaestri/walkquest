@@ -41,53 +41,7 @@
     
     {# JavaScript Dependencies #}
     {% block javascript %}
-    <script type="importmap">
-    {
-        "imports": {
-            "solid-js": "https://cdn.skypack.dev/solid-js@1.9.3",
-            "solid-js/web": "https://cdn.skypack.dev/solid-js@1.9.3/web",
-            "@iconify/iconify": "https://cdn.skypack.dev/@iconify/iconify@3.1.1",
-            "iconify-icon": "https://cdn.skypack.dev/iconify-icon@2.1.0",
-            "mapbox-gl": "https://cdn.skypack.dev/mapbox-gl@3.8.0"
-        }
-    }
-    </script>
-
-    <script type="module">
-      // Initialize dependencies
-      window.depsLoaded = new Promise(async (resolve, reject) => {
-          try {
-              const [solid, solidWeb, iconify, mapboxgl] = await Promise.all([
-                  import('solid-js'),
-                  import('solid-js/web'),
-                  import('@iconify/iconify'),
-                  import('mapbox-gl')
-              ]);
-
-              // Set up global SolidJS object
-              window.solidJs = {
-                  ...solid,
-                  ...solidWeb,
-                  createSignal: solid.createSignal,
-                  createEffect: solid.createEffect,
-                  onMount: solid.onMount,
-                  onCleanup: solid.onCleanup,
-                  render: solidWeb.render
-              };
-
-              window.mapboxgl = mapboxgl.default;
-              window.Iconify = iconify.default;
-
-              await import('iconify-icon');
-              
-              console.log('Dependencies loaded successfully');
-              resolve();
-          } catch (error) {
-              console.error('Failed to load dependencies:', error);
-              reject(error);
-          }
-      });
-    </script>
+    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
 
     {{ form.media }}
 

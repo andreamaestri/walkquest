@@ -6,6 +6,8 @@ from django.http import JsonResponse
 from django.shortcuts import render
 from django.templatetags.static import static
 from django.views.generic import ListView
+from django.core.serializers.json import DjangoJSONEncoder
+import json
 
 from .models import Walk
 
@@ -93,11 +95,21 @@ class HomePageView(ListView):
     def get_context_data(self, **kwargs):
         """Prepare context data for template."""
         context = super().get_context_data(**kwargs)
+        
+        # Debug print
+        walks = self.get_queryset()
+        print(f"Number of walks: {walks.count()}")
+        
         context.update({
-            'walks': self.get_queryset(),  # Direct queryset
+            'walks': walks,
             'mapbox_token': settings.MAPBOX_TOKEN,
             'feature_icons': WalkFeatures.get_icon_mappings(),
         })
+        
+        # Debug print context
+        print("Context keys:", context.keys())
+        print("Mapbox token present:", bool(context.get('mapbox_token')))
+        
         return context
 
 
