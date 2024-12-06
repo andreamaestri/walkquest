@@ -106,9 +106,9 @@
 
     const SidebarComponent = (props) => {
         return html`
-            <div class="absolute top-12 ${() => props.store.sidebarOpen() ? 'left-0' : '-left-96'} 
-                        w-96 h-[calc(100vh-3rem)] bg-white shadow-lg transition-all duration-300
-                        flex flex-col">
+            <div class="absolute top-12 ${() => props.store.sidebarOpen() ? 'left-4' : '-left-96'} 
+                        w-[400px] h-[calc(100vh-4rem)] bg-white shadow-lg rounded-lg mt-4
+                        transition-all duration-300 flex flex-col z-10">
                 <div class="p-4 border-b">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-xl font-bold">Available Walks</h2>
@@ -130,7 +130,7 @@
             </div>
             ${() => !props.store.sidebarOpen() && html`
                 <button onclick=${() => props.store.toggleSidebar()}
-                        class="absolute top-16 left-4 p-2 bg-white rounded-full shadow-lg">
+                        class="absolute top-16 left-4 p-2 bg-white rounded-full shadow-lg z-10">
                     <iconify-icon icon="mdi:chevron-right"></iconify-icon>
                 </button>
             `}
@@ -249,13 +249,13 @@
 
         return html`
             <div ref=${el => { mapRef = el; }}
-                 class="fixed inset-0 top-12 bg-gray-100"></div>
+                 class="fixed inset-0 top-12 bg-gray-100 w-full"></div>
         `;
     };
 
     const App = (props) => {
         return html`
-            <div class="h-screen w-screen relative">
+            <div class="h-screen w-screen relative overflow-hidden">
                 ${() => MapComponent({ store: props.store })}
                 ${() => SidebarComponent({ store: props.store })}
             </div>
