@@ -84,3 +84,24 @@ CELERY_TASK_ALWAYS_EAGER = True
 CELERY_TASK_EAGER_PROPAGATES = True
 # Your stuff...
 # ------------------------------------------------------------------------------
+# CORS settings for local development
+# ------------------------------------------------------------------------------
+CORS_ALLOW_ALL_ORIGINS = True  # Only use in development!
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+CORS_ALLOW_HEADERS = ['*']
+
+# Ensure CORS middleware is included and in correct order
+if "corsheaders.middleware.CorsMiddleware" not in MIDDLEWARE:
+    # Insert CorsMiddleware before CommonMiddleware
+    MIDDLEWARE.insert(
+        MIDDLEWARE.index("django.middleware.common.CommonMiddleware"), 
+        "corsheaders.middleware.CorsMiddleware"
+    )

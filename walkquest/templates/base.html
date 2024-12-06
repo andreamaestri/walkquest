@@ -1,21 +1,20 @@
-{% load static i18n compress%}<!DOCTYPE html>
+{% load static i18n compress %}
+<!DOCTYPE html>
 {% get_current_language as LANGUAGE_CODE %}
 <html lang="{{ LANGUAGE_CODE }}">
   <head>
     <meta charset="utf-8" />
     <meta http-equiv="x-ua-compatible" content="ie=edge" />
     <title>
-      {% block title %}
-      walkquest
-      {% endblock title %}
+      {% block title %}walkquest{% endblock title %}
     </title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Walk in the quest!" />
     <meta name="author" content="Andrea Maestri" />
     <link rel="icon" href="{% static 'images/favicons/favicon.ico' %}" />
     
+    {# CSS Section #}
     {% block css %}
-    <!-- Use latest Tailwind CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -34,93 +33,72 @@
     </script>
     {% compress css %}
     <link href="{% static 'css/project.css' %}" rel="stylesheet" />
+    <link href="{% static 'css/sidebar.css' %}" rel="stylesheet" />
     {% endcompress %}
 
-    <!-- Mapbox CSS must be after our custom CSS -->
     <link href='https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.css' rel='stylesheet' />
     {% endblock css %}
     
+    {# JavaScript Dependencies #}
     {% block javascript %}
-    <script>
-        window.depsLoaded = {
-            solidJs: false,
-            mapboxGl: false,
-            iconify: false
-        };
-    </script>
-
-    <!-- Import map for module resolution -->
     <script type="importmap">
     {
         "imports": {
-            "@iconify/iconify": "https://cdn.skypack.dev/pin/@iconify/iconify@v3.1.1-0yaXkPRv6tboGyYj5XBb/mode=imports,min/optimized/@iconify/iconify.js",
-            "@iconify/iconify/dist/iconify-icon.js": "https://cdn.skypack.dev/pin/iconify-icon@v2.1.0-hCuXQ4lfcIGup0HG0uzA/mode=imports,min/optimized/iconify-icon.js",
-            "solid-js": "https://cdn.skypack.dev/pin/solid-js@v1.9.3-njmOkbMyeeeOXt20oIXx/mode=imports,min/optimized/solid-js.js",
-            "mapbox-gl": "https://cdn.skypack.dev/pin/mapbox-gl@v3.8.0-WVQL1rs6ltvwDAyZCScj/mode=imports,min/optimized/mapbox-gl.js"
+            "solid-js": "https://cdn.skypack.dev/solid-js@1.9.3",
+            "solid-js/web": "https://cdn.skypack.dev/solid-js@1.9.3/web",
+            "@iconify/iconify": "https://cdn.skypack.dev/@iconify/iconify@3.1.1",
+            "iconify-icon": "https://cdn.skypack.dev/iconify-icon@2.1.0",
+            "mapbox-gl": "https://cdn.skypack.dev/mapbox-gl@3.8.0"
         }
     }
     </script>
 
     <script type="module">
-        // Create a Promise that resolves when dependencies are loaded
-        window.depsReady = new Promise((resolve, reject) => {
-            try {
-                const loadModules = async () => {
-                    try {
-                        // Import modules directly to ensure proper initialization
-                        const [{ default: Iconify }, solidJsModule, mapboxModule] = await Promise.all([
-                            import('@iconify/iconify'),
-                            import('solid-js'),
-                            import('mapbox-gl')
-                        ]);
+      // Initialize dependencies
+      window.depsLoaded = new Promise(async (resolve, reject) => {
+          try {
+              const [solid, solidWeb, iconify, mapboxgl] = await Promise.all([
+                  import('solid-js'),
+                  import('solid-js/web'),
+                  import('@iconify/iconify'),
+                  import('mapbox-gl')
+              ]);
 
-                        // Set global objects with proper initialization
-                        window.Iconify = Iconify;
-                        // Expose all SolidJS exports
-                        window.solidJs = {
-                            createSignal: solidJsModule.createSignal,
-                            createEffect: solidJsModule.createEffect,
-                            onMount: solidJsModule.onMount,
-                            onCleanup: solidJsModule.onCleanup
-                        };
-                        window.mapboxgl = mapboxModule.default || mapboxModule;
+              // Set up global SolidJS object
+              window.solidJs = {
+                  ...solid,
+                  ...solidWeb,
+                  createSignal: solid.createSignal,
+                  createEffect: solid.createEffect,
+                  onMount: solid.onMount,
+                  onCleanup: solid.onCleanup,
+                  render: solidWeb.render
+              };
 
-                        // Verify dependencies are loaded
-                        if (!window.solidJs?.createSignal) {
-                            throw new Error('SolidJS not properly initialized');
-                        }
-                        if (!window.mapboxgl?.Map) {
-                            throw new Error('Mapbox GL JS not properly initialized');
-                        }
+              window.mapboxgl = mapboxgl.default;
+              window.Iconify = iconify.default;
 
-                        // Load Iconify component last
-                        await import('@iconify/iconify/dist/iconify-icon.js');
-
-                        console.log('Dependencies loaded successfully');
-                        resolve();
-                    } catch (error) {
-                        console.error('Module loading error:', error);
-                        reject(error);
-                    }
-                };
-
-                loadModules();
-            } catch (error) {
-                console.error('Critical loading error:', error);
-                reject(error);
-            }
-        });
+              await import('iconify-icon');
+              
+              console.log('Dependencies loaded successfully');
+              resolve();
+          } catch (error) {
+              console.error('Failed to load dependencies:', error);
+              reject(error);
+          }
+      });
     </script>
 
     {{ form.media }}
-    <script src="{% static 'tinymce/tinymce.min.js' %}"></script>
 
     {% compress js %}
     <script defer src="{% static 'js/project.js' %}"></script>
     {% endcompress %}
     {% endblock javascript %}
   </head>
+
   <body class="bg-gray-100">
+    {# Navigation #}
     <nav class="bg-white shadow-sm fixed top-0 left-0 right-0 z-50">
         <div class="max-w-7xl mx-auto px-4">
             <div class="flex justify-between h-12">
@@ -132,33 +110,41 @@
                 <div class="flex items-center">
                     {% if request.user.is_authenticated %}
                         <a href="{% url 'users:detail' request.user.username %}" 
-                           class="px-4 py-1.5 rounded text-sm font-medium text-primary hover:bg-blue-50">Profile</a>
+                           class="px-4 py-1.5 rounded text-sm font-medium text-primary hover:bg-blue-50">
+                           Profile
+                        </a>
                         <a href="{% url 'account_logout' %}" 
-                           class="px-4 py-1.5 rounded text-sm font-medium text-primary hover:bg-blue-50">Sign out</a>
+                           class="px-4 py-1.5 rounded text-sm font-medium text-primary hover:bg-blue-50">
+                           Sign out
+                        </a>
                     {% else %}
                         <a href="{% url 'account_login' %}" 
-                           class="px-4 py-1.5 rounded text-sm font-medium text-primary hover:bg-blue-50">Sign in</a>
+                           class="px-4 py-1.5 rounded text-sm font-medium text-primary hover:bg-blue-50">
+                           Sign in
+                        </a>
                     {% endif %}
                 </div>
             </div>
         </div>
     </nav>
 
+    {# Main Content #}
     {% block body %}
-    {% if messages %}
-    {% for message in messages %}
-    <div class="relative px-4 py-3 {% if message.tags %}{% if message.tags == 'success' %}bg-green-100 text-green-700{% elif message.tags == 'error' %}bg-red-100 text-red-700{% elif message.tags == 'info' %}bg-blue-100 text-blue-700{% elif message.tags == 'warning' %}bg-yellow-100 text-yellow-700{% endif %}{% endif %} rounded mb-4">
-        {{ message }}
-        <button type="button" class="absolute top-0 right-0 px-4 py-3" onclick="this.parentElement.remove()">
-          <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" fill-rule="evenodd"></path>
-          </svg>
-        </button>
-    </div>
-    {% endfor %}
-    {% endif %}
-    {% block content %}{% endblock content %}
+      {% if messages %}
+        {% for message in messages %}
+          <div class="relative px-4 py-3 {% if message.tags %}{% if message.tags == 'success' %}bg-green-100 text-green-700{% elif message.tags == 'error' %}bg-red-100 text-red-700{% elif message.tags == 'info' %}bg-blue-100 text-blue-700{% elif message.tags == 'warning' %}bg-yellow-100 text-yellow-700{% endif %}{% endif %} rounded mb-4">
+              {{ message }}
+              <button type="button" class="absolute top-0 right-0 px-4 py-3" onclick="this.parentElement.remove()">
+                <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" fill-rule="evenodd"></path>
+                </svg>
+              </button>
+          </div>
+        {% endfor %}
+      {% endif %}
+      {% block content %}{% endblock content %}
     {% endblock body %}
+
     {% block modal %}{% endblock modal %}
     {% block inline_javascript %}{% endblock inline_javascript %}
     {% block extra_js %}{% endblock extra_js %}

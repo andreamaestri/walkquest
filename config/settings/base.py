@@ -1,6 +1,7 @@
 # ruff: noqa: ERA001, E501
 """Base settings to build other settings files upon."""
 
+import mimetypes
 import ssl
 from pathlib import Path
 
@@ -150,7 +151,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # https://docs.djangoproject.com/en/dev/ref/settings/#middleware
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "corsheaders.middleware.CorsMiddleware",  # Add this line before CommonMiddleware
+    "corsheaders.middleware.CorsMiddleware", 
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
@@ -175,6 +176,8 @@ STATICFILES_FINDERS = [
     "django.contrib.staticfiles.finders.FileSystemFinder",
     "django.contrib.staticfiles.finders.AppDirectoriesFinder",
 ]
+
+mimetypes.add_type("application/javascript", ".js", True)
 
 # MEDIA
 # ------------------------------------------------------------------------------
@@ -339,8 +342,8 @@ SOCIALACCOUNT_FORMS = {"signup": "walkquest.users.forms.UserSocialSignupForm"}
 # ------------------------------------------------------------------------------
 # https://django-compressor.readthedocs.io/en/latest/quickstart/#installation
 INSTALLED_APPS += ["compressor"]
-COMPRESS_ENABLED = False
-COMPRESS_OFFLINE = True
+COMPRESS_ENABLED = True
+
 STATICFILES_FINDERS = [
     'django.contrib.staticfiles.finders.FileSystemFinder',
     'django.contrib.staticfiles.finders.AppDirectoriesFinder',

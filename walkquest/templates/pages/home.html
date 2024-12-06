@@ -1,378 +1,257 @@
 {% extends "base.html" %}
 {% load static %}
-{% load walk_tags %}
+
+{% block title %}Walks - {{ block.super }}{% endblock %}
 
 {% block content %}
-<div class="h-screen w-screen relative">
-    <div id="map" class="fixed top-12 left-0 right-0 bottom-0 w-full" role="application" aria-label="Map showing walks in Cornwall"></div>
-    <div id="sidebar" class="absolute top-16 left-4 bg-white p-4 rounded-lg shadow-lg w-[400px] max-h-[calc(100vh-5rem)] overflow-y-auto" role="complementary" aria-label="Available walks">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-bold">Available Walks</h2>
-            <button class="p-2 hover:bg-gray-100 rounded-full" onclick="toggleSidebar()" aria-label="Toggle sidebar">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-            </button>
-        </div>
-        <div id="walks-list" role="list">
-            {% for walk in walks %}
-            <div class="walk-item mb-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer" 
-                role="listitem"
-                onclick="highlightWalk({{ walk.id }})"
-                tabindex="0">
-                <h3 class="font-bold">{{ walk.walk_name }}</h3>
-                <p class="text-sm text-gray-600">{{ walk.description }}</p>
-                <div class="flex gap-2 mt-2">
-                    {% for feature in walk.features %}
-                        {% with icon=feature_icons|get_item:feature %}
-                        <iconify-icon icon="{{ icon }}" width="16" height="16" class="text-gray-600" aria-label="{{ feature }}"></iconify-icon>
-                        {% endwith %}
-                    {% endfor %}
-                </div>
-            </div>
-            {% endfor %}
-        </div>
+<div id="root" class="h-screen w-screen relative">
+    <div id="loading" class="fixed inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <span class="ml-3">Loading...</span>
     </div>
 </div>
 {% endblock %}
 
 {% block inline_javascript %}
 <script type="module">
-    // Initialize data from Django context using JsonResponse
-    const WALKS_DATA = {{ walks_json|safe }};
-    const MARKER_ICONS = {{ marker_icons_json|safe }};
-    const FEATURE_ICONS = {{ feature_icons_json|safe }};
-    
-    // Convert walks to GeoJSON
-    const walksGeoJSON = {
-        type: 'FeatureCollection',
-        features: WALKS_DATA.map(walk => ({
-            type: 'Feature',
-            geometry: {
-                type: 'Point',
-                coordinates: [walk.longitude, walk.latitude]
+    import { createSignal, createEffect, onCleanup, onMount } from "https://cdn.skypack.dev/solid-js@1.9.3";
+    import { render } from "https://cdn.skypack.dev/solid-js@1.9.3/web";
+    import html from "https://cdn.skypack.dev/solid-js@1.9.3/html";
+
+    // Initialize data from Django context
+    const walkData = {{ walks_json|safe }};
+    const markerIcons = {{ marker_icons_json|safe }};
+    const featureIcons = {{ feature_icons_json|safe }};
+    const availableFeatures = {{ available_features_json|safe }};
+    const mapboxToken = '{{ mapbox_token|escapejs }}';
+
+    function createWalkStore() {
+        const [walks, setWalks] = createSignal(walkData);
+        const [selectedWalk, setSelectedWalk] = createSignal(null);
+        const [searchTerm, setSearchTerm] = createSignal('');
+        const [sidebarOpen, setSidebarOpen] = createSignal(true);
+
+        return {
+            walks,
+            selectedWalk,
+            searchTerm,
+            sidebarOpen,
+            toggleSidebar: () => setSidebarOpen(!sidebarOpen()),
+            filteredWalks: () => {
+                const search = searchTerm().toLowerCase();
+                return walks().filter(walk => 
+                    walk.walk_name.toLowerCase().includes(search) || 
+                    walk.description.toLowerCase().includes(search)
+                );
             },
-            properties: {
-                id: walk.id,
-                title: walk.walk_name,
-                description: walk.description,
-                primaryFeature: walk.features?.[0] || 'default',
-                features: walk.features || []
+            setSearchTerm: (value) => setSearchTerm(value),
+            selectWalk: (walkId) => {
+                const walk = walks().find(w => w.id === walkId);
+                setSelectedWalk(walk);
             }
-        }))
-    };
-
-    // Store GeoJSON globally
-    window.walks = walksGeoJSON;
-
-    // Add a function to calculate cluster colors before map initialization
-    function getClusterColor(features) {
-        // Count features in cluster
-        const featureCounts = features.reduce((acc, feature) => {
-            const primaryFeature = feature.properties.primaryFeature;
-            acc[primaryFeature] = (acc[primaryFeature] || 0) + 1;
-            return acc;
-        }, {});
-        
-        // Get dominant feature
-        const dominantFeature = Object.entries(featureCounts)
-            .sort((a, b) => b[1] - a[1])[0][0];
-        
-        // Feature color mapping
-        const featureColors = {
-            coastal: '#0EA5E9',    // Sky blue
-            woodland: '#22DA6C',   // Green
-            historic: '#B72903',   // Purple
-            pub: '#FD4000',        // Red
-            family_friendly: '#FFF233', // Pink
-            dog_friendly: '#B91076',    // Orange
-            circular: '#D1DEDC',   // Cyan
-            scenic: '#9CFC00',     // Emerald
-            cafe: '#E9A926',       // Indigo
-            wildlife: '#7E00E7',   // Lime
-            accessible: '#0CF8E2', // Teal
-            default: '#6B7280'     // Gray
         };
-        
-        return featureColors[dominantFeature] || featureColors.default;
     }
 
-    window.depsReady.then(async () => {
-        const map = new mapboxgl.Map({
-            container: 'map',
-            style: 'mapbox://styles/andreamaestri/cm48d1bek014q01sielm24odq?optimize=true',
-            accessToken: '{{ mapbox_token|escapejs }}',
-            center: [-4.85, 50.40],
-            zoom: 9,
-        });
+    const WalkCard = ({ walk, store }) => {
+        const handleClick = () => store.selectWalk(walk.id);
+        
+        return html`
+            <div class="walk-card ${store.selectedWalk()?.id === walk.id ? 'bg-blue-50' : 'bg-white'} 
+                        p-4 rounded-lg shadow hover:shadow-lg transition-all cursor-pointer"
+                 onclick=${handleClick}>
+                <h3 class="font-bold text-lg">${walk.walk_name}</h3>
+                <p class="text-sm text-gray-600 mt-2">${walk.description}</p>
+                <div class="flex flex-wrap gap-2 mt-3">
+                    ${(walk.features || []).map(feature => html`
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                            <iconify-icon icon="${featureIcons[feature]}" class="mr-1"></iconify-icon>
+                            ${feature}
+                        </span>
+                    `)}
+                </div>
+                <div class="mt-2 text-sm text-gray-500">
+                    ${walk.distance ? `${walk.distance} miles • ${walk.duration}` : 'Distance not specified'}
+                </div>
+            </div>
+        `;
+    };
 
-        map.on('load', async () => {
-            // Load marker images
-            await Promise.all(
-                Object.entries(MARKER_ICONS).map(([feature, url]) => 
-                    new Promise((resolve, reject) => {
-                        const imageId = `marker-${feature}`;
-                        if (map.hasImage(imageId)) {
-                            resolve();
-                            return;
-                        }
-                        map.loadImage(url, (error, image) => {
-                            if (error) reject(error);
-                            else {
-                                map.addImage(imageId, image);
-                                resolve();
-                            }
-                        });
-                    })
-                )
-            ).catch(console.error);
+    const SidebarComponent = ({ store }) => {
+        const handleSearchInput = (event) => store.setSearchTerm(event.target.value);
+        const handleToggle = () => store.toggleSidebar();
 
-            // Update source with adjusted clustering
+        return html`
+            <div class="absolute top-12 ${store.sidebarOpen() ? 'left-0' : '-left-96'} 
+                        w-96 h-[calc(100vh-3rem)] bg-white shadow-lg transition-all duration-300
+                        flex flex-col">
+                <div class="p-4 border-b">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold">Available Walks</h2>
+                        <button onclick=${handleToggle}
+                                class="p-2 hover:bg-gray-100 rounded-full">
+                            <iconify-icon icon="mdi:chevron-left"></iconify-icon>
+                        </button>
+                    </div>
+                    <input type="text"
+                           class="w-full px-3 py-2 border rounded-lg"
+                           placeholder="Search walks..."
+                           oninput=${handleSearchInput} />
+                </div>
+                <div class="flex-1 overflow-y-auto p-4 space-y-4">
+                    ${() => store.filteredWalks().map(walk => 
+                        WalkCard({ walk, store })
+                    )}
+                </div>
+            </div>
+            ${!store.sidebarOpen() ? html`
+                <button onclick=${handleToggle}
+                        class="absolute top-16 left-4 p-2 bg-white rounded-full shadow-lg">
+                    <iconify-icon icon="mdi:chevron-right"></iconify-icon>
+                </button>
+            ` : null}
+        `;
+    };
+
+    const MapComponent = ({ store }) => {
+        let mapRef;
+        const [mapInstance, setMapInstance] = createSignal(null);
+
+        const initializeLayers = (map) => {
+            const walksGeoJSON = {
+                type: 'FeatureCollection',
+                features: store.walks().map(walk => ({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Point',
+                        coordinates: [walk.longitude, walk.latitude]
+                    },
+                    properties: {
+                        id: walk.id,
+                        title: walk.walk_name,
+                        description: walk.description
+                    }
+                }))
+            };
+
             map.addSource('walks', {
                 type: 'geojson',
                 data: walksGeoJSON,
                 cluster: true,
-                clusterMaxZoom: 11,     // Lower max zoom for clustering
-                clusterRadius: 30,      // Smaller radius to create fewer clusters
-                maxzoom: 16
+                clusterMaxZoom: 14,
+                clusterRadius: 50
             });
 
-            // Update colored dots layer
             map.addLayer({
-                id: 'walk-dots',
+                id: 'clusters',
                 type: 'circle',
                 source: 'walks',
-                maxzoom: 10,            // Show dots until zoom level 10
+                filter: ['has', 'point_count'],
                 paint: {
-                    'circle-color': [
-                        'case',
-                        ['has', 'cluster'],
-                        [
-                            'step',
-                            ['get', 'point_count'],
-                            '#6B7280',  // Default cluster color
-                            2, '#4B5563',  // Slightly darker for larger clusters
-                            4, '#374151'   // Even darker for largest clusters
-                        ],
-                        [
-                            'match',
-                            ['get', 'primaryFeature'],
-                            'coastal', '#0EA5E9',
-                            'woodland', '#22DA6C',
-                            'historic', '#B72903',
-                            // ... rest of your feature colors ...
-                            '#6B7280' // default color
-                        ]
-                    ],
+                    'circle-color': '#4F46E5',
                     'circle-radius': [
-                        'case',
-                        ['has', 'cluster'],
-                        [
-                            'step',
-                            ['get', 'point_count'],
-                            6,     // Smaller base size for clusters
-                            2, 8,  // Smaller size for clusters with 2+ points
-                            4, 10  // Smaller size for clusters with 4+ points
-                        ],
-                        [
-                            'interpolate',
-                            ['linear'],
-                            ['zoom'],
-                            6, 3,  // Smaller at low zoom
-                            8, 4,  // Smaller at mid zoom
-                            10, 6  // Smaller at high zoom
-                        ]
-                    ],
-                    'circle-stroke-width': 1.5,
-                    'circle-stroke-color': '#ffffff',
-                    'circle-stroke-opacity': 0.8,
-                    'circle-opacity': [
-                        'interpolate',
-                        ['linear'],
-                        ['zoom'],
-                        9, 1,     // Start fade out later
-                        10, 0     // Complete fade out later
+                        'step',
+                        ['get', 'point_count'],
+                        20,
+                        10,
+                        30,
+                        30,
+                        40
                     ]
                 }
             });
 
-            // Update markers layer
             map.addLayer({
-                id: 'walks',
-                type: 'symbol',
+                id: 'unclustered-point',
+                type: 'circle',
                 source: 'walks',
                 filter: ['!', ['has', 'point_count']],
-                layout: {
-                    'icon-image': [
-                        'case',
-                        ['has', 'primaryFeature'],
-                        ['concat', 'marker-', ['get', 'primaryFeature']],
-                        'marker-default'
-                    ],
-                    'icon-size': [
-                        'interpolate',
-                        ['linear'],
-                        ['zoom'],
-                        6, 0.15,   // Show smaller icons at lower zoom
-                        8, 0.2,
-                        10, 0.3,
-                        12, 0.4,
-                        14, 0.45
-                    ],
-                    'icon-anchor': 'bottom',
-                    'icon-allow-overlap': true,         // Enable overlap for better performance
-                    'icon-ignore-placement': true,      // Ignore placement conflicts
-                    'text-allow-overlap': false,        // Keep text clean
-                    'text-ignore-placement': false,     // Respect text placement
-                    'text-optional': true,              // Make text optional to prioritize icons
-                    'text-field': ['get', 'title'],
-                    'text-variable-anchor': ['top', 'bottom', 'left', 'right'],
-                    'text-radial-offset': 1.5,          // Slightly increased offset for better readability
-                    'text-justify': 'auto',
-                    'icon-padding': 0,                  // Reduce padding to allow more dense packing
-                    'text-padding': 2,                  // Minimal text padding
-                    'text-size': [
-                        'interpolate',
-                        ['linear'],
-                        ['zoom'],
-                        12, 0,     // No text at lower zooms
-                        13, 12     // Show text at higher zooms
-                    ]
-                },
                 paint: {
-                    'text-color': '#374151',
-                    'text-halo-color': '#ffffff',
-                    'text-halo-width': 1.5,
-                    'text-opacity': [
-                        'interpolate',
-                        ['linear'],
-                        ['zoom'],
-                        12, 0,
-                        13, 1
-                    ]
+                    'circle-color': '#4F46E5',
+                    'circle-radius': 8,
+                    'circle-stroke-width': 2,
+                    'circle-stroke-color': '#fff'
                 }
             });
 
-            // Add click handler for clusters
-            map.on('click', 'walk-dots', (e) => {
-                const features = map.queryRenderedFeatures(e.point, {
-                    layers: ['walk-dots']
-                });
-                
-                if (!features.length) return;
-                
-                const feature = features[0];
-                
-                if (feature.properties.cluster) {
-                    const clusterId = feature.properties.cluster_id;
-                    map.getSource('walks').getClusterExpansionZoom(
-                        clusterId,
-                        (err, zoom) => {
-                            if (err) return;
-                            
-                            map.easeTo({
-                                center: feature.geometry.coordinates,
-                                zoom: zoom
-                            });
-                        }
-                    );
-                } else {
-                    handleFeatureClick(e);
-                }
+            map.on('click', 'unclustered-point', (e) => {
+                if (!e.features.length) return;
+                const { id } = e.features[0].properties;
+                store.selectWalk(id);
+            });
+        };
+
+        onMount(() => {
+            if (!mapRef) return;
+
+            const map = new mapboxgl.Map({
+                container: mapRef,
+                style: 'mapbox://styles/mapbox/outdoors-v12',
+                accessToken: mapboxToken,
+                center: [-4.85, 50.40],
+                zoom: 9,
             });
 
-            // Improved popup
-            const handleFeatureClick = (e) => {
-                const props = e.features[0].properties;
-                const coordinates = e.features[0].geometry.coordinates.slice();
-
-                new mapboxgl.Popup({
-                    closeButton: true,
-                    closeOnClick: false,
-                    maxWidth: '320px',
-                    offset: [0, -5]  // Reduced offset since marker is bottom-anchored
-                })
-                .setLngLat(coordinates)
-                .setHTML(`
-                    <div>
-                        <div class="popup-header">
-                            <h3 class="font-bold text-lg">${props.title}</h3>
-                        </div>
-                        <div class="popup-content">
-                            <p class="text-sm text-gray-600">${props.description}</p>
-                        </div>
-                        <div class="popup-features">
-                            ${props.features.map(f => `
-                                <span class="feature-tag">
-                                    <iconify-icon icon="${FEATURE_ICONS[f]}" width="16" height="16"></iconify-icon>
-                                    ${f.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                                </span>
-                            `).join('')}
-                        </div>
-                    </div>
-                `)
-                .addTo(map);
-            };
-
-            map.on('click', 'walk-dots', handleFeatureClick);
-            map.on('click', 'walks', handleFeatureClick);
-
-            // Update cursor for both layers
-            ['walk-dots', 'walks'].forEach(layer => {
-                map.on('mouseenter', layer, () => {
-                    map.getCanvas().style.cursor = 'pointer';
-                });
-                map.on('mouseleave', layer, () => {
-                    map.getCanvas().style.cursor = '';
-                });
+            map.on('load', () => {
+                setMapInstance(map);
+                initializeLayers(map);
             });
 
-            // Enhanced hover effects
-            let hoveredStateId = null;
-
-            map.on('mouseenter', 'walks', (e) => {
-                map.getCanvas().style.cursor = 'pointer';
-                
-                // Highlight effect for marker
-                if (e.features.length > 0) {
-                    if (hoveredStateId !== null) {
-                        map.setFeatureState(
-                            { source: 'walks', id: hoveredStateId },
-                            { hover: false }
-                        );
-                    }
-                    hoveredStateId = e.features[0].id;
-                    map.setFeatureState(
-                        { source: 'walks', id: hoveredStateId },
-                        { hover: true }
-                    );
-                }
-            });
-
-            map.on('mouseleave', 'walks', () => {
-                map.getCanvas().style.cursor = '';
-                if (hoveredStateId !== null) {
-                    map.setFeatureState(
-                        { source: 'walks', id: hoveredStateId },
-                        { hover: false }
-                    );
-                }
-                hoveredStateId = null;
-            });
+            onCleanup(() => map?.remove());
         });
 
-        window.map = map;
-    });
+        createEffect(() => {
+            const selected = store.selectedWalk();
+            const map = mapInstance();
+            
+            if (selected && map) {
+                map.flyTo({
+                    center: [selected.longitude, selected.latitude],
+                    zoom: 14
+                });
+            }
+        });
 
-    function highlightWalk(walkId) {
-        if (!window.walks?.features || !window.map) return;
-        const feature = window.walks.features.find(f => f.properties.id === walkId);
-        if (feature) {
-            window.map.flyTo({
-                center: feature.geometry.coordinates,
-                zoom: 14
-            });
+        return html`
+            <div ref=${el => { mapRef = el; }}
+                 class="fixed inset-0 top-12 bg-gray-100"></div>
+        `;
+    };
+
+    const App = ({ store }) => {
+        return html`
+            <div class="h-screen w-screen relative">
+                ${MapComponent({ store })}
+                ${SidebarComponent({ store })}
+            </div>
+        `;
+    };
+
+    const initApp = () => {
+        const loadingDiv = document.getElementById('loading');
+        
+        try {
+            const store = createWalkStore();
+            const root = document.getElementById('root');
+
+            if (root) {
+                render(() => App({ store }), root);
+            }
+        } catch (error) {
+            console.error('Failed to initialize app:', error);
+            if (loadingDiv) {
+                loadingDiv.innerHTML = `<div class="text-red-500">Error: ${error.message}</div>`;
+            }
+        } finally {
+            if (loadingDiv) {
+                loadingDiv.classList.add('hidden');
+            }
         }
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initApp);
+    } else {
+        initApp();
     }
 </script>
 {% endblock %}

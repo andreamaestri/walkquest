@@ -1,0 +1,49 @@
+{% load walk_tags %}
+
+<article class="walk-card" 
+         data-walk-id="{{ walk.id }}"
+         data-features="{{ walk.features|as_json }}"
+         data-distance="{{ walk.distance|default:0 }}"
+         data-steepness="{{ walk.steepness_level|default:'NOVICE WANDERER' }}"
+         role="listitem"
+         tabindex="0">
+    
+    <div class="walk-content">
+        <h4 class="walk-title">{{ walk.walk_name|default:"Unnamed Walk" }}</h4>
+        <p class="walk-description">{{ walk.description|default:"No description available"|truncatewords:30 }}</p>
+        
+        <div class="walk-metadata">
+            {% if walk.distance %}
+                <span class="metadata-item">
+                    <iconify-icon icon="mdi:map-marker-distance"></iconify-icon>
+                    {{ walk.distance|floatformat:1 }} miles
+                </span>
+            {% endif %}
+            
+            {% if walk.duration %}
+                <span class="metadata-item">
+                    <iconify-icon icon="mdi:clock-outline"></iconify-icon>
+                    {{ walk.duration }}
+                </span>
+            {% endif %}
+            
+            {% if walk.steepness_level %}
+                <span class="metadata-item steepness-{{ walk.steepness_level|lower|default:'novice' }}">
+                    <iconify-icon icon="mdi:hiking"></iconify-icon>
+                    {{ walk.steepness_level|default:"Novice"|title_with_spaces }}
+                </span>
+            {% endif %}
+        </div>
+        
+        <div class="walk-features" aria-label="Walk features">
+            {% with features=walk.features|default_list %}
+                {% for feature in features %}
+                    <span class="feature-tag" title="{{ feature|title_with_spaces }}">
+                        <iconify-icon icon="{{ feature_icons|get_item:feature }}" aria-hidden="true"></iconify-icon>
+                        <span class="sr-only">{{ feature|title_with_spaces }}</span>
+                    </span>
+                {% endfor %}
+            {% endwith %}
+        </div>
+    </div>
+</article>
