@@ -26,16 +26,14 @@
     const availableFeatures = {{ available_features_json|safe }};
     const mapboxToken = '{{ mapbox_token|escapejs }}';
 
-    // Debug log
-    console.log('Walk data:', walkData);
-    console.log('Marker icons:', markerIcons);
-    console.log('Feature icons:', featureIcons);
+    // Debug the incoming data
+    console.log('Initial data loaded:', { walkData, featureIcons, mapboxToken });
 
     // Configure Mapbox
     mapboxgl.accessToken = mapboxToken;
 
     function createWalkStore() {
-        const [walks, setWalks] = createSignal(walkData);
+        const [walks, setWalks] = createSignal(walkData || []);
         const [selectedWalk, setSelectedWalk] = createSignal(null);
         const [searchTerm, setSearchTerm] = createSignal('');
         const [sidebarOpen, setSidebarOpen] = createSignal(true);
@@ -57,159 +55,188 @@
             selectWalk: (walkId) => {
                 const walk = walks().find(w => w.id === walkId);
                 setSelectedWalk(walk);
+                console.log('Selected walk:', walk);
             }
         };
     }
 
-    const WalkCard = ({ walk, store }) => {
-        const handleClick = () => store.selectWalk(walk.id);
+    const WalkCard = (props) => {
+        const isSelected = () => props.store.selectedWalk()?.id === props.walk.id;
         
         return html`
-            <div class="walk-card ${store.selectedWalk()?.id === walk.id ? 'bg-blue-50' : 'bg-white'} 
+            <div class="walk-card ${() => isSelected() ? 'bg-blue-50' : 'bg-white'} 
                         p-4 rounded-lg shadow hover:shadow-lg transition-all cursor-pointer"
-                 onclick=${handleClick}>
-                <h3 class="font-bold text-lg">${walk.walk_name}</h3>
-                <p class="text-sm text-gray-600 mt-2">${walk.description}</p>
+                 onclick=${() => props.store.selectWalk(props.walk.id)}>
+                <h3 class="font-bold text-lg">${props.walk.walk_name}</h3>
+                <p class="text-sm text-gray-600 mt-2">${props.walk.description}</p>
                 <div class="flex flex-wrap gap-2 mt-3">
-                    ${(walk.features || []).map(feature => html`
+                    ${() => (props.walk.features || []).map(feature => html`
                         <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
                             <iconify-icon icon="${featureIcons[feature]}" class="mr-1"></iconify-icon>
                             ${feature}
                         </span>
-                    `)}
+                    `).join('')}
                 </div>
                 <div class="mt-2 text-sm text-gray-500">
-                    ${walk.distance ? `${walk.distance} miles • ${walk.duration}` : 'Distance not specified'}
+                    ${() => props.walk.distance ? 
+                        html`<span>${props.walk.distance} miles • ${props.walk.duration}</span>` : 
+                        'Distance not specified'}
                 </div>
             </div>
         `;
     };
 
-    const SidebarComponent = ({ store }) => {
-        const handleSearchInput = (event) => store.setSearchTerm(event.target.value);
-        const handleToggle = () => store.toggleSidebar();
+    const SearchInput = (props) => {
+        let inputRef;
+
+        const handleInput = (e) => {
+            e.preventDefault();
+            props.onSearch(e.currentTarget.value);
+        };
 
         return html`
-            <div class="absolute top-12 ${store.sidebarOpen() ? 'left-0' : '-left-96'} 
+            <input type="text"
+                   ref=${el => inputRef = el}
+                   class="w-full px-3 py-2 border rounded-lg"
+                   placeholder="Search walks..."
+                   value=${props.value}
+                   oninput=${handleInput} />
+        `;
+    };
+
+    const SidebarComponent = (props) => {
+        return html`
+            <div class="absolute top-12 ${() => props.store.sidebarOpen() ? 'left-0' : '-left-96'} 
                         w-96 h-[calc(100vh-3rem)] bg-white shadow-lg transition-all duration-300
                         flex flex-col">
                 <div class="p-4 border-b">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-xl font-bold">Available Walks</h2>
-                        <button onclick=${handleToggle}
+                        <button onclick=${() => props.store.toggleSidebar()}
                                 class="p-2 hover:bg-gray-100 rounded-full">
                             <iconify-icon icon="mdi:chevron-left"></iconify-icon>
                         </button>
                     </div>
-                    <input type="text"
-                           class="w-full px-3 py-2 border rounded-lg"
-                           placeholder="Search walks..."
-                           oninput=${handleSearchInput} />
+                    ${SearchInput({
+                        value: props.store.searchTerm(),
+                        onSearch: props.store.setSearchTerm
+                    })}
                 </div>
                 <div class="flex-1 overflow-y-auto p-4 space-y-4">
-                    ${() => store.filteredWalks().map(walk => 
-                        WalkCard({ walk, store })
+                    ${() => props.store.filteredWalks().map(walk => 
+                        WalkCard({ walk, store: props.store })
                     )}
                 </div>
             </div>
-            ${!store.sidebarOpen() ? html`
-                <button onclick=${handleToggle}
+            ${() => !props.store.sidebarOpen() && html`
+                <button onclick=${() => props.store.toggleSidebar()}
                         class="absolute top-16 left-4 p-2 bg-white rounded-full shadow-lg">
                     <iconify-icon icon="mdi:chevron-right"></iconify-icon>
                 </button>
-            ` : null}
+            `}
         `;
     };
 
-    const MapComponent = ({ store }) => {
+    const MapComponent = (props) => {
         let mapRef;
         const [mapInstance, setMapInstance] = createSignal(null);
-
-        const initializeLayers = (map) => {
-            const walksGeoJSON = {
-                type: 'FeatureCollection',
-                features: store.walks().map(walk => ({
-                    type: 'Feature',
-                    geometry: {
-                        type: 'Point',
-                        coordinates: [walk.longitude, walk.latitude]
-                    },
-                    properties: {
-                        id: walk.id,
-                        title: walk.walk_name,
-                        description: walk.description
-                    }
-                }))
-            };
-
-            map.addSource('walks', {
-                type: 'geojson',
-                data: walksGeoJSON,
-                cluster: true,
-                clusterMaxZoom: 14,
-                clusterRadius: 50
-            });
-
-            map.addLayer({
-                id: 'clusters',
-                type: 'circle',
-                source: 'walks',
-                filter: ['has', 'point_count'],
-                paint: {
-                    'circle-color': '#4F46E5',
-                    'circle-radius': [
-                        'step',
-                        ['get', 'point_count'],
-                        20,
-                        10,
-                        30,
-                        30,
-                        40
-                    ]
-                }
-            });
-
-            map.addLayer({
-                id: 'unclustered-point',
-                type: 'circle',
-                source: 'walks',
-                filter: ['!', ['has', 'point_count']],
-                paint: {
-                    'circle-color': '#4F46E5',
-                    'circle-radius': 8,
-                    'circle-stroke-width': 2,
-                    'circle-stroke-color': '#fff'
-                }
-            });
-
-            map.on('click', 'unclustered-point', (e) => {
-                if (!e.features.length) return;
-                const { id } = e.features[0].properties;
-                store.selectWalk(id);
-            });
-        };
 
         onMount(() => {
             if (!mapRef) return;
 
-            const map = new mapboxgl.Map({
-                container: mapRef,
-                style: 'mapbox://styles/mapbox/outdoors-v12',
-                accessToken: mapboxToken,
-                center: [-4.85, 50.40],
-                zoom: 9,
-            });
+            try {
+                const map = new mapboxgl.Map({
+                    container: mapRef,
+                    style: 'mapbox://styles/mapbox/outdoors-v12',
+                    accessToken: mapboxToken,
+                    center: [-4.85, 50.40],
+                    zoom: 9,
+                });
 
-            map.on('load', () => {
-                setMapInstance(map);
-                initializeLayers(map);
-            });
+                map.on('load', () => {
+                    console.log('Map loaded');
+                    setMapInstance(map);
+                    initializeLayers(map);
+                });
 
-            onCleanup(() => map?.remove());
+                onCleanup(() => map?.remove());
+            } catch (error) {
+                console.error('Error initializing map:', error);
+            }
         });
 
+        const initializeLayers = (map) => {
+            try {
+                const walksGeoJSON = {
+                    type: 'FeatureCollection',
+                    features: props.store.walks().map(walk => ({
+                        type: 'Feature',
+                        geometry: {
+                            type: 'Point',
+                            coordinates: [walk.longitude, walk.latitude]
+                        },
+                        properties: {
+                            id: walk.id,
+                            title: walk.walk_name,
+                            description: walk.description
+                        }
+                    }))
+                };
+
+                console.log('Adding walks to map:', walksGeoJSON);
+
+                map.addSource('walks', {
+                    type: 'geojson',
+                    data: walksGeoJSON,
+                    cluster: true,
+                    clusterMaxZoom: 14,
+                    clusterRadius: 50
+                });
+
+                map.addLayer({
+                    id: 'clusters',
+                    type: 'circle',
+                    source: 'walks',
+                    filter: ['has', 'point_count'],
+                    paint: {
+                        'circle-color': '#4F46E5',
+                        'circle-radius': [
+                            'step',
+                            ['get', 'point_count'],
+                            20,
+                            10,
+                            30,
+                            30,
+                            40
+                        ]
+                    }
+                });
+
+                map.addLayer({
+                    id: 'unclustered-point',
+                    type: 'circle',
+                    source: 'walks',
+                    filter: ['!', ['has', 'point_count']],
+                    paint: {
+                        'circle-color': '#4F46E5',
+                        'circle-radius': 8,
+                        'circle-stroke-width': 2,
+                        'circle-stroke-color': '#fff'
+                    }
+                });
+
+                map.on('click', 'unclustered-point', (e) => {
+                    if (!e.features.length) return;
+                    const { id } = e.features[0].properties;
+                    props.store.selectWalk(id);
+                });
+            } catch (error) {
+                console.error('Error initializing map layers:', error);
+            }
+        };
+
         createEffect(() => {
-            const selected = store.selectedWalk();
+            const selected = props.store.selectedWalk();
             const map = mapInstance();
             
             if (selected && map) {
@@ -226,11 +253,11 @@
         `;
     };
 
-    const App = ({ store }) => {
+    const App = (props) => {
         return html`
             <div class="h-screen w-screen relative">
-                ${MapComponent({ store })}
-                ${SidebarComponent({ store })}
+                ${() => MapComponent({ store: props.store })}
+                ${() => SidebarComponent({ store: props.store })}
             </div>
         `;
     };
@@ -239,15 +266,13 @@
         const loadingDiv = document.getElementById('loading');
         
         try {
-            if (!Array.isArray(walkData)) {
-                throw new Error('Walk data is not properly formatted');
-            }
-
+            console.log('Initializing app...');
             const store = createWalkStore();
             const root = document.getElementById('root');
 
             if (root) {
                 render(() => App({ store }), root);
+                console.log('App rendered successfully');
             }
         } catch (error) {
             console.error('Failed to initialize app:', error);
