@@ -12,6 +12,10 @@
     <meta name="description" content="Walk in the quest!" />
     <meta name="author" content="Andrea Maestri" />
     <link rel="icon" href="{% static 'images/favicons/favicon.ico' %}" />
+       
+    <!-- Social sharing -->
+    <meta property="og:title" content="{% block og_title %}{{ block.super }}{% endblock %}">
+    <meta property="og:description" content="Walk in the quest!">
     
     {# CSS Section #}
     {% block css %}
