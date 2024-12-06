@@ -18,18 +18,15 @@
             {% for walk in walks %}
             <div class="walk-item mb-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer" 
                 role="listitem"
-                data-id="{{ walk.id|escape }}" 
-                data-lat="{{ walk.latitude|escape }}" 
-                data-lng="{{ walk.longitude|escape }}" 
-                data-title="{{ walk.title|escape }}" 
-                data-description="{{ walk.description|escape }}" 
-                data-features="{{ walk.features|join:','|escape }}"
+                onclick="highlightWalk({{ walk.id }})"
                 tabindex="0">
-                <h3 class="font-bold">{{ walk.title }}</h3>
+                <h3 class="font-bold">{{ walk.walk_name }}</h3>
                 <p class="text-sm text-gray-600">{{ walk.description }}</p>
                 <div class="flex gap-2 mt-2">
                     {% for feature in walk.features %}
-                    <iconify-icon icon="{{ feature_icons|get_item:feature }}" width="16" height="16" class="text-gray-600" aria-label="{{ feature }}"></iconify-icon>
+                        {% with icon=feature_icons|get_item:feature %}
+                        <iconify-icon icon="{{ icon }}" width="16" height="16" class="text-gray-600" aria-label="{{ feature }}"></iconify-icon>
+                        {% endwith %}
                     {% endfor %}
                 </div>
             </div>
@@ -40,170 +37,138 @@
 {% endblock %}
 
 {% block inline_javascript %}
-<script>
-    // Add ICONIFY_MAPPING constant at the top of the script
-    const ICONIFY_MAPPING = {
-        'Coastal': 'mdi:waves',
-        'Woodland': 'mdi:forest',
-        'Historical': 'mdi:castle',
-        'Family-friendly': 'mdi:human-male-child',
-        'Challenging': 'mdi:hiking',
-        'Scenic': 'mdi:image-filter-hdr',
-        'Accessible': 'mdi:wheelchair-accessibility'
+<script type="module">
+    // Initialize data from Django context using JsonResponse
+    const WALKS_DATA = {{ walks_json|safe }};
+    const MARKER_ICONS = {{ marker_icons_json|safe }};
+    const FEATURE_ICONS = {{ feature_icons_json|safe }};
+    
+    // Convert walks to GeoJSON
+    const walksGeoJSON = {
+        type: 'FeatureCollection',
+        features: WALKS_DATA.map(walk => ({
+            type: 'Feature',
+            geometry: {
+                type: 'Point',
+                coordinates: [walk.longitude, walk.latitude]
+            },
+            properties: {
+                id: walk.id,
+                title: walk.walk_name,
+                description: walk.description,
+                primaryFeature: walk.features?.[0] || 'default',
+                features: walk.features || []
+            }
+        }))
     };
 
-    async function initializeApp() {
-        try {
-            await window.depsReady;
-            if (!window.solidJs?.createSignal) {
-                throw new Error('SolidJS not available');
-            }
-    
-            const { createSignal, createEffect, onMount } = window.solidJs;
-    
-            function MapApp() {
-                const [map, setMap] = createSignal(null);
-    
-                onMount(() => {
-                    if (!window.mapboxgl) {
-                        throw new Error('Mapbox GL JS not available');
-                    }
-    
-                    const mapInstance = new window.mapboxgl.Map({
-                        container: 'map',
-                        style: 'mapbox://styles/andreamaestri/cm48d1bek014q01sielm24odq?optimize=true', 
-                        accessToken: "{{ mapbox_token }}",
-                        center: [-4.85, 50.40],
-                        zoom: 9,
-                        minZoom: 7,
-                        maxZoom: 17,
-                        attributionControl: false
-                    });
-    
-                    mapInstance.on('load', () => {
-                        const walkData = initializeWalkData();
-                        addMarkersToMap(mapInstance, walkData);
-                        setMapBounds(mapInstance);
-                        addMapControls(mapInstance);
-                    });
+    // Store GeoJSON globally
+    window.walks = walksGeoJSON;
 
-                    setMap(mapInstance);
-                });
-            }
-    
-            function addMarkersToMap(mapInstance, walkData) {
-                for (const feature of walkData.features) {
-                    const el = document.createElement('div');
-                    el.className = 'marker';
-                    
-                    const popup = new mapboxgl.Popup({ 
-                        offset: 25, 
-                        closeButton: false, 
-                        maxWidth: '300px' 
-                    }).setHTML(`
-                        <div class="p-3">
-                            <h3 class="font-bold mb-2">${feature.properties.title}</h3>
-                            <p class="text-sm text-gray-600">${feature.properties.description}</p>
-                            <div class="flex gap-2 justify-center mt-2">
-                                ${feature.properties.features.map(feat => {
-                                    const iconName = ICONIFY_MAPPING[feat.trim()];
-                                    return iconName ? `<iconify-icon icon="${iconName}" width="16" height="16"></iconify-icon>` : '';
-                                }).join('')}
+    window.depsReady.then(async () => {
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/andreamaestri/cm48d1bek014q01sielm24odq?optimize=true',
+            accessToken: '{{ mapbox_token|escapejs }}',
+            center: [-4.85, 50.40],
+            zoom: 9,
+        });
+
+        map.on('load', async () => {
+            // Load marker images
+            await Promise.all(
+                Object.entries(MARKER_ICONS).map(([feature, url]) => 
+                    new Promise((resolve, reject) => {
+                        const imageId = `marker-${feature}`;
+                        if (map.hasImage(imageId)) {
+                            resolve();
+                            return;
+                        }
+                        map.loadImage(url, (error, image) => {
+                            if (error) reject(error);
+                            else {
+                                map.addImage(imageId, image);
+                                resolve();
+                            }
+                        });
+                    })
+                )
+            ).catch(console.error);
+
+            // Add walks layer
+            map.addSource('walks', {
+                type: 'geojson',
+                data: walksGeoJSON
+            });
+
+            map.addLayer({
+                id: 'walks',
+                type: 'symbol',
+                source: 'walks',
+                layout: {
+                    'icon-image': [
+                        'case',
+                        ['has', 'primaryFeature'],
+                        ['concat', 'marker-', ['get', 'primaryFeature']],
+                        'marker-default'
+                    ],
+                    'icon-size': 1,  // Adjust this value based on your marker images
+                    'icon-allow-overlap': true,
+                    'icon-anchor': 'bottom',  // Align marker bottom with coordinate
+                    'text-field': ['get', 'title'],
+                    'text-font': ['Open Sans Regular'],
+                    'text-offset': [0, 0.5],  // Adjusted text offset
+                    'text-anchor': 'top',
+                    'text-size': 12,
+                    'text-max-width': 8
+                },
+                paint: {
+                    'text-color': '#404040',
+                    'text-halo-color': '#ffffff',
+                    'text-halo-width': 2
+                }
+            });
+
+            // Add popup on click
+            map.on('click', 'walks', (e) => {
+                const props = e.features[0].properties;
+                new mapboxgl.Popup()
+                    .setLngLat(e.features[0].geometry.coordinates)
+                    .setHTML(`
+                        <div class="p-4">
+                            <h3 class="font-bold">${props.title}</h3>
+                            <p class="text-sm text-gray-600">${props.description}</p>
+                            <div class="flex gap-2 mt-2">
+                                ${props.features.map(f => 
+                                    `<iconify-icon icon="${FEATURE_ICONS[f]}" width="16" height="16"></iconify-icon>`
+                                ).join('')}
                             </div>
                         </div>
-                    `);
+                    `)
+                    .addTo(map);
+            });
 
-                    new mapboxgl.Marker(el)
-                        .setLngLat(feature.geometry.coordinates)
-                        .setPopup(popup)
-                        .addTo(mapInstance);
-                }
-            }
-    
-            function setMapBounds(mapInstance) {
-                const cornwallBounds = new mapboxgl.LngLatBounds(
-                    [-5.75, 49.95],
-                    [-4.15, 50.85]
-                );
-                mapInstance.setMaxBounds(cornwallBounds);
-                mapInstance.fitBounds(cornwallBounds, {
-                    padding: { top: 50, bottom: 50, left: 450, right: 50 },
-                    maxZoom: 14,
-                    duration: 0
-                });
-            }
-    
-            function addMapControls(mapInstance) {
-                mapInstance.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
-            }
-    
-            function initializeWalkData() {
-                const walkElements = document.querySelectorAll('.walk-item');
-                return {
-                    type: 'FeatureCollection',
-                    features: Array.from(walkElements).map(el => ({
-                        type: 'Feature',
-                        geometry: {
-                            type: 'Point',
-                            coordinates: [parseFloat(el.dataset.lng), parseFloat(el.dataset.lat)]
-                        },
-                        properties: {
-                            id: el.dataset.id,
-                            title: el.dataset.title,
-                            description: el.dataset.description,
-                            features: el.dataset.features ? el.dataset.features.split(',') : []
-                        }
-                    }))
-                };
-            }
-    
-            MapApp();
-        } catch (error) {
-            console.error("Failed to initialize application:", error);
-            document.getElementById('map').innerHTML =
-                '<div class="p-4 bg-red-100 text-red-700">Failed to load map. Please refresh the page.</div>';
+            // Cursor interactions
+            map.on('mouseenter', 'walks', () => {
+                map.getCanvas().style.cursor = 'pointer';
+            });
+            map.on('mouseleave', 'walks', () => {
+                map.getCanvas().style.cursor = '';
+            });
+        });
+
+        window.map = map;
+    });
+
+    function highlightWalk(walkId) {
+        if (!window.walks?.features || !window.map) return;
+        const feature = window.walks.features.find(f => f.properties.id === walkId);
+        if (feature) {
+            window.map.flyTo({
+                center: feature.geometry.coordinates,
+                zoom: 14
+            });
         }
     }
-    
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initializeApp);
-    } else {
-        initializeApp();
-    }
 </script>
-
-<style>
-#sidebar {
-    transition: transform 0.3s ease-in-out;
-    z-index: 1000;
-}
-.mapboxgl-ctrl-top-right {
-    top: 3rem !important;
-}
-.marker-container {
-    position: relative;
-    cursor: pointer;
-}
-.marker-pin {
-    transform: translate(-50%, -50%);
-}
-.marker-icons {
-    white-space: nowrap;
-    z-index: 1;
-}
-.marker {
-    background-color: #e81224;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    cursor: pointer;
-    border: 2px solid white;
-    box-shadow: 0 0 0 2px rgba(0,0,0,0.25);
-}
-
-.mapboxgl-popup-content {
-    padding: 0;
-    border-radius: 0.5rem;
-}
-</style>
 {% endblock %}

@@ -21,147 +21,32 @@
     z-index: 1;
 }
 
-/* Marker Styles */
-.wq-marker {
-    width: 30px;
-    height: 30px;
-    position: relative;
-    cursor: pointer;
-    outline-offset: 4px;
+/* Map Marker Styles */
+.mapboxgl-marker {
+    width: 32px;
+    height: 32px;
 }
 
-.wq-marker-pin {
+.mapboxgl-marker img {
     width: 100%;
     height: 100%;
-    background: #1D4ED8;
-    border-radius: 50%;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    transition: transform 0.2s ease;
+    object-fit: contain;
 }
 
-.wq-marker:hover .wq-marker-pin {
-    transform: scale(1.1);
-    box-shadow: 0 3px 6px rgba(0,0,0,0.3);
-}
-
-.wq-marker-icons {
-    position: absolute;
-    left: 50%;
-    bottom: -24px;
-    transform: translateX(-50%);
-    background: white;
-    padding: 4px 6px;
-    border-radius: 4px;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-    display: flex;
-    gap: 4px;
-    z-index: 1;
-}
-
-/* Sidebar Styles */
-.sidebar {
-    background-color: rgba(255, 255, 255, 0.9);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
-}
-
-nav, #sidebar {
-    z-index: 1001;
-}
-
-/* Mapbox Controls Styling */
-.mapboxgl-ctrl-group {
-    background: #fff;
-    border-radius: 4px;
-    box-shadow: 0 0 10px 2px rgba(0, 0, 0, 0.1);
-}
-
-.mapboxgl-ctrl-group button {
-    width: 30px;
-    height: 30px;
-    display: block;
-    padding: 0;
-    border: none;
-    background-color: transparent;
+/* Custom marker symbol layer styles */
+.marker-icon {
+    background-size: cover;
+    width: 32px;
+    height: 32px;
     cursor: pointer;
-    box-sizing: border-box;
 }
 
-.mapboxgl-ctrl-group button + button {
-    border-top: 1px solid #ddd;
-}
-
-.mapboxgl-ctrl-top-right {
-    top: 3rem !important;
-    z-index: 999;
-}
-
-.mapboxgl-ctrl-geolocate {
-    background-color: #fff;
-}
-
-.mapboxgl-ctrl-scale {
-    border: 2px solid #333;
-    border-top: none;
-    background-color: rgba(255, 255, 255, 0.75);
-    padding: 0 5px;
-    color: #333;
-    font-size: 10px;
-    line-height: 18px;
-    border-radius: 0 0 3px 3px;
-}
-
-.mapboxgl-ctrl-attrib {
-    background-color: rgba(255, 255, 255, 0.8);
-    padding: 0 5px;
-    border-radius: 3px 3px 0 0;
-}
-
-/* Popup Styles */
+/* Popup styles */
 .mapboxgl-popup {
     max-width: 300px;
-    z-index: 3;
-    transform-origin: center bottom;
-    animation: popup-appear 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    transition: transform 0.2s ease-out;
 }
 
 .mapboxgl-popup-content {
-    text-align: center;
-    font-family: system-ui, -apple-system, sans-serif;
-    padding: 1rem;
-    border-radius: 0.5rem;
-    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-}
-
-@keyframes popup-appear {
-    from { opacity: 0; transform: translateY(5px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.walk-item:focus,
-.wq-marker:focus {
-    outline: 2px solid #1D4ED8;
-    outline-offset: 2px;
-}
-
-.walk-item:focus-visible,
-.wq-marker:focus-visible {
-    outline: 2px solid #1D4ED8;
-    outline-offset: 2px;
-}
-
-.mapboxgl-popup.entering {
-    transform: scale(0.9) translateY(5px);
-}
-
-@media (forced-colors: active) {
-    .wq-marker-pin {
-        background: CanvasText;
-        border: 2px solid ButtonText;
-    }
-    
-    .wq-marker-icons {
-        border: 1px solid ButtonText;
-    }
+    padding: 0;
+    border-radius: 8px;
 }
