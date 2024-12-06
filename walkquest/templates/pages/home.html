@@ -371,28 +371,132 @@
     // Map with proper container and markers
     const Map = ({ store }) => {
         let mapContainer;
-        let map;
+        let mapInstance;
+        
         const [markers, setMarkers] = createSignal({});
+        const [error, setError] = createSignal(null);
+
+        const createMarker = (walk) => {
+            try {
+                const popup = new mapboxgl.Popup({
+                    closeButton: false,
+                    closeOnClick: true
+                }).setHTML(`
+                    <div class="p-2">
+                        <h3 class="font-bold text-gray-900">${walk.walk_name}</h3>
+                        ${walk.distance ? `
+                            <p class="text-sm text-gray-600">
+                                <span class="font-medium">${walk.distance}</span> miles
+                            </p>
+                        ` : ''}
+                    </div>
+                `);
+
+                const marker = new mapboxgl.Marker({
+                    color: store.selectedWalk()?.id === walk.id 
+                        ? APP_CONFIG.map.markerColors.selected 
+                        : APP_CONFIG.map.markerColors.default
+                })
+                .setLngLat([walk.longitude, walk.latitude])
+                .setPopup(popup);
+
+                marker.getElement().addEventListener('click', () => {
+                    store.selectWalk(walk.id);
+                });
+
+                return marker;
+            } catch (err) {
+                setError(`Failed to create marker: ${err.message}`);
+                return null;
+            }
+        };
+
+        const updateMarkers = () => {
+            if (!mapInstance) return;
+
+            const currentWalks = store.walks();
+            const currentMarkers = markers();
+
+            // Remove stale markers
+            Object.entries(currentMarkers).forEach(([id, marker]) => {
+                if (!currentWalks.find(w => w.id === id)) {
+                    marker.remove();
+                    const updatedMarkers = { ...currentMarkers };
+                    delete updatedMarkers[id];
+                    setMarkers(updatedMarkers);
+                }
+            });
+
+            // Add new markers
+            currentWalks.forEach(walk => {
+                if (!currentMarkers[walk.id] && walk.latitude && walk.longitude) {
+                    const newMarker = createMarker(walk);
+                    if (newMarker) {
+                        newMarker.addTo(mapInstance);
+                        setMarkers(prev => ({ ...prev, [walk.id]: newMarker }));
+                    }
+                }
+            });
+        };
+
+        const handleResize = createDebounce(() => {
+            if (mapInstance) {
+                mapInstance.resize();
+                const selected = store.selectedWalk();
+                if (selected) {
+                    mapInstance.flyTo({
+                        center: [selected.longitude, selected.latitude],
+                        zoom: APP_CONFIG.map.defaultZoom
+                    });
+                }
+            }
+        }, 250);
 
         onMount(() => {
             if (!mapContainer) return;
-            
-            map = new mapboxgl.Map({
+
+            mapInstance = new mapboxgl.Map({
                 container: mapContainer,
                 style: APP_CONFIG.map.style,
                 center: APP_CONFIG.map.defaultCenter,
                 zoom: APP_CONFIG.map.defaultZoom
             });
 
-            map.on('load', () => {
+            mapInstance.on('load', () => {
                 updateMarkers();
             });
+
+            window.addEventListener('resize', handleResize);
+        });
+
+        onCleanup(() => {
+            Object.values(markers()).forEach(marker => marker.remove());
+            mapInstance?.remove();
+            window.removeEventListener('resize', handleResize);
         });
 
         createEffect(() => {
             const walks = store.walks();
-            if (map && walks.length) {
+            if (mapInstance && walks.length) {
                 updateMarkers();
+            }
+        });
+
+        createEffect(() => {
+            const selected = store.selectedWalk();
+            if (selected && mapInstance) {
+                mapInstance.flyTo({
+                    center: [selected.longitude, selected.latitude],
+                    zoom: 14
+                });
+
+                Object.entries(markers()).forEach(([id, marker]) => {
+                    marker.setColor(
+                        id === selected.id 
+                            ? APP_CONFIG.map.markerColors.selected 
+                            : APP_CONFIG.map.markerColors.default
+                    );
+                });
             }
         });
 
@@ -401,6 +505,11 @@
                 <div ref=${el => mapContainer = el}
                      class="absolute inset-0">
                 </div>
+                ${error() && html`
+                    <div class="absolute top-4 right-4 bg-red-100 text-red-700 p-4 rounded-lg shadow-lg">
+                        ${error()}
+                    </div>
+                `}
             </div>
         `;
     };
