@@ -66,12 +66,40 @@
     import { createVirtualizer } from "https://cdn.skypack.dev/@tanstack/solid-virtual";
     import mapboxgl from "https://cdn.skypack.dev/mapbox-gl";
 
+    // Application Constants
+    const APP_CONFIG = {
+        ui: {
+            states: {
+                INITIAL: 'initial',
+                LOADING: 'loading',
+                ERROR: 'error',
+                EMPTY: 'empty',
+                READY: 'ready'
+            },
+            list: {
+                itemSize: 92,
+                overscan: 5,
+                debounceMs: 300,
+                loadingItems: 3
+            }
+        },
+        map: {
+            style: 'mapbox://styles/mapbox/outdoors-v12',
+            defaultCenter: [-4.85, 50.40],
+            defaultZoom: 9,
+            markerColors: {
+                default: '#4F46E5',
+                selected: '#DC2626'
+            }
+        }
+    };
+
     // Utility Functions
-    const debounce = (fn, ms) => {
+    const createDebounce = (fn, delay) => {
         let timeoutId;
         return (...args) => {
             clearTimeout(timeoutId);
-            timeoutId = setTimeout(() => fn(...args), ms);
+            timeoutId = setTimeout(() => fn(...args), delay);
         };
     };
 
@@ -84,35 +112,7 @@
         }
     };
 
-    // Constants
-    const UI_STATES = {
-        LOADING: 'loading',
-        ERROR: 'error',
-        EMPTY: 'empty',
-        READY: 'ready'
-    };
-
-    const LIST_CONFIG = {
-        itemSize: 92,
-        overscan: 5,
-        debounceMs: 300,
-        loadingItems: 3
-    };
-
-    const MAP_CONFIG = {
-        style: 'mapbox://styles/mapbox/outdoors-v12',
-        defaultCenter: [-4.85, 50.40],
-        defaultZoom: 9,
-        markerColors: {
-            default: '#4F46E5',
-            selected: '#DC2626'
-        }
-    };
-
-    // Extract configuration from window.APP_DATA
-    const { walks: initialWalks, mapboxToken, featureIcons } = window.APP_DATA;
-
-    // Validate configuration before proceeding
+    // Configuration Validation
     const validateConfig = () => {
         const required = ['mapboxToken', 'walks'];
         const missing = required.filter(key => !window.APP_DATA?.[key]);
@@ -128,39 +128,17 @@
         return true;
     };
 
-    // Set Mapbox token globally after validation
+    // Extract and validate configuration
+    const { walks: initialWalks, mapboxToken, featureIcons } = window.APP_DATA;
+
+    // Initialize Mapbox
     if (validateConfig()) {
-        mapboxgl.accessToken = window.APP_DATA.mapboxToken;
+        mapboxgl.accessToken = mapboxToken;
     }
-
-    // Constants and Configuration
-    const UI_STATES = {
-        LOADING: 'loading',
-        ERROR: 'error',
-        EMPTY: 'empty',
-        READY: 'ready'
-    };
-
-    const LIST_CONFIG = {
-        itemSize: 92,
-        overscan: 5,
-        debounceMs: 300,
-        loadingItems: 3
-    };
-
-    const MAP_CONFIG = {
-        style: 'mapbox://styles/mapbox/outdoors-v12',
-        defaultCenter: [-4.85, 50.40],
-        defaultZoom: 9,
-        markerColors: {
-            default: '#4F46E5',
-            selected: '#DC2626'
-        }
-    };
 
     // Enhanced Store Creation
     function createWalkStore() {
-        const [uiState, setUiState] = createSignal(UI_STATES.LOADING);
+        const [uiState, setUiState] = createSignal(APP_CONFIG.ui.states.LOADING);
         const [walks, setWalks] = createSignal([]);
         const [selectedWalk, setSelectedWalk] = createSignal(null);
         const [searchTerm, setSearchTerm] = createSignal('');
@@ -185,11 +163,11 @@
                     throw new Error('Invalid walks data format');
                 }
                 setWalks(walks);
-                setUiState(walks.length ? UI_STATES.READY : UI_STATES.EMPTY);
+                setUiState(walks.length ? APP_CONFIG.ui.states.READY : APP_CONFIG.ui.states.EMPTY);
                 setIsLoading(false);
             } catch (err) {
                 setError(err.message);
-                setUiState(UI_STATES.ERROR);
+                setUiState(APP_CONFIG.ui.states.ERROR);
                 setIsLoading(false);
             }
         }, 0);
@@ -219,10 +197,10 @@
                     setSearchTerm('');
                     setSelectedWalk(null);
                     setError(null);
-                    setUiState(UI_STATES.LOADING);
+                    setUiState(APP_CONFIG.ui.states.LOADING);
                     setIsLoading(true);
                     setWalks(initialWalks);
-                    setUiState(initialWalks.length ? UI_STATES.READY : UI_STATES.EMPTY);
+                    setUiState(initialWalks.length ? APP_CONFIG.ui.states.READY : APP_CONFIG.ui.states.EMPTY);
                     setIsLoading(false);
                 });
             }
@@ -264,7 +242,7 @@
 
     // Enhanced SearchInput with debounced search
     const SearchInput = ({ value, onSearch }) => {
-        const debouncedSearch = debounce((value) => {
+        const debouncedSearch = createDebounce((value) => {
             onSearch(value);
         }, 300);
 
@@ -485,7 +463,7 @@
         };
 
         // Debounced resize handler
-        const handleResize = debounce(() => {
+        const handleResize = createDebounce(() => {
             if (mapInstance) {
                 mapInstance.resize();
                 const selected = store.selectedWalk();
@@ -507,9 +485,9 @@
 
                 mapInstance = new mapboxgl.Map({
                     container: mapContainer,
-                    style: MAP_CONFIG.style,
-                    center: MAP_CONFIG.defaultCenter,
-                    zoom: MAP_CONFIG.defaultZoom
+                    style: APP_CONFIG.map.style,
+                    center: APP_CONFIG.map.defaultCenter,
+                    zoom: APP_CONFIG.map.defaultZoom
                 });
 
                 mapInstance.on('load', () => {
