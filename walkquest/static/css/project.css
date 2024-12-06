@@ -39,6 +39,17 @@
     z-index: 1;
 }
 
+/* Map Container Styles */
+.mapboxgl-canvas-container {
+    height: 100%;
+    width: 100%;
+}
+
+.mapboxgl-canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
 /* Map Marker Styles */
 .mapboxgl-marker {
     width: 24px;  /* Smaller default size */
