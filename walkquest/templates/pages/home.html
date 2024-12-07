@@ -3,25 +3,33 @@
 
 {% block title %}Walks - {{ block.super }}{% endblock %}
 
-{% block css %}
-{{ block.super }}
+{% block extra_head %}
 <style>
-  .mapboxgl-popup-content { @apply p-4 rounded-lg shadow-lg; }
-  .walk-card { @apply p-4 border-b hover:bg-gray-50 transition-colors cursor-pointer; }
-  .walk-card--selected { @apply bg-blue-50; }
-  .loading-spinner { @apply animate-spin rounded-full h-12 w-12 border-b-2 border-primary; }
-  .search-input { @apply w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500; }
+    .mapboxgl-popup-content { @apply p-4 rounded-lg shadow-lg; }
+    .walk-card { @apply p-4 border-b hover:bg-gray-50 transition-colors cursor-pointer; }
+    .walk-card--selected { @apply bg-blue-50; }
 </style>
-{% endblock %}
 
-{% block head %}
-{{ block.super }}
-<script>
-// Configuration
-window.APP_CONFIG = {
-    mapboxToken: "{{ mapbox_token|escapejs }}",
-    featureIcons: {{ feature_icons_json|safe }},
-    config: {
+<!-- Core Dependencies -->
+<script type="module">
+    // Import mapboxgl
+    import mapboxgl from 'https://cdn.skypack.dev/mapbox-gl';
+    
+    // Then import virtualizer with correct exports
+    import { 
+        Virtualizer,
+        observeElementOffset,
+        observeElementRect,
+        elementScroll
+    } from 'https://esm.run/@tanstack/virtual-core';
+
+    // Make available globally
+    window.mapboxgl = mapboxgl;
+
+    // App Configuration
+    window.APP_CONFIG = {
+        mapboxToken: "{{ mapbox_token|escapejs }}",
+        // featureIcons: {{ feature_icons_json|safe }}
         map: {
             style: "mapbox://styles/mapbox/outdoors-v12",
             defaultCenter: [-4.85, 50.40],
@@ -38,280 +46,24 @@ window.APP_CONFIG = {
                 debounceMs: 300
             }
         }
-    }
-};
-</script>
-{% endblock %}
-
-{% block content %}
-<div id="root" class="h-screen w-screen relative">
-    <!-- Loading State -->
-    <div id="loading" class="fixed inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50">
-        <div class="loading-spinner"></div>
-        <span class="ml-3">Loading...</span>
-    </div>
-
-    <!-- Main Layout -->
-    <div class="flex h-full">
-        <!-- Sidebar -->
-        <aside class="w-full md:w-96 flex flex-col bg-white shadow-lg">
-            <!-- Search Header -->
-            <div class="p-4 border-b">
-                <div id="search-container"></div>
-            </div>
-            <!-- Walk List -->
-            <div id="walk-list" class="flex-1 overflow-auto"></div>
-        </aside>
-        <!-- Map Container -->
-        <div id="map" class="flex-1"></div>
-    </div>
-</div>
-{% endblock %}
-
-{% block inline_javascript %}
-<script type="module">
-// Imports
-import {
-    createSignal,
-    createEffect,
-    createMemo,
-    onCleanup,
-    onMount
-} from "https://esm.run/solid-js";
-import { render } from "https://esm.run/solid-js/web";
-import html from "https://esm.run/solid-js/html";
-import { createVirtualizer } from "https://esm.run/@tanstack/virtual-core";
-import mapboxgl from "https://esm.run/mapbox-gl";
-
-// Utilities
-const debounce = (fn, ms) => {
-    let timeoutId;
-    return (...args) => {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => fn(...args), ms);
-    };
-};
-
-const sanitizeInput = (input) => input.replace(/[<>]/g, '');
-
-// Store Creation
-function createWalkStore() {
-    const savedState = JSON.parse(localStorage.getItem('walkquest-state') || '{}');
-
-    const [walks, setWalks] = createSignal([]);
-    const [selectedWalk, setSelectedWalk] = createSignal(null);
-    const [searchTerm, setSearchTerm] = createSignal(savedState.searchTerm || '');
-    const [error, setError] = createSignal(null);
-    const [isLoading, setIsLoading] = createSignal({
-        walks: false,
-        map: false,
-        search: false
-    });
-
-    // Memoized filtered walks
-    const filteredWalks = createMemo(() => {
-        const items = walks();
-        const search = searchTerm().toLowerCase().trim();
-        return !search ? items : items.filter(walk =>
-            walk?.walk_name?.toLowerCase().includes(search) ||
-            walk?.description?.toLowerCase().includes(search)
-        );
-    });
-
-    // Persist state
-    createEffect(() => {
-        localStorage.setItem('walkquest-state', JSON.stringify({
-            searchTerm: searchTerm()
-        }));
-    });
-
-    return {
-        walks,
-        setWalks,
-        selectedWalk,
-        setSelectedWalk,
-        searchTerm,
-        setSearchTerm,
-        error,
-        setError,
-        isLoading,
-        setIsLoading,
-        filteredWalks
-    };
-}
-
-// Components
-const SearchInput = ({ value, onSearch }) => html`
-    <input
-        type="text"
-        class="search-input"
-        placeholder="Search walks..."
-        value=${value}
-        onInput=${(e) => onSearch(sanitizeInput(e.target.value))}
-        aria-label="Search walks"
-    />
-`;
-
-const WalkCard = ({ walk, selected, onClick }) => html`
-    <div
-        class="walk-card ${selected ? 'walk-card--selected' : ''}"
-        onClick=${onClick}
-        role="button"
-        tabindex="0"
-        onKeyDown=${(e) => e.key === 'Enter' && onClick()}
-        data-testid="walk-card-${walk.id}"
-    >
-        <h3 class="text-lg font-semibold">${walk.walk_name}</h3>
-        ${walk.distance && html`
-            <div class="mt-2 text-sm text-gray-600 flex items-center">
-                <iconify-icon icon="mdi:map-marker-distance" class="mr-1"></iconify-icon>
-                ${walk.distance} miles
-            </div>
-        `}
-    </div>
-`;
-
-const VirtualWalkList = ({ walks, selectedWalk, onSelect }) => {
-    let containerRef;
-
-    const virtualizer = createVirtualizer({
-        count: walks.length,
-        getScrollElement: () => containerRef,
-        estimateSize: () => window.APP_CONFIG.config.ui.list.itemSize,
-        overscan: window.APP_CONFIG.config.ui.list.overscan
-    });
-
-    return html`
-        <div ref=${el => containerRef = el} class="h-full">
-            <div style="height: ${virtualizer.getTotalSize()}px; position: relative;">
-                ${virtualizer.getVirtualItems().map(virtualRow => {
-                    const walk = walks[virtualRow.index];
-                    return html`
-                        <div
-                            style="position: absolute; top: 0; left: 0; width: 100%;
-                                   height: ${virtualRow.size}px;
-                                   transform: translateY(${virtualRow.start}px);"
-                        >
-                            <${WalkCard}
-                                walk=${walk}
-                                selected=${selectedWalk?.id === walk.id}
-                                onClick=${() => onSelect(walk)}
-                            />
-                        </div>
-                    `;
-                })}
-            </div>
-        </div>
-    `;
-};
-
-// Map Handler
-function createMapHandler(store, container) {
-    let map;
-    const markers = {};
-
-    const initializeMap = () => {
-        mapboxgl.accessToken = window.APP_CONFIG.mapboxToken;
-        map = new mapboxgl.Map({
-            container,
-            style: window.APP_CONFIG.config.map.style,
-            center: window.APP_CONFIG.config.map.defaultCenter,
-            zoom: window.APP_CONFIG.config.map.defaultZoom
-        });
-
-        map.addControl(new mapboxgl.NavigationControl());
-
-        return map;
     };
 
-    const updateMarkers = (walks) => {
-        Object.values(markers).forEach(marker => marker.remove());
-        walks.forEach(walk => {
-            if (walk.latitude && walk.longitude) {
-                const marker = new mapboxgl.Marker({
-                    color: store.selectedWalk()?.id === walk.id
-                        ? window.APP_CONFIG.config.map.markerColors.selected
-                        : window.APP_CONFIG.config.map.markerColors.default
-                })
-                .setLngLat([walk.longitude, walk.latitude])
-                .addTo(map);
+    // Create virtualizer with proper options
+    window.createVirtualizer = (container, items) => {
+        if (!container) return null;
 
-                markers[walk.id] = marker;
-
-                marker.getElement().addEventListener('click', () =>
-                    store.setSelectedWalk(walk));
+        return new Virtualizer({
+            count: items.length,
+            getScrollElement: () => container,
+            estimateSize: () => window.APP_CONFIG.ui.list.itemSize,
+            overscan: window.APP_CONFIG.ui.list.overscan,
+            scrollToFn: elementScroll,
+            observeElementRect,
+            observeElementOffset,
+            onChange: (instance) => {
+                instance.measureElement(container);
             }
         });
     };
-
-    return { initializeMap, updateMarkers };
-}
-
-// Main App
-const App = () => {
-    const store = createWalkStore();
-    let mapHandler;
-
-    // Initialize map
-    onMount(() => {
-        const mapContainer = document.getElementById('map');
-        mapHandler = createMapHandler(store, mapContainer);
-        mapHandler.initializeMap();
-
-        // Fetch initial data
-        fetchWalks();
-    });
-
-    // Fetch walks
-    const fetchWalks = async (retries = 3) => {
-        store.setIsLoading({ ...store.isLoading(), walks: true });
-        try {
-            const response = await fetch('/api/walks');
-            if (!response.ok) throw new Error('Failed to fetch walks');
-            const data = await response.json();
-            store.setWalks(data);
-            mapHandler.updateMarkers(data);
-        } catch (err) {
-            if (retries > 0) {
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                return fetchWalks(retries - 1);
-            }
-            store.setError(err.message);
-        } finally {
-            store.setIsLoading({ ...store.isLoading(), walks: false });
-        }
-    };
-
-    // Cleanup
-    onCleanup(() => {
-        document.getElementById('loading')?.remove();
-    });
-
-    // Render search and walk list
-    render(
-        () => html`<${SearchInput}
-            value=${store.searchTerm()}
-            onSearch=${store.setSearchTerm}
-        />`,
-        document.getElementById('search-container')
-    );
-
-    render(
-        () => html`<${VirtualWalkList}
-            walks=${store.filteredWalks()}
-            selectedWalk=${store.selectedWalk()}
-            onSelect=${store.setSelectedWalk}
-        />`,
-        document.getElementById('walk-list')
-    );
-};
-
-// Initialize app
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => new App());
-} else {
-    new App();
-}
 </script>
 {% endblock %}
-

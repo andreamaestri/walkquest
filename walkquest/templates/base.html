@@ -3,163 +3,118 @@
 {% get_current_language as LANGUAGE_CODE %}
 <html lang="{{ LANGUAGE_CODE }}">
 <head>
-    <!-- Meta Tags -->
     <meta charset="utf-8">
     <meta http-equiv="x-ua-compatible" content="ie=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="WalkQuest - Discover Cornwall's beautiful walking paths">
     <meta name="author" content="Andrea Maestri">
-    <meta property="og:title" content="{% block og_title %}{{ block.super }}{% endblock og_title %}">
+    <meta property="og:title" content="{% block og_title %}{{ block.super }}{% endblock %}">
     <meta property="og:description" content="Discover Cornwall's beautiful walking paths">
     
-    <title>{% block title %}WalkQuest{% endblock title %}</title>
+    <title>{% block title %}WalkQuest{% endblock %}</title>
     
-    <!-- Favicon -->
     <link rel="icon" href="{% static 'images/favicons/favicon.ico' %}">
 
-    <!-- ESM Imports -->
+    <!-- Core Dependencies -->
     <script type="module">
-        import 'https://esm.run/htmx.org';
-        import 'https://esm.run/@tanstack/virtual-core';
-        import 'https://esm.run/mapbox-gl';
-        import { Icon } from 'https://esm.run/@iconify/iconify';
+        import { Virtualizer } from 'https://esm.run/@tanstack/virtual-core@3.0.0/dist/index.js';
+        import mapboxgl from 'https://cdn.skypack.dev/mapbox-gl@2.15.0';
+        
+        window.Virtualizer = Virtualizer;
+        window.mapboxgl = mapboxgl;
     </script>
-
-    <!-- Iconify -->
+    
     <script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- Tailwind Configuration -->
+    <!-- Tailwind Config -->
     <script>
-        window.tailwind = {
-            config: {
-                theme: {
-                    extend: {
-                        colors: {
-                            primary: {
-                                50: '#f0f9ff',
-                                100: '#e0f2fe',
-                                500: '#1D4ED8',
-                                600: '#0284c7',
-                                700: '#0369a1',
-                            },
-                            secondary: {
-                                500: '#9333EA',
-                                600: '#7e22ce',
-                            }
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#1D4ED8',
+                            600: '#0284c7',
+                            700: '#0369a1',
                         },
-                        spacing: {
-                            '128': '32rem',
-                        },
-                        animation: {
-                            'spin-slow': 'spin 3s linear infinite',
+                        secondary: {
+                            500: '#9333EA',
+                            600: '#7e22ce',
                         }
-                    }
+                    },
+                    spacing: { '128': '32rem' },
+                    animation: { 'spin-slow': 'spin 3s linear infinite' }
                 }
             }
         };
     </script>
-    <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- Styles -->
     {% compress css %}
     <style>
-        /* Base Styles */
         @layer base {
-            body {
-                @apply bg-gray-50;
-            }
+            body { @apply bg-gray-50; }
         }
 
-        /* Loading States */
-        .loading {
-            @apply overflow-hidden;
-        }
-
-        #loading-indicator {
+        .loading { @apply overflow-hidden; }
+        #loading-indicator { 
             @apply fixed inset-0 flex items-center justify-center bg-white bg-opacity-75 z-50;
             display: none;
         }
+        .loading #loading-indicator { display: flex; }
 
-        .loading #loading-indicator {
-            display: flex;
-        }
-
-        /* HTMX Indicators */
-        .htmx-indicator {
-            @apply hidden;
-        }
-
+        .htmx-indicator { @apply hidden; }
         .htmx-request .htmx-indicator,
-        .htmx-request.htmx-indicator {
-            @apply inline-block;
-        }
+        .htmx-request.htmx-indicator { @apply inline-block; }
 
-        /* Navigation */
         .nav-link {
-            @apply px-4 py-1.5 rounded text-sm font-medium text-primary-500 hover:bg-primary-50 transition-colors;
+            @apply px-4 py-1.5 rounded text-sm font-medium text-primary-500 
+                   hover:bg-primary-50 transition-colors;
         }
 
-        /* Messages */
-        .message {
-            @apply relative px-4 py-3 rounded mb-4;
-        }
-
-        .message-success {
-            @apply bg-green-100 text-green-700;
-        }
-
-        .message-error {
-            @apply bg-red-100 text-red-700;
-        }
-
-        .message-info {
-            @apply bg-blue-100 text-blue-700;
-        }
-
-        .message-warning {
-            @apply bg-yellow-100 text-yellow-700;
-        }
+        .message { @apply relative px-4 py-3 rounded mb-4; }
+        .message-success { @apply bg-green-100 text-green-700; }
+        .message-error { @apply bg-red-100 text-red-700; }
+        .message-info { @apply bg-blue-100 text-blue-700; }
+        .message-warning { @apply bg-yellow-100 text-yellow-700; }
     </style>
     <link href="{% static 'css/project.css' %}" rel="stylesheet">
     <link href="{% static 'css/sidebar.css' %}" rel="stylesheet">
     {% endcompress %}
 
     {{ form.media }}
-    
-    {% block extra_head %}{% endblock extra_head %}
+    {% block extra_head %}{% endblock %}
 </head>
 
 <body class="loading">
-    <!-- Loading Indicator -->
     <div id="loading-indicator">
         <div class="animate-spin-slow rounded-full h-12 w-12 border-4 border-primary-500 border-t-transparent"></div>
         <span class="ml-3 text-primary-600">Loading...</span>
     </div>
 
-    <!-- Navigation -->
     <nav class="bg-white shadow-sm fixed top-0 left-0 right-0 z-50">
         <div class="max-w-7xl mx-auto px-4">
             <div class="flex justify-between h-16">
-                <!-- Logo -->
                 <a href="{% url 'home' %}" class="flex items-center space-x-2">
-                    <iconify-icon icon="mdi:hiking" class="text-2xl text-primary-500"></iconify-icon>
+                    <span class="icon" data-icon="mdi:hiking"></span>
                     <span class="font-semibold text-lg">WalkQuest</span>
                 </a>
 
-                <!-- Navigation Links -->
                 <div class="flex items-center space-x-2">
                     {% if request.user.is_authenticated %}
                         <a href="{% url 'users:detail' request.user.username %}" class="nav-link">
-                            <iconify-icon icon="mdi:account" class="mr-1"></iconify-icon>
+                            <span class="icon" data-icon="mdi:account"></span>
                             Profile
                         </a>
                         <a href="{% url 'account_logout' %}" class="nav-link">
-                            <iconify-icon icon="mdi:logout" class="mr-1"></iconify-icon>
+                            <span class="icon" data-icon="mdi:logout"></span>
                             Sign out
                         </a>
                     {% else %}
                         <a href="{% url 'account_login' %}" class="nav-link">
-                            <iconify-icon icon="mdi:login" class="mr-1"></iconify-icon>
+                            <span class="icon" data-icon="mdi:login"></span>
                             Sign in
                         </a>
                     {% endif %}
@@ -168,65 +123,56 @@
         </div>
     </nav>
 
-    <!-- Messages -->
     {% if messages %}
         <div class="fixed top-20 right-4 z-50 space-y-2">
             {% for message in messages %}
-                <div class="message message-{{ message.tags }} transform transition-all duration-300 ease-in-out"
-                     x-data="{ show: true }"
-                     x-show="show"
-                     x-transition:enter="transition ease-out duration-300"
-                     x-transition:enter-start="opacity-0 transform translate-x-full"
-                     x-transition:enter-end="opacity-100 transform translate-x-0"
-                     x-transition:leave="transition ease-in duration-300"
-                     x-transition:leave-start="opacity-100 transform translate-x-0"
-                     x-transition:leave-end="opacity-0 transform translate-x-full">
+                <div class="message message-{{ message.tags }} transform transition-all duration-300"
+                     data-auto-remove="5000">
                     <div class="flex items-center">
-                        <iconify-icon icon="mdi:{{ message.tags }}" class="mr-2"></iconify-icon>
+                        <span class="icon mr-2" data-icon="mdi:{{ message.tags }}"></span>
                         <p>{{ message }}</p>
                     </div>
-                    <button type="button" 
-                            class="absolute top-2 right-2" 
-                            onclick="this.parentElement.remove()">
-                        <iconify-icon icon="mdi:close" class="w-5 h-5"></iconify-icon>
+                    <button type="button" class="absolute top-2 right-2" onclick="this.parentElement.remove()">
+                        <span class="icon w-5 h-5" data-icon="mdi:close"></span>
                     </button>
                 </div>
             {% endfor %}
         </div>
     {% endif %}
 
-    <!-- Main Content -->
     <main class="pt-16">
-        {% block content %}{% endblock content %}
+        {% block content %}{% endblock %}
     </main>
 
-    <!-- Modal Container -->
     <div id="modal-container">
-        {% block modal %}{% endblock modal %}
+        {% block modal %}{% endblock %}
     </div>
 
-    <!-- Scripts -->
-    {% compress js %}
-    <script defer src="{% static 'js/project.js' %}"></script>
-    {% endcompress %}
+    <script type="module">
+        // Initialize icons
+        document.querySelectorAll('.icon').forEach(el => {
+            new Icon({
+                node: el,
+                icon: el.dataset.icon
+            });
+        });
 
-    <script>
-        // Initialize loading state
-        document.addEventListener('DOMContentLoaded', function() {
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', () => {
             document.body.classList.remove('loading');
-        });
 
-        // Handle HTMX events
-        document.body.addEventListener('htmx:beforeRequest', function(evt) {
-            evt.detail.indicator.classList.remove('hidden');
-        });
-
-        document.body.addEventListener('htmx:afterRequest', function(evt) {
-            evt.detail.indicator.classList.add('hidden');
+            // Auto-remove messages
+            document.querySelectorAll('[data-auto-remove]').forEach(el => {
+                const delay = parseInt(el.dataset.autoRemove, 10) || 5000;
+                setTimeout(() => {
+                    el.style.opacity = '0';
+                    setTimeout(() => el.remove(), 300);
+                }, delay);
+            });
         });
     </script>
 
-    {% block inline_javascript %}{% endblock inline_javascript %}
-    {% block extra_js %}{% endblock extra_js %}
+    {% block inline_javascript %}{% endblock %}
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

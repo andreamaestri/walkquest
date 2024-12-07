@@ -377,3 +377,7 @@ CORS_ALLOW_METHODS = [
 
 # Your stuff...
 # ------------------------------------------------------------------------------
+# Iconify configuration
+ICONIFY_COLLECTIONS = {
+    'mdi': 'https://api.iconify.design/mdi.json',
+}
