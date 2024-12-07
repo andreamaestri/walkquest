@@ -1,84 +1,166 @@
-{% load static i18n compress %}
 <!DOCTYPE html>
+{% load static i18n compress %}
 {% get_current_language as LANGUAGE_CODE %}
 <html lang="{{ LANGUAGE_CODE }}">
-  <head>
-    <meta charset="utf-8" />
-    <meta http-equiv="x-ua-compatible" content="ie=edge" />
-    <title>
-      {% block title %}walkquest{% endblock title %}
-    </title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Walk in the quest!" />
-    <meta name="author" content="Andrea Maestri" />
-    <link rel="icon" href="{% static 'images/favicons/favicon.ico' %}" />
-       
-    <!-- Social sharing -->
-    <meta property="og:title" content="{% block og_title %}{{ block.super }}{% endblock %}">
-    <meta property="og:description" content="Walk in the quest!">
+<head>
+    <!-- Meta Tags -->
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="WalkQuest - Discover Cornwall's beautiful walking paths">
+    <meta name="author" content="Andrea Maestri">
+    <meta property="og:title" content="{% block og_title %}{{ block.super }}{% endblock og_title %}">
+    <meta property="og:description" content="Discover Cornwall's beautiful walking paths">
     
-    {# CSS Section #}
-    {% block css %}
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              primary: '#1D4ED8',
-              secondary: '#9333EA',
-            },
-            spacing: {
-              '128': '32rem',
-            },
-          },
-        },
-      }
-    </script>
-    {% compress css %}
-    <link href="{% static 'css/project.css' %}" rel="stylesheet" />
-    <link href="{% static 'css/sidebar.css' %}" rel="stylesheet" />
-    {% endcompress %}
+    <title>{% block title %}WalkQuest{% endblock title %}</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" href="{% static 'images/favicons/favicon.ico' %}">
 
-    <link href='https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.css' rel='stylesheet' />
-    {% endblock css %}
-    
-    {# JavaScript Dependencies #}
-    {% block javascript %}
+    <!-- ESM Imports -->
+    <script type="module">
+        import 'https://esm.run/htmx.org';
+        import 'https://esm.run/@tanstack/virtual-core';
+        import 'https://esm.run/mapbox-gl';
+        import { Icon } from 'https://esm.run/@iconify/iconify';
+    </script>
+
+    <!-- Iconify -->
     <script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script>
 
-    {{ form.media }}
+    <!-- Tailwind Configuration -->
+    <script>
+        window.tailwind = {
+            config: {
+                theme: {
+                    extend: {
+                        colors: {
+                            primary: {
+                                50: '#f0f9ff',
+                                100: '#e0f2fe',
+                                500: '#1D4ED8',
+                                600: '#0284c7',
+                                700: '#0369a1',
+                            },
+                            secondary: {
+                                500: '#9333EA',
+                                600: '#7e22ce',
+                            }
+                        },
+                        spacing: {
+                            '128': '32rem',
+                        },
+                        animation: {
+                            'spin-slow': 'spin 3s linear infinite',
+                        }
+                    }
+                }
+            }
+        };
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
 
-    {% compress js %}
-    <script defer src="{% static 'js/project.js' %}"></script>
+    <!-- Styles -->
+    {% compress css %}
+    <style>
+        /* Base Styles */
+        @layer base {
+            body {
+                @apply bg-gray-50;
+            }
+        }
+
+        /* Loading States */
+        .loading {
+            @apply overflow-hidden;
+        }
+
+        #loading-indicator {
+            @apply fixed inset-0 flex items-center justify-center bg-white bg-opacity-75 z-50;
+            display: none;
+        }
+
+        .loading #loading-indicator {
+            display: flex;
+        }
+
+        /* HTMX Indicators */
+        .htmx-indicator {
+            @apply hidden;
+        }
+
+        .htmx-request .htmx-indicator,
+        .htmx-request.htmx-indicator {
+            @apply inline-block;
+        }
+
+        /* Navigation */
+        .nav-link {
+            @apply px-4 py-1.5 rounded text-sm font-medium text-primary-500 hover:bg-primary-50 transition-colors;
+        }
+
+        /* Messages */
+        .message {
+            @apply relative px-4 py-3 rounded mb-4;
+        }
+
+        .message-success {
+            @apply bg-green-100 text-green-700;
+        }
+
+        .message-error {
+            @apply bg-red-100 text-red-700;
+        }
+
+        .message-info {
+            @apply bg-blue-100 text-blue-700;
+        }
+
+        .message-warning {
+            @apply bg-yellow-100 text-yellow-700;
+        }
+    </style>
+    <link href="{% static 'css/project.css' %}" rel="stylesheet">
+    <link href="{% static 'css/sidebar.css' %}" rel="stylesheet">
     {% endcompress %}
-    {% endblock javascript %}
-  </head>
 
-  <body class="bg-gray-100">
-    {# Navigation #}
+    {{ form.media }}
+    
+    {% block extra_head %}{% endblock extra_head %}
+</head>
+
+<body class="loading">
+    <!-- Loading Indicator -->
+    <div id="loading-indicator">
+        <div class="animate-spin-slow rounded-full h-12 w-12 border-4 border-primary-500 border-t-transparent"></div>
+        <span class="ml-3 text-primary-600">Loading...</span>
+    </div>
+
+    <!-- Navigation -->
     <nav class="bg-white shadow-sm fixed top-0 left-0 right-0 z-50">
         <div class="max-w-7xl mx-auto px-4">
-            <div class="flex justify-between h-12">
-                <div class="flex">
-                    <a href="{% url 'home' %}" class="flex-shrink-0 flex items-center">
-                        WalkQuest
-                    </a>
-                </div>
-                <div class="flex items-center">
+            <div class="flex justify-between h-16">
+                <!-- Logo -->
+                <a href="{% url 'home' %}" class="flex items-center space-x-2">
+                    <iconify-icon icon="mdi:hiking" class="text-2xl text-primary-500"></iconify-icon>
+                    <span class="font-semibold text-lg">WalkQuest</span>
+                </a>
+
+                <!-- Navigation Links -->
+                <div class="flex items-center space-x-2">
                     {% if request.user.is_authenticated %}
-                        <a href="{% url 'users:detail' request.user.username %}" 
-                           class="px-4 py-1.5 rounded text-sm font-medium text-primary hover:bg-blue-50">
-                           Profile
+                        <a href="{% url 'users:detail' request.user.username %}" class="nav-link">
+                            <iconify-icon icon="mdi:account" class="mr-1"></iconify-icon>
+                            Profile
                         </a>
-                        <a href="{% url 'account_logout' %}" 
-                           class="px-4 py-1.5 rounded text-sm font-medium text-primary hover:bg-blue-50">
-                           Sign out
+                        <a href="{% url 'account_logout' %}" class="nav-link">
+                            <iconify-icon icon="mdi:logout" class="mr-1"></iconify-icon>
+                            Sign out
                         </a>
                     {% else %}
-                        <a href="{% url 'account_login' %}" 
-                           class="px-4 py-1.5 rounded text-sm font-medium text-primary hover:bg-blue-50">
-                           Sign in
+                        <a href="{% url 'account_login' %}" class="nav-link">
+                            <iconify-icon icon="mdi:login" class="mr-1"></iconify-icon>
+                            Sign in
                         </a>
                     {% endif %}
                 </div>
@@ -86,25 +168,65 @@
         </div>
     </nav>
 
-    {# Main Content #}
-    {% block body %}
-      {% if messages %}
-        {% for message in messages %}
-          <div class="relative px-4 py-3 {% if message.tags %}{% if message.tags == 'success' %}bg-green-100 text-green-700{% elif message.tags == 'error' %}bg-red-100 text-red-700{% elif message.tags == 'info' %}bg-blue-100 text-blue-700{% elif message.tags == 'warning' %}bg-yellow-100 text-yellow-700{% endif %}{% endif %} rounded mb-4">
-              {{ message }}
-              <button type="button" class="absolute top-0 right-0 px-4 py-3" onclick="this.parentElement.remove()">
-                <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" fill-rule="evenodd"></path>
-                </svg>
-              </button>
-          </div>
-        {% endfor %}
-      {% endif %}
-      {% block content %}{% endblock content %}
-    {% endblock body %}
+    <!-- Messages -->
+    {% if messages %}
+        <div class="fixed top-20 right-4 z-50 space-y-2">
+            {% for message in messages %}
+                <div class="message message-{{ message.tags }} transform transition-all duration-300 ease-in-out"
+                     x-data="{ show: true }"
+                     x-show="show"
+                     x-transition:enter="transition ease-out duration-300"
+                     x-transition:enter-start="opacity-0 transform translate-x-full"
+                     x-transition:enter-end="opacity-100 transform translate-x-0"
+                     x-transition:leave="transition ease-in duration-300"
+                     x-transition:leave-start="opacity-100 transform translate-x-0"
+                     x-transition:leave-end="opacity-0 transform translate-x-full">
+                    <div class="flex items-center">
+                        <iconify-icon icon="mdi:{{ message.tags }}" class="mr-2"></iconify-icon>
+                        <p>{{ message }}</p>
+                    </div>
+                    <button type="button" 
+                            class="absolute top-2 right-2" 
+                            onclick="this.parentElement.remove()">
+                        <iconify-icon icon="mdi:close" class="w-5 h-5"></iconify-icon>
+                    </button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
 
-    {% block modal %}{% endblock modal %}
+    <!-- Main Content -->
+    <main class="pt-16">
+        {% block content %}{% endblock content %}
+    </main>
+
+    <!-- Modal Container -->
+    <div id="modal-container">
+        {% block modal %}{% endblock modal %}
+    </div>
+
+    <!-- Scripts -->
+    {% compress js %}
+    <script defer src="{% static 'js/project.js' %}"></script>
+    {% endcompress %}
+
+    <script>
+        // Initialize loading state
+        document.addEventListener('DOMContentLoaded', function() {
+            document.body.classList.remove('loading');
+        });
+
+        // Handle HTMX events
+        document.body.addEventListener('htmx:beforeRequest', function(evt) {
+            evt.detail.indicator.classList.remove('hidden');
+        });
+
+        document.body.addEventListener('htmx:afterRequest', function(evt) {
+            evt.detail.indicator.classList.add('hidden');
+        });
+    </script>
+
     {% block inline_javascript %}{% endblock inline_javascript %}
     {% block extra_js %}{% endblock extra_js %}
-  </body>
+</body>
 </html>
