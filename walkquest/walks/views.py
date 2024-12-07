@@ -1,3 +1,4 @@
+import contextlib
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -12,7 +13,6 @@ from django.utils.functional import cached_property
 from django.views.generic import ListView
 
 from .models import Walk
-import contextlib
 
 
 @dataclass

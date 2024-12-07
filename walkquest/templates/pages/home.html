@@ -14,30 +14,31 @@
 
 {% block head %}
 {{ block.super }}
-<script id="app-config" type="application/json">
-  {
-    "walks": {{ walks_json|safe }},
-    "mapboxToken": "{{ mapbox_token|escapejs }}",
-    "featureIcons": {{ feature_icons_json|safe }},
-    "config": {
-      "map": {
-        "style": "mapbox://styles/mapbox/outdoors-v12",
-        "defaultCenter": [-4.85, 50.40],
-        "defaultZoom": 9,
-        "markerColors": {
-          "default": "#4F46E5",
-          "selected": "#DC2626"
+<script>
+// Make config data globally available
+window.APP_CONFIG = {
+    walks: {{ walks_json|safe }},
+    mapboxToken: "{{ mapbox_token|escapejs }}",
+    featureIcons: {{ feature_icons_json|safe }},
+    config: {
+      map: {
+        style: "mapbox://styles/mapbox/outdoors-v12",
+        defaultCenter: [-4.85, 50.40],
+        defaultZoom: 9,
+        markerColors: {
+          default: "#4F46E5",
+          selected: "#DC2626"
         }
       },
-      "ui": {
-        "list": {
-          "itemSize": 92,
-          "overscan": 5,
-          "debounceMs": 300
+      ui: {
+        list: {
+          itemSize: 92,
+          overscan: 5,
+          debounceMs: 300
         }
       }
     }
-  }
+};
 </script>
 {% endblock %}
 
@@ -58,29 +59,19 @@
   import { createVirtualizer } from "https://cdn.skypack.dev/@tanstack/solid-virtual";
   import mapboxgl from "https://cdn.skypack.dev/mapbox-gl";
 
-  // Configuration initialization with validation
-  const getAppConfig = () => {
-    return new Promise((resolve, reject) => {
-      try {
-        const configEl = document.getElementById('app-config');
-        if (!configEl) {
-          throw new Error('Configuration element not found');
-        }
-        const config = JSON.parse(configEl.textContent);
-        
-        // Validate required fields
-        const required = ['walks', 'mapboxToken', 'featureIcons', 'config'];
-        const missing = required.filter(key => !config[key]);
-        
-        if (missing.length > 0) {
-          throw new Error(`Missing required configuration: ${missing.join(', ')}`);
-        }
+  const getConfig = () => {
+    if (!window.APP_CONFIG) {
+      throw new Error('Application configuration not found - check server response');
+    }
 
-        resolve(config);
-      } catch (error) {
-        reject(error);
-      }
-    });
+    const required = ['walks', 'mapboxToken', 'featureIcons', 'config'];
+    const missing = required.filter(key => !window.APP_CONFIG[key]);
+    
+    if (missing.length > 0) {
+      throw new Error(`Missing required configuration: ${missing.join(', ')}`);
+    }
+
+    return window.APP_CONFIG;
   };
 
   // Store Creation
@@ -298,23 +289,28 @@
     `;
   };
 
-  // Initialization
-  async function initializeApp() {
-    try {
-      // Wait for DOM to be ready
-      if (document.readyState !== 'complete') {
-        await new Promise(resolve => {
-          window.addEventListener('load', resolve);
-        });
+  const initializeApp = async () => {
+    const showError = (message) => {
+      const root = document.getElementById('root');
+      if (root) {
+        root.innerHTML = `
+          <div class="p-4 bg-red-100 text-red-700 rounded-lg">
+            <h3 class="font-bold">Configuration Error</h3>
+            <p>${message}</p>
+          </div>
+        `;
       }
+    };
 
-      // Get configuration
-      const config = await getAppConfig();
-      
-      // Initialize Mapbox
+    const cleanup = () => {
+      const loadingEl = document.getElementById('loading');
+      if (loadingEl) loadingEl.remove();
+    };
+
+    try {
+      const config = getConfig();
       mapboxgl.accessToken = config.mapboxToken;
 
-      // Initialize app
       const root = document.getElementById('root');
       if (!root) throw new Error('Root element not found');
 
@@ -323,37 +319,24 @@
           config=${config}
           onError=${(error) => {
             console.error('App Error:', error);
-            root.innerHTML = `
-              <div class="p-4 bg-red-100 text-red-700 rounded-lg">
-                <h3 class="font-bold">Error</h3>
-                <p>${error.message}</p>
-              </div>
-            `;
+            showError(error.message);
           }}
         />
       `, root);
 
-      // Remove loading indicator
-      const loadingEl = document.getElementById('loading');
-      if (loadingEl) loadingEl.remove();
-
+      cleanup();
     } catch (error) {
       console.error('Initialization error:', error);
-      const root = document.getElementById('root');
-      if (root) {
-        root.innerHTML = `
-          <div class="p-4 bg-red-100 text-red-700 rounded-lg">
-            <h3 class="font-bold">Initialization Error</h3>
-            <p>${error.message}</p>
-          </div>
-        `;
-      }
-      const loadingEl = document.getElementById('loading');
-      if (loadingEl) loadingEl.remove();
+      showError(error.message);
+      cleanup();
     }
-  }
+  };
 
-  // Start initialization
-  initializeApp();
+  // Initialize once DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeApp);
+  } else {
+    initializeApp();
+  }
 </script>
 {% endblock %}
