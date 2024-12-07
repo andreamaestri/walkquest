@@ -12,16 +12,14 @@
 
 <!-- Core Dependencies -->
 <script type="module">
-    // Import mapboxgl
-    import mapboxgl from 'https://cdn.skypack.dev/mapbox-gl';
-    
-    // Then import virtualizer with correct exports
+    // Use import mapped modules
     import { 
         Virtualizer,
         observeElementOffset,
         observeElementRect,
         elementScroll
-    } from 'https://esm.run/@tanstack/virtual-core';
+    } from '@tanstack/virtual-core';
+    import mapboxgl from 'mapbox-gl';
 
     // Make available globally
     window.mapboxgl = mapboxgl;
@@ -65,5 +63,52 @@
             }
         });
     };
+</script>
+<link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
+{% endblock %}
+
+{% block content %}
+<div class="flex h-[calc(100vh-4rem)]">
+    <!-- Sidebar with walk list -->
+    <div class="w-1/3 overflow-hidden flex flex-col bg-white border-r">
+        <div class="p-4 border-b">
+            <input type="text" 
+                   id="search-input"
+                   placeholder="Search walks..." 
+                   class="w-full px-4 py-2 border rounded-lg">
+        </div>
+        <div id="walk-list" class="flex-1 overflow-y-auto"></div>
+    </div>
+    
+    <!-- Map container -->
+    <div id="map" class="w-2/3"></div>
+</div>
+{% endblock %}
+
+{% block inline_javascript %}
+<script type="module">
+    // Import our modules
+    import { walkStore, Icon } from '{% static "js/project.js" %}';
+    
+    // Initialize with Django template data
+    window.MAPBOX_TOKEN = '{{ mapbox_token }}';
+    window.INITIAL_WALKS = {{ initial_walks|safe }};
+    
+    // Wait for DOM and required scripts
+    document.addEventListener('DOMContentLoaded', () => {
+        if (!window.mapboxgl) {
+            console.error('Mapbox GL JS not loaded');
+            return;
+        }
+        
+        // Set Mapbox token
+        mapboxgl.accessToken = window.MAPBOX_TOKEN;
+        
+        // Initialize walks
+        walkStore.setWalks(window.INITIAL_WALKS);
+        
+        // Initialize map and list
+        walkStore.initialize('map', 'walk-list');
+    });
 </script>
 {% endblock %}

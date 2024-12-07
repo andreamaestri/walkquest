@@ -8,13 +8,43 @@ import {
     observeElementOffset,
     observeElementRect,
     elementScroll
-} from 'https://esm.run/@tanstack/virtual-core@3.0.0/dist/index.js';
-import mapboxgl from 'https://cdn.skypack.dev/mapbox-gl@2.15.0';
+} from '@tanstack/virtual-core';
+import mapboxgl from 'mapbox-gl';
+import 'iconify-icon';
 
-// Load Iconify
-const iconifyScript = document.createElement('script');
-iconifyScript.src = 'https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js';
-document.head.appendChild(iconifyScript);
+// Remove old iconify script loading code
+// const iconifyScript = document.createElement('script');
+// iconifyScript.src = 'https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js';
+// document.head.appendChild(iconifyScript);
+
+// Removed duplicate WalkStore class declaration
+
+/**
+ * Icon class for managing Iconify icons
+ */
+export class Icon {
+    constructor(name, options = {}) {
+        this.name = name;
+        this.color = options.color || 'currentColor';
+        this.size = options.size || '24';
+        this.class = options.class || '';
+    }
+
+    createElement() {
+        const icon = document.createElement('iconify-icon');
+        icon.icon = this.name;
+        icon.style.color = this.color;
+        icon.style.fontSize = `${this.size}px`;
+        if (this.class) {
+            icon.className = this.class;
+        }
+        return icon;
+    }
+
+    toString() {
+        return `<iconify-icon icon="${this.name}" style="color: ${this.color}; font-size: ${this.size}px" ${this.class ? `class="${this.class}"` : ''}></iconify-icon>`;
+    }
+}
 
 // Configuration
 export const CONFIG = {
@@ -34,7 +64,7 @@ export const CONFIG = {
     }
 };
 
-// Helper function for icons
+// Helper function for icons - simplified for web component
 function createIcon(icon, className = '') {
     return `<iconify-icon icon="${icon}" ${className ? `class="${className}"` : ''}></iconify-icon>`;
 }
@@ -59,24 +89,44 @@ class WalkStore {
 
   initializeMap(containerId) {
     const container = document.getElementById(containerId);
-    if (!container) return;
+    if (!container || !window.mapboxgl || !window.MAPBOX_TOKEN) {
+        console.error('Map initialization failed:', {
+            container: !!container,
+            mapboxgl: !!window.mapboxgl,
+            token: !!window.MAPBOX_TOKEN
+        });
+        return;
+    }
 
-    this.map = new mapboxgl.Map({
-      container: containerId,
-      style: CONFIG.map.style,
-      center: CONFIG.map.defaultCenter,
-      zoom: CONFIG.map.defaultZoom,
-    });
+    mapboxgl.accessToken = window.MAPBOX_TOKEN;
 
-    this.map.addControl(new mapboxgl.NavigationControl(), "top-right");
-    this.map.addControl(
-      new mapboxgl.GeolocateControl({
-        positionOptions: { enableHighAccuracy: true },
-        trackUserLocation: true,
-        showUserHeading: true,
-      })
-    );
-  }
+    try {
+        this.map = new mapboxgl.Map({
+            container: containerId,
+            style: CONFIG.map.style,
+            center: CONFIG.map.defaultCenter,
+            zoom: CONFIG.map.defaultZoom,
+        });
+
+        this.map.addControl(new mapboxgl.NavigationControl(), "top-right");
+        this.map.addControl(
+            new mapboxgl.GeolocateControl({
+                positionOptions: { enableHighAccuracy: true },
+                trackUserLocation: true,
+                showUserHeading: true,
+            })
+        );
+
+        // Update markers once map is loaded
+        this.map.on('load', () => {
+            if (this.walks.length > 0) {
+                this.updateMarkers();
+            }
+        });
+    } catch (error) {
+        console.error('Map initialization error:', error);
+    }
+}
 
   initializeVirtualList(containerId) {
     const container = document.getElementById(containerId);
@@ -288,16 +338,8 @@ export const utils = {
 };
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    // Ensure Iconify is loaded
-    if (!customElements.get('iconify-icon')) {
-        iconifyScript.addEventListener('load', () => {
-            document.body.classList.remove('loading');
-            initializeApp();
-        });
-    } else {
-        document.body.classList.remove('loading');
-        initializeApp();
-    }
+    document.body.classList.remove('loading');
+    initializeApp();
 });
 
 function initializeApp() {
@@ -333,23 +375,5 @@ function initializeApp() {
     }, delay);
   }
 }
-
-// Export singleton instance
-export const walkStore = new WalkStore();
-
-// Export utilities
-export const utils = {
-    debounce(fn, ms) {
-        let timeoutId;
-        return (...args) => {
-            clearTimeout(timeoutId);
-            timeoutId = setTimeout(() => fn(...args), ms);
-        };
-    },
-
-    sanitizeInput(input) {
-        return input.replace(/[<>]/g, '');
-    }
-};
 
 

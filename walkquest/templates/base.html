@@ -15,16 +15,20 @@
     
     <link rel="icon" href="{% static 'images/favicons/favicon.ico' %}">
 
-    <!-- Core Dependencies -->
-    <script type="module">
-        import { Virtualizer } from 'https://esm.run/@tanstack/virtual-core@3.0.0/dist/index.js';
-        import mapboxgl from 'https://cdn.skypack.dev/mapbox-gl@2.15.0';
-        
-        window.Virtualizer = Virtualizer;
-        window.mapboxgl = mapboxgl;
+    <!-- Import Map Definition -->
+    <script type="importmap">
+    {
+      "imports": {
+        "@tanstack/virtual-core": "https://esm.run/@tanstack/virtual-core",
+        "mapbox-gl": "https://cdn.skypack.dev/mapbox-gl",
+        "iconify-icon": "https://esm.run/iconify-icon",
+        "@app/utils": "/static/js/utils.js",
+        "@app/config": "/static/js/config.js"
+      }
+    }
     </script>
-    
-    <script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script>
+
+    <!-- Core Dependencies -->
     <script src="https://cdn.tailwindcss.com"></script>
 
     <!-- Tailwind Config -->
@@ -98,23 +102,23 @@
         <div class="max-w-7xl mx-auto px-4">
             <div class="flex justify-between h-16">
                 <a href="{% url 'home' %}" class="flex items-center space-x-2">
-                    <span class="icon" data-icon="mdi:hiking"></span>
+                    <iconify-icon icon="mdi:hiking" class="text-2xl text-primary-500"></iconify-icon>
                     <span class="font-semibold text-lg">WalkQuest</span>
                 </a>
 
                 <div class="flex items-center space-x-2">
                     {% if request.user.is_authenticated %}
                         <a href="{% url 'users:detail' request.user.username %}" class="nav-link">
-                            <span class="icon" data-icon="mdi:account"></span>
+                            <iconify-icon icon="mdi:account" class="mr-1"></iconify-icon>
                             Profile
                         </a>
                         <a href="{% url 'account_logout' %}" class="nav-link">
-                            <span class="icon" data-icon="mdi:logout"></span>
+                            <iconify-icon icon="mdi:logout" class="mr-1"></iconify-icon>
                             Sign out
                         </a>
                     {% else %}
                         <a href="{% url 'account_login' %}" class="nav-link">
-                            <span class="icon" data-icon="mdi:login"></span>
+                            <iconify-icon icon="mdi:login" class="mr-1"></iconify-icon>
                             Sign in
                         </a>
                     {% endif %}
@@ -129,11 +133,11 @@
                 <div class="message message-{{ message.tags }} transform transition-all duration-300"
                      data-auto-remove="5000">
                     <div class="flex items-center">
-                        <span class="icon mr-2" data-icon="mdi:{{ message.tags }}"></span>
+                        <iconify-icon icon="mdi:{{ message.tags }}" class="mr-2"></iconify-icon>
                         <p>{{ message }}</p>
                     </div>
                     <button type="button" class="absolute top-2 right-2" onclick="this.parentElement.remove()">
-                        <span class="icon w-5 h-5" data-icon="mdi:close"></span>
+                        <iconify-icon icon="mdi:close" class="w-5 h-5"></iconify-icon>
                     </button>
                 </div>
             {% endfor %}
@@ -148,17 +152,10 @@
         {% block modal %}{% endblock %}
     </div>
 
-    <script type="module">
-        // Initialize icons
-        document.querySelectorAll('.icon').forEach(el => {
-            new Icon({
-                node: el,
-                icon: el.dataset.icon
-            });
-        });
-
-        // Initialize app
+    <script>
+        // Initialize app when DOM is ready
         document.addEventListener('DOMContentLoaded', () => {
+            // Remove loading state
             document.body.classList.remove('loading');
 
             // Auto-remove messages
