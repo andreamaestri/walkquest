@@ -21,25 +21,60 @@ Last Updated: After a satisfying lunch break
 """
 
 import logging
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-
+from typing import Any, Dict, List, Optional
 from django.conf import settings
 from django.core.cache import cache
 from django.core.serializers.json import DjangoJSONEncoder
-from django.db.models import Count
-from django.db.models import QuerySet
-from django.http import HttpResponse
-from django.http import JsonResponse
+from django.db.models import Count, QuerySet
+from django.http import HttpResponse, JsonResponse
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 from django.views.generic import ListView
-
 from walkquest.walks.models import Walk
 
 logger = logging.getLogger(__name__)
+
+class WalkQuestConfig:
+    """Configuration manager for WalkQuest application."""
+    
+    DIFFICULTIES = [
+        "GREY'S PATHFINDER",
+        "MASTER WAYFARER",
+        "NOVICE WANDERER",
+        "TRAIL RANGER",
+        "WARDEN'S ASCENT"
+    ]
+    
+    FEATURES = [
+        "cafe",
+        "coastal",
+        "historic",
+        "pub",
+        "wildlife",
+        "woodland"
+    ]
+    
+    MAP_CONFIG = {
+        'style': 'mapbox://styles/mapbox/outdoors-v12',
+        'defaultCenter': [-4.85, 50.4],
+        'defaultZoom': 9,
+        'markerColors': {
+            'default': '#4F46E5',
+            'selected': '#DC2626',
+        }
+    }
+    
+    @classmethod
+    def get_config(cls):
+        """Get consolidated configuration."""
+        return {
+            'mapbox_token': settings.MAPBOX_TOKEN,
+            'map': cls.MAP_CONFIG,
+            'filters': {
+                'difficulties': cls.DIFFICULTIES,
+                'features': cls.FEATURES
+            }
+        }
 
 class HomePageView(ListView):
     """Main view for displaying walking routes with filtering and mapping capabilities."""
@@ -50,131 +85,62 @@ class HomePageView(ListView):
     paginate_by = 20
     cache_timeout = 60 * 15  # 15 minutes
 
+    def get_cache_key(self) -> str:
+        """Generate unique cache key based on query parameters."""
+        query_params = sorted(self.request.GET.items())
+        return f'walks_home_{hash(frozenset(query_params))}'
+
     def get_queryset(self) -> QuerySet:
         """Get optimized and filtered queryset."""
-        return (
+        queryset = (
             super()
             .get_queryset()
             .select_related('adventure')
             .prefetch_related('related_categories')
         )
-
-    def get_difficulty_counts(self) -> Dict[str, int]:
-        """Get walk counts by difficulty level"""
-        try:
-            counts = dict(
-                self.model.objects.values_list('steepness_level')
-                .annotate(count=Count('id'))
-                .values_list('steepness_level', 'count')
-            )
-            return counts
-        except Exception as e:
-            logger.error(f"Error getting difficulty counts: {e}")
-            return {}
-
-    def get_feature_counts(self) -> Dict[str, int]:
-        """Get walk counts by feature"""
-        try:
-            feature_counts = {}
-            walks = self.model.objects.exclude(features__isnull=True)
-            
-            for walk in walks:
-                if isinstance(walk.features, list):
-                    for feature in walk.features:
-                        feature_counts[feature] = feature_counts.get(feature, 0) + 1
-            
-            return feature_counts
-        except Exception as e:
-            logger.error(f"Error getting feature counts: {e}")
-            return {}
+        
+        # Apply search if provided
+        search_query = self.request.GET.get('search', '').strip()
+        if search_query:
+            queryset = queryset.filter(walk_name__icontains=search_query)
+        
+        return queryset
 
     def get_statistics(self) -> Dict[str, Dict[str, int]]:
-        """Get walk counts for difficulties and features"""
-        return {
-            'difficulties': self.get_difficulty_counts(),
-            'features': self.get_feature_counts()
-        }
-
-    def get_initial_walks(self) -> List[Dict[str, Any]]:
-        """Get initial set of walks for page load."""
-        try:
-            walks = self.model.objects.all()[:self.paginate_by]
-            return [self.serialize_walk(walk) for walk in walks]
-        except Exception as e:
-            logger.error(f"Error getting initial walks: {e}")
-            return []
-
-    def get_context_data(self, **kwargs) -> Dict[str, Any]:
-        """Prepare context data including configuration and initial walks"""
-        context = super().get_context_data(**kwargs)
+        """Get walk counts for difficulties and features."""
+        cache_key = 'walk_statistics'
+        stats = cache.get(cache_key)
         
-        try:
-            # Get statistics
-            statistics = self.get_statistics()
-            
-            # Get configuration
-            config = {
-                'mapbox_token': settings.MAPBOX_TOKEN,
-                'default_center': [-4.85, 50.4],
-                'default_zoom': 9,
-                'statistics': statistics,
-                'filters': {
-                    'difficulties': [
-                        "GREY'S PATHFINDER",
-                        "MASTER WAYFARER",
-                        "NOVICE WANDERER",
-                        "TRAIL RANGER",
-                        "WARDEN'S ASCENT"
-                    ],
-                    'features': [
-                        "cafe",
-                        "coastal",
-                        "historic",
-                        "pub",
-                        "wildlife",
-                        "woodland"
-                    ]
+        if not stats:
+            try:
+                # Get difficulty counts
+                difficulty_counts = dict(
+                    self.model.objects.values_list('steepness_level')
+                    .annotate(count=Count('id'))
+                    .values_list('steepness_level', 'count')
+                )
+                
+                # Get feature counts
+                feature_counts = {}
+                walks = self.model.objects.exclude(features__isnull=True)
+                for walk in walks:
+                    if isinstance(walk.features, list):
+                        for feature in walk.features:
+                            feature_counts[feature] = feature_counts.get(feature, 0) + 1
+                
+                stats = {
+                    'difficulties': difficulty_counts,
+                    'features': feature_counts
                 }
-            }
-            
-            # Get initial walks
-            initial_walks = self.get_initial_walks()
-            
-            # Update context
-            context.update({
-                'config': config,
-                'initial_walks': initial_walks,
-                'difficulties': config['filters']['difficulties'],
-                'features': config['filters']['features'],
-            })
-
-            # Add debug information in development
-            if settings.DEBUG:
-                context['debug'] = {
-                    'statistics': statistics,
-                    'walk_count': len(initial_walks),
-                }
-
-        except Exception as e:
-            logger.error(f"Error preparing context data: {e}")
-            context.update({
-                'config': {
-                    'mapbox_token': settings.MAPBOX_TOKEN,
-                    'default_center': [-4.85, 50.4],
-                    'default_zoom': 9,
-                    'statistics': {},
-                    'filters': {
-                        'difficulties': [],
-                        'features': []
-                    }
-                },
-                'initial_walks': [],
-                'difficulties': [],
-                'features': [],
-                'error': str(e)
-            })
+                
+                # Cache for 15 minutes
+                cache.set(cache_key, stats, 60 * 15)
+                
+            except Exception as e:
+                logger.error(f"Error calculating statistics: {e}")
+                stats = {'difficulties': {}, 'features': {}}
         
-        return context
+        return stats
 
     def serialize_walk(self, walk: Walk) -> Dict[str, Any]:
         """Serialize walk instance to dictionary."""
@@ -199,17 +165,111 @@ class HomePageView(ListView):
             logger.error(f"Walk serialization error for {walk.id}: {e}")
             return {}
 
+    def get_initial_walks(self) -> List[Dict[str, Any]]:
+        """Get initial set of walks for page load."""
+        cache_key = 'initial_walks'
+        walks_data = cache.get(cache_key)
+        
+        if not walks_data:
+            try:
+                walks = self.get_queryset()[:self.paginate_by]
+                walks_data = [self.serialize_walk(walk) for walk in walks]
+                cache.set(cache_key, walks_data, 60 * 15)  # Cache for 15 minutes
+            except Exception as e:
+                logger.error(f"Error getting initial walks: {e}")
+                walks_data = []
+        
+        return walks_data
+
+    def get_context_data(self, **kwargs) -> Dict[str, Any]:
+        """Prepare context data including configuration and initial walks."""
+        context = super().get_context_data(**kwargs)
+        
+        try:
+            # Get statistics
+            statistics = self.get_statistics()
+            
+            # Get configuration
+            config = WalkQuestConfig.get_config(statistics=statistics)
+            
+            # Update context
+            context.update({
+                'config': config,
+                'initial_walks': self.get_initial_walks(),
+                'difficulties': WalkQuestConfig.DIFFICULTIES,
+                'features': WalkQuestConfig.FEATURES,
+            })
+
+            # Add debug information in development
+            if settings.DEBUG:
+                context['debug'] = {
+                    'statistics': statistics,
+                    'walk_count': len(context['initial_walks']),
+                }
+
+        except Exception as e:
+            logger.error(f"Error preparing context: {e}")
+            context.update({
+                'config': WalkQuestConfig.get_config(),
+                'initial_walks': [],
+                'difficulties': [],
+                'features': [],
+                'error': str(e)
+            })
+        
+        return context
+
+    @method_decorator(cache_page(cache_timeout))
     def get(self, request, *args, **kwargs) -> HttpResponse:
-        """Handle GET requests with proper error handling"""
+        """Handle GET requests with rate limiting and caching."""
         try:
             if request.headers.get("HX-Request"):
                 return self._handle_htmx_request(request)
             
             response = super().get(request, *args, **kwargs)
-            logger.info(f"Successfully initialized HomePageView for {request.path}")
+            logger.info(f"Successfully rendered home page for {request.path}")
             return response
             
         except Exception as e:
             logger.exception("Error processing request")
             context = self.get_context_data(error=str(e))
             return self.render_to_response(context)
+
+    def _handle_htmx_request(self, request) -> JsonResponse:
+        """Handle HTMX requests with rate limiting."""
+        if not self._check_rate_limit(request):
+            return JsonResponse(
+                {'status': 'error', 'message': 'Rate limit exceeded'}, 
+                status=429
+            )
+        
+        queryset = self.get_queryset()
+        page = self.paginate_queryset(queryset)
+        
+        return JsonResponse({
+            'status': 'success',
+            'data': [self.serialize_walk(walk) for walk in page],
+            'pagination': {
+                'has_next': page.has_next(),
+                'has_previous': page.has_previous(),
+                'current_page': page.number,
+                'total_pages': page.paginator.num_pages,
+            }
+        }, encoder=DjangoJSONEncoder)
+
+    def _check_rate_limit(self, request) -> bool:
+        """Check if request is within rate limits."""
+        client_ip = request.META.get('REMOTE_ADDR')
+        rate_key = f'rate_limit_{client_ip}'
+        
+        try:
+            request_count = cache.get(rate_key, 0)
+            if request_count > 100:  # 100 requests per minute
+                return False
+            
+            cache.set(rate_key, request_count + 1, 60)  # Reset after 1 minute
+            return True
+            
+        except Exception as e:
+            logger.error(f"Rate limiting error: {e}")
+            return True  # Allow request if rate limiting fails

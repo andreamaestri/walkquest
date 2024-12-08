@@ -306,7 +306,8 @@ class WalkStore {
         throw new Error('Application configuration not found');
       }
 
-      const { mapboxToken, initialWalks } = window.WALKQUEST.config;
+      // Note the change from mapboxToken to mapbox_token to match JSON
+      const { mapbox_token: mapboxToken, initialWalks } = window.WALKQUEST.config;
 
       if (!mapboxToken) {
         throw new Error('Mapbox token not found');
@@ -321,8 +322,6 @@ class WalkStore {
       // Set initial walks if available
       if (Array.isArray(initialWalks)) {
         this.setWalks(initialWalks);
-      } else {
-        console.warn('No initial walks data provided');
       }
 
       return true;

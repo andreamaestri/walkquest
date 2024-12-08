@@ -138,41 +138,58 @@
     <div id="no-results" class="hidden p-4 text-center text-gray-500">
         No walks found matching your criteria
     </div>
+    <div><p>hi!</p><div>
 {% endblock %}
 
 {% block extra_js %}
 <script type="module">
-    import { walkStore, initializeConfig } from "{% static 'js/project.js' %}";
+    import { walkStore } from "{% static 'js/project.js' %}";
 
-    document.addEventListener('DOMContentLoaded', () => {
-        try {
-            const configEl = document.getElementById('config-data');
-            const walksEl = document.getElementById('walks-data');
-            
-            if (!configEl || !walksEl) {
-                throw new Error('Configuration data missing');
-            }
+    function validateConfig(config) {
+        // Required configuration fields
+        const requiredFields = [
+            'mapbox_token',
+            'map.defaultCenter',
+            'map.defaultZoom',
+            'map.style',
+            'filters.difficulties',
+            'filters.features'
+        ];
 
-            window.WALKQUEST = {
-                config: JSON.parse(configEl.textContent),
-                initialWalks: JSON.parse(walksEl.textContent)
-            };
-
-            walkStore.initialize('map', 'walk-list');
-            walkStore.updateFilterUI();
-
-            // Initialize event listeners
-            setupEventListeners();
-
-        } catch (error) {
-            console.error('Failed to initialize application:', error);
-            const errorContainer = document.getElementById('error-container');
-            if (errorContainer) {
-                errorContainer.textContent = 'Failed to initialize application: ' + error.message;
-                errorContainer.classList.remove('hidden');
+        for (const field of requiredFields) {
+            const value = field.split('.').reduce((obj, key) => obj?.[key], config);
+            if (!value) {
+                throw new Error(`Missing required configuration: ${field}`);
             }
         }
-    });
+
+        return true;
+    }
+
+    async function initializeApplication() {
+        const configEl = document.getElementById('config-data');
+        const walksEl = document.getElementById('walks-data');
+        
+        if (!configEl || !walksEl) {
+            throw new Error('Configuration elements not found in DOM');
+        }
+
+        // Parse configuration
+        const config = JSON.parse(configEl.textContent);
+        const initialWalks = JSON.parse(walksEl.textContent);
+
+        // Validate configuration
+        validateConfig(config);
+
+        // Initialize global configuration
+        window.WALKQUEST = { config, initialWalks };
+
+        // Initialize walkStore
+        await walkStore.initialize('map', 'walk-list');
+        walkStore.updateFilterUI();
+
+        return true;
+    }
 
     function setupEventListeners() {
         // Search functionality
@@ -186,35 +203,39 @@
         }
 
         // Difficulty filters
-        document.querySelectorAll('.difficulty-filters input[type="checkbox"]').forEach(checkbox => {
-            checkbox.addEventListener('change', (e) => {
-                if (e.target.checked) {
-                    walkStore.filters.difficulty = e.target.value;
-                    document.querySelectorAll('.difficulty-filters input[type="checkbox"]')
-                        .forEach(cb => {
-                            if (cb !== e.target) cb.checked = false;
-                        });
-                } else {
-                    walkStore.filters.difficulty = null;
-                }
-                walkStore.updateVirtualList();
-                walkStore.updateMarkers();
+        document.querySelectorAll('.difficulty-filters input[type="checkbox"]')
+            .forEach(checkbox => {
+                checkbox.addEventListener('change', (e) => {
+                    if (e.target.checked) {
+                        walkStore.filters.difficulty = e.target.value;
+                        // Uncheck others
+                        document.querySelectorAll('.difficulty-filters input[type="checkbox"]')
+                            .forEach(cb => {
+                                if (cb !== e.target) cb.checked = false;
+                            });
+                    } else {
+                        walkStore.filters.difficulty = null;
+                    }
+                    walkStore.updateVirtualList();
+                    walkStore.updateMarkers();
+                });
             });
-        });
 
         // Feature filters
-        document.querySelectorAll('.feature-filters input[type="checkbox"]').forEach(checkbox => {
-            checkbox.addEventListener('change', (e) => {
-                const feature = e.target.value;
-                if (e.target.checked) {
-                    walkStore.filters.features.push(feature);
-                } else {
-                    walkStore.filters.features = walkStore.filters.features.filter(f => f !== feature);
-                }
-                walkStore.updateVirtualList();
-                walkStore.updateMarkers();
+        document.querySelectorAll('.feature-filters input[type="checkbox"]')
+            .forEach(checkbox => {
+                checkbox.addEventListener('change', (e) => {
+                    const feature = e.target.value;
+                    if (e.target.checked) {
+                        walkStore.filters.features.push(feature);
+                    } else {
+                        walkStore.filters.features = walkStore.filters.features
+                            .filter(f => f !== feature);
+                    }
+                    walkStore.updateVirtualList();
+                    walkStore.updateMarkers();
+                });
             });
-        });
 
         // Walk list clicks
         const walkList = document.getElementById('walk-list');
@@ -228,5 +249,37 @@
             });
         }
     }
+
+    // Initialize when DOM is ready
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            // Show loading state
+            document.body.classList.add('loading');
+            
+            // Initialize application
+            await initializeApplication();
+            
+            // Setup event listeners
+            setupEventListeners();
+            
+            // Hide loading state
+            document.body.classList.remove('loading');
+            
+            console.log('Application initialized successfully');
+
+        } catch (error) {
+            console.error('Failed to initialize application:', error);
+            
+            // Show error message
+            const errorContainer = document.getElementById('error-container');
+            if (errorContainer) {
+                errorContainer.textContent = 'Failed to initialize application: ' + error.message;
+                errorContainer.classList.remove('hidden');
+            }
+            
+            // Hide loading state
+            document.body.classList.remove('loading');
+        }
+    });
 </script>
 {% endblock %}
