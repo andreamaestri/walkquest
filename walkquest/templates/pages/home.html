@@ -50,12 +50,15 @@
 {% endblock %}
 
 {% block content %}
-    <!-- Configuration data -->
-    {% if config %}
-        {{ config|json_script:"config-data" }}
-    {% endif %}
+    <!-- Configuration data - Move these BEFORE the script -->
+    <script id="config-data" type="application/json">
+        {{ config|json_script:"config-data"|safe }}
+    </script>
+    
     {% if initial_walks %}
-        {{ initial_walks|json_script:"walks-data" }}
+    <script id="walks-data" type="application/json">
+        {{ initial_walks|json_script:"walks-data"|safe }}
+    </script>
     {% endif %}
 
     <!-- Error container -->
@@ -138,147 +141,151 @@
     <div id="no-results" class="hidden p-4 text-center text-gray-500">
         No walks found matching your criteria
     </div>
-    
 {% endblock %}
 
 {% block extra_js %}
 <script type="module">
-    import { walkStore } from "{% static 'js/project.js' %}";
-
-    function validateConfig(config) {
-        // Required configuration fields
-        const requiredFields = [
-            'mapbox_token',
-            'map.defaultCenter',
-            'map.defaultZoom',
-            'map.style',
-            'filters.difficulties',
-            'filters.features'
-        ];
-
-        for (const field of requiredFields) {
-            const value = field.split('.').reduce((obj, key) => obj?.[key], config);
-            if (!value) {
-                throw new Error(`Missing required configuration: ${field}`);
-            }
-        }
-
-        return true;
-    }
-
-    async function initializeApplication() {
-        const configEl = document.getElementById('config-data');
-        const walksEl = document.getElementById('walks-data');
-        
-        if (!configEl || !walksEl) {
-            throw new Error('Configuration elements not found in DOM');
-        }
-
-        // Parse configuration
-        const config = JSON.parse(configEl.textContent);
-        const initialWalks = JSON.parse(walksEl.textContent);
-
-        // Validate configuration
-        validateConfig(config);
-
-        // Initialize global configuration
-        window.WALKQUEST = { config, initialWalks };
-
-        // Initialize walkStore
-        await walkStore.initialize('map', 'walk-list');
-        walkStore.updateFilterUI();
-
-        return true;
-    }
-
-    function setupEventListeners() {
-        // Search functionality
-        const searchInput = document.getElementById('search-input');
-        if (searchInput) {
-            searchInput.addEventListener('input', (e) => {
-                walkStore.setSearchTerm(e.target.value);
-                walkStore.updateVirtualList();
-                walkStore.updateMarkers();
-            });
-        }
-
-        // Difficulty filters
-        document.querySelectorAll('.difficulty-filters input[type="checkbox"]')
-            .forEach(checkbox => {
-                checkbox.addEventListener('change', (e) => {
-                    if (e.target.checked) {
-                        walkStore.filters.difficulty = e.target.value;
-                        // Uncheck others
-                        document.querySelectorAll('.difficulty-filters input[type="checkbox"]')
-                            .forEach(cb => {
-                                if (cb !== e.target) cb.checked = false;
-                            });
-                    } else {
-                        walkStore.filters.difficulty = null;
-                    }
-                    walkStore.updateVirtualList();
-                    walkStore.updateMarkers();
-                });
-            });
-
-        // Feature filters
-        document.querySelectorAll('.feature-filters input[type="checkbox"]')
-            .forEach(checkbox => {
-                checkbox.addEventListener('change', (e) => {
-                    const feature = e.target.value;
-                    if (e.target.checked) {
-                        walkStore.filters.features.push(feature);
-                    } else {
-                        walkStore.filters.features = walkStore.filters.features
-                            .filter(f => f !== feature);
-                    }
-                    walkStore.updateVirtualList();
-                    walkStore.updateMarkers();
-                });
-            });
-
-        // Walk list clicks
-        const walkList = document.getElementById('walk-list');
-        if (walkList) {
-            walkList.addEventListener('click', (e) => {
-                const walkCard = e.target.closest('.walk-card');
-                if (walkCard) {
-                    const walkId = walkCard.dataset.walkId;
-                    walkStore.selectWalk(walkId);
-                }
-            });
-        }
-    }
-
-    // Initialize when DOM is ready
+    // Wait for DOM to be fully loaded
     document.addEventListener('DOMContentLoaded', async () => {
         try {
-            // Show loading state
-            document.body.classList.add('loading');
-            
-            // Initialize application
-            await initializeApplication();
-            
-            // Setup event listeners
-            setupEventListeners();
-            
-            // Hide loading state
-            document.body.classList.remove('loading');
-            
-            console.log('Application initialized successfully');
+            const configEl = document.getElementById('config-data');
+            if (!configEl) {
+                throw new Error('Config element not found');
+            }
+
+            // Parse config directly from the element
+            const config = JSON.parse(configEl.textContent);
+            window.WALKQUEST = { config };
+
+            // Initialize walkStore
+            const { walkStore } = await import("{% static 'js/project.js' %}");
+            await walkStore.initialize('map', 'walk-list');
 
         } catch (error) {
-            console.error('Failed to initialize application:', error);
-            
-            // Show error message
-            const errorContainer = document.getElementById('error-container');
-            if (errorContainer) {
-                errorContainer.textContent = 'Failed to initialize application: ' + error.message;
-                errorContainer.classList.remove('hidden');
+            console.error('Failed to initialize:', error);
+            document.getElementById('error-container')?.classList.remove('hidden');
+        }
+    });
+</script>
+{% endblock %}
+</style>
+{% endblock %}
+
+{% block content %}
+    <!-- Configuration data - Move these BEFORE the script -->
+    <script id="config-data" type="application/json">
+        {{ config|json_script:"config-data"|safe }}
+    </script>
+    
+    {% if initial_walks %}
+    <script id="walks-data" type="application/json">
+        {{ initial_walks|json_script:"walks-data"|safe }}
+    </script>
+    {% endif %}
+
+    <!-- Error container -->
+    <div id="error-container" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert"></div>
+
+    <!-- Main content -->
+    <div class="h-screen w-screen relative flex flex-col md:flex-row">
+        <!-- Sidebar -->
+        <aside class="w-full md:w-96 flex flex-col bg-white shadow-lg">
+            <!-- Search Section -->
+            <div class="p-4 border-b">
+                <div class="relative">
+                    <input type="text" 
+                           id="search-input"
+                           class="w-full px-4 py-2 pl-10 border rounded-lg focus:ring-2 focus:ring-primary-500"
+                           placeholder="Search walks..."
+                           aria-label="Search walks"
+                           autocomplete="off">
+                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2">
+                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Filter Sections -->
+            <div class="p-4 border-b overflow-y-auto">
+                <!-- Difficulty Filters -->
+                <div class="difficulty-filters mb-6">
+                    <div class="filter-group">
+                        <h3 class="font-semibold mb-2 text-gray-700">Difficulty Levels</h3>
+                        {% for difficulty in difficulties %}
+                            <label class="filter-option block py-1 hover:bg-gray-50 rounded px-2 cursor-pointer" 
+                                   data-difficulty="{{ difficulty }}">
+                                <input type="checkbox" 
+                                       name="difficulty" 
+                                       value="{{ difficulty }}" 
+                                       class="mr-2 rounded text-primary-600 focus:ring-primary-500">
+                                <span class="text-gray-700">{{ difficulty }}</span>
+                                <span class="count">(0)</span>
+                            </label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Feature Filters -->
+                <div class="feature-filters">
+                    <div class="filter-group">
+                        <h3 class="font-semibold mb-2 text-gray-700">Features</h3>
+                        {% for feature in features %}
+                            <label class="filter-option block py-1 hover:bg-gray-50 rounded px-2 cursor-pointer" 
+                                   data-feature="{{ feature }}">
+                                <input type="checkbox" 
+                                       name="feature" 
+                                       value="{{ feature }}" 
+                                       class="mr-2 rounded text-primary-600 focus:ring-primary-500">
+                                <span class="text-gray-700">{{ feature|title }}</span>
+                                <span class="count">(0)</span>
+                            </label>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Walk List -->
+            <div id="walk-list" class="flex-1 overflow-auto" role="list"></div>
+        </aside>
+
+        <!-- Map Container -->
+        <div id="map" class="flex-1 relative">
+            <!-- Loading Overlay -->
+            <div id="map-loading" class="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50 hidden">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- No Results Message -->
+    <div id="no-results" class="hidden p-4 text-center text-gray-500">
+        No walks found matching your criteria
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="module">
+    // Wait for DOM to be fully loaded
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            const configEl = document.getElementById('config-data');
+            if (!configEl) {
+                throw new Error('Config element not found');
             }
-            
-            // Hide loading state
-            document.body.classList.remove('loading');
+
+            // Parse config directly from the element
+            const config = JSON.parse(configEl.textContent);
+            window.WALKQUEST = { config };
+
+            // Initialize walkStore
+            const { walkStore } = await import("{% static 'js/project.js' %}");
+            await walkStore.initialize('map', 'walk-list');
+
+        } catch (error) {
+            console.error('Failed to initialize:', error);
+            document.getElementById('error-container')?.classList.remove('hidden');
         }
     });
 </script>

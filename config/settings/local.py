@@ -55,9 +55,9 @@ INSTALLED_APPS = ["whitenoise.runserver_nostatic", *INSTALLED_APPS]
 # django-debug-toolbar
 # ------------------------------------------------------------------------------
 # https://django-debug-toolbar.readthedocs.io/en/latest/installation.html#prerequisites
-INSTALLED_APPS += ["debug_toolbar"]
+INSTALLED_APPS 
 # https://django-debug-toolbar.readthedocs.io/en/latest/installation.html#middleware
-MIDDLEWARE += ["debug_toolbar.middleware.DebugToolbarMiddleware"]
+MIDDLEWARE 
 # https://django-debug-toolbar.readthedocs.io/en/latest/configuration.html#debug-toolbar-config
 DEBUG_TOOLBAR_CONFIG = {
     "DISABLE_PANELS": [
