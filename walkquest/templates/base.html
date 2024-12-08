@@ -11,7 +11,7 @@
     <meta property="og:title" content="{% block og_title %}{{ block.super }}{% endblock %}">
     <meta property="og:description" content="Discover Cornwall's beautiful walking paths">
     
-    <title>{% block title %}WalkQuest{% endblock %}</title>
+    <title>{% block title %}walkquest{% endblock %}</title>
     
     <link rel="icon" href="{% static 'images/favicons/favicon.ico' %}">
 
@@ -20,17 +20,18 @@
     {
       "imports": {
         "@tanstack/virtual-core": "https://esm.run/@tanstack/virtual-core",
-        "mapbox-gl": "https://cdn.skypack.dev/mapbox-gl",
+        "mapbox-gl": "https://esm.run/mapbox-gl",
         "iconify-icon": "https://esm.run/iconify-icon",
-        "@app/utils": "/static/js/utils.js",
-        "@app/config": "/static/js/config.js"
+        "@app/project": "/static/js/project.js",
+        "superjson": "https://esm.run/superjson"
       }
     }
     </script>
 
     <!-- Core Dependencies -->
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.css" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-
+    
     <!-- Tailwind Config -->
     <script>
         tailwind.config = {
@@ -84,9 +85,14 @@
         .message-info { @apply bg-blue-100 text-blue-700; }
         .message-warning { @apply bg-yellow-100 text-yellow-700; }
     </style>
+    {% endcompress %}
+
+    <!-- Base styles -->
     <link href="{% static 'css/project.css' %}" rel="stylesheet">
     <link href="{% static 'css/sidebar.css' %}" rel="stylesheet">
-    {% endcompress %}
+
+    <!-- Page-specific styles -->
+    {% block extra_css %}{% endblock %}
 
     {{ form.media }}
     {% block extra_head %}{% endblock %}
@@ -144,16 +150,22 @@
         </div>
     {% endif %}
 
+    <!-- Main content area -->
     <main class="pt-16">
+        <!-- Configuration data -->
+        {% block config_data %}{% endblock %}
+        
+        <!-- Main content -->
         {% block content %}{% endblock %}
     </main>
 
+    <!-- Modal container -->
     <div id="modal-container">
         {% block modal %}{% endblock %}
     </div>
 
+    <!-- Base JavaScript -->
     <script>
-        // Initialize app when DOM is ready
         document.addEventListener('DOMContentLoaded', () => {
             // Remove loading state
             document.body.classList.remove('loading');
@@ -169,6 +181,7 @@
         });
     </script>
 
+    <!-- JavaScript blocks -->
     {% block inline_javascript %}{% endblock %}
     {% block extra_js %}{% endblock %}
 </body>

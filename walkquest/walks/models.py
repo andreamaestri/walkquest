@@ -1,7 +1,9 @@
 import uuid
+
 from django.contrib.gis.db import models
 from django.utils.translation import gettext_lazy as _
-from tagulous.models import TagModel, TagField
+from tagulous.models import TagField
+from tagulous.models import TagModel
 
 
 class WalkCategoryTag(TagModel):
@@ -11,6 +13,7 @@ class WalkCategoryTag(TagModel):
         space_delimiter = False
         
     class Meta:
+        app_label = 'walks'
         constraints = [
             models.UniqueConstraint(fields=['slug'], name='unique_category_slug')
         ]
@@ -55,6 +58,7 @@ class Adventure(models.Model):
     updated_at = models.DateTimeField(_("Updated"), auto_now=True)
 
     class Meta:
+        app_label = "walks"
         verbose_name = _("adventure")
         verbose_name_plural = _("adventures")
         ordering = ["-created_at"]
