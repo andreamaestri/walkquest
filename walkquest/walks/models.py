@@ -14,9 +14,13 @@ class WalkCategoryTag(TagModel):
         
     class Meta:
         app_label = 'walks'
+        verbose_name = _('Walk Category Tag')
+        verbose_name_plural = _('Walk Category Tags')
         constraints = [
             models.UniqueConstraint(fields=['slug'], name='unique_category_slug')
         ]
+        db_table = 'walks_walkcategorytag'
+
 
 class Adventure(models.Model):
     DIFFICULTY_CHOICES = [
@@ -62,6 +66,7 @@ class Adventure(models.Model):
         verbose_name = _("adventure")
         verbose_name_plural = _("adventures")
         ordering = ["-created_at"]
+        db_table = 'walks_adventure'
         indexes = [
             models.Index(fields=["difficulty_level"], name="walks_adv_diff_lvl_idx"),  # Shortened name
             models.Index(fields=["start_date", "end_date"], name="walks_adv_start_end_idx"),  # Shortened name
@@ -216,6 +221,7 @@ class Walk(models.Model):
         verbose_name = _("walk")
         verbose_name_plural = _("walks")
         ordering = ["-created_at"]
+        db_table = 'walks_walk'
         indexes = [
             models.Index(fields=['walk_id'], name="walks_walk_walk_id_idx"),
             models.Index(fields=['walk_name'], name="walks_walk_walk_name_idx"),
