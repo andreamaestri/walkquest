@@ -49,18 +49,17 @@
 </style>
 {% endblock %}
 
+{% block config_data %}
+{{ map_config|json_script:"map-config" }}
+
+{% if initial_walks %}
+    {{ initial_walks|json_script:"walks-data" }}
+{% endif %}
+{% endblock %}
+
 {% block content %}
-    <!-- Configuration data - Using Django's json_script tag -->
-    {{ config|json_script:"config-data" }}
-    
-    {% if initial_walks %}
-        {{ initial_walks|json_script:"walks-data" }}
-    {% endif %}
-
-    <!-- Error container -->
-    <div id="error-container" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert"></div>
-
     <!-- Main content -->
+    <div id="error-container" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert"></div>
     <div class="h-screen w-screen relative flex flex-col md:flex-row">
         <!-- Sidebar -->
         <aside class="w-full md:w-96 flex flex-col bg-white shadow-lg">
@@ -140,24 +139,22 @@
 {% endblock %}
 
 {% block extra_js %}
-    <script type="module">
-        document.addEventListener('DOMContentLoaded', async () => {
-            try {
-                const configEl = document.getElementById('config-data');
-                if (!configEl) {
-                    throw new Error('Config element not found');
-                }
+<!-- Pass Mapbox token securely via data attribute -->
+<script id="walkquest-init"
+        type="module"
+        src="{% static 'js/project.js' %}"
+        data-mapbox-token="{{ mapbox_config.mapbox_token }}"
+        defer></script>
 
-                const config = JSON.parse(configEl.textContent);
-                window.WALKQUEST = { config };
-
-                const { walkStore } = await import("{% static 'js/project.js' %}");
-                await walkStore.initialize('map', 'walk-list');
-
-            } catch (error) {
-                console.error('Failed to initialize:', error);
-                document.getElementById('error-container')?.classList.remove('hidden');
-            }
-        });
-    </script>
+<script type="module">
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            const { walkStore } = await import("{% static 'js/project.js' %}");
+            await walkStore.initialize('map', 'walk-list');
+        } catch (error) {
+            console.error('Failed to initialize:', error);
+            document.getElementById('error-container')?.classList.remove('hidden');
+        }
+    });
+</script>
 {% endblock %}

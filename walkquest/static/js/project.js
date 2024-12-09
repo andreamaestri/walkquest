@@ -29,6 +29,10 @@ export const WALKQUEST_CONFIG = Object.freeze({
     itemHeight: 92,
     overscan: 5,
     debounceMs: 300,
+  },
+  filters: {
+    difficulties: ['easy', 'moderate', 'challenging'],
+    features: ['coastal', 'woodland', 'riverside', 'moorland', 'historical']
   }
 });
 
@@ -297,39 +301,125 @@ class WalkStore {
         has_stiles: false,
       },
     };
+    this.mapLoaded = false;
   }
 
   initialize(mapId, listId) {
     try {
-      // Check for required global config
-      if (!window.WALKQUEST?.config) {
-        throw new Error('Application configuration not found');
+      // Show loading state
+      const mapLoading = document.getElementById('map-loading');
+      if (mapLoading) mapLoading.classList.remove('hidden');
+
+      // Verify mapboxgl is loaded
+      if (typeof mapboxgl === 'undefined') {
+        throw new Error('Mapbox GL JS is not loaded');
       }
 
-      // Note the change from mapboxToken to mapbox_token to match JSON
-      const { mapbox_token: mapboxToken, initialWalks } = window.WALKQUEST.config;
+      // Get script element and extract token
+      const scriptElement = document.getElementById('walkquest-init');
+      if (!scriptElement) {
+        throw new Error('Initialization script not found');
+      }
 
+      const mapboxToken = scriptElement.dataset.mapboxToken;
       if (!mapboxToken) {
         throw new Error('Mapbox token not found');
       }
 
-      // Set mapbox token and initialize components
-      window.MAPBOX_TOKEN = mapboxToken;
-      this.initializeMap(mapId);
-      this.initializeVirtualList(listId);
-      this.markerManager = new MarkerManager(this.map, WALKQUEST_CONFIG.map);
+      // Verify token format
+      if (!mapboxToken.startsWith('pk.')) {
+        throw new Error('Invalid Mapbox token format');
+      }
 
-      // Set initial walks if available
-      if (Array.isArray(initialWalks)) {
-        this.setWalks(initialWalks);
+      // Verify map container exists
+      const mapContainer = document.getElementById(mapId);
+      if (!mapContainer) {
+        throw new Error(`Map container #${mapId} not found`);
+      }
+
+      // Get and parse map configuration
+      const mapConfigElement = document.getElementById('map-config');
+      if (!mapConfigElement) {
+        throw new Error('Map configuration not found');
+      }
+      
+      let mapConfig;
+      try {
+        mapConfig = JSON.parse(mapConfigElement.textContent);
+        console.debug('Map config loaded:', { ...mapConfig, token: '[REDACTED]' });
+      } catch (e) {
+        throw new Error('Invalid map configuration JSON');
+      }
+
+      // Initialize map with secure token
+      mapboxgl.accessToken = mapboxToken;
+      this.map = new mapboxgl.Map({
+        container: mapId,
+        style: mapConfig.style || WALKQUEST_CONFIG.map.style,
+        center: mapConfig.defaultCenter || WALKQUEST_CONFIG.map.defaultCenter,
+        zoom: mapConfig.defaultZoom || WALKQUEST_CONFIG.map.defaultZoom,
+        attributionControl: true,
+        preserveDrawingBuffer: true,
+      });
+
+      // Handle map load event
+      this.map.once('load', () => {
+        console.log('Map loaded successfully');
+        this.mapLoaded = true;
+        if (mapLoading) mapLoading.classList.add('hidden');
+        
+        // Initialize marker manager after map is loaded
+        this.markerManager = new MarkerManager(this.map, mapConfig);
+        
+        // Update markers if we have walks data
+        if (this.walks.length > 0) {
+          this.updateMarkers();
+        }
+      });
+
+      // Handle map error event
+      this.map.on('error', (e) => {
+        console.error('Map error:', e);
+        this.showError('Map failed to load properly');
+        if (mapLoading) mapLoading.classList.add('hidden');
+      });
+
+      // Initialize virtual list
+      this.initializeVirtualList(listId);
+
+      // Load initial walks if available
+      const walksElement = document.getElementById('walks-data');
+      if (walksElement?.textContent) {
+        try {
+          const initialWalks = JSON.parse(walksElement.textContent);
+          this.setWalks(initialWalks);
+        } catch (error) {
+          console.warn('Failed to parse initial walks data:', error);
+        }
       }
 
       return true;
+
     } catch (error) {
       console.error('Store initialization failed:', error);
-      UI.showError('Failed to initialize application: ' + error.message);
+      this.showError(`Initialization failed: ${error.message}`);
+      if (mapLoading) mapLoading.classList.add('hidden');
       throw error;
     }
+  }
+
+  showError(message) {
+    const errorContainer = document.getElementById('error-container');
+    if (errorContainer) {
+      errorContainer.innerHTML = `
+        <div class="flex items-center">
+          ${utils.createIcon("mdi:alert-circle", "text-red-500 mr-2")}
+          <span>${message}</span>
+        </div>
+      `;
+      errorContainer.classList.remove('hidden');
+    }
+    console.error(message);
   }
 
   sanitizeWalks(walks) {
@@ -547,7 +637,10 @@ class WalkStore {
   }
 
   updateMarkers() {
-    if (!this.map || !this.markerManager) return;
+    if (!this.map || !this.markerManager || !this.mapLoaded) {
+      console.warn('Cannot update markers: Map not fully initialized');
+      return;
+    }
     this.markerManager.updateMarkers(this.getFilteredWalks(), this.selectedWalkId);
   }
 
@@ -605,26 +698,30 @@ class WalkStore {
   }
 
   updateFilterUI() {
-    const stats = this.getStatistics();
-    
-    const difficultyContainer = document.querySelector('.difficulty-filters');
-    if (difficultyContainer) {
-        WALKQUEST_CONFIG.filters.difficulties.forEach(difficulty => {
-            const element = difficultyContainer.querySelector(`[data-difficulty="${difficulty}"]`);
-            if (element?.querySelector('.count')) {
-                element.querySelector('.count').textContent = `(${stats.difficulties[difficulty] || 0})`;
-            }
+    try {
+      const stats = this.getStatistics();
+      
+      const difficultyContainer = document.querySelector('.difficulty-filters');
+      if (difficultyContainer) {
+        (WALKQUEST_CONFIG.filters?.difficulties || []).forEach(difficulty => {
+          const element = difficultyContainer.querySelector(`[data-difficulty="${difficulty}"]`);
+          if (element?.querySelector('.count')) {
+            element.querySelector('.count').textContent = `(${stats.difficulties[difficulty] || 0})`;
+          }
         });
-    }
-
-    const featureContainer = document.querySelector('.feature-filters');
-    if (featureContainer) {
-        WALKQUEST_CONFIG.filters.features.forEach(feature => {
-            const element = featureContainer.querySelector(`[data-feature="${feature}"]`);
-            if (element?.querySelector('.count')) {
-                element.querySelector('.count').textContent = `(${stats.features[feature] || 0})`;
-            }
+      }
+  
+      const featureContainer = document.querySelector('.feature-filters');
+      if (featureContainer) {
+        (WALKQUEST_CONFIG.filters?.features || []).forEach(feature => {
+          const element = featureContainer.querySelector(`[data-feature="${feature}"]`);
+          if (element?.querySelector('.count')) {
+            element.querySelector('.count').textContent = `(${stats.features[feature] || 0})`;
+          }
         });
+      }
+    } catch (error) {
+      console.warn('Failed to update filter UI:', error);
     }
   }
 }

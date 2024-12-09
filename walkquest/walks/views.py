@@ -181,7 +181,7 @@ class HomePageView(ListView):
         
         return walks_data
 
-    def get_context_data(self, **kwargs) -> Dict[str, Any]:
+    def get_context_data(self, **kwargs):
         """Prepare context data including configuration and initial walks."""
         context = super().get_context_data(**kwargs)
         
@@ -189,12 +189,22 @@ class HomePageView(ListView):
             # Get statistics
             statistics = self.get_statistics()
             
-            # Get configuration
-            config = WalkQuestConfig.get_config(statistics=statistics)
+            # Separate Mapbox token from other map config
+            mapbox_config = {
+                'mapbox_token': settings.MAPBOX_TOKEN,
+            }
             
+            map_config = {
+                'style': WalkQuestConfig.MAP_CONFIG['style'],
+                'defaultCenter': WalkQuestConfig.MAP_CONFIG['defaultCenter'],
+                'defaultZoom': WalkQuestConfig.MAP_CONFIG['defaultZoom'],
+                'markerColors': WalkQuestConfig.MAP_CONFIG['markerColors'],
+            }
+
             # Update context
             context.update({
-                'config': config,
+                'mapbox_config': mapbox_config,  # For data attribute
+                'map_config': map_config,        # For json_script
                 'initial_walks': self.get_initial_walks(),
                 'difficulties': WalkQuestConfig.DIFFICULTIES,
                 'features': WalkQuestConfig.FEATURES,
@@ -210,7 +220,8 @@ class HomePageView(ListView):
         except Exception as e:
             logger.error(f"Error preparing context: {e}")
             context.update({
-                'config': WalkQuestConfig.get_config(),
+                'mapbox_config': {'mapbox_token': None},
+                'map_config': WalkQuestConfig.MAP_CONFIG,
                 'initial_walks': [],
                 'difficulties': [],
                 'features': [],
