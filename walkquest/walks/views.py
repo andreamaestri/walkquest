@@ -82,7 +82,6 @@ class HomePageView(ListView):
     model = Walk
     template_name = "pages/home.html"
     context_object_name = "walks"
-    paginate_by = 20
     cache_timeout = 60 * 15  # 15 minutes
 
     def get_cache_key(self) -> str:
@@ -159,15 +158,15 @@ class HomePageView(ListView):
             return {}
 
     def get_initial_walks(self) -> list[dict[str, Any]]:
-        """Get initial set of walks for page load."""
+        """Get all walks for page load."""
         cache_key = "initial_walks"
         walks_data = cache.get(cache_key)
 
         if not walks_data:
             try:
-                walks = self.get_queryset()[:self.paginate_by]
+                walks = self.get_queryset()
                 walks_data = [self.serialize_walk(walk) for walk in walks]
-                cache.set(cache_key, walks_data, 60 * 15)  # Cache for 15 minutes
+                cache.set(cache_key, walks_data, 60 * 15)
             except Exception as e:
                 logger.exception(f"Error getting initial walks: {e}")
                 walks_data = []
@@ -180,22 +179,29 @@ class HomePageView(ListView):
         context["config"] = WalkQuestConfig.get_config()
         context["initial_walks"] = self.get_initial_walks()
 
-        # Fix the annotations using walk_set
+        # Add tags data with counts
+        tags_with_counts = []
+        
+        # Get feature tag counts with renamed annotation
         feature_tags = (
             WalkFeatureTag.objects
-            .annotate(usage_count=Count("walk_set"))
+            .annotate(usage_count=Count('walk_set'))
+            .values('name', 'usage_count')
             .filter(usage_count__gt=0)
         )
+        tags_with_counts.extend(feature_tags)
 
+        # Get category tag counts with renamed annotation
         category_tags = (
             WalkCategoryTag.objects
-            .annotate(usage_count=Count("walk_set"))
+            .annotate(usage_count=Count('walk_set'))
+            .values('name', 'usage_count')
             .filter(usage_count__gt=0)
         )
+        tags_with_counts.extend(category_tags)
 
-        # Combine and sort tags
-        context["tag_cloud"] = list(feature_tags) + list(category_tags)
-        context["tag_cloud"].sort(key=lambda x: x.usage_count, reverse=True)
+        # Add to context
+        context["tags_data"] = tags_with_counts
 
         return context
 
@@ -224,19 +230,11 @@ class HomePageView(ListView):
             )
 
         queryset = self.get_queryset()
-        page = self.paginate_queryset(queryset)
 
-        # Fast serialization for HTMX requests
         return JsonResponse({
             "status": "success",
-            "data": [self.serialize_walk(walk) for walk in page],
-            "pagination": {
-                "has_next": page.has_next(),
-                "has_previous": page.has_previous(),
-                "current_page": page.number,
-                "total_pages": page.paginator.num_pages,
-            },
-        }, safe=False)  # Using safe=False for faster serialization
+            "data": [self.serialize_walk(walk) for walk in queryset],
+        }, safe=False)
 
     def _check_rate_limit(self, request) -> bool:
         """Check if request is within rate limits."""
@@ -327,11 +325,10 @@ class WalkFilterView(ListView):
 
 @method_decorator(csrf_protect, name="dispatch")
 class WalkListView(ListView):
-    """HTMX view for paginated walk list."""
+    """HTMX view for walk list."""
     model = Walk
     template_name = "walks/partials/walk_list.html"  # Updated template path
     context_object_name = "walks"
-    paginate_by = 20
 
     def get_queryset(self):
         """Get optimized queryset."""
@@ -345,26 +342,11 @@ class WalkListView(ListView):
     def get(self, request, *args, **kwargs):
         """Handle GET requests with error handling."""
         try:
-            page = request.GET.get("page", 1)
             queryset = self.get_queryset()
-            paginator = self.get_paginator(queryset, self.paginate_by)
-
-            try:
-                walks = paginator.page(page)
-            except Exception as e:
-                logger.warning(f"Pagination error: {e}. Defaulting to page 1.")
-                walks = paginator.page(1)
-
-            serialized_walks = [self.serialize_walk(walk) for walk in walks]
+            serialized_walks = [self.serialize_walk(walk) for walk in queryset]
 
             response_data = {
                 "walks": serialized_walks,
-                "pagination": {
-                    "has_next": walks.has_next(),
-                    "has_previous": walks.has_previous(),
-                    "current_page": walks.number,
-                    "total_pages": paginator.num_pages,
-                },
             }
 
             if request.headers.get("HX-Request"):

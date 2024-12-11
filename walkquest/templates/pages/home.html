@@ -115,15 +115,20 @@
         {{ initial_walks|json_script:"walks-data" }}
     {% endif %}
 
+    <!-- Add this near the other JSON data scripts -->
+    {% if tags_data %}
+        {{ tags_data|json_script:"tags-data" }}
+    {% endif %}
+
     <!-- Error container -->
     <div id="error-container" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert"></div>
 
     <!-- Main content with Alpine.js -->
     <div class="layout-container" 
          x-data="walkInterface()"
-         x-init="initialize()">
+         x-init="$nextTick(() => init())">
         
-        <!-- Sidebar with collapsible functionality -->
+        <!-- Sidebar with persisted state -->
         <aside class="sidebar"
                x-show="showSidebar"
                x-transition:enter="transition ease-out duration-300"
@@ -133,7 +138,7 @@
                x-transition:leave-start="translate-x-0"
                x-transition:leave-end="-translate-x-full">
             
-            <!-- Toggle sidebar button -->
+            <!-- Toggle sidebar button with persisted state -->
             <button @click="showSidebar = !showSidebar"
                     class="absolute -right-12 top-4 bg-white p-2 rounded-r shadow-md"
                     :aria-label="showSidebar ? 'Hide sidebar' : 'Show sidebar'">
@@ -141,7 +146,7 @@
                              class="text-xl"></iconify-icon>
             </button>
 
-            <!-- Search with Alpine.js binding -->
+            <!-- Search with persisted query -->
             <div class="p-4 border-b">
                 <div class="relative">
                     <input type="text" 
@@ -165,45 +170,100 @@
                 </div>
             </div>
 
-            <!-- Filter Sections -->
+            <!-- Filter Sections with persisted selections -->
             <div class="p-4 border-b overflow-y-auto">
-                <form class="category-filters"
-                      @submit.prevent
-                      x-ref="filterForm">
-                    <div class="filter-group">
-                        <h3 class="font-semibold mb-2 text-gray-700 flex items-center justify-between">
-                            Walk Categories
-                            <button type="button" 
-                                    @click="clearFilters()"
-                                    x-show="hasActiveFilters"
-                                    class="text-sm text-primary-500 hover:text-primary-600">
-                                Clear all
-                            </button>
-                        </h3>
-                        {% if tag_cloud %}
-                            <div class="flex flex-wrap gap-2">
-                                {% for tag in tag_cloud %}
-                                    <label class="filter-option"
-                                           :class="{ 'selected': isFilterActive('{{ tag.name }}') }"
-                                           x-data="{ count: {{ tag.usage_count }} }">
-                                        <input type="checkbox" 
-                                               name="tag" 
-                                               value="{{ tag.name }}"
-                                               x-model="activeFilters"
-                                               @change="handleFilterChange()">
-                                        <span x-text="'{{ tag.name|title }}'"></span>
-                                        <span class="count" x-text="`(${count})`"></span>
-                                    </label>
-                                {% endfor %}
+                <div x-data="categoryCombobox({
+                    options: JSON.parse(document.getElementById('tags-data').textContent).map(tag => ({
+                        value: tag.name,
+                        label: tag.name,
+                        count: tag.count,
+                        emoji: getCategoryEmoji(tag.name),
+                        color: getCategoryColor(tag.name)
+                    }))
+                })" class="w-full flex flex-col gap-1">
+                    <label class="w-fit pl-0.5 text-sm text-gray-700 flex items-center justify-between">
+                        Walk Categories
+                        <button type="button" 
+                                @click="clearSelection()"
+                                x-show="selectedOptions.length"
+                                class="text-sm text-primary-500 hover:text-primary-600 ml-2">
+                            Clear all
+                        </button>
+                    </label>
+                    
+                    <!-- Combobox Container -->
+                    <div class="relative"
+                         x-on:keydown.escape.prevent.stop="isOpen = false"
+                         x-on:focusin.window="!$el.contains($event.target) && (isOpen = false)">
+                        <!-- Trigger Button -->
+                        <button type="button" 
+                                class="inline-flex w-full items-center justify-between gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 transition"
+                                @click="isOpen = !isOpen"
+                                @keydown.arrow-down.prevent="isOpen = true; $nextTick(() => $refs.searchInput.focus())"
+                                aria-haspopup="listbox"
+                                :aria-expanded="isOpen"
+                                aria-label="Select walk categories">
+                            <span x-text="selectedOptions.length ? `${selectedOptions.length} selected` : 'Select categories'"></span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform duration-200" :class="{'rotate-180': isOpen}" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+
+                        <!-- Dropdown -->
+                        <div x-show="isOpen" 
+                             x-transition:enter="transition ease-out duration-200"
+                             x-transition:enter-start="opacity-0 translate-y-1"
+                             x-transition:enter-end="opacity-100 translate-y-0"
+                             x-transition:leave="transition ease-in duration-150"
+                             x-transition:leave-start="opacity-100 translate-y-0"
+                             x-transition:leave-end="opacity-0 translate-y-1"
+                             @click.outside="isOpen = false"
+                             class="absolute z-10 mt-1 w-full rounded-md bg-white shadow-lg max-h-80 overflow-auto focus:outline-none"
+                             role="listbox"
+                             aria-labelledby="categories-label">
+                            
+                            <!-- Search Input -->
+                            <div class="p-2 border-b">
+                                <input type="text"
+                                       x-model="searchQuery"
+                                       x-ref="searchInput"
+                                       placeholder="Search categories..."
+                                       class="w-full rounded-md border-gray-300 px-3 py-2 text-sm focus:ring-primary-500 focus:border-primary-500"
+                                       @keydown.escape.prevent.stop="isOpen = false"
+                                       @keydown.arrow-down.prevent="$nextTick(() => $refs.firstOption?.focus())"
+                                       @keydown.arrow-up.prevent="$nextTick(() => $refs.lastOption?.focus())"
+                                       aria-label="Search categories"/>
                             </div>
-                        {% else %}
-                            <p class="text-sm text-gray-500 italic">Loading categories...</p>
-                        {% endif %}
-                    </div>
-                </form>
-                <div id="filter-indicator" class="htmx-indicator mt-4">
-                    <div class="flex justify-center">
-                        <div class="animate-spin h-5 w-5 border-2 border-primary-500 rounded-full border-t-transparent"></div>
+
+                            <!-- Options List -->
+                            <ul class="py-1" role="none">
+                                <template x-for="(option, index) in filteredOptions" :key="option.value">
+                                    <li class="relative flex items-center px-4 py-2 cursor-pointer hover:bg-gray-100 focus:bg-gray-100 outline-none"
+                                        :class="{'bg-gray-100': isSelected(option)}"
+                                        :style="{ borderLeft: `4px solid ${option.color}` }"
+                                        @click="toggleOption(option)"
+                                        @keydown.enter.prevent="toggleOption(option)"
+                                        @keydown.space.prevent="toggleOption(option)"
+                                        @keydown.arrow-up.prevent="$el.previousElementSibling?.focus()"
+                                        @keydown.arrow-down.prevent="$el.nextElementSibling?.focus()"
+                                        :x-ref="index === 0 ? 'firstOption' : (index === filteredOptions.length - 1 ? 'lastOption' : null)"
+                                        tabindex="0"
+                                        role="option"
+                                        :aria-selected="isSelected(option)">
+                                        <input type="checkbox"
+                                               class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                                               :checked="isSelected(option)"
+                                               @click.stop="toggleOption(option)"
+                                               aria-label="Select {{ option.label }}">
+                                        <span class="ml-3 flex items-center space-x-2">
+                                            <span x-text="option.emoji" class="text-lg"></span>
+                                            <span x-text="option.label" class="font-medium"></span>
+                                            <span class="ml-auto text-sm text-gray-500" x-text="`(${option.count})`"></span>
+                                        </span>
+                                    </li>
+                                </template>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -252,12 +312,12 @@
     document.addEventListener('alpine:init', () => {
         Alpine.store('walks', {
             walks: [],
-            selectedWalkId: null,
+            selectedWalkId: Alpine.$persist(null).as('selectedWalkId'),
             map: null,
             markers: new Map(),
             filters: {
-                searchQuery: '',
-                activeFilters: []
+                searchQuery: Alpine.$persist('').as('searchQuery'),
+                activeFilters: Alpine.$persist([]).as('activeFilters')
             },
             isLoading: false,
 
@@ -390,28 +450,45 @@
     });
 
     function walkInterface() {
-        return {
-            showSidebar: true,
-            searchQuery: '',
-            activeFilters: [],
-            
-            init() {
-                Alpine.store('walks').initialize();
+        return function() {
+            return {
+                showSidebar: this.$persist(true).as('showSidebar'),
+                searchQuery: this.$persist('').as('userSearchQuery'),
+                activeFilters: this.$persist([]).as('userActiveFilters'),
+                isLoading: true,
                 
-                this.$watch('searchQuery', value => {
-                    Alpine.store('walks').search(value);
-                });
-                
-                this.$watch('activeFilters', value => {
-                    Alpine.store('walks').setFilters(value);
-                });
-            },
+                async init() {
+                    try {
+                        // Ensure store is available and initialized
+                        if (!Alpine.store('walks')) {
+                            throw new Error('Walks store not initialized');
+                        }
 
-            handleWalkSelection(walkId) {
-                Alpine.store('walks').selectWalk(walkId);
-            },
+                        // Initialize store
+                        await Alpine.store('walks').initialize();
+                        
+                        // Sync persisted values with store
+                        if (Alpine.store('walks').ready) {
+                            Alpine.store('walks').filters.searchQuery = this.searchQuery;
+                            Alpine.store('walks').filters.activeFilters = this.activeFilters;
+                            
+                            this.$watch('searchQuery', value => {
+                                Alpine.store('walks').search(value);
+                            });
+                            
+                            this.$watch('activeFilters', value => {
+                                Alpine.store('walks').setFilters(value);
+                            });
+                        }
 
-            // ... other interface methods
+                        this.isLoading = false;
+                    } catch (error) {
+                        console.error('Failed to initialize interface:', error);
+                        this.isLoading = false;
+                    }
+                }
+                // ...existing methods...
+            }
         }
     }
 
@@ -427,4 +504,74 @@
         }
     });
 </script>
-{% endblock %}
+
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('categoryCombobox', function(config) {
+        return {
+            options: config.options,
+            isOpen: false,
+            searchQuery: '',
+            selectedOptions: this.$persist([]).as('categorySelections'),
+            
+            get filteredOptions() {
+                return this.options.filter(option => 
+                    option.label.toLowerCase().includes(this.searchQuery.toLowerCase())
+                );
+            },
+            
+            toggleOption(option) {
+                const index = this.selectedOptions.findIndex(o => o.value === option.value);
+                if (index === -1) {
+                    this.selectedOptions.push(option);
+                } else {
+                    this.selectedOptions.splice(index, 1);
+                }
+                this.$dispatch('categories-updated', this.selectedOptions.map(o => o.value));
+            },
+            
+            isSelected(option) {
+                return this.selectedOptions.some(o => o.value === option.value);
+            },
+            
+            clearSelection() {
+                this.selectedOptions = [];
+                this.$dispatch('categories-updated', []);
+            }
+        }
+    });
+});
+
+function getCategoryEmoji(category) {
+    const emojiMap = {
+        'coastal': '🏖️',
+        'woodland': '🌳',
+        'historical': '🏛️',
+        'scenic': '🌅',
+        'family-friendly': '👨‍👩‍👧‍👦',
+        'challenging': '🏃',
+        'easy': '🚶',
+        'moderate': '⛰️',
+        'waterfall': '💦',
+        'wildlife': '🦊'
+    };
+    return emojiMap[category.toLowerCase()] || '🚶‍♂️';
+}
+
+function getCategoryColor(category) {
+    const colorMap = {
+        'coastal': '#0EA5E9',
+        'woodland': '#22C55E',
+        'historical': '#8B5CF6',
+        'scenic': '#F59E0B',
+        'family-friendly': '#EC4899',
+        'challenging': '#EF4444',
+        'easy': '#10B981',
+        'moderate': '#6366F1',
+        'waterfall': '#06B6D4',
+        'wildlife': '#84CC16'
+    };
+    return colorMap[category.toLowerCase()] || '#6B7280';
+}
+</script>
+{% endblock extra_js %}

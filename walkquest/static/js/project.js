@@ -72,82 +72,107 @@ htmx.defineExtension('map-update', {
 
 // Alpine.js store registration
 document.addEventListener('alpine:init', () => {
-    Alpine.store('walks', {
-        walks: [],
-        selectedWalkId: null,
-        map: null,
-        markers: new Map(),
+    Alpine.store('walks', function() {
+        return {
+            ready: false,
+            walks: [],
+            selectedWalkId: this.$persist(null).as('selectedWalkId'),
+            map: null,
+            markers: new Map(),
+            filters: {
+                searchQuery: this.$persist('').as('searchQuery'),
+                activeFilters: this.$persist([]).as('activeFilters')
+            },
+            isLoading: false,
 
-        async initialize(mapElementId) {
-            try {
-                const config = JSON.parse(document.getElementById('config-data').textContent);
-                this.map = initializeMap(mapElementId, config);
-                this.map.addControl(new mapboxgl.NavigationControl());
+            async initialize() {
+                if (this.ready) return true; // Prevent double initialization
                 
-                // Initial data load
-                const initialWalks = JSON.parse(document.getElementById('walks-data').textContent);
-                this.setWalks(initialWalks);
-                
-                return true;
-            } catch (error) {
-                console.error('Map initialization failed:', error);
-                return false;
-            }
-        },
+                try {
+                    const config = JSON.parse(document.getElementById('config-data').textContent);
+                    const initialWalks = JSON.parse(document.getElementById('walks-data').textContent);
+                    
+                    // Initialize Mapbox
+                    mapboxgl.accessToken = config.mapboxToken;
+                    this.initializeMap();
+                    
+                    // Load initial walks
+                    this.setWalks(initialWalks);
+                    
+                    this.ready = true;
+                    return true;
+                } catch (error) {
+                    console.error('Initialization failed:', error);
+                    return false;
+                }
+            },
 
-        setWalks(walks) {
-            this.walks = walks.filter(w => w?.id && w?.walk_name);
-            this.updateMarkers();
-        },
-
-        updateMarkers() {
-            // Clear existing markers
-            this.markers.forEach(m => m.remove());
-            this.markers.clear();
-
-            // Create new markers
-            this.walks.forEach(walk => {
-                const marker = new mapboxgl.Marker({
-                    color: walk.id === this.selectedWalkId ? 
-                        CONFIG.map.markerColors.selected : 
-                        CONFIG.map.markerColors.default
-                })
-                .setLngLat([walk.longitude, walk.latitude])
-                .setPopup(
-                    new mapboxgl.Popup({ offset: 25 })
-                    .setHTML(utils.createMarkerPopup(walk))
-                )
-                .addTo(this.map);
-
-                marker.getElement().addEventListener('click', () => {
-                    this.selectWalk(walk.id);
+            initializeMap() {
+                const mapContainer = document.getElementById('map');
+                if (!mapContainer) throw new Error('Map container not found');
+                this.map = new mapboxgl.Map({
+                    container: 'map',
+                    style: config.map.style,
+                    center: config.map.defaultCenter,
+                    zoom: config.map.defaultZoom,
                 });
+            },
 
-                this.markers.set(walk.id, marker);
-            });
-        },
+            setWalks(walks) {
+                this.walks = walks;
+                this.updateMarkers();
+            },
 
-        selectWalk(walkId) {
-            this.selectedWalkId = walkId;
-            const walk = this.walks.find(w => w.id === walkId);
-            
-            if (walk?.latitude && walk?.longitude) {
-                this.map.flyTo({
-                    center: [walk.longitude, walk.latitude],
-                    zoom: 14,
-                    duration: 1500
+            updateMarkers() {
+                this.cleanup();
+                this.walks.forEach(walk => {
+                    const marker = new mapboxgl.Marker({
+                        color: walk.id === this.selectedWalkId ? '#DC2626' : '#3FB1CE',
+                        scale: walk.id === this.selectedWalkId ? 1.2 : 1
+                    })
+                    .setLngLat([walk.longitude, walk.latitude])
+                    .setPopup(
+                        new mapboxgl.Popup({ offset: 25 })
+                        .setHTML(`
+                            <div class="p-3">
+                                <h3 class="font-semibold">${walk.walk_name}</h3>
+                                <p class="text-sm text-gray-600">${walk.steepness_level} | ${walk.distance} miles</p>
+                            </div>
+                        `)
+                    )
+                    .addTo(this.map);
+
+                    // Add click handler
+                    marker.getElement().addEventListener('click', () => {
+                        this.selectWalk(walk.id);
+                    });
+
+                    this.markers.set(walk.id, marker);
                 });
+            },
+
+            selectWalk(id) {
+                this.selectedWalkId = id;
+                this.updateMarkers();
+            },
+
+            search(query) {
+                this.filters.searchQuery = query;
+                this.updateMarkers();
+            },
+
+            setFilters(filters) {
+                this.filters.activeFilters = filters;
+                this.updateMarkers();
+            },
+
+            cleanup() {
+                this.markers.forEach(m => m.remove());
+                this.markers.clear();
+                if (this.map) this.map.remove();
+                this.map = null;
+                this.walks = [];
             }
-
-            this.updateMarkers();
-        },
-
-        cleanup() {
-            this.markers.forEach(m => m.remove());
-            this.markers.clear();
-            if (this.map) this.map.remove();
-            this.map = null;
-            this.walks = [];
         }
     });
 });
