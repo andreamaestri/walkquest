@@ -18,6 +18,30 @@ class WalkCategoryTag(TagModel):
             models.UniqueConstraint(fields=["slug"], name="unique_category_slug"),
         ]
 
+class WalkFeatureTag(TagModel):
+    class TagMeta:
+        force_lowercase = True
+        space_delimiter = False
+        initial = [
+            "cafe",
+            "coastal",
+            "historic",
+            "pub",
+            "wildlife",
+            "woodland",
+        ]
+        autocomplete_view = 'walks:feature-autocomplete'
+        protect_initial = True
+        case_sensitive = False
+
+    class Meta:
+        app_label = "walks"
+        verbose_name = _("Walk Feature")
+        verbose_name_plural = _("Walk Features")
+        constraints = [
+            models.UniqueConstraint(fields=["slug"], name="unique_feature_slug"),
+        ]
+
 class Adventure(models.Model):
     DIFFICULTY_CHOICES = [
         ("NOVICE WANDERER", "Novice Wanderer"),
@@ -98,6 +122,15 @@ class Walk(models.Model):
         ("fishing", "Walks with a fishing village"),
         ("lighthouse", "Walks with a lighthouse or daymark"),
         ("shipwreck", "Walks with a shipwreck"),
+    ]
+
+    FEATURE_CHOICES = [
+        ("cafe", "Café"),
+        ("coastal", "Coastal Path"),
+        ("historic", "Historic Site"),
+        ("pub", "Pub"),
+        ("wildlife", "Wildlife"),
+        ("woodland", "Woodland"),
     ]
 
     id = models.UUIDField(
@@ -200,11 +233,11 @@ class Walk(models.Model):
         blank=True,
         help_text=_("Categories related to this walk"),
     )
-    features = models.JSONField(
-        _("Features"),
+    features = TagField(
+        to=WalkFeatureTag,
         blank=True,
-        null=True,
-        help_text=_("List of features for this walk, e.g., ['coastal', 'historic']"),
+        help_text=_("Features of this walk"),
+        related_name="walks",  # Add proper related name
     )
     has_stiles = models.BooleanField(default=False)
     has_cafe = models.BooleanField(default=False)
@@ -233,6 +266,10 @@ class Walk(models.Model):
         return self.adventure.difficulty_level
 
     def save(self, *args, **kwargs):
+        # Update boolean fields based on features
+        if self.features:
+            self.has_pub = "pub" in self.features.get_tag_list()
+            self.has_cafe = "cafe" in self.features.get_tag_list()
         if not self.title:
             self.title = self.walk_name  # Use walk_name as title if title is not set
         if not self.description:

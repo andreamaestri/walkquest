@@ -32,8 +32,10 @@ from django.http import JsonResponse
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 from django.views.generic import ListView
+from tagulous.views import autocomplete
 
 from walkquest.walks.models import Walk
+from walkquest.walks.models import WalkFeatureTag
 
 logger = logging.getLogger(__name__)
 
@@ -148,7 +150,6 @@ class HomePageView(ListView):
     def serialize_walk(self, walk: Walk) -> dict[str, Any]:
         """Serialize walk instance to dictionary."""
         try:
-            # Using a faster, less secure serialization for walk data
             return {
                 "id": str(walk.id),
                 "walk_id": walk.walk_id,
@@ -158,7 +159,7 @@ class HomePageView(ListView):
                 "steepness_level": walk.steepness_level,
                 "latitude": float(walk.latitude),
                 "longitude": float(walk.longitude),
-                "features": walk.features or [],
+                "features": [str(tag) for tag in walk.features.all()],  # Convert tags to strings
                 "has_pub": bool(walk.has_pub),
                 "has_cafe": bool(walk.has_cafe),
                 "has_bus_access": bool(walk.has_bus_access),
@@ -190,25 +191,20 @@ class HomePageView(ListView):
         context = super().get_context_data(**kwargs)
 
         # Add configuration data
-        context["config"] = {
-            "mapboxToken": settings.MAPBOX_TOKEN,
-            "map": {
-                "style": "mapbox://styles/mapbox/outdoors-v12",
-                "defaultCenter": [-4.85, 50.4],
-                "defaultZoom": 9,
-            },
-            "filters": {
-                "difficulties": WalkQuestConfig.DIFFICULTIES,
-                "features": WalkQuestConfig.FEATURES,
-            },
-        }
+        context["config"] = WalkQuestConfig.get_config()
 
         # Add initial walks data
-        context["initial_walks"] = [
-            self.serialize_walk(walk)
-            for walk in self.get_queryset()[:20]
-        ]
+        context["initial_walks"] = self.get_initial_walks()
 
+        # Fix tag cloud implementation with renamed count annotation
+        context["feature_cloud"] = (
+            WalkFeatureTag.objects
+            .annotate(usage_count=Count('walks'))  # Renamed from count to usage_count
+            .filter(usage_count__gt=0)
+            .order_by('-usage_count')
+            [:20]
+        )
+        
         return context
 
     @method_decorator(cache_page(cache_timeout))
@@ -263,11 +259,11 @@ class HomePageView(ListView):
             cache.set(rate_key, request_count + 1, 60)  # Reset after 1 minute
             return True
 
-        except Exception as e:
-            logger.error(f"Rate limiting error: {e}")
+        except Exception:
+            logger.exception("Rate limiting error")
             return True  # Allow request if rate limiting fails
 
-# New HTMX Views
+
 class WalkSearchView(ListView):
     """HTMX-powered search view for walks."""
     model = Walk
@@ -321,9 +317,9 @@ class WalkFilterView(ListView):
             queryset = queryset.filter(steepness_level__in=difficulties)
 
         if features:
-            # Filter walks that have ALL selected features
+            # Filter walks that have ALL selected features using Tagulous
             for feature in features:
-                queryset = queryset.filter(features__contains=[feature])
+                queryset = queryset.filter(features=feature)
 
         walks = [self.serialize_walk(walk) for walk in queryset[:20]]
         return JsonResponse(walks, safe=False)
@@ -380,3 +376,11 @@ class WalkListView(ListView):
             "latitude": float(walk.latitude),
             "longitude": float(walk.longitude),
         }
+
+def walk_features_autocomplete(request):
+    """Autocomplete view for walk features."""
+    return autocomplete(
+        request,
+        WalkFeatureTag,
+        settings.TAGULOUS_AUTOCOMPLETE_LIMIT,
+    )

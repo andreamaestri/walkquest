@@ -131,17 +131,21 @@
                      hx-indicator="#filter-indicator">
                     <div class="filter-group">
                         <h3 class="font-semibold mb-2 text-gray-700">Difficulty Levels</h3>
-                        {% for difficulty in difficulties %}
-                            <label class="filter-option block py-1 hover:bg-gray-50 rounded px-2 cursor-pointer" 
-                                   data-difficulty="{{ difficulty }}">
-                                <input type="checkbox" 
-                                       name="difficulty" 
-                                       value="{{ difficulty }}" 
-                                       class="mr-2 rounded text-primary-600 focus:ring-primary-500">
-                                <span class="text-gray-700">{{ difficulty }}</span>
-                                <span class="count">(0)</span>
-                            </label>
-                        {% endfor %}
+                        {% if config.filters.difficulties %}
+                            {% for difficulty in config.filters.difficulties %}
+                                <label class="filter-option block py-1 hover:bg-gray-50 rounded px-2 cursor-pointer" 
+                                       data-difficulty="{{ difficulty }}">
+                                    <input type="checkbox" 
+                                           name="difficulty" 
+                                           value="{{ difficulty }}" 
+                                           class="mr-2 rounded text-primary-600 focus:ring-primary-500">
+                                    <span class="text-gray-700">{{ difficulty }}</span>
+                                    <span class="count" data-difficulty-count="{{ difficulty }}">(0)</span>
+                                </label>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-sm text-gray-500">No difficulty levels available</p>
+                        {% endif %}
                     </div>
                 </div>
 
@@ -153,20 +157,24 @@
                      hx-indicator="#filter-indicator">
                     <div class="filter-group">
                         <h3 class="font-semibold mb-2 text-gray-700">Features</h3>
-                        {% for feature in features %}
-                            <label class="filter-option block py-1 hover:bg-gray-50 rounded px-2 cursor-pointer" 
-                                   data-feature="{{ feature }}">
-                                <input type="checkbox" 
-                                       name="feature" 
-                                       value="{{ feature }}" 
-                                       class="mr-2 rounded text-primary-600 focus:ring-primary-500">
-                                <span class="text-gray-700">{{ feature|title }}</span>
-                                <span class="count">(0)</span>
-                            </label>
-                        {% endfor %}
+                        {% if config.filters.features %}
+                            {% for feature in config.filters.features %}
+                                <label class="filter-option block py-1 hover:bg-gray-50 rounded px-2 cursor-pointer" 
+                                       data-feature="{{ feature }}">
+                                    <input type="checkbox" 
+                                           name="feature" 
+                                           value="{{ feature }}" 
+                                           class="mr-2 rounded text-primary-600 focus:ring-primary-500">
+                                    <span class="text-gray-700">{{ feature|title }}</span>
+                                    <span class="count" data-feature-count="{{ feature }}">(0)</span>
+                                </label>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-sm text-gray-500">No features available</p>
+                        {% endif %}
                     </div>
                 </div>
-                <div id="filter-indicator" class="htmx-indicator">
+                <div id="filter-indicator" class="htmx-indicator flex justify-center items-center py-2">
                     <div class="animate-spin h-4 w-4 border-2 border-primary-500"></div>
                 </div>
             </div>
@@ -194,12 +202,14 @@
 
     <!-- Add walk card template -->
     <template id="walk-card-template">
-        <div class="walk-card" data-walk-id="">
+        <div class="walk-card p-4 border-b cursor-pointer" data-walk-id="">
             <h3 class="font-semibold text-gray-900"></h3>
             <div class="mt-1 text-sm text-gray-600">
                 <span class="difficulty"></span> | <span class="distance"></span>
             </div>
-            <div class="mt-1 flex gap-1 features"></div>
+            <div class="mt-2 flex flex-wrap gap-1 features">
+                <!-- Features will be inserted here -->
+            </div>
         </div>
     </template>
 {% endblock content %}
