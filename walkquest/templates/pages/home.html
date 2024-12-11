@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Walks - {{ block.super }}{% endblock %}
+{% block title %}Walks - WalkQuest{% endblock title %}
 
 {% block extra_css %}
 <style>
@@ -47,11 +47,13 @@
         justify-content: center;
     }
 </style>
-{% endblock %}
+{% endblock extra_css %}
 
 {% block content %}
-    <!-- Configuration data - Using Django's json_script tag -->
-    {{ config|json_script:"config-data" }}
+    <!-- Ensure config is properly passed from view -->
+    {% if config %}
+        {{ config|json_script:"config-data" }}
+    {% endif %}
     
     {% if initial_walks %}
         {{ initial_walks|json_script:"walks-data" }}
@@ -137,7 +139,7 @@
     <div id="no-results" class="hidden p-4 text-center text-gray-500">
         No walks found matching your criteria
     </div>
-{% endblock %}
+{% endblock content %}
 
 {% block extra_js %}
     <script type="module">
@@ -145,19 +147,27 @@
             try {
                 const configEl = document.getElementById('config-data');
                 if (!configEl) {
-                    throw new Error('Config element not found');
+                    throw new Error('Configuration data not found. Please ensure it is passed from the view.');
                 }
 
                 const config = JSON.parse(configEl.textContent);
                 window.WALKQUEST = { config };
 
                 const { walkStore } = await import("{% static 'js/project.js' %}");
+                if (!walkStore) {
+                    throw new Error('walkStore module not found');
+                }
+                
                 await walkStore.initialize('map', 'walk-list');
 
             } catch (error) {
                 console.error('Failed to initialize:', error);
-                document.getElementById('error-container')?.classList.remove('hidden');
+                const errorContainer = document.getElementById('error-container');
+                if (errorContainer) {
+                    errorContainer.textContent = 'Error: ' + error.message;
+                    errorContainer.classList.remove('hidden');
+                }
             }
         });
     </script>
-{% endblock %}
+{% endblock extra_js %}

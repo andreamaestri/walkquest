@@ -1,5 +1,7 @@
 <!DOCTYPE html>
-{% load static i18n compress %}
+{% load static %}
+{% load i18n %}
+{% load compress %}
 {% get_current_language as LANGUAGE_CODE %}
 <html lang="{{ LANGUAGE_CODE }}">
 <head>
@@ -11,10 +13,14 @@
     <meta property="og:title" content="{% block og_title %}{{ block.super }}{% endblock %}">
     <meta property="og:description" content="Discover Cornwall's beautiful walking paths">
     
-    <title>{% block title %}walkquest{% endblock %}</title>
+    <title>{% block title %}WalkQuest{% endblock title %}</title>
     
     <link rel="icon" href="{% static 'images/favicons/favicon.ico' %}">
 
+    <!-- Core Dependencies -->
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    
     <!-- Import Map Definition -->
     <script type="importmap">
     {
@@ -22,16 +28,12 @@
         "@tanstack/virtual-core": "https://esm.run/@tanstack/virtual-core",
         "mapbox-gl": "https://esm.run/mapbox-gl",
         "iconify-icon": "https://esm.run/iconify-icon",
-        "@app/project": "/static/js/project.js",
+        "@app/project": "{% static 'js/project.js' %}",
         "superjson": "https://esm.run/superjson"
       }
     }
     </script>
 
-    <!-- Core Dependencies -->
-    <link href="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.css" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    
     <!-- Tailwind Config -->
     <script>
         tailwind.config = {

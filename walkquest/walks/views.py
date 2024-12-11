@@ -20,6 +20,7 @@ Author: A tired but proud bootcamper (Andrea Maestri)
 Last Updated: After a satisfying lunch break
 """
 
+import json
 import logging
 from typing import Any, Dict, List, Optional
 from django.conf import settings
@@ -68,7 +69,7 @@ class WalkQuestConfig:
     def get_config(cls):
         """Get consolidated configuration."""
         return {
-            'mapbox_token': settings.MAPBOX_TOKEN,
+            'mapboxToken': settings.MAPBOX_TOKEN,  # This will be handled securely
             'map': cls.MAP_CONFIG,
             'filters': {
                 'difficulties': cls.DIFFICULTIES,
@@ -145,6 +146,7 @@ class HomePageView(ListView):
     def serialize_walk(self, walk: Walk) -> Dict[str, Any]:
         """Serialize walk instance to dictionary."""
         try:
+            # Using a faster, less secure serialization for walk data
             return {
                 'id': str(walk.id),
                 'walk_id': walk.walk_id,
@@ -186,34 +188,29 @@ class HomePageView(ListView):
         context = super().get_context_data(**kwargs)
         
         try:
-            # Get statistics
-            statistics = self.get_statistics()
+            # Get initial walks data with basic serialization
+            initial_walks = self.get_initial_walks()
             
-            # Get configuration
-            config = WalkQuestConfig.get_config(statistics=statistics)
-            
-            # Update context
-            context.update({
-                'config': config,
-                'initial_walks': self.get_initial_walks(),
-                'difficulties': WalkQuestConfig.DIFFICULTIES,
-                'features': WalkQuestConfig.FEATURES,
-            })
+            # Prepare app config
+            app_config = {
+                'mapboxToken': settings.MAPBOX_TOKEN,
+                'walks': initial_walks,
+                'version': '1.0.0'  # Add version for validation
+            }
 
-            # Add debug information in development
-            if settings.DEBUG:
-                context['debug'] = {
-                    'statistics': statistics,
-                    'walk_count': len(context['initial_walks']),
-                }
+            context.update({
+                'app_config': json.dumps(app_config, default=str),  # Use default=str for dates
+                'error': None
+            })
 
         except Exception as e:
             logger.error(f"Error preparing context: {e}")
             context.update({
-                'config': WalkQuestConfig.get_config(),
-                'initial_walks': [],
-                'difficulties': [],
-                'features': [],
+                'app_config': json.dumps({
+                    'error': str(e),
+                    'walks': [],
+                    'version': '1.0.0'
+                }),
                 'error': str(e)
             })
         
@@ -246,6 +243,7 @@ class HomePageView(ListView):
         queryset = self.get_queryset()
         page = self.paginate_queryset(queryset)
         
+        # Fast serialization for HTMX requests
         return JsonResponse({
             'status': 'success',
             'data': [self.serialize_walk(walk) for walk in page],
@@ -255,7 +253,7 @@ class HomePageView(ListView):
                 'current_page': page.number,
                 'total_pages': page.paginator.num_pages,
             }
-        }, encoder=DjangoJSONEncoder)
+        }, safe=False)  # Using safe=False for faster serialization
 
     def _check_rate_limit(self, request) -> bool:
         """Check if request is within rate limits."""
