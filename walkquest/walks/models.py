@@ -11,34 +11,34 @@ class WalkCategoryTag(TagModel):
         # TagModel specific configuration
         force_lowercase = True
         space_delimiter = False
-        
+
     class Meta:
-        app_label = 'walks'
+        app_label = "walks"
         constraints = [
-            models.UniqueConstraint(fields=['slug'], name='unique_category_slug')
+            models.UniqueConstraint(fields=["slug"], name="unique_category_slug"),
         ]
 
 class Adventure(models.Model):
     DIFFICULTY_CHOICES = [
-        ('NOVICE WANDERER', 'Novice Wanderer'),
+        ("NOVICE WANDERER", "Novice Wanderer"),
         ("GREY'S PATHFINDER", "Grey's Pathfinder"),
-        ('TRAIL RANGER', 'Trail Ranger'), 
+        ("TRAIL RANGER", "Trail Ranger"),
         ("WARDEN'S ASCENT", "Warden's Ascent"),
-        ('MASTER WAYFARER', 'Master Wayfarer')
+        ("MASTER WAYFARER", "Master Wayfarer"),
     ]
 
     id = models.UUIDField(
         primary_key=True,
         default=uuid.uuid4,
         editable=False,
-        db_index=True
+        db_index=True,
     )
     title = models.CharField(
-        _("Title"), max_length=255, help_text=_("Name of your epic quest")
+        _("Title"), max_length=255, help_text=_("Name of your epic quest"),
     )
     description = models.TextField(
-        _("Description"), 
-        help_text=_("Chronicle your adventure's tale")
+        _("Description"),
+        help_text=_("Chronicle your adventure's tale"),
     )
     start_date = models.DateField(_("Start Date"), help_text=_("When the walk begins"))
     end_date = models.DateField(_("End Date"), help_text=_("When the walk concludes"))
@@ -52,7 +52,7 @@ class Adventure(models.Model):
     related_categories = TagField(
         to=WalkCategoryTag,
         blank=True,
-        help_text=_("Categories related to this adventure")
+        help_text=_("Categories related to this adventure"),
     )
     created_at = models.DateTimeField(_("Created"), auto_now_add=True)
     updated_at = models.DateTimeField(_("Updated"), auto_now=True)
@@ -76,85 +76,85 @@ class Adventure(models.Model):
 
 class Walk(models.Model):
     FOOTWEAR_CHOICES = [
-        ('Walking Boots', 'Walking Boots'),
-        ('Walking Shoes / Wellies', 'Walking Shoes / Wellies'),
-        ('Waterproof Boots', 'Waterproof Boots')
+        ("Walking Boots", "Walking Boots"),
+        ("Walking Shoes / Wellies", "Walking Shoes / Wellies"),
+        ("Waterproof Boots", "Waterproof Boots"),
     ]
 
     DIFFICULTY_CHOICES = [
-        ('NOVICE WANDERER', 'Novice Wanderer'),
+        ("NOVICE WANDERER", "Novice Wanderer"),
         ("GREY'S PATHFINDER", "Grey's Pathfinder"),
-        ('TRAIL RANGER', 'Trail Ranger'),
+        ("TRAIL RANGER", "Trail Ranger"),
         ("WARDEN'S ASCENT", "Warden's Ascent"),
-        ('MASTER WAYFARER', 'Master Wayfarer')
+        ("MASTER WAYFARER", "Master Wayfarer"),
     ]
 
     WALK_CATEGORIES = [
-        ('circular', 'Circular walks'),
-        ('coastal', 'Coastal walks'),
-        ('pub', 'Pub walks'),
-        ('beach', 'Walks with a beach'),
-        ('cafe', 'Walks with a café'),
-        ('fishing', 'Walks with a fishing village'),
-        ('lighthouse', 'Walks with a lighthouse or daymark'),
-        ('shipwreck', 'Walks with a shipwreck'),
+        ("circular", "Circular walks"),
+        ("coastal", "Coastal walks"),
+        ("pub", "Pub walks"),
+        ("beach", "Walks with a beach"),
+        ("cafe", "Walks with a café"),
+        ("fishing", "Walks with a fishing village"),
+        ("lighthouse", "Walks with a lighthouse or daymark"),
+        ("shipwreck", "Walks with a shipwreck"),
     ]
 
     id = models.UUIDField(
-        primary_key=True, default=uuid.uuid4, editable=False, db_index=True
+        primary_key=True, default=uuid.uuid4, editable=False, db_index=True,
     )
     adventure = models.ForeignKey(
         Adventure,
         on_delete=models.CASCADE,
         related_name="walks",
-        to_field='id',
+        to_field="id",
         db_index=True,
         null=True,  # Allow null values for existing records
-        blank=True
+        blank=True,
     )
     walk_id = models.SlugField(
         max_length=255,
         unique=True,
-        help_text="URL-friendly name (e.g. 'caradon-hill-to-trethevy-quoit')"
+        help_text="URL-friendly name (e.g. 'caradon-hill-to-trethevy-quoit')",
     )
     walk_name = models.CharField(
         max_length=255,
         db_index=True,
-        default="Unnamed Walk"
+        default="Unnamed Walk",
     )
     # title = models.CharField(...)
     # description = models.TextField(...)
     latitude = models.FloatField(
         _("Latitude"),
         help_text=_("Latitude coordinate of the walk location"),
-        default=50.259291  # Truro's latitude
+        default=50.259291,  # Truro's latitude
     )
     longitude = models.FloatField(
-        _("Longitude"), 
+        _("Longitude"),
         help_text=_("Longitude coordinate of the walk location"),
-        default=-5.051355  # Truro's longitude
+        default=-5.051355,  # Truro's longitude
     )
     highlights = models.TextField(
         _("Highlights"),
         help_text=_("Key features and points of interest along the walk"),
         default=_("Details about this walk's highlights to be added."),
-        blank=False,  
+        blank=False,
     )
     points_of_interest = models.TextField(blank=True)
     route_geometry = models.GeometryField(
         srid=4326,
-        help_text=_("Geographic route of the walk")
+        help_text=_("Geographic route of the walk"),
     )
     os_explorer_reference = models.CharField(
         _("OS Explorer Map"),
         max_length=255,
         blank=True,
         null=True,
-        help_text=_("Ordnance Survey Explorer map reference")
+        help_text=_("Ordnance Survey Explorer map reference"),
     )
     distance = models.FloatField(
         default=0.0,
-        help_text="Distance of the walk in kilometers."
+        help_text="Distance of the walk in kilometers.",
     )
     steepness_level = models.CharField(
         _("Steepness Level"),
@@ -162,7 +162,7 @@ class Walk(models.Model):
         choices=DIFFICULTY_CHOICES,
         default="NOVICE",
         help_text=_("Difficulty level based on steepness"),
-        db_index=True
+        db_index=True,
     )
     footwear_category = models.CharField(
         _("Footwear Category"),
@@ -170,19 +170,19 @@ class Walk(models.Model):
         choices=FOOTWEAR_CHOICES,
         default="WALKING_BOOTS",
         help_text=_("Recommended footwear for this walk"),
-        db_index=True
+        db_index=True,
     )
     recommended_footwear = models.TextField(
         _("Recommended Footwear"),
         help_text=_("Detailed footwear recommendations for this walk"),
         default=_("Sturdy walking boots recommended for most conditions"),
-        blank=True
+        blank=True,
     )
     has_pub = models.BooleanField(default=False)
     pubs_list = models.JSONField(default=list, blank=True)
     trail_considerations = models.TextField(
         default="No trail considerations provided.",
-        help_text="Considerations for the trail."
+        help_text="Considerations for the trail.",
     )
     rewritten_trail_considerations = models.TextField(
         _("Mystical Trail Notes"),
@@ -191,20 +191,20 @@ class Walk(models.Model):
             "Adventurer's Notes:\n"
             "- Path suitable for most wanderers\n"
             "- Consult local wisdom for seasonal conditions\n"
-            "- Carry provisions as befits your journey"
+            "- Carry provisions as befits your journey",
         ),
-        blank=True
+        blank=True,
     )
     related_categories = TagField(
         to=WalkCategoryTag,
         blank=True,
-        help_text=_("Categories related to this walk")
+        help_text=_("Categories related to this walk"),
     )
     features = models.JSONField(
         _("Features"),
         blank=True,
         null=True,
-        help_text=_("List of features for this walk, e.g., ['coastal', 'historic']")
+        help_text=_("List of features for this walk, e.g., ['coastal', 'historic']"),
     )
     has_stiles = models.BooleanField(default=False)
     has_cafe = models.BooleanField(default=False)
@@ -217,10 +217,10 @@ class Walk(models.Model):
         verbose_name_plural = _("walks")
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=['walk_id'], name="walks_walk_walk_id_idx"),
-            models.Index(fields=['walk_name'], name="walks_walk_walk_name_idx"),
-            models.Index(fields=['distance'], name="walks_walk_distance_idx"),
-            models.Index(fields=['created_at'], name="walks_walk_created_at_idx"),
+            models.Index(fields=["walk_id"], name="walks_walk_walk_id_idx"),
+            models.Index(fields=["walk_name"], name="walks_walk_walk_name_idx"),
+            models.Index(fields=["distance"], name="walks_walk_distance_idx"),
+            models.Index(fields=["created_at"], name="walks_walk_created_at_idx"),
         ]
 
     def __str__(self):

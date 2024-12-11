@@ -1,0 +1,104 @@
+{% for walk in walks %}
+<div class="walk-card p-4 border-b hover:bg-gray-50 transition-colors cursor-pointer" 
+     data-walk-id="{{ walk.id }}"
+     hx-get="{% url 'walks:detail' walk.id %}"
+     hx-trigger="click"
+     hx-target="#walk-detail"
+     hx-swap="innerHTML">
+    
+    <!-- Walk Header -->
+    <div class="flex justify-between items-start">
+        <h3 class="font-semibold text-gray-900">{{ walk.walk_name }}</h3>
+        {% if walk.has_pub or walk.has_cafe %}
+        <div class="flex gap-2">
+            {% if walk.has_pub %}
+            <span class="text-amber-600" title="Has pub">🍺</span>
+            {% endif %}
+            {% if walk.has_cafe %}
+            <span class="text-brown-600" title="Has cafe">☕</span>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Walk Details -->
+    <div class="mt-1 text-sm text-gray-600">
+        <span class="difficulty-badge px-2 py-0.5 rounded-full text-xs bg-gray-100">
+            {{ walk.steepness_level }}
+        </span>
+        <span class="mx-2">|</span>
+        <span>{{ walk.distance|floatformat:1 }} miles</span>
+        {% if walk.has_bus_access %}
+        <span class="ml-2" title="Bus access available">🚌</span>
+        {% endif %}
+    </div>
+
+    <!-- Features Tags -->
+    {% if walk.features %}
+    <div class="mt-2 flex flex-wrap gap-1">
+        {% for feature in walk.features %}
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+            {{ feature|title }}
+        </span>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Highlights Preview -->
+    {% if walk.highlights %}
+    <div class="mt-2 text-sm text-gray-500 line-clamp-2">
+        {{ walk.highlights }}
+    </div>
+    {% endif %}
+</div>
+{% empty %}
+<div class="p-8 text-center text-gray-500">
+    <p class="text-lg mb-2">No walks found</p>
+    <p class="text-sm">Try adjusting your filters or search terms</p>
+</div>
+{% endfor %}
+
+<!-- Pagination -->
+{% if paginator.num_pages > 1 %}
+<div class="flex justify-between items-center p-4 border-t bg-gray-50">
+    <!-- Previous Page -->
+    {% if page_obj.has_previous %}
+    <button class="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+            hx-get="{% url 'walks:list' %}?page={{ page_obj.previous_page_number }}"
+            hx-target="#walk-list"
+            hx-swap="innerHTML"
+            hx-push-url="true">
+        Previous
+    </button>
+    {% else %}
+    <button class="px-4 py-2 text-sm font-medium text-gray-400 cursor-not-allowed" disabled>
+        Previous
+    </button>
+    {% endif %}
+
+    <!-- Page Info -->
+    <span class="text-sm text-gray-600">
+        Page {{ page_obj.number }} of {{ paginator.num_pages }}
+    </span>
+
+    <!-- Next Page -->
+    {% if page_obj.has_next %}
+    <button class="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+            hx-get="{% url 'walks:list' %}?page={{ page_obj.next_page_number }}"
+            hx-target="#walk-list"
+            hx-swap="innerHTML"
+            hx-push-url="true">
+        Next
+    </button>
+    {% else %}
+    <button class="px-4 py-2 text-sm font-medium text-gray-400 cursor-not-allowed" disabled>
+        Next
+    </button>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Loading State -->
+<div class="htmx-indicator flex justify-center items-center p-8">
+    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+</div>

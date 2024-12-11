@@ -19,7 +19,7 @@ class User(AbstractUser):
     first_name = None  # type: ignore[assignment]
     last_name = None  # type: ignore[assignment]
     experience_points = PositiveIntegerField(
-        _("Experience Points"), default=0, db_index=True
+        _("Experience Points"), default=0, db_index=True,
     )
     quests_completed = PositiveIntegerField(_("Completed Quests"), default=0)
     last_active = DateTimeField(_("Last Active"), auto_now=True)
