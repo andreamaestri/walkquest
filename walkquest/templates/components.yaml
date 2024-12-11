@@ -1,0 +1,5 @@
+components:
+    walk_card: "walks/_walk_card.html"
+    walk_list: "partials/walk_list.html"
+    search_icon: "components/search-icon.html"
+    search_results: "partials/search_results.html"

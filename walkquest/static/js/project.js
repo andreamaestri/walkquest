@@ -1,3 +1,11 @@
+let Alpine;
+
+// Export init function to be called after Alpine.js is ready
+export async function initAlpine(_Alpine) {
+    Alpine = _Alpine;
+    return walkStore;
+}
+
 // Import dependencies
 const mapboxgl = window.mapboxgl;
 const Supercluster = window.Supercluster;
@@ -223,9 +231,26 @@ document.addEventListener('alpine:init', () => {
 
 // Export store interface with new implementation
 export const walkStore = {
-    // Use Alpine.store to access persisted data
-    get persistedState() {
-        return Alpine.store('walks');
+    get Alpine() {
+        if (!Alpine) throw new Error('Alpine.js not initialized');
+        return Alpine;
+    },
+
+    async initialize() {
+        try {
+            // Wait for Alpine store to be ready
+            if (!this.Alpine.store('walks')) {
+                console.warn('Alpine walks store not found');
+                return false;
+            }
+
+            // Initialize the store
+            await this.Alpine.store('walks').initialize();
+            return true;
+        } catch (error) {
+            console.error('Failed to initialize walkStore:', error);
+            return false;
+        }
     },
 
     async fetchWalks(params) {
