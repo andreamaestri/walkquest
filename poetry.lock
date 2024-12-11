@@ -2683,6 +2683,23 @@ files = [
 ]
 
 [[package]]
+name = "slippers"
+version = "0.6.2"
+description = "Build reusable components in Django without writing a single line of Python."
+optional = false
+python-versions = ">=3.8.0"
+files = [
+    {file = "slippers-0.6.2-py3-none-any.whl", hash = "sha256:739e05f85354becbf0a65daab831eea62557d89e7512042209ab629af4378bca"},
+    {file = "slippers-0.6.2.tar.gz", hash = "sha256:4cb555b8822ba0d404e5405723f5d723994022c29046008ee917081031bc0cf1"},
+]
+
+[package.dependencies]
+Django = ">=3.2"
+PyYAML = ">=5.4.0"
+typeguard = ">=2.13.3,<3.0.0"
+typing-extensions = ">=4.4.0"
+
+[[package]]
 name = "sniffio"
 version = "1.3.1"
 description = "Sniff out which async library your code is running under"
@@ -2965,6 +2982,21 @@ files = [
 [package.extras]
 docs = ["myst-parser", "pydata-sphinx-theme", "sphinx"]
 test = ["argcomplete (>=3.0.3)", "mypy (>=1.7.0)", "pre-commit", "pytest (>=7.0,<8.2)", "pytest-mock", "pytest-mypy-testing"]
+
+[[package]]
+name = "typeguard"
+version = "2.13.3"
+description = "Run-time type checker for Python"
+optional = false
+python-versions = ">=3.5.3"
+files = [
+    {file = "typeguard-2.13.3-py3-none-any.whl", hash = "sha256:5e3e3be01e887e7eafae5af63d1f36c849aaa94e3a0112097312aabfa16284f1"},
+    {file = "typeguard-2.13.3.tar.gz", hash = "sha256:00edaa8da3a133674796cf5ea87d9f4b4c367d77476e185e80251cc13dfbb8c4"},
+]
+
+[package.extras]
+doc = ["sphinx-autodoc-typehints (>=1.2.0)", "sphinx-rtd-theme"]
+test = ["mypy", "pytest", "typing-extensions"]
 
 [[package]]
 name = "types-pyyaml"
@@ -3326,4 +3358,4 @@ brotli = ["brotli"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.13"
-content-hash = "da9ca09aa9938a6272c218240b15939facb9500d3cb7607a18b41ff93b0be0fe"
+content-hash = "742ca2341e9028e03cd88352fef73790d39150590b3de610d1b3c7f2064ff935"

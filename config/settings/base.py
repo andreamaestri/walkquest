@@ -88,6 +88,7 @@ THIRD_PARTY_APPS = [
     "django_celery_beat",
     "corsheaders",
     "tagulous",
+    "slippers",
 ]
 
 LOCAL_APPS = [

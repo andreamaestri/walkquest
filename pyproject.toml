@@ -171,6 +171,7 @@ django-tagulous = "^2.1.0"
 rapidfuzz = "^3.10.1"
 geopy = "^2.4.1"
 django-extensions = "^3.2.3"
+slippers = "^0.6.2"
 
 
 [tool.poetry.group.dev.dependencies]
