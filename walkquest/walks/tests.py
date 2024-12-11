@@ -16,5 +16,5 @@ class AdventureModelTest(TestCase):
         )
 
     def test_adventure_creation(self):
-        self.assertEqual(self.adventure.title, "The Great Forest Traverse")
-        self.assertEqual(self.adventure.difficulty_level, "LEGENDARY")
+        assert self.adventure.title == "The Great Forest Traverse"
+        assert self.adventure.difficulty_level == "LEGENDARY"

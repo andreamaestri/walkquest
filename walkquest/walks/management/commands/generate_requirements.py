@@ -20,7 +20,7 @@ class Command(BaseCommand):
 
         for filename, args in files:
             output = req_dir / filename
-            cmd = ["poetry", "export", "-f", "requirements.txt", "--without-hashes"] + args
+            cmd = ["poetry", "export", "-f", "requirements.txt", "--without-hashes", *args]
 
             try:
                 requirements = subprocess.check_output(cmd).decode()

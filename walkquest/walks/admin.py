@@ -201,8 +201,7 @@ class WalkAdmin(GISModelAdmin, TagModelAdmin):
         ]
 
     def get_form(self, request, obj=None, **kwargs):
-        form = super().get_form(request, obj, **kwargs)
-        return form
+        return super().get_form(request, obj, **kwargs)
 
     @admin.display(description="Amenities")
     def amenities_summary(self, obj):

@@ -1,7 +1,6 @@
 # ruff: noqa: ERA001, E501
 """Base settings to build other settings files upon."""
 
-import mimetypes
 import ssl
 from pathlib import Path
 
@@ -106,10 +105,10 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 MIGRATION_MODULES = {"sites": "walkquest.contrib.sites.migrations"}
 
 SERIALIZATION_MODULES = {
-    'xml':    'tagulous.serializers.xml_serializer',
-    'json':   'tagulous.serializers.json',
-    'python': 'tagulous.serializers.python',
-    'yaml':   'tagulous.serializers.pyyaml',
+    "xml":    "tagulous.serializers.xml_serializer",
+    "json":   "tagulous.serializers.json",
+    "python": "tagulous.serializers.python",
+    "yaml":   "tagulous.serializers.pyyaml",
 }
 
 # AUTHENTICATION
@@ -151,7 +150,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # https://docs.djangoproject.com/en/dev/ref/settings/#middleware
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "corsheaders.middleware.CorsMiddleware", 
+    "corsheaders.middleware.CorsMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
@@ -176,8 +175,6 @@ STATICFILES_FINDERS = [
     "django.contrib.staticfiles.finders.FileSystemFinder",
     "django.contrib.staticfiles.finders.AppDirectoriesFinder",
 ]
-
-mimetypes.add_type("application/javascript", ".js", True)
 
 # MEDIA
 # ------------------------------------------------------------------------------
@@ -345,9 +342,9 @@ INSTALLED_APPS += ["compressor"]
 COMPRESS_ENABLED = True
 
 STATICFILES_FINDERS = [
-    'django.contrib.staticfiles.finders.FileSystemFinder',
-    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
-    'compressor.finders.CompressorFinder',
+    "django.contrib.staticfiles.finders.FileSystemFinder",
+    "django.contrib.staticfiles.finders.AppDirectoriesFinder",
+    "compressor.finders.CompressorFinder",
 ]
 
 # Maps
@@ -359,7 +356,7 @@ OSM_TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
 
 # Use Thunderforest only if API key is available
 MAP_TILE_URL = f"{THUNDERFOREST_TILE_URL}?apikey={THUNDERFOREST_API_KEY}" if THUNDERFOREST_API_KEY else OSM_TILE_URL
-MAP_ATTRIBUTION = '© OpenStreetMap contributors' + ('. Maps © Thunderforest' if THUNDERFOREST_API_KEY else '')
+MAP_ATTRIBUTION = "© OpenStreetMap contributors" + (". Maps © Thunderforest" if THUNDERFOREST_API_KEY else "")
 
 # Make map settings available to templates
 TEMPLATES[0]["OPTIONS"]["context_processors"].append("walkquest.utils.context_processors.map_settings")
@@ -370,14 +367,14 @@ CORS_ALLOWED_ORIGINS = [
     "https://tile.thunderforest.com",
     "https://tile.openstreetmap.org",
 ]
-CORS_URLS_REGEX = r'^/api/.*$'
+CORS_URLS_REGEX = r"^/api/.*$"
 CORS_ALLOW_METHODS = [
-    'GET',
+    "GET",
 ]
 
 # Your stuff...
 # ------------------------------------------------------------------------------
 # Iconify configuration
 ICONIFY_COLLECTIONS = {
-    'mdi': 'https://api.iconify.design/mdi.json',
+    "mdi": "https://api.iconify.design/mdi.json",
 }

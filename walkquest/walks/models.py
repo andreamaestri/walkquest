@@ -30,7 +30,7 @@ class WalkFeatureTag(TagModel):
             "wildlife",
             "woodland",
         ]
-        autocomplete_view = 'walks:feature-autocomplete'
+        autocomplete_view = "walks:feature-autocomplete"
         protect_initial = True
         case_sensitive = False
 
@@ -232,12 +232,13 @@ class Walk(models.Model):
         to=WalkCategoryTag,
         blank=True,
         help_text=_("Categories related to this walk"),
+        related_name="walk_set",  # Change to standard Django name
     )
     features = TagField(
         to=WalkFeatureTag,
         blank=True,
         help_text=_("Features of this walk"),
-        related_name="walks",  # Add proper related name
+        related_name="walk_set",  # Change to standard Django name
     )
     has_stiles = models.BooleanField(default=False)
     has_cafe = models.BooleanField(default=False)
@@ -266,12 +267,12 @@ class Walk(models.Model):
         return self.adventure.difficulty_level
 
     def save(self, *args, **kwargs):
-        # Update boolean fields based on features
-        if self.features:
-            self.has_pub = "pub" in self.features.get_tag_list()
-            self.has_cafe = "cafe" in self.features.get_tag_list()
+        # Update boolean fields based on categories instead of features
+        if self.related_categories:
+            self.has_pub = "pub" in self.related_categories.get_tag_list()
+            self.has_cafe = "cafe" in self.related_categories.get_tag_list()
         if not self.title:
-            self.title = self.walk_name  # Use walk_name as title if title is not set
+            self.title = self.walk_name
         if not self.description:
             self.description = "This historic walking route is waiting for its story to be told."
         super().save(*args, **kwargs)

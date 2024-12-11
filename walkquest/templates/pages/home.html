@@ -5,14 +5,11 @@
 
 {% block extra_css %}
 <style>
-    /* Map styles - must come first */
+    /* Map container styles */
     #map {
         width: 100%;
-        height: 100vh;
-        position: absolute;
-        top: 0;
-        right: 0;
-        bottom: 0;
+        height: 100%;  /* Changed from 100vh */
+        position: relative;  /* Changed from absolute */
     }
 
     /* Ensure map elements are visible */
@@ -22,21 +19,30 @@
 
     /* Layout structure */
     .layout-container {
-        height: calc(100vh - 4rem);  /* Account for navbar */
+        height: 100vh;  /* Changed from calc */
         width: 100vw;
         display: flex;
         position: relative;
+        overflow: hidden;  /* Add this to prevent scrolling issues */
     }
 
     /* Sidebar styles */
     .sidebar {
         width: 24rem;
+        height: 100%;  /* Changed from specific height */
+        flex-shrink: 0;  /* Add this to prevent sidebar from shrinking */
         z-index: 10;
         background: white;
-        height: 100%;
         display: flex;
         flex-direction: column;
         box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+    }
+
+    /* Map wrapper styles */
+    .map-wrapper {
+        flex: 1;
+        position: relative;  /* Ensure this is relative */
+        height: 100%;  /* Add this */
     }
 
     /* Existing styles */
@@ -77,6 +83,25 @@
         align-items: center;
         justify-content: center;
     }
+
+    /* Tag Cloud Styles */
+    .filter-option {
+        transition: all 0.2s ease;
+    }
+
+    .filter-option:hover {
+        background-color: #F3F4F6;
+    }
+
+    .filter-option input:checked + span {
+        color: #4F46E5;
+        font-weight: 600;
+    }
+
+    .filter-option.selected {
+        background-color: #EEF2FF;
+        border-color: #4F46E5;
+    }
 </style>
 {% endblock extra_css %}
 
@@ -93,23 +118,42 @@
     <!-- Error container -->
     <div id="error-container" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert"></div>
 
-    <!-- Main content -->
-    <div class="layout-container">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <!-- Search Section -->
+    <!-- Main content with Alpine.js -->
+    <div class="layout-container" 
+         x-data="walkInterface()"
+         x-init="initialize()">
+        
+        <!-- Sidebar with collapsible functionality -->
+        <aside class="sidebar"
+               x-show="showSidebar"
+               x-transition:enter="transition ease-out duration-300"
+               x-transition:enter-start="-translate-x-full"
+               x-transition:enter-end="translate-x-0"
+               x-transition:leave="transition ease-in duration-300"
+               x-transition:leave-start="translate-x-0"
+               x-transition:leave-end="-translate-x-full">
+            
+            <!-- Toggle sidebar button -->
+            <button @click="showSidebar = !showSidebar"
+                    class="absolute -right-12 top-4 bg-white p-2 rounded-r shadow-md"
+                    :aria-label="showSidebar ? 'Hide sidebar' : 'Show sidebar'">
+                <iconify-icon :icon="showSidebar ? 'mdi:chevron-left' : 'mdi:chevron-right'"
+                             class="text-xl"></iconify-icon>
+            </button>
+
+            <!-- Search with Alpine.js binding -->
             <div class="p-4 border-b">
                 <div class="relative">
                     <input type="text" 
-                           id="search-input"
+                           x-model="searchQuery"
+                           x-on:input.debounce.500ms="handleSearch()"
                            hx-post="{% url 'walks:search' %}"
-                           hx-trigger="input changed delay:500ms, search"
+                           hx-trigger="search from:body"
                            hx-target="#walk-list"
                            hx-indicator="#search-indicator"
                            class="w-full px-4 py-2 pl-10 border rounded-lg focus:ring-2 focus:ring-primary-500"
                            placeholder="Search walks..."
-                           aria-label="Search walks"
-                           autocomplete="off">
+                           :disabled="isLoading">
                     <span class="absolute left-3 top-1/2 transform -translate-y-1/2">
                         <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -123,75 +167,64 @@
 
             <!-- Filter Sections -->
             <div class="p-4 border-b overflow-y-auto">
-                <!-- Difficulty Filters -->
-                <div class="difficulty-filters mb-6"
-                     hx-post="{% url 'walks:filter' %}"
-                     hx-trigger="change from:input[name='difficulty']"
-                     hx-target="#walk-list"
-                     hx-indicator="#filter-indicator">
+                <form class="category-filters"
+                      @submit.prevent
+                      x-ref="filterForm">
                     <div class="filter-group">
-                        <h3 class="font-semibold mb-2 text-gray-700">Difficulty Levels</h3>
-                        {% if config.filters.difficulties %}
-                            {% for difficulty in config.filters.difficulties %}
-                                <label class="filter-option block py-1 hover:bg-gray-50 rounded px-2 cursor-pointer" 
-                                       data-difficulty="{{ difficulty }}">
-                                    <input type="checkbox" 
-                                           name="difficulty" 
-                                           value="{{ difficulty }}" 
-                                           class="mr-2 rounded text-primary-600 focus:ring-primary-500">
-                                    <span class="text-gray-700">{{ difficulty }}</span>
-                                    <span class="count" data-difficulty-count="{{ difficulty }}">(0)</span>
-                                </label>
-                            {% endfor %}
+                        <h3 class="font-semibold mb-2 text-gray-700 flex items-center justify-between">
+                            Walk Categories
+                            <button type="button" 
+                                    @click="clearFilters()"
+                                    x-show="hasActiveFilters"
+                                    class="text-sm text-primary-500 hover:text-primary-600">
+                                Clear all
+                            </button>
+                        </h3>
+                        {% if tag_cloud %}
+                            <div class="flex flex-wrap gap-2">
+                                {% for tag in tag_cloud %}
+                                    <label class="filter-option"
+                                           :class="{ 'selected': isFilterActive('{{ tag.name }}') }"
+                                           x-data="{ count: {{ tag.usage_count }} }">
+                                        <input type="checkbox" 
+                                               name="tag" 
+                                               value="{{ tag.name }}"
+                                               x-model="activeFilters"
+                                               @change="handleFilterChange()">
+                                        <span x-text="'{{ tag.name|title }}'"></span>
+                                        <span class="count" x-text="`(${count})`"></span>
+                                    </label>
+                                {% endfor %}
+                            </div>
                         {% else %}
-                            <p class="text-sm text-gray-500">No difficulty levels available</p>
+                            <p class="text-sm text-gray-500 italic">Loading categories...</p>
                         {% endif %}
                     </div>
-                </div>
-
-                <!-- Feature Filters -->
-                <div class="feature-filters"
-                     hx-post="{% url 'walks:filter' %}"
-                     hx-trigger="change from:input[name='feature']"
-                     hx-target="#walk-list"
-                     hx-indicator="#filter-indicator">
-                    <div class="filter-group">
-                        <h3 class="font-semibold mb-2 text-gray-700">Features</h3>
-                        {% if config.filters.features %}
-                            {% for feature in config.filters.features %}
-                                <label class="filter-option block py-1 hover:bg-gray-50 rounded px-2 cursor-pointer" 
-                                       data-feature="{{ feature }}">
-                                    <input type="checkbox" 
-                                           name="feature" 
-                                           value="{{ feature }}" 
-                                           class="mr-2 rounded text-primary-600 focus:ring-primary-500">
-                                    <span class="text-gray-700">{{ feature|title }}</span>
-                                    <span class="count" data-feature-count="{{ feature }}">(0)</span>
-                                </label>
-                            {% endfor %}
-                        {% else %}
-                            <p class="text-sm text-gray-500">No features available</p>
-                        {% endif %}
+                </form>
+                <div id="filter-indicator" class="htmx-indicator mt-4">
+                    <div class="flex justify-center">
+                        <div class="animate-spin h-5 w-5 border-2 border-primary-500 rounded-full border-t-transparent"></div>
                     </div>
-                </div>
-                <div id="filter-indicator" class="htmx-indicator flex justify-center items-center py-2">
-                    <div class="animate-spin h-4 w-4 border-2 border-primary-500"></div>
                 </div>
             </div>
 
-            <!-- Walk List -->
+            <!-- Walk List with HTMX loading -->
             <div id="walk-list" 
-                 class="flex-1 overflow-auto" 
-                 role="list"
-                 hx-get="{% url 'walks:list' %}"
-                 hx-trigger="load delay:100ms"
-                 hx-swap="innerHTML">
+                 class="flex-1 overflow-y-auto"
+                 x-ref="walkList"
+                 @walk-selected.window="handleWalkSelection($event.detail)">
+                <template x-if="isLoading">
+                    <div class="p-4 text-center">
+                        <div class="animate-spin h-5 w-5 border-2 border-primary-500 rounded-full border-t-transparent mx-auto"></div>
+                        <p class="mt-2 text-sm text-gray-500">Loading walks...</p>
+                    </div>
+                </template>
             </div>
         </aside>
 
-        <!-- Map Container - moved outside sidebar -->
-        <div class="flex-1 relative">
-            <div id="map"></div>
+        <!-- Updated map container structure -->
+        <div class="map-wrapper" :class="{ 'w-full': !showSidebar }">
+            <div id="map" x-ref="map"></div>
         </div>
     </div>
 
@@ -205,57 +238,193 @@
         <div class="walk-card p-4 border-b cursor-pointer" data-walk-id="">
             <h3 class="font-semibold text-gray-900"></h3>
             <div class="mt-1 text-sm text-gray-600">
-                <span class="difficulty"></span> | <span class="distance"></span>
+                <span class="distance"></span>
             </div>
-            <div class="mt-2 flex flex-wrap gap-1 features">
-                <!-- Features will be inserted here -->
+            <div class="mt-2 flex flex-wrap gap-1 tags">
+                <!-- Tags will be inserted here -->
             </div>
         </div>
     </template>
 {% endblock content %}
 
 {% block extra_js %}
-    <script>
-        // Initialize WALKQUEST global state first
-        const initializeWalkQuest = () => {
-            const configEl = document.getElementById('config-data');
-            const walksEl = document.getElementById('walks-data');
-            
-            if (!configEl || !walksEl) {
-                throw new Error('Required configuration data missing');
-            }
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.store('walks', {
+            walks: [],
+            selectedWalkId: null,
+            map: null,
+            markers: new Map(),
+            filters: {
+                searchQuery: '',
+                activeFilters: []
+            },
+            isLoading: false,
 
-            window.WALKQUEST = {
-                config: JSON.parse(configEl.textContent),
-                initialWalks: JSON.parse(walksEl.textContent)
-            };
-        };
-
-        // Wait for all resources to load
-        window.addEventListener('load', async () => {
-            try {
-                // Initialize global state first
-                initializeWalkQuest();
-
-                // Then load and initialize walkStore
-                const { walkStore } = await import("{% static 'js/project.js' %}");
-                await walkStore.initialize('map', 'walk-list');
-
-            } catch (error) {
-                console.error('Failed to initialize:', error);
-                const errorContainer = document.getElementById('error-container');
-                if (errorContainer) {
-                    errorContainer.textContent = 'Error: ' + error.message;
-                    errorContainer.classList.remove('hidden');
+            async initialize() {
+                try {
+                    const config = JSON.parse(document.getElementById('config-data').textContent);
+                    const initialWalks = JSON.parse(document.getElementById('walks-data').textContent);
+                    
+                    // Initialize Mapbox
+                    mapboxgl.accessToken = config.mapboxToken;
+                    this.initializeMap();
+                    
+                    // Load initial walks
+                    this.setWalks(initialWalks);
+                    
+                    return true;
+                } catch (error) {
+                    console.error('Initialization failed:', error);
+                    return false;
                 }
-            }
-        });
+            },
 
-        // Remove HTMX event handlers for map loading spinner
-        document.addEventListener('htmx:afterRequest', (evt) => {
-            if (evt.detail.successful) {
-                walkStore.updateMapFromResults(evt.detail.xhr.response);
+            initializeMap() {
+                const mapContainer = document.getElementById('map');
+                if (!mapContainer) throw new Error('Map container not found');
+
+                this.map = new mapboxgl.Map({
+                    container: mapContainer,
+                    style: "mapbox://styles/mapbox/outdoors-v12",
+                    center: [-4.85, 50.4],
+                    zoom: 9.5,
+                    maxBounds: [
+                        [-6.5, 49.5],
+                        [-3.5, 51.5]
+                    ],
+                    minZoom: 8,
+                    maxZoom: 16
+                });
+
+                this.map.addControl(new mapboxgl.NavigationControl());
+            },
+
+            setWalks(walks) {
+                this.walks = walks.filter(w => w?.id && w?.walk_name);
+                this.updateMarkers();
+            },
+
+            getFilteredWalks() {
+                return this.walks.filter(walk => {
+                    if (this.filters.searchQuery) {
+                        const term = this.filters.searchQuery.toLowerCase();
+                        if (!walk.walk_name.toLowerCase().includes(term)) return false;
+                    }
+                    
+                    if (this.filters.activeFilters.length > 0) {
+                        return walk.features?.some(f => 
+                            this.filters.activeFilters.includes(f)
+                        );
+                    }
+                    
+                    return true;
+                });
+            },
+
+            selectWalk(walkId) {
+                this.selectedWalkId = walkId;
+                const walk = this.walks.find(w => w.id === walkId);
+                
+                if (walk?.latitude && walk?.longitude) {
+                    this.map.flyTo({
+                        center: [walk.longitude, walk.latitude],
+                        zoom: 14,
+                        duration: 1500
+                    });
+                }
+
+                this.updateMarkers();
+            },
+
+            updateMarkers() {
+                // Clear existing markers
+                this.markers.forEach(m => m.remove());
+                this.markers.clear();
+
+                // Create new markers for filtered walks
+                this.getFilteredWalks().forEach(walk => {
+                    const marker = new mapboxgl.Marker({
+                        color: walk.id === this.selectedWalkId ? '#DC2626' : '#3FB1CE',
+                        scale: walk.id === this.selectedWalkId ? 1.2 : 1
+                    })
+                    .setLngLat([walk.longitude, walk.latitude])
+                    .setPopup(
+                        new mapboxgl.Popup({ offset: 25 })
+                        .setHTML(`
+                            <div class="p-3">
+                                <h3 class="font-semibold">${walk.walk_name}</h3>
+                                <p class="text-sm text-gray-600">${walk.steepness_level} | ${walk.distance} miles</p>
+                            </div>
+                        `)
+                    )
+                    .addTo(this.map);
+
+                    // Add click handler
+                    marker.getElement().addEventListener('click', () => {
+                        this.selectWalk(walk.id);
+                    });
+
+                    this.markers.set(walk.id, marker);
+                });
+            },
+
+            search(query) {
+                this.filters.searchQuery = query;
+                this.updateMarkers();
+            },
+
+            setFilters(filters) {
+                this.filters.activeFilters = filters;
+                this.updateMarkers();
+            },
+
+            cleanup() {
+                this.markers.forEach(m => m.remove());
+                this.markers.clear();
+                if (this.map) this.map.remove();
+                this.map = null;
+                this.walks = [];
             }
         });
-    </script>
+    });
+
+    function walkInterface() {
+        return {
+            showSidebar: true,
+            searchQuery: '',
+            activeFilters: [],
+            
+            init() {
+                Alpine.store('walks').initialize();
+                
+                this.$watch('searchQuery', value => {
+                    Alpine.store('walks').search(value);
+                });
+                
+                this.$watch('activeFilters', value => {
+                    Alpine.store('walks').setFilters(value);
+                });
+            },
+
+            handleWalkSelection(walkId) {
+                Alpine.store('walks').selectWalk(walkId);
+            },
+
+            // ... other interface methods
+        }
+    }
+
+    // HTMX handlers
+    document.body.addEventListener('htmx:afterRequest', (evt) => {
+        if (evt.detail.successful) {
+            try {
+                const walks = JSON.parse(evt.detail.xhr.response);
+                Alpine.store('walks').setWalks(walks);
+            } catch (error) {
+                console.error('Failed to parse walks:', error);
+            }
+        }
+    });
+</script>
 {% endblock %}
