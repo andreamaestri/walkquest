@@ -313,293 +313,8 @@
 {% endblock content %}
 
 {% block extra_js %}
-<!-- Alpine.js and Plugins -->
-<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-<script defer src="https://unpkg.com/@alpinejs/persist@3.x.x/dist/cdn.min.js"></script>
-
-<!-- Initialize Alpine.js with plugins -->
+<!-- Utils -->
 <script>
-    document.addEventListener('alpine:init', () => {
-        // Initialize plugins first
-        Alpine.plugin(AlpinePersist);
-        
-        // Then initialize store
-        Alpine.store('walks', {
-            walks: [],
-            selectedWalkId: Alpine.$persist(null).as('selectedWalkId'),
-            map: null,
-            markers: new Map(),
-            filters: {
-                searchQuery: Alpine.$persist('').as('searchQuery'),
-                activeFilters: Alpine.$persist([]).as('activeFilters')
-            },
-            isLoading: false,
-
-            async initialize() {
-                try {
-                    const config = JSON.parse(document.getElementById('config-data').textContent);
-                    const initialWalks = JSON.parse(document.getElementById('walks-data').textContent);
-                    
-                    // Initialize Mapbox
-                    mapboxgl.accessToken = config.mapboxToken;
-                    this.initializeMap();
-                    
-                    // Load initial walks
-                    this.setWalks(initialWalks);
-                    
-                    return true;
-                } catch (error) {
-                    console.error('Initialization failed:', error);
-                    return false;
-                }
-            },
-
-            initializeMap() {
-                const mapContainer = document.getElementById('map');
-                if (!mapContainer) throw new Error('Map container not found');
-
-                this.map = new mapboxgl.Map({
-                    container: mapContainer,
-                    style: "mapbox://styles/mapbox/outdoors-v12",
-                    center: [-4.85, 50.4],
-                    zoom: 9.5,
-                    maxBounds: [
-                        [-6.5, 49.5],
-                        [-3.5, 51.5]
-                    ],
-                    minZoom: 8,
-                    maxZoom: 16
-                });
-
-                this.map.addControl(new mapboxgl.NavigationControl());
-            },
-
-            setWalks(walks) {
-                this.walks = walks.filter(w => w?.id && w?.walk_name);
-                this.updateMarkers();
-            },
-
-            getFilteredWalks() {
-                return this.walks.filter(walk => {
-                    if (this.filters.searchQuery) {
-                        const term = this.filters.searchQuery.toLowerCase();
-                        if (!walk.walk_name.toLowerCase().includes(term)) return false;
-                    }
-                    
-                    if (this.filters.activeFilters.length > 0) {
-                        return walk.features?.some(f => 
-                            this.filters.activeFilters.includes(f)
-                        );
-                    }
-                    
-                    return true;
-                });
-            },
-
-            selectWalk(walkId) {
-                this.selectedWalkId = walkId;
-                const walk = this.walks.find(w => w.id === walkId);
-                
-                if (walk?.latitude && walk?.longitude) {
-                    this.map.flyTo({
-                        center: [walk.longitude, walk.latitude],
-                        zoom: 14,
-                        duration: 1500
-                    });
-                }
-
-                this.updateMarkers();
-            },
-
-            updateMarkers() {
-                // Clear existing markers
-                this.markers.forEach(m => m.remove());
-                this.markers.clear();
-
-                // Create new markers for filtered walks
-                this.getFilteredWalks().forEach(walk => {
-                    const marker = new mapboxgl.Marker({
-                        color: walk.id === this.selectedWalkId ? '#DC2626' : '#3FB1CE',
-                        scale: walk.id === this.selectedWalkId ? 1.2 : 1
-                    })
-                    .setLngLat([walk.longitude, walk.latitude])
-                    .setPopup(
-                        new mapboxgl.Popup({ offset: 25 })
-                        .setHTML(`
-                            <div class="p-3">
-                                <h3 class="font-semibold">${walk.walk_name}</h3>
-                                <p class="text-sm text-gray-600">${walk.steepness_level} | ${walk.distance} miles</p>
-                            </div>
-                        `)
-                    )
-                    .addTo(this.map);
-
-                    // Add click handler
-                    marker.getElement().addEventListener('click', () => {
-                        this.selectWalk(walk.id);
-                    });
-
-                    this.markers.set(walk.id, marker);
-                });
-            },
-
-            search(query) {
-                this.filters.searchQuery = query;
-                this.updateMarkers();
-            },
-
-            setFilters(filters) {
-                this.filters.activeFilters = filters;
-                this.updateMarkers();
-            },
-
-            cleanup() {
-                this.markers.forEach(m => m.remove());
-                this.markers.clear();
-                if (this.map) this.map.remove();
-                this.map = null;
-                this.walks = [];
-            }
-        });
-
-        // Initialize walkInterface component
-        Alpine.data('walkInterface', () => ({
-            showSidebar: Alpine.$persist(true).as('showSidebar'),
-            searchQuery: Alpine.$persist('').as('searchQuery'),
-            selectedWalk: null,
-            isLoading: false,
-            filteredWalks: [],
-
-            init() {
-                this.$watch('selectedWalk', (walkId) => {
-                    Alpine.store('walks').selectWalk(walkId);
-                    this.centerMapOnWalk(walkId)
-                });
-
-                window.addEventListener('walk-data-loaded', () => { 
-                    this.isLoading = false 
-                });
-
-                this.$nextTick(() => {
-                    this.loadWalks();
-                    Alpine.store('walks').initialize().then((ready) => {
-                        if(ready) {
-                            Alpine.store('walks').map.on('load', () => {
-                                this.loadWalks();
-                            });
-                        }
-                    });
-                });
-            },
-
-            searchWalks() {
-                this.isLoading = true;
-                this.getWalks();
-            },
-
-            getWalks() {
-                const params = new URLSearchParams({
-                    q: this.searchQuery,
-                    categories: Alpine.store('walks').filters.activeFilters.join(',')
-                });
-                Alpine.store('walks').fetchWalks(params);
-            },
-
-            loadWalks() {
-                this.isLoading = true;
-                this.getWalks();
-            },
-
-            centerMapOnWalk(walkId) {
-                const walk = Alpine.store('walks').walks.find(walk => walk.id === walkId);
-                if(walk?.latitude && walk?.longitude && Alpine.store('walks').map) {
-                    Alpine.store('walks').map.flyTo({
-                        center: [walk.longitude, walk.latitude],
-                        zoom: 14
-                    });
-                }
-            }
-        }));
-
-        // Initialize categoryCombobox component
-        Alpine.data('categoryCombobox', (config) => ({
-            options: config.options,
-            isOpen: false,
-            searchQuery: '',
-            selectedOptions: Alpine.$persist([]).as('categorySelections'),
-            
-            get filteredOptions() {
-                return this.options.filter(option => 
-                    option.label.toLowerCase().includes(this.searchQuery.toLowerCase())
-                );
-            },
-            
-            toggleOption(option) {
-                const index = this.selectedOptions.findIndex(o => o.value === option.value);
-                if (index === -1) {
-                    this.selectedOptions.push(option);
-                } else {
-                    this.selectedOptions.splice(index, 1);
-                }
-                this.$dispatch('categories-updated', this.selectedOptions.map(o => o.value));
-            },
-            
-            isSelected(option) {
-                return this.selectedOptions.some(o => o.value === option.value);
-            },
-            
-            clearSelection() {
-                this.selectedOptions = [];
-                this.$dispatch('categories-updated', []);
-            }
-        }));
-    });
-
-    // Ensure Alpine.js is ready before loading project.js
-    window.addEventListener('alpine:init', () => {
-        import('/static/js/project.js').then(module => {
-            window.walkStore = module.walkStore;
-        });
-    });
-</script>
-
-<script>
-document.addEventListener('alpine:init', () => {
-    Alpine.data('categoryCombobox', function(config) {
-        return {
-            options: config.options,
-            isOpen: false,
-            searchQuery: '',
-            selectedOptions: this.$persist([]).as('categorySelections'),
-            
-            get filteredOptions() {
-                return this.options.filter(option => 
-                    option.label.toLowerCase().includes(this.searchQuery.toLowerCase())
-                );
-            },
-            
-            toggleOption(option) {
-                const index = this.selectedOptions.findIndex(o => o.value === option.value);
-                if (index === -1) {
-                    this.selectedOptions.push(option);
-                } else {
-                    this.selectedOptions.splice(index, 1);
-                }
-                this.$dispatch('categories-updated', this.selectedOptions.map(o => o.value));
-            },
-            
-            isSelected(option) {
-                return this.selectedOptions.some(o => o.value === option.value);
-            },
-            
-            clearSelection() {
-                this.selectedOptions = [];
-                this.$dispatch('categories-updated', []);
-            }
-        }
-    });
-});
-
 function getCategoryEmoji(category) {
     const emojiMap = {
         'coastal': '🏖️',
@@ -631,5 +346,251 @@ function getCategoryColor(category) {
     };
     return colorMap[category.toLowerCase()] || '#6B7280';
 }
+</script>
+
+<!-- Alpine.js Initialization -->
+<script>
+document.addEventListener('alpine:init', () => {
+    // Initialize plugins first
+    Alpine.plugin(AlpinePersist);
+    
+    // Initialize stores and components
+    Alpine.store('walks', {
+        walks: [],
+        selectedWalkId: Alpine.$persist(null).as('selectedWalkId'),
+        map: null,
+        markers: new Map(),
+        filters: {
+            searchQuery: Alpine.$persist('').as('searchQuery'),
+            activeFilters: Alpine.$persist([]).as('activeFilters')
+        },
+        isLoading: false,
+
+        async initialize() {
+            try {
+                const config = JSON.parse(document.getElementById('config-data').textContent);
+                const initialWalks = JSON.parse(document.getElementById('walks-data').textContent);
+                
+                // Initialize Mapbox
+                mapboxgl.accessToken = config.mapboxToken;
+                this.initializeMap();
+                
+                // Load initial walks
+                this.setWalks(initialWalks);
+                
+                return true;
+            } catch (error) {
+                console.error('Initialization failed:', error);
+                return false;
+            }
+        },
+
+        initializeMap() {
+            const mapContainer = document.getElementById('map');
+            if (!mapContainer) throw new Error('Map container not found');
+
+            this.map = new mapboxgl.Map({
+                container: mapContainer,
+                style: "mapbox://styles/mapbox/outdoors-v12",
+                center: [-4.85, 50.4],
+                zoom: 9.5,
+                maxBounds: [
+                    [-6.5, 49.5],
+                    [-3.5, 51.5]
+                ],
+                minZoom: 8,
+                maxZoom: 16
+            });
+
+            this.map.addControl(new mapboxgl.NavigationControl());
+        },
+
+        setWalks(walks) {
+            this.walks = walks.filter(w => w?.id && w?.walk_name);
+            this.updateMarkers();
+        },
+
+        getFilteredWalks() {
+            return this.walks.filter(walk => {
+                if (this.filters.searchQuery) {
+                    const term = this.filters.searchQuery.toLowerCase();
+                    if (!walk.walk_name.toLowerCase().includes(term)) return false;
+                }
+                
+                if (this.filters.activeFilters.length > 0) {
+                    return walk.features?.some(f => 
+                        this.filters.activeFilters.includes(f)
+                    );
+                }
+                
+                return true;
+            });
+        },
+
+        selectWalk(walkId) {
+            this.selectedWalkId = walkId;
+            const walk = this.walks.find(w => w.id === walkId);
+            
+            if (walk?.latitude && walk?.longitude) {
+                this.map.flyTo({
+                    center: [walk.longitude, walk.latitude],
+                    zoom: 14,
+                    duration: 1500
+                });
+            }
+
+            this.updateMarkers();
+        },
+
+        updateMarkers() {
+            // Clear existing markers
+            this.markers.forEach(m => m.remove());
+            this.markers.clear();
+
+            // Create new markers for filtered walks
+            this.getFilteredWalks().forEach(walk => {
+                const marker = new mapboxgl.Marker({
+                    color: walk.id === this.selectedWalkId ? '#DC2626' : '#3FB1CE',
+                    scale: walk.id === this.selectedWalkId ? 1.2 : 1
+                })
+                .setLngLat([walk.longitude, walk.latitude])
+                .setPopup(
+                    new mapboxgl.Popup({ offset: 25 })
+                    .setHTML(`
+                        <div class="p-3">
+                            <h3 class="font-semibold">${walk.walk_name}</h3>
+                            <p class="text-sm text-gray-600">${walk.steepness_level} | ${walk.distance} miles</p>
+                        </div>
+                    `)
+                )
+                .addTo(this.map);
+
+                // Add click handler
+                marker.getElement().addEventListener('click', () => {
+                    this.selectWalk(walk.id);
+                });
+
+                this.markers.set(walk.id, marker);
+            });
+        },
+
+        search(query) {
+            this.filters.searchQuery = query;
+            this.updateMarkers();
+        },
+
+        setFilters(filters) {
+            this.filters.activeFilters = filters;
+            this.updateMarkers();
+        },
+
+        cleanup() {
+            this.markers.forEach(m => m.remove());
+            this.markers.clear();
+            if (this.map) this.map.remove();
+            this.map = null;
+            this.walks = [];
+        }
+    });
+
+    // Initialize walkInterface component
+    Alpine.data('walkInterface', () => ({
+        showSidebar: Alpine.$persist(true).as('showSidebar'),
+        searchQuery: Alpine.$persist('').as('searchQuery'),
+        selectedWalk: null,
+        isLoading: false,
+        filteredWalks: [],
+
+        init() {
+            this.$watch('selectedWalk', (walkId) => {
+                Alpine.store('walks').selectWalk(walkId);
+                this.centerMapOnWalk(walkId)
+            });
+
+            window.addEventListener('walk-data-loaded', () => { 
+                this.isLoading = false 
+            });
+
+            this.$nextTick(() => {
+                this.loadWalks();
+                Alpine.store('walks').initialize().then((ready) => {
+                    if(ready) {
+                        Alpine.store('walks').map.on('load', () => {
+                            this.loadWalks();
+                        });
+                    }
+                });
+            });
+        },
+
+        searchWalks() {
+            this.isLoading = true;
+            this.getWalks();
+        },
+
+        getWalks() {
+            const params = new URLSearchParams({
+                q: this.searchQuery,
+                categories: Alpine.store('walks').filters.activeFilters.join(',')
+            });
+            Alpine.store('walks').fetchWalks(params);
+        },
+
+        loadWalks() {
+            this.isLoading = true;
+            this.getWalks();
+        },
+
+        centerMapOnWalk(walkId) {
+            const walk = Alpine.store('walks').walks.find(walk => walk.id === walkId);
+            if(walk?.latitude && walk?.longitude && Alpine.store('walks').map) {
+                Alpine.store('walks').map.flyTo({
+                    center: [walk.longitude, walk.latitude],
+                    zoom: 14
+                });
+            }
+        }
+    }));
+
+    // Initialize categoryCombobox component
+    Alpine.data('categoryCombobox', (config) => ({
+        options: config.options,
+        isOpen: false,
+        searchQuery: '',
+        selectedOptions: Alpine.$persist([]).as('categorySelections'),
+        
+        get filteredOptions() {
+            return this.options.filter(option => 
+                option.label.toLowerCase().includes(this.searchQuery.toLowerCase())
+            );
+        },
+        
+        toggleOption(option) {
+            const index = this.selectedOptions.findIndex(o => o.value === option.value);
+            if (index === -1) {
+                this.selectedOptions.push(option);
+            } else {
+                this.selectedOptions.splice(index, 1);
+            }
+            this.$dispatch('categories-updated', this.selectedOptions.map(o => o.value));
+        },
+        
+        isSelected(option) {
+            return this.selectedOptions.some(o => o.value === option.value);
+        },
+        
+        clearSelection() {
+            this.selectedOptions = [];
+            this.$dispatch('categories-updated', []);
+        }
+    }));
+});
+
+// Ensure Alpine.js is ready before loading project.js
+window.addEventListener('alpine:init', () => {
+    import('/static/js/project.js').then(module => {
+        window.walkStore = module.walkStore;
+    });
+});
 </script>
 {% endblock extra_js %}

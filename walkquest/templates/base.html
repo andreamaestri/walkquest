@@ -26,28 +26,31 @@
     <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
 
     <!-- Alpine.js Core and Plugins -->
-    <script defer src="https://unpkg.com/alpinejs@3.14.7/dist/cdn.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/persist@3.14.7/dist/cdn.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.14.7/dist/cdn.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/intersect@3.14.7/dist/cdn.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.7/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/alpinejs@3.14.7/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@alpinejs/persist@3.14.7/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.14.7/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@alpinejs/intersect@3.14.7/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.7/dist/cdn.min.js"></script>
 
     <!-- Core Alpine.js Initialization -->
-    <script>
-        document.addEventListener('alpine:init', () => {
+    <script type="module">
+        document.addEventListener('alpine:init', async () => {
             // Initialize plugins
             Alpine.plugin(AlpinePersist);
             Alpine.plugin(AlpineCollapse);
             Alpine.plugin(AlpineIntersect);
             Alpine.plugin(AlpineFocus);
 
+            // Import and initialize project.js with Alpine
+            const { initAlpine, walkStore } = await import('{% static "js/project.js" %}');
+            await initAlpine(Alpine);
+            window.walkStore = walkStore;
+
             // Global store
             Alpine.store('app', {
                 initialized: false,
                 async initialize() {
                     try {
-                        const { walkStore } = await import('{% static "js/project.js" %}');
-                        window.walkStore = walkStore;
                         await walkStore.initialize();
                         this.initialized = true;
                     } catch (error) {
@@ -282,10 +285,15 @@
 
         <!-- Base JavaScript -->
         <script>
-            // Initialize Alpine plugins
+            // Auto-remove messages
             document.addEventListener('DOMContentLoaded', () => {
-                // Initialize persist plugin
-                Alpine.plugin(AlpinePersist);
+                document.querySelectorAll('[data-auto-remove]').forEach(el => {
+                    const delay = parseInt(el.dataset.autoRemove, 10) || 5000;
+                    setTimeout(() => {
+                        el.style.opacity = '0';
+                        setTimeout(() => el.remove(), 300);
+                    }, delay);
+                });
             });
 
             // Wait for Alpine and store to be ready
@@ -294,17 +302,6 @@
                 if (window.walkStore?.initialize) {
                     window.walkStore.initialize();
                 }
-            });
-
-            document.addEventListener('DOMContentLoaded', () => {
-                // Auto-remove messages
-                document.querySelectorAll('[data-auto-remove]').forEach(el => {
-                    const delay = parseInt(el.dataset.autoRemove, 10) || 5000;
-                    setTimeout(() => {
-                        el.style.opacity = '0';
-                        setTimeout(() => el.remove(), 300);
-                    }, delay);
-                });
             });
         </script>
 

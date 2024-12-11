@@ -1,9 +1,20 @@
-let Alpine;
+let Alpine = null;
 
 // Export init function to be called after Alpine.js is ready
 export async function initAlpine(_Alpine) {
+    if (!_Alpine) throw new Error('Alpine instance must be provided');
     Alpine = _Alpine;
+    
+    // Register store after Alpine is available
+    Alpine.store('walks', createWalkStore());
+    
     return walkStore;
+}
+
+// Ensure Alpine is available
+function getAlpine() {
+    if (!Alpine) throw new Error('Alpine.js not initialized. Call initAlpine first.');
+    return Alpine;
 }
 
 // Import dependencies
@@ -78,7 +89,7 @@ htmx.defineExtension('map-update', {
     }
 });
 
-// Store definition
+// Store definition with Alpine integration
 const createWalkStore = () => ({
     ready: false,
     walks: [],
@@ -91,12 +102,13 @@ const createWalkStore = () => ({
     },
     isLoading: false,
 
-    // Initialize with persist
+    // Initialize with Alpine persist
     init() {
-        this.selectedWalkId = this.$persist(this.selectedWalkId).as('selectedWalkId');
+        const $persist = getAlpine().$persist;
+        this.selectedWalkId = $persist(this.selectedWalkId).as('selectedWalkId');
         this.filters = {
-            searchQuery: this.$persist(this.filters.searchQuery).as('searchQuery'),
-            activeFilters: this.$persist(this.filters.activeFilters).as('activeFilters')
+            searchQuery: $persist(this.filters.searchQuery).as('searchQuery'),
+            activeFilters: $persist(this.filters.activeFilters).as('activeFilters')
         };
         return this;
     },
@@ -224,28 +236,19 @@ const createWalkStore = () => ({
     }
 });
 
-// Alpine.js store registration
-document.addEventListener('alpine:init', () => {
-    Alpine.store('walks', createWalkStore);
-});
-
-// Export store interface with new implementation
+// Export walkStore interface with Alpine integration
 export const walkStore = {
-    get Alpine() {
-        if (!Alpine) throw new Error('Alpine.js not initialized');
-        return Alpine;
+    get alpine() {
+        return getAlpine();
     },
 
     async initialize() {
         try {
-            // Wait for Alpine store to be ready
-            if (!this.Alpine.store('walks')) {
-                console.warn('Alpine walks store not found');
-                return false;
+            const store = this.alpine.store('walks');
+            if (!store) {
+                throw new Error('Alpine walks store not found');
             }
-
-            // Initialize the store
-            await this.Alpine.store('walks').initialize();
+            await store.initialize();
             return true;
         } catch (error) {
             console.error('Failed to initialize walkStore:', error);
@@ -259,7 +262,7 @@ export const walkStore = {
             if (!response.ok) throw new Error('Network response was not ok');
             
             const walks = await response.json();
-            Alpine.store('walks').setWalks(walks);
+            this.alpine.store('walks').setWalks(walks);
             window.dispatchEvent(new CustomEvent('walk-data-loaded'));
             
             return walks;
@@ -269,22 +272,19 @@ export const walkStore = {
         }
     },
 
-    initialize: async () => {
-        await Alpine.store('walks').initialize();
-        return Alpine.store('walks').init();
+    cleanup() {
+        this.alpine.store('walks').cleanup();
     },
 
-    cleanup: () => Alpine.store('walks').cleanup(),
-
-    selectWalk: (walkId) => {
-        Alpine.store('walks').selectWalk(walkId);
+    selectWalk(walkId) {
+        this.alpine.store('walks').selectWalk(walkId);
     },
 
-    updateFilters: (filters) => {
-        Alpine.store('walks').setFilters(filters);
+    updateFilters(filters) {
+        this.alpine.store('walks').setFilters(filters);
     },
 
-    search: (query) => {
-        Alpine.store('walks').search(query);
+    search(query) {
+        this.alpine.store('walks').search(query);
     }
 };
