@@ -187,33 +187,26 @@ class HomePageView(ListView):
         """Prepare context data including configuration and initial walks."""
         context = super().get_context_data(**kwargs)
         
-        try:
-            # Get initial walks data with basic serialization
-            initial_walks = self.get_initial_walks()
-            
-            # Prepare app config
-            app_config = {
-                'mapboxToken': settings.MAPBOX_TOKEN,
-                'walks': initial_walks,
-                'version': '1.0.0'  # Add version for validation
+        # Add configuration data
+        context['config'] = {
+            'mapboxToken': settings.MAPBOX_TOKEN,
+            'map': {
+                'style': 'mapbox://styles/mapbox/outdoors-v12',
+                'defaultCenter': [-4.85, 50.4],
+                'defaultZoom': 9
+            },
+            'filters': {
+                'difficulties': WalkQuestConfig.DIFFICULTIES,
+                'features': WalkQuestConfig.FEATURES
             }
-
-            context.update({
-                'app_config': json.dumps(app_config, default=str),  # Use default=str for dates
-                'error': None
-            })
-
-        except Exception as e:
-            logger.error(f"Error preparing context: {e}")
-            context.update({
-                'app_config': json.dumps({
-                    'error': str(e),
-                    'walks': [],
-                    'version': '1.0.0'
-                }),
-                'error': str(e)
-            })
+        }
         
+        # Add initial walks data
+        context['initial_walks'] = [
+            self.serialize_walk(walk) 
+            for walk in self.get_queryset()[:20]
+        ]
+
         return context
 
     @method_decorator(cache_page(cache_timeout))

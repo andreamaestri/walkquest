@@ -1,633 +1,734 @@
-/**
- * WalkQuest Project JavaScript
- * Handles virtual scrolling, map integration, and UI interactions
- */
+// Import dependencies
+const mapboxgl = window.mapboxgl;
+const Supercluster = window.Supercluster;
 
-import {
-  Virtualizer,
-  observeElementOffset,
-  observeElementRect,
-  elementScroll,
-} from "@tanstack/virtual-core";
-import mapboxgl from "mapbox-gl";
-import "iconify-icon";
-import SuperJSON from "superjson";
-
-
-// WalkQuest configuration settings
-export const WALKQUEST_CONFIG = Object.freeze({
+// Core configuration
+export const CONFIG = {
   map: {
     style: "mapbox://styles/mapbox/outdoors-v12",
-    defaultCenter: [-4.85, 50.4],
-    defaultZoom: 9,
-    markerColors: {
-      default: "#4F46E5",
+    defaultCenter: [-4.85, 50.4], // Center of Cornwall
+    defaultZoom: 9.5,
+    bounds: [
+      [-5.75, 49.95], // Southwest coordinates
+      [-4.15, 50.85]  // Northeast coordinates
+    ],
+    maxBounds: [
+      [-6.5, 49.5],   // Southwest limit
+      [-3.5, 51.5]    // Northeast limit
+    ],
+    minZoom: 8,       // Prevent zooming out too far
+    maxZoom: 16,       // Limit maximum zoom
+    markerColors: { 
+      default: "#3FB1CE", 
       selected: "#DC2626",
-    },
+      features: {
+        cafe: "#4B5563",     // Gray
+        coastal: "#0EA5E9",  // Blue
+        historic: "#8B5CF6", // Purple
+        pub: "#F59E0B",      // Amber
+        wildlife: "#10B981", // Green
+        woodland: "#065F46"  // Dark Green
+      }
+    }
   },
-  virtualizer: {
-    itemHeight: 92,
-    overscan: 5,
-    debounceMs: 300,
-  }
-});
-
-export const initializeConfig = () => {
-  try {
-    const configScript = document.getElementById('config-data');
-    const walksScript = document.getElementById('walks-data');
-    
-    if (!configScript || !walksScript) {
-      throw new Error('Required configuration data missing');
+  markers: {
+    anchor: 'bottom',
+    offset: [0, -15],
+    clustering: {
+      enabled: true,  // Can be disabled if Supercluster fails
+      radius: 50,
+      maxZoom: 14,
+      minPoints: 2,
+      colors: {
+        small: '#4F46E5',
+        medium: '#7C3AED',
+        large: '#9333EA'
+      }
+    },
+    popup: {
+      offset: [0, -40], // Adjust offset for better positioning
+      closeButton: false,
+      maxWidth: '300px',
+      anchor: 'bottom',
+      className: 'walk-popup',
+      focusAfterOpen: false, // Prevent focus issues
     }
-
-    const config = JSON.parse(configScript.textContent);
-    const initialWalks = JSON.parse(walksScript.textContent);
-
-    if (!config.map?.token) {
-      throw new Error('Mapbox token missing from configuration');
-    }
-
-    window.WALKQUEST = {
-      config: Object.freeze({...config}),
-      initialWalks: initialWalks
-    };
-
-    return true;
-  } catch (error) {
-    console.error('Configuration initialization failed:', error);
-    UI.showError(`Configuration Error: ${error.message}`);
-    return false;
   }
 };
 
-/**
- * DataSanitizer - Handles data type conversion and validation
- */
-class DataSanitizer {
-  constructor() {
-    this.parser = SuperJSON;
-  }
-
-  parseWalks(rawData) {
+// Add initialization utilities
+const initUtils = {
+  validateConfig: (config) => {
+    if (!config) throw new Error('Configuration object is empty');
+    if (!config.mapboxToken) throw new Error('Mapbox token not found');
+    return true;
+  },
+  
+  parseJsonScript: (elementId) => {
+    const element = document.getElementById(elementId);
+    if (!element) throw new Error(`Element ${elementId} not found`);
     try {
-      const parsed = this.parser.parse(rawData);
-      return Array.isArray(parsed) ? parsed.map(walk => this.sanitizeWalk(walk)) : [];
-    } catch (error) {
-      console.error('Failed to parse walks data:', error);
-      return [];
+      return JSON.parse(element.textContent);
+    } catch (e) {
+      throw new Error(`Failed to parse JSON from ${elementId}: ${e.message}`);
     }
-  }
-
-  sanitizeWalk(walk) {
-    return {
-      ...walk,
-      id: String(walk.id || ''),
-      walk_id: String(walk.walk_id || ''),
-      walk_name: String(walk.walk_name || ''),
-      highlights: String(walk.highlights || ''),
-      distance: this.parser.serialize(walk.distance),
-      latitude: this.parser.serialize(walk.latitude),
-      longitude: this.parser.serialize(walk.longitude),
-      features: Array.isArray(walk.features) ? walk.features : [],
-      has_pub: Boolean(walk.has_pub),
-      has_cafe: Boolean(walk.has_cafe),
-      has_bus_access: Boolean(walk.has_bus_access),
-      has_stiles: Boolean(walk.has_stiles),
-      created_at: walk.created_at ? new Date(walk.created_at) : null
+  },
+  
+  initializeGlobalState: () => {
+    const config = initUtils.parseJsonScript('config-data');
+    const initialWalks = initUtils.parseJsonScript('walks-data');
+    
+    initUtils.validateConfig(config);
+    
+    window.WALKQUEST = {
+      config,
+      initialWalks
     };
+    
+    return { config, initialWalks };
   }
+};
 
-  isValidWalk(walk) {
-    return (
-      walk &&
-      typeof walk.id === 'string' &&
-      typeof walk.walk_name === 'string' &&
-      typeof walk.latitude === 'number' &&
-      typeof walk.longitude === 'number'
-    );
-  }
-}
-
-// Create sanitizer instance
-const dataSanitizer = new DataSanitizer();
-
-// Utility functions
-export const utils = {
-  /**
-   * Creates a debounced function that delays invoking the provided function
-   * @param {Function} fn - Function to debounce
-   * @param {number} ms - Delay in milliseconds
-   * @returns {Function} Debounced function
-   */
-  debounce(fn, ms) {
+// Simplified utility functions
+const utils = {
+  debounce: (fn, ms) => {
     let timeoutId;
     return (...args) => {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => fn(...args), ms);
     };
   },
-
-  /**
-   * Sanitizes input by removing potentially harmful characters
-   * @param {string} input - String to sanitize
-   * @returns {string} Sanitized string
-   */
-  sanitizeInput(input) {
-    return input?.replace(/[<>]/g, "") || "";
-  },
-
-  /**
-   * Formats distance in miles with fixed decimal places
-   * @param {number} distance - Distance in miles
-   * @returns {string} Formatted distance string
-   */
-  formatDistance(distance) {
-    return distance
-      ? `${Number(distance).toFixed(1)} miles`
-      : "Distance unknown";
-  },
-
-  /**
-   * Creates an HTML string for an iconify icon
-   * @param {string} icon - Icon name
-   * @param {string} className - Optional CSS classes
-   * @returns {string} Icon HTML
-   */
-  createIcon(icon, className = "") {
-    return `<iconify-icon icon="${icon}" ${
-      className ? `class="${className}"` : ""
-    }></iconify-icon>`;
-  },
-
-  /**
-   * Validates and prepares map container
-   * @param {string} containerId - ID of container element
-   * @returns {HTMLElement} Validated container element
-   */
-  checkMapContainer(containerId) {
+  formatDistance: d => d ? `${Number(d).toFixed(1)} miles` : "Distance unknown",
+  createIcon: (icon, className = "") => 
+    `<iconify-icon icon="${icon}"${className ? ` class="${className}"` : ""}></iconify-icon>`,
+  checkMapContainer: (containerId) => {
     const container = document.getElementById(containerId);
     if (!container) {
       throw new Error('Map container not found');
     }
-    if (container.children.length > 0) {
-      console.warn('Map container not empty, clearing contents');
-      container.innerHTML = '';
+    
+    // Remove any existing map instance
+    if (container._map) {
+      container._map.remove();
     }
+    
+    // Clear any remaining content
+    while (container.firstChild) {
+      container.removeChild(container.firstChild);
+    }
+    
     return container;
+  },
+  renderWalkCard: (walk, isSelected) => {
+    return `
+        <div class="walk-card p-4 border-b cursor-pointer ${isSelected ? 'walk-card--selected' : ''}"
+             data-walk-id="${walk.id}">
+            <h3 class="font-semibold text-gray-900">${walk.walk_name}</h3>
+            <div class="mt-1 text-sm text-gray-600">
+                <span>${walk.steepness_level} | ${utils.formatDistance(walk.distance)}</span>
+            </div>
+        </div>
+    `;
+  },
+  getMarkerColor: (walk) => {
+    if (!walk.features?.length) return CONFIG.map.markerColors.default;
+    // Use the color of the first feature found
+    return walk.features.map(f => CONFIG.map.markerColors.features[f])
+                       .find(Boolean) || CONFIG.map.markerColors.default;
+  },
+
+  createMarkerPopup: (walk) => {
+    return `
+      <div class="p-3">
+        <h3 class="font-semibold text-gray-900">${walk.walk_name}</h3>
+        <div class="mt-2 text-sm text-gray-600">
+          <p>${walk.steepness_level} | ${utils.formatDistance(walk.distance)}</p>
+          ${walk.features?.length ? `
+            <div class="mt-1 flex gap-1">
+              ${walk.features.map(f => `
+                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100">
+                  ${f}
+                </span>
+              `).join('')}
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    `;
   }
 };
 
-// UI helper functions
-export const UI = {
-  /**
-   * Shows the loading indicator
-   */
-  showLoading() {
-    const loader = document.getElementById("loading-indicator");
-    if (loader) loader.classList.remove("hidden");
-  },
-
-  /**
-   * Hides the loading indicator
-   */
-  hideLoading() {
-    const loader = document.getElementById("loading-indicator");
-    if (loader) loader.classList.add("hidden");
-  },
-
-  /**
-   * Displays an error message toast
-   * @param {string} message - Error message to display
-   * @param {number} duration - Duration in milliseconds
-   */
-  showError(message, duration = 5000) {
-    const container = document.createElement("div");
-    container.className = "message message-error";
-    container.innerHTML = `
-          <div class="flex items-center">
-              ${utils.createIcon("mdi:alert", "mr-2")}
-              <p>${message}</p>
-          </div>
-      `;
-    document.body.appendChild(container);
-    setTimeout(() => {
-      container.style.opacity = "0";
-      setTimeout(() => container.remove(), 300);
-    }, duration);
-  },
-};
-
-/**
- * Manages map markers and marker-related operations
- */
-class MarkerManager {
-  constructor(map, config) {
-    this.map = map;
-    this.config = config;
-    this.markers = new Map();
-  }
-
-  /**
-   * Creates a new marker for a walk
-   * @param {Object} walk - Walk data
-   * @param {boolean} isSelected - Whether the walk is selected
-   * @param {Function} onMarkerClick - Click handler
-   * @returns {mapboxgl.Marker} Created marker
-   */
-  createMarker(walk, isSelected, onMarkerClick) {
-    const marker = new mapboxgl.Marker({
-      color: isSelected 
-          ? this.config.markerColors.selected 
-          : this.config.markerColors.default
-    })
-    .setLngLat([walk.longitude, walk.latitude])
-    .addTo(this.map);
-
-    marker.getElement().addEventListener('click', onMarkerClick);
-    return marker;
-  }
-
-  /**
-   * Updates all markers based on current walks
-   * @param {Array} walks - Array of walk data
-   * @param {number} selectedWalkId - Currently selected walk ID
-   */
-  updateMarkers(walks, selectedWalkId) {
-    // Clear existing markers
-    this.clear();
-
-    // Add new markers
-    for (const walk of walks) {
-      if (!walk.latitude || !walk.longitude) continue;
-
-      const marker = this.createMarker(
-        walk,
-        walk.id === selectedWalkId,
-        () => this.onMarkerClick(walk.id)
-      );
-      this.markers.set(walk.id, marker);
-    }
-  }
-
-  clear() {
-    this.markers.forEach(marker => marker.remove());
-    this.markers.clear();
-  }
-}
-
-/**
- * WalkStore - Manages application state
- */
 class WalkStore {
   constructor() {
     this.walks = [];
     this.selectedWalkId = null;
-    this.virtualizer = null;
     this.map = null;
-    this.markerManager = null;
-    this.searchTerm = "";
+    this.markers = new Map();
     this.filters = {
-      difficulty: null,
-      features: [],
-      amenities: {
-        has_pub: false,
-        has_cafe: false,
-        has_bus_access: false,
-        has_stiles: false,
-      },
+      searchTerm: "",
+      difficulty: new Set(),
+      features: new Set()
     };
+    this.listElement = null;
+    this.markerCluster = null;
+    this.clusteringEnabled = false;
   }
 
-  initialize(mapId, listId) {
+  initializeClustering() {
     try {
-      // Check for required global config
-      if (!window.WALKQUEST?.config) {
-        throw new Error('Application configuration not found');
+      if (typeof Supercluster !== 'function') {
+        throw new Error('Supercluster library not loaded correctly');
       }
 
-      // Note the change from mapboxToken to mapbox_token to match JSON
-      const { mapbox_token: mapboxToken, initialWalks } = window.WALKQUEST.config;
+      this.markerCluster = new Supercluster({
+        radius: CONFIG.markers.clustering.radius,
+        maxZoom: CONFIG.markers.clustering.maxZoom,
+        minPoints: CONFIG.markers.clustering.minPoints,
+        // Updated map/reduce functions for v8
+        map: (feature) => ({
+          walkId: feature.properties.id,
+          color: utils.getMarkerColor(feature.properties)
+        }),
+        reduce: (accumulated, props) => {
+          if (!accumulated.walkIds) {
+            accumulated.walkIds = [];
+            accumulated.color = props.color;
+          }
+          accumulated.walkIds.push(props.walkId);
+        }
+      });
 
-      if (!mapboxToken) {
-        throw new Error('Mapbox token not found');
-      }
+      this.clusteringEnabled = true;
+      console.debug('Clustering initialized with Supercluster v8');
 
-      // Set mapbox token and initialize components
-      window.MAPBOX_TOKEN = mapboxToken;
-      this.initializeMap(mapId);
-      this.initializeVirtualList(listId);
-      this.markerManager = new MarkerManager(this.map, WALKQUEST_CONFIG.map);
-
-      // Set initial walks if available
-      if (Array.isArray(initialWalks)) {
-        this.setWalks(initialWalks);
-      }
-
-      return true;
     } catch (error) {
-      console.error('Store initialization failed:', error);
-      UI.showError('Failed to initialize application: ' + error.message);
+      console.warn('Failed to initialize clustering:', error);
+      this.clusteringEnabled = false;
+    }
+  }
+
+  async initialize(mapId, listId) {
+    try {
+      // First ensure WALKQUEST global state is initialized
+      if (!window.WALKQUEST) {
+        const { config, initialWalks } = initUtils.initializeGlobalState();
+        console.debug('Initialized WALKQUEST global state:', { config, initialWalks });
+      }
+
+      const config = window.WALKQUEST.config;
+      initUtils.validateConfig(config);
+
+      // Initialize clustering before map setup
+      this.initializeClustering();
+
+      // Initialize map with Cornwall-specific settings
+      const mapContainer = utils.checkMapContainer(mapId);
+      mapboxgl.accessToken = config.mapboxToken;
+      this.map = new mapboxgl.Map({
+        container: mapContainer,
+        style: CONFIG.map.style,
+        center: CONFIG.map.defaultCenter,
+        zoom: CONFIG.map.defaultZoom,
+        maxBounds: CONFIG.map.maxBounds,
+        minZoom: CONFIG.map.minZoom,
+        maxZoom: CONFIG.map.maxZoom,
+        fitBoundsOptions: {
+          padding: { top: 50, bottom: 50, left: 50, right: 50 }
+        }
+      });
+
+      // Add navigation controls
+      this.map.addControl(new mapboxgl.NavigationControl());
+
+      // Fit to Cornwall bounds after load
+      this.map.on('load', () => {
+        this.map.fitBounds(CONFIG.map.bounds, {
+          padding: { top: 50, bottom: 50, left: 50, right: 50 }
+        });
+        
+        if (this.clusteringEnabled) {
+          this.initializeMarkerLayer();
+        }
+      });
+
+      // Setup list and events
+      this.listElement = document.getElementById(listId);
+      if (!this.listElement) {
+        throw new Error('List container not found');
+      }
+
+      this.setupEventListeners();
+
+      // Load initial data
+      if (window.WALKQUEST.initialWalks) {
+        this.setWalks(window.WALKQUEST.initialWalks);
+      }
+
+      return this;
+
+    } catch (error) {
+      console.error('Failed to initialize WalkStore:', error);
+      this.handleInitializationError(error);
       throw error;
     }
   }
 
-  sanitizeWalks(walks) {
-    return Array.isArray(walks) ? walks.map(walk => ({
-      ...walk,
-      has_pub: walk.has_pub === true || walk.has_pub === 'True',
-      has_cafe: walk.has_cafe === true || walk.has_cafe === 'True',
-      has_bus_access: walk.has_bus_access === true || walk.has_bus_access === 'True',
-      has_stiles: walk.has_stiles === true || walk.has_stiles === 'True',
-      latitude: Number(walk.latitude),
-      longitude: Number(walk.longitude),
-      distance: walk.distance ? Number(walk.distance) : null,
-      features: Array.isArray(walk.features) ? walk.features : []
-    })) : [];
-  }
-
-  setWalks(walks) {
-    this.walks = walks.filter(walk => dataSanitizer.isValidWalk(walk));
-    this.updateVirtualList();
-    if (this.map) {
-      this.updateMarkers();
+  handleInitializationError(error) {
+    const errorContainer = document.getElementById('error-container');
+    if (errorContainer) {
+      errorContainer.textContent = `Initialization Error: ${error.message}`;
+      errorContainer.classList.remove('hidden');
     }
-    this.updateFilterUI();
   }
 
-  initializeVirtualList(containerId) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
+  setupEventListeners() {
+    // Search input handler
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        this.filters.searchTerm = e.target.value;
+        this.updateUI();
+      });
+    }
 
-    this.virtualizer = new Virtualizer({
-      count: this.walks.length,
-      getScrollElement: () => container,
-      estimateSize: () => WALKQUEST_CONFIG.virtualizer.itemHeight,
-      overscan: WALKQUEST_CONFIG.virtualizer.overscan,
-      scrollToFn: elementScroll,
-      observeElementRect,
-      observeElementOffset,
+    // Difficulty filter handlers
+    document.querySelectorAll('input[name="difficulty"]').forEach(checkbox => {
+      checkbox.addEventListener('change', (e) => {
+        if (e.target.checked) {
+          this.filters.difficulty.add(e.target.value);
+        } else {
+          this.filters.difficulty.delete(e.target.value);
+        }
+        this.updateUI();
+      });
     });
 
-    this.updateVirtualList();
-  }
-
-  initializeMap(containerId) {
-    try {
-      // Validate container
-      const container = utils.checkMapContainer(containerId);
-
-      // Verify token exists
-      const mapboxToken = window.WALKQUEST?.config?.mapboxToken;
-      if (!mapboxToken) {
-        throw new Error('Mapbox token not found in configuration');
-      }
-
-      // Initialize map
-      mapboxgl.accessToken = mapboxToken;
-      this.map = new mapboxgl.Map({
-        container: containerId,
-        style: WALKQUEST_CONFIG.map.style,
-        center: WALKQUEST_CONFIG.map.defaultCenter,
-        zoom: WALKQUEST_CONFIG.map.defaultZoom,
-        attributionControl: true,
-        preserveDrawingBuffer: true
-      });
-
-      // Add controls
-      this.map.addControl(new mapboxgl.NavigationControl(), 'top-right');
-      this.map.addControl(new mapboxgl.FullscreenControl());
-
-      // Initialize marker manager  
-      this.markerManager = new MarkerManager(this.map, WALKQUEST_CONFIG.map);
-
-      // Setup event handlers
-      this.map.on('load', () => {
-        if (this.walks.length > 0) {
-          this.updateMarkers();
+    // Feature filter handlers
+    document.querySelectorAll('input[name="feature"]').forEach(checkbox => {
+      checkbox.addEventListener('change', (e) => {
+        if (e.target.checked) {
+          this.filters.features.add(e.target.value);
+        } else {
+          this.filters.features.delete(e.target.value);
         }
+        this.updateUI();
       });
+    });
 
-      this.map.on('error', (e) => {
-        console.error('Map error:', e);
-        UI.showError('Error loading map');
-      });
+    // Walk list click handler
+    this.listElement?.addEventListener('click', (e) => {
+      const walkCard = e.target.closest('.walk-card');
+      if (walkCard) {
+        const walkId = parseInt(walkCard.dataset.walkId, 10);
+        this.selectWalk(walkId);
+      }
+    });
 
-    } catch (error) {
-      console.error('Map initialization failed:', error);
-      UI.showError('Failed to initialize map');
-      throw error;
-    }
+    // Add HTMX response handler
+    document.body.addEventListener('htmx:afterRequest', (evt) => {
+      if (evt.detail.successful) {
+        this.updateUI();
+      }
+    });
+
+    // Remove map loading indicator event handlers
+    this.map.on('dataloading', () => {
+      // Removed spinner handling
+    });
+
+    this.map.on('idle', () => {
+      // Removed spinner handling
+    });
   }
 
-  // Remove duplicate getFilteredWalks method and keep the comprehensive one
+  // Core data management methods
+  setWalks(walks) {
+    this.walks = walks.filter(this.isValidWalk);
+    this.updateUI();
+  }
+
+  isValidWalk(walk) {
+    return walk?.id && walk?.walk_name && walk?.latitude && walk?.longitude;
+  }
+
   getFilteredWalks() {
-    return this.walks.filter((walk) => {
-      // Search term filter
-      if (this.searchTerm) {
-        const term = this.searchTerm.toLowerCase();
-        if (
-          !walk.walk_name.toLowerCase().includes(term) &&
-          !walk.highlights.toLowerCase().includes(term)
-        ) {
-          return false;
-        }
+    return this.walks.filter(walk => {
+      // Search filter
+      if (this.filters.searchTerm) {
+        const term = this.filters.searchTerm.toLowerCase();
+        if (!walk.walk_name.toLowerCase().includes(term)) return false;
       }
-
+      
       // Difficulty filter
-      if (
-        this.filters.difficulty &&
-        walk.steepness_level !== this.filters.difficulty
-      ) {
+      if (this.filters.difficulty.size > 0 && !this.filters.difficulty.has(walk.steepness_level)) {
         return false;
       }
-
+      
       // Features filter
-      if (this.filters.features.length > 0) {
-        if (
-          !this.filters.features.every((feature) =>
-            walk.features?.includes(feature)
-          )
-        ) {
-          return false;
+      if (this.filters.features.size > 0) {
+        const walkFeatures = new Set(walk.features || []);
+        for (const feature of this.filters.features) {
+          if (!walkFeatures.has(feature)) return false;
         }
       }
-
-      // Amenities filter
-      for (const [amenity, value] of Object.entries(this.filters.amenities)) {
-        if (value && !walk[amenity]) {
-          return false;
-        }
-      }
-
+      
       return true;
     });
   }
 
-  // Fix reference to createIcon in updateVirtualList
-  updateVirtualList() {
-    if (!this.virtualizer) return;
+  // UI update methods
+  updateUI() {
+    this.updateMarkers();
+    this.updateWalkList();
+    this.updateFilterCounts();
+  }
 
-    const walks = this.getFilteredWalks();
-    const container = document.getElementById("walk-list");
-    if (!container) return;
+  initializeMarkerLayer() {
+    // Add cluster source
+    this.map.addSource('walks', {
+      type: 'geojson',
+      data: {
+        type: 'FeatureCollection',
+        features: []
+      },
+      cluster: true,
+      clusterMaxZoom: CONFIG.markers.clustering.maxZoom,
+      clusterRadius: CONFIG.markers.clustering.radius
+    });
 
-    if (this.virtualizer.options.count !== walks.length) {
-      this.virtualizer.options.count = walks.length;
-    }
+    // Add cluster layers
+    this.map.addLayer({
+      id: 'clusters',
+      type: 'circle',
+      source: 'walks',
+      filter: ['has', 'point_count'],
+      paint: {
+        'circle-color': [
+          'step',
+          ['get', 'point_count'],
+          CONFIG.markers.clustering.colors.small,
+          10,
+          CONFIG.markers.clustering.colors.medium,
+          30,
+          CONFIG.markers.clustering.colors.large
+        ],
+        'circle-radius': [
+          'step',
+          ['get', 'point_count'],
+          20,
+          10,
+          30,
+          30,
+          40
+        ]
+      }
+    });
 
-    const virtualItems = this.virtualizer.getVirtualItems();
-    const totalHeight = this.virtualizer.getTotalSize();
+    // Add cluster count
+    this.map.addLayer({
+      id: 'cluster-count',
+      type: 'symbol',
+      source: 'walks',
+      filter: ['has', 'point_count'],
+      layout: {
+        'text-field': '{point_count_abbreviated}',
+        'text-size': 12
+      },
+      paint: {
+        'text-color': '#ffffff'
+      }
+    });
+  }
 
-    container.style.height = `${totalHeight}px`;
-    container.style.position = "relative";
+  createMarker(walk) {
+    try {
+      const marker = new mapboxgl.Marker({
+        color: walk.id === this.selectedWalkId ? 
+          CONFIG.map.markerColors.selected : 
+          utils.getMarkerColor(walk),
+        scale: walk.id === this.selectedWalkId ? 1.2 : 1,
+        anchor: CONFIG.markers.anchor,
+        offset: CONFIG.markers.offset,
+      });
 
-    container.innerHTML = virtualItems
-      .map((virtualRow) => {
-        const walk = walks[virtualRow.index];
-        if (!walk) return "";
-
-        return `
-            <div class="walk-card ${
-              walk.id === this.selectedWalkId ? "walk-card--selected" : ""
-            }"
-                 data-walk-id="${walk.id}"
-                 data-index="${virtualRow.index}"
-                 style="position: absolute; top: ${
-                   virtualRow.start
-                 }px; left: 0; right: 0;">
-                <h3 class="text-lg font-semibold">${walk.walk_name}</h3>
-                <p class="text-sm text-gray-600">${walk.highlights}</p>
-                <div class="flex items-center mt-2 space-x-4">
-                    ${
-                      walk.distance
-                        ? `
-                        <span class="text-sm flex items-center">
-                            ${utils.createIcon(
-                              "mdi:map-marker-distance",
-                              "mr-1"
-                            )}
-                            ${utils.formatDistance(walk.distance)}
-                        </span>
-                    `
-                        : ""
-                    }
-                    ${
-                      walk.duration
-                        ? `
-                        <span class="text-sm flex items-center">
-                            ${utils.createIcon("mdi:clock-outline", "mr-1")}
-                            ${walk.duration}
-                        </span>
-                    `
-                        : ""
-                    }
-                </div>
-                ${
-                  walk.features?.length
-                    ? `
-                    <div class="flex flex-wrap gap-2 mt-2">
-                        ${walk.features
-                          .map(
-                            (feature) => `
-                            <span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-                                ${feature}
-                            </span>
-                        `
-                          )
-                          .join("")}
-                    </div>
-                `
-                    : ""
-                }
-            </div>
-        `;
+      const popup = new mapboxgl.Popup({
+        ...CONFIG.markers.popup,
+        className: `walk-popup${walk.id === this.selectedWalkId ? ' walk-popup--selected' : ''}`
       })
-      .join("");
+      .setHTML(utils.createMarkerPopup(walk));
+
+      marker
+        .setLngLat([walk.longitude, walk.latitude])
+        .setPopup(popup)
+        .addTo(this.map);
+
+      this.setupMarkerInteractions(marker, popup, walk);
+      return marker;
+
+    } catch (error) {
+      console.error(`Failed to create marker for walk ${walk.id}:`, error);
+      return null;
+    }
+  }
+
+  setupMarkerInteractions(marker, popup, walk) {
+    const element = marker.getElement();
+    
+    try {
+      // Simpler hover interaction without transform
+      element.addEventListener('mouseenter', () => {
+        if (!popup.isOpen()) {
+          popup.addTo(this.map);
+        }
+      });
+      
+      element.addEventListener('mouseleave', () => {
+        if (walk.id !== this.selectedWalkId) {
+          popup.remove();
+        }
+      });
+
+      element.addEventListener('click', () => {
+        this.selectWalk(walk.id);
+      });
+
+    } catch (error) {
+      console.error('Failed to setup marker interactions:', error);
+    }
   }
 
   updateMarkers() {
-    if (!this.map || !this.markerManager) return;
-    this.markerManager.updateMarkers(this.getFilteredWalks(), this.selectedWalkId);
+    if (!this.map) return;
+    
+    try {
+      // Clear existing markers
+      this.markers.forEach(m => m.remove());
+      this.markers.clear();
+
+      const filteredWalks = this.getFilteredWalks();
+
+      if (this.clusteringEnabled && this.markerCluster) {
+        // Convert walks to GeoJSON features
+        const features = filteredWalks.map(walk => ({
+          type: 'Feature',
+          geometry: {
+            type: 'Point',
+            coordinates: [walk.longitude, walk.latitude]
+          },
+          properties: { ...walk }
+        }));
+
+        // Load features into supercluster
+        this.markerCluster.load(features);
+
+        // Get clusters for current bounds and zoom
+        const bounds = this.map.getBounds();
+        const zoom = Math.round(this.map.getZoom());
+        
+        const clusters = this.markerCluster.getClusters(
+          [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()],
+          zoom
+        );
+
+        // Create markers for clusters and points
+        clusters.forEach(cluster => {
+          if (cluster.properties.cluster) {
+            this.createClusterMarker(cluster);
+          } else {
+            const walk = cluster.properties;
+            const marker = this.createMarker(walk);
+            if (marker) {
+              this.markers.set(walk.id, marker);
+            }
+          }
+        });
+
+      } else {
+        // Fallback: create individual markers without clustering
+        filteredWalks.forEach(walk => {
+          const marker = this.createMarker(walk);
+          if (marker) {
+            this.markers.set(walk.id, marker);
+          }
+        });
+      }
+
+    } catch (error) {
+      console.error('Failed to update markers:', error);
+      this.clusteringEnabled = false;
+      this.updateMarkers(); // Retry without clustering
+    }
+  }
+
+  // Add new method for cluster markers
+  createClusterMarker(cluster) {
+    const count = cluster.properties.point_count;
+    const size = count < 10 ? 'small' : count < 30 ? 'medium' : 'large';
+    const color = CONFIG.markers.clustering.colors[size];
+
+    const el = document.createElement('div');
+    el.className = `marker-cluster marker-cluster--${size}`;
+    el.style.background = color;
+    el.innerHTML = `<span>${count}</span>`;
+
+    const marker = new mapboxgl.Marker({
+      element: el
+    })
+    .setLngLat(cluster.geometry.coordinates)
+    .addTo(this.map);
+
+    // Add click handler to expand cluster
+    el.addEventListener('click', () => {
+      const clusterId = cluster.properties.cluster_id;
+      const children = this.markerCluster.getChildren(clusterId);
+      
+      if (children.length === 1) {
+        // Single point - zoom to it
+        this.map.flyTo({
+          center: children[0].geometry.coordinates,
+          zoom: this.map.getZoom() + 2
+        });
+      } else {
+        // Multiple points - fit bounds
+        const coords = children.map(child => child.geometry.coordinates);
+        const bounds = coords.reduce((bounds, coord) => bounds.extend(coord), new mapboxgl.LngLatBounds(coords[0], coords[0]));
+        
+        this.map.fitBounds(bounds, {
+          padding: 50
+        });
+      }
+    });
+
+    return marker;
+  }
+
+  updateWalkList() {
+    if (!this.listElement) return;
+    
+    const filteredWalks = this.getFilteredWalks();
+    this.listElement.innerHTML = filteredWalks
+      .map(walk => utils.renderWalkCard(walk, walk.id === this.selectedWalkId))
+      .join('');
+
+    // Show/hide no results message
+    const noResults = document.getElementById('no-results');
+    if (noResults) {
+      noResults.classList.toggle('hidden', filteredWalks.length > 0);
+    }
+  }
+
+  updateFilterCounts() {
+    // Optional method - implement if you need to update filter UI counters
+    // Can be left as empty method if not needed
   }
 
   selectWalk(walkId) {
-    this.selectedWalkId = walkId;
-    this.updateMarkers();
-    this.updateVirtualList();
+    // Ensure walkId is a number
+    const numericWalkId = parseInt(walkId, 10);
+    console.debug('Selecting walk:', { walkId: numericWalkId });
 
-    const walk = this.walks.find((w) => w.id === walkId);
-    if (walk?.latitude && walk?.longitude) {
-      this.map.flyTo({
-        center: [walk.longitude, walk.latitude],
-        zoom: 14,
-        duration: 1000,
-      });
+    this.selectedWalkId = numericWalkId;
+    const walk = this.walks.find(w => w.id === numericWalkId);
+    
+    if (!walk) {
+      console.warn('Walk not found:', numericWalkId);
+      return;
     }
-  }
 
-  setSearchTerm(term) {
-    this.searchTerm = term;
-    this.updateVirtualList();
+    console.debug('Found walk:', { walk });
+
+    if (walk.latitude && walk.longitude) {
+      // Update markers
+      this.markers.forEach((marker, id) => {
+        const markerWalk = this.walks.find(w => w.id === id);
+        const color = id === numericWalkId ? 
+          CONFIG.map.markerColors.selected : 
+          utils.getMarkerColor(markerWalk);
+        
+        marker.getElement().style.color = color;
+        
+        // Show popup for selected walk
+        if (id === numericWalkId) {
+          marker.togglePopup();
+        }
+      });
+
+      // Ensure the map exists before attempting to fly
+      if (this.map) {
+        console.debug('Flying to coordinates:', { lng: walk.longitude, lat: walk.latitude });
+        
+        this.map.flyTo({
+          center: [walk.longitude, walk.latitude],
+          zoom: 14,
+          duration: 1500,
+          essential: true // This animation is considered essential for UX
+        });
+      } else {
+        console.warn('Map not initialized');
+      }
+    } else {
+      console.warn('Invalid coordinates for walk:', { walk });
+    }
+    
+    this.updateUI();
   }
 
   cleanup() {
-    if (this.markerManager) {
-      this.markerManager.clear();
-    }
-    if (this.map) {
-      this.map.remove();
-      this.map = null;
-    }
-    this.virtualizer = null;
+    this.markers.forEach(m => m.remove());
+    this.markers.clear();
+    if (this.map) this.map.remove();
+    this.map = null;
     this.walks = [];
-    this.selectedWalkId = null;
   }
 
-  getStatistics() {
-    const stats = {
-        difficulties: {},
-        features: {}
-    };
+  updateMapFromResults(response) {
+    try {
+      const walks = JSON.parse(response);
+      this.setWalks(walks);
+      this.renderWalkCards(walks);
+    } catch (error) {
+      console.error('Failed to update map from results:', error);
+    }
+  }
 
-    this.walks.forEach(walk => {
-        if (walk.steepness_level) {
-            stats.difficulties[walk.steepness_level] = (stats.difficulties[walk.steepness_level] || 0) + 1;
-        }
-        if (Array.isArray(walk.features)) {
-            walk.features.forEach(feature => {
-                stats.features[feature] = (stats.features[feature] || 0) + 1;
-            });
-        }
+  renderWalkCards(walks) {
+    const template = document.getElementById('walk-card-template');
+    const container = document.getElementById('walk-list');
+    if (!template || !container) return;
+
+    container.innerHTML = '';
+    walks.forEach(walk => {
+      const card = template.content.cloneNode(true).firstElementChild;
+      
+      card.dataset.walkId = walk.id;
+      if (walk.id === this.selectedWalkId) {
+        card.classList.add('walk-card--selected');
+      }
+
+      card.querySelector('h3').textContent = walk.walk_name;
+      card.querySelector('.difficulty').textContent = walk.steepness_level;
+      card.querySelector('.distance').textContent = utils.formatDistance(walk.distance);
+
+      if (walk.features?.length) {
+        const featuresContainer = card.querySelector('.features');
+        walk.features.forEach(feature => {
+          const tag = document.createElement('span');
+          tag.className = 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100';
+          tag.textContent = feature;
+          featuresContainer.appendChild(tag);
+        });
+      }
+
+      card.addEventListener('click', () => this.selectWalk(walk.id));
+      container.appendChild(card);
     });
 
-    return stats;
-  }
-
-  updateFilterUI() {
-    const stats = this.getStatistics();
-    
-    const difficultyContainer = document.querySelector('.difficulty-filters');
-    if (difficultyContainer) {
-        WALKQUEST_CONFIG.filters.difficulties.forEach(difficulty => {
-            const element = difficultyContainer.querySelector(`[data-difficulty="${difficulty}"]`);
-            if (element?.querySelector('.count')) {
-                element.querySelector('.count').textContent = `(${stats.difficulties[difficulty] || 0})`;
-            }
-        });
-    }
-
-    const featureContainer = document.querySelector('.feature-filters');
-    if (featureContainer) {
-        WALKQUEST_CONFIG.filters.features.forEach(feature => {
-            const element = featureContainer.querySelector(`[data-feature="${feature}"]`);
-            if (element?.querySelector('.count')) {
-                element.querySelector('.count').textContent = `(${stats.features[feature] || 0})`;
-            }
-        });
+    // Update no results message
+    const noResults = document.getElementById('no-results');
+    if (noResults) {
+      noResults.classList.toggle('hidden', walks.length > 0);
     }
   }
 }
 
-// Export singleton instance
 export const walkStore = new WalkStore();

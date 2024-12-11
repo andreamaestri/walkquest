@@ -5,6 +5,41 @@
 
 {% block extra_css %}
 <style>
+    /* Map styles - must come first */
+    #map {
+        width: 100%;
+        height: 100vh;
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+    }
+
+    /* Ensure map elements are visible */
+    #map > *:not(.mapboxgl-map):not(.mapboxgl-control-container) {
+        z-index: 1;
+    }
+
+    /* Layout structure */
+    .layout-container {
+        height: calc(100vh - 4rem);  /* Account for navbar */
+        width: 100vw;
+        display: flex;
+        position: relative;
+    }
+
+    /* Sidebar styles */
+    .sidebar {
+        width: 24rem;
+        z-index: 10;
+        background: white;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+    }
+
+    /* Existing styles */
     .walk-card {
         background: white;
         transition: all 0.2s;
@@ -33,10 +68,6 @@
         margin-left: auto;
     }
 
-    #map {
-        height: 100%;
-    }
-
     .loading::after {
         content: '';
         position: absolute;
@@ -50,7 +81,7 @@
 {% endblock extra_css %}
 
 {% block content %}
-    <!-- Ensure config is properly passed from view -->
+    <!-- Embed JSON data without extra <script> tags -->
     {% if config %}
         {{ config|json_script:"config-data" }}
     {% endif %}
@@ -63,14 +94,18 @@
     <div id="error-container" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert"></div>
 
     <!-- Main content -->
-    <div class="h-screen w-screen relative flex flex-col md:flex-row">
+    <div class="layout-container">
         <!-- Sidebar -->
-        <aside class="w-full md:w-96 flex flex-col bg-white shadow-lg">
+        <aside class="sidebar">
             <!-- Search Section -->
             <div class="p-4 border-b">
                 <div class="relative">
                     <input type="text" 
                            id="search-input"
+                           hx-post="{% url 'walks:search' %}"
+                           hx-trigger="input changed delay:500ms, search"
+                           hx-target="#walk-list"
+                           hx-indicator="#search-indicator"
                            class="w-full px-4 py-2 pl-10 border rounded-lg focus:ring-2 focus:ring-primary-500"
                            placeholder="Search walks..."
                            aria-label="Search walks"
@@ -80,13 +115,20 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                     </span>
+                    <div id="search-indicator" class="htmx-indicator">
+                        <div class="animate-spin h-4 w-4 border-2 border-primary-500"></div>
+                    </div>
                 </div>
             </div>
 
             <!-- Filter Sections -->
             <div class="p-4 border-b overflow-y-auto">
                 <!-- Difficulty Filters -->
-                <div class="difficulty-filters mb-6">
+                <div class="difficulty-filters mb-6"
+                     hx-post="{% url 'walks:filter' %}"
+                     hx-trigger="change from:input[name='difficulty']"
+                     hx-target="#walk-list"
+                     hx-indicator="#filter-indicator">
                     <div class="filter-group">
                         <h3 class="font-semibold mb-2 text-gray-700">Difficulty Levels</h3>
                         {% for difficulty in difficulties %}
@@ -104,7 +146,11 @@
                 </div>
 
                 <!-- Feature Filters -->
-                <div class="feature-filters">
+                <div class="feature-filters"
+                     hx-post="{% url 'walks:filter' %}"
+                     hx-trigger="change from:input[name='feature']"
+                     hx-target="#walk-list"
+                     hx-indicator="#filter-indicator">
                     <div class="filter-group">
                         <h3 class="font-semibold mb-2 text-gray-700">Features</h3>
                         {% for feature in features %}
@@ -120,18 +166,24 @@
                         {% endfor %}
                     </div>
                 </div>
+                <div id="filter-indicator" class="htmx-indicator">
+                    <div class="animate-spin h-4 w-4 border-2 border-primary-500"></div>
+                </div>
             </div>
 
             <!-- Walk List -->
-            <div id="walk-list" class="flex-1 overflow-auto" role="list"></div>
+            <div id="walk-list" 
+                 class="flex-1 overflow-auto" 
+                 role="list"
+                 hx-get="{% url 'walks:list' %}"
+                 hx-trigger="load delay:100ms"
+                 hx-swap="innerHTML">
+            </div>
         </aside>
 
-        <!-- Map Container -->
-        <div id="map" class="flex-1 relative">
-            <!-- Loading Overlay -->
-            <div id="map-loading" class="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50 hidden">
-                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-            </div>
+        <!-- Map Container - moved outside sidebar -->
+        <div class="flex-1 relative">
+            <div id="map"></div>
         </div>
     </div>
 
@@ -139,25 +191,44 @@
     <div id="no-results" class="hidden p-4 text-center text-gray-500">
         No walks found matching your criteria
     </div>
+
+    <!-- Add walk card template -->
+    <template id="walk-card-template">
+        <div class="walk-card" data-walk-id="">
+            <h3 class="font-semibold text-gray-900"></h3>
+            <div class="mt-1 text-sm text-gray-600">
+                <span class="difficulty"></span> | <span class="distance"></span>
+            </div>
+            <div class="mt-1 flex gap-1 features"></div>
+        </div>
+    </template>
 {% endblock content %}
 
 {% block extra_js %}
-    <script type="module">
-        document.addEventListener('DOMContentLoaded', async () => {
+    <script>
+        // Initialize WALKQUEST global state first
+        const initializeWalkQuest = () => {
+            const configEl = document.getElementById('config-data');
+            const walksEl = document.getElementById('walks-data');
+            
+            if (!configEl || !walksEl) {
+                throw new Error('Required configuration data missing');
+            }
+
+            window.WALKQUEST = {
+                config: JSON.parse(configEl.textContent),
+                initialWalks: JSON.parse(walksEl.textContent)
+            };
+        };
+
+        // Wait for all resources to load
+        window.addEventListener('load', async () => {
             try {
-                const configEl = document.getElementById('config-data');
-                if (!configEl) {
-                    throw new Error('Configuration data not found. Please ensure it is passed from the view.');
-                }
+                // Initialize global state first
+                initializeWalkQuest();
 
-                const config = JSON.parse(configEl.textContent);
-                window.WALKQUEST = { config };
-
+                // Then load and initialize walkStore
                 const { walkStore } = await import("{% static 'js/project.js' %}");
-                if (!walkStore) {
-                    throw new Error('walkStore module not found');
-                }
-                
                 await walkStore.initialize('map', 'walk-list');
 
             } catch (error) {
@@ -169,5 +240,12 @@
                 }
             }
         });
+
+        // Remove HTMX event handlers for map loading spinner
+        document.addEventListener('htmx:afterRequest', (evt) => {
+            if (evt.detail.successful) {
+                walkStore.updateMapFromResults(evt.detail.xhr.response);
+            }
+        });
     </script>
-{% endblock extra_js %}
+{% endblock %}
