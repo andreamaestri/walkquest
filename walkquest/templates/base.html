@@ -26,32 +26,20 @@
     <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
 
     <!-- Alpine.js Core and Plugins -->
-    <script src="https://unpkg.com/alpinejs@3.14.7/dist/cdn.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@alpinejs/persist@3.14.7/dist/cdn.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.14.7/dist/cdn.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@alpinejs/intersect@3.14.7/dist/cdn.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.7/dist/cdn.min.js"></script>
-
-    <!-- Core Alpine.js Initialization -->
-    <script type="module">
-        document.addEventListener('alpine:init', async () => {
-            // Initialize plugins
-            Alpine.plugin(AlpinePersist);
-            Alpine.plugin(AlpineCollapse);
-            Alpine.plugin(AlpineIntersect);
-            Alpine.plugin(AlpineFocus);
-
-            // Import and initialize project.js with Alpine
-            const { initAlpine, walkStore } = await import('{% static "js/project.js" %}');
-            await initAlpine(Alpine);
-            window.walkStore = walkStore;
-
-            // Global store
+    <script defer src="https://unpkg.com/alpinejs@3.14.7/dist/cdn.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/persist@3.14.7/dist/cdn.min.js"></script>
+    
+    <!-- Initialize Alpine Store -->
+    <script>
+        document.addEventListener('alpine:init', () => {
             Alpine.store('app', {
                 initialized: false,
                 async initialize() {
                     try {
-                        await walkStore.initialize();
+                        this.initialized = false;
+                        await Promise.all([
+                            // Add other initialization tasks here
+                        ]);
                         this.initialized = true;
                     } catch (error) {
                         console.error('Failed to initialize app:', error);
@@ -129,16 +117,15 @@
 
 <body class="{% block bodyclass %}{% endblock bodyclass %}" 
       x-data 
-      x-init="$store.app.initialize()"
+      x-init="$nextTick(() => $store.app.initialize())"
       x-cloak
       :class="{ 'loading': !$store.app.initialized }">
     
-    <!-- Loading indicator -->
-    <div id="loading-indicator" x-show="!$store.app.initialized" class="fixed inset-0 z-50 bg-white bg-opacity-75 flex items-center justify-center">
-        <div class="text-center">
-            <iconify-icon icon="mdi:loading" class="animate-spin text-4xl text-primary-500"></iconify-icon>
-            <p class="mt-2 text-gray-600">Loading...</p>
-        </div>
+    <!-- Loading State -->
+    <div x-show="!$store.app.initialized"
+         x-cloak
+         class="fixed inset-0 z-50 bg-white bg-opacity-75 flex items-center justify-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
     </div>
 
     <!-- Main content -->

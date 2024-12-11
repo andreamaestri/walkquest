@@ -5,10 +5,12 @@ export async function initAlpine(_Alpine) {
     if (!_Alpine) throw new Error('Alpine instance must be provided');
     Alpine = _Alpine;
     
-    // Register store after Alpine is available
+    // Register stores after Alpine is ready
+    Alpine.store('app', createAppStore());
     Alpine.store('walks', createWalkStore());
     
-    return walkStore;
+    // Initialize app store
+    await Alpine.store('app').initialize();
 }
 
 // Ensure Alpine is available
@@ -236,6 +238,25 @@ const createWalkStore = () => ({
     }
 });
 
+// Create base app store
+export const createAppStore = () => ({
+    initialized: false,
+    async initialize() {
+        try {
+            this.initialized = false;
+            // Initialize walks store
+            if (Alpine.store('walks')) {
+                await Alpine.store('walks').initialize();
+            }
+            this.initialized = true;
+            return true;
+        } catch (error) {
+            console.error('App initialization failed:', error);
+            return false;
+        }
+    }
+});
+
 // Export walkStore interface with Alpine integration
 export const walkStore = {
     get alpine() {
@@ -288,3 +309,8 @@ export const walkStore = {
         this.alpine.store('walks').search(query);
     }
 };
+
+// Initialize when document is ready
+document.addEventListener('alpine:init', () => {
+    initAlpine(window.Alpine);
+});

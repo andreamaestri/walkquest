@@ -127,7 +127,14 @@
     <div class="layout-container" 
          x-data="walkInterface"
          x-init="$nextTick(() => init())"
+         x-show="$store.app.initialized"
          x-cloak>
+        
+        <!-- Loading State -->
+        <div x-show="isLoading" 
+             class="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+        </div>
         
         <!-- Sidebar with persisted state -->
         <aside class="sidebar"
@@ -164,7 +171,7 @@
                     options: JSON.parse(document.getElementById('tags-data').textContent).map(tag => ({
                         value: tag.name,
                         label: tag.name,
-                        count: tag.count,
+                        count: tag.usage_count,
                         emoji: getCategoryEmoji(tag.name),
                         color: getCategoryColor(tag.name)
                     }))
@@ -266,23 +273,43 @@
                          :class="{ 'walk-card--selected': selectedWalk === walk.id }"
                          :data-walk-id="walk.id">
                         <h3 class="font-semibold text-gray-900" x-text="walk.walk_name"></h3>
-                        <div class="mt-1 text-sm text-gray-600">
-                            <span class="distance" x-text="walk.distance + ' miles'"></span>
+                        <div class="mt-1 text-sm text-gray-600 flex items-center gap-2">
+                            <span class="distance" x-text="formatDistance(walk.distance)"></span>
+                            <span x-show="walk.steepness_level" x-text="walk.steepness_level"></span>
                         </div>
-                        <div class="mt-2 flex flex-wrap gap-1 tags">
-                            <template x-for="tag in walk.tags" :key="tag">
-                                <span class="px-2 py-1 bg-gray-200 rounded-full text-xs" x-text="tag"></span>
+                        <div class="mt-2 flex flex-wrap gap-1">
+                            <template x-for="category in walk.categories" :key="category">
+                                <span class="px-2 py-1 text-xs rounded-full"
+                                      :style="{ backgroundColor: getCategoryColor(category) + '20', 
+                                              color: getCategoryColor(category) }"
+                                      x-text="category">
+                                </span>
                             </template>
+                        </div>
+                        <div class="mt-2 flex gap-2 text-sm text-gray-600">
+                            <span x-show="walk.has_pub" class="flex items-center gap-1">
+                                <span>🍺</span> Pub
+                            </span>
+                            <span x-show="walk.has_cafe" class="flex items-center gap-1">
+                                <span>☕</span> Café
+                            </span>
                         </div>
                     </div>
                 </template>
 
+                <!-- Loading and empty states -->
                 <div x-show="isLoading" class="p-4 text-center">
-                    Loading walks...
+                    <span class="inline-flex items-center">
+                        <svg class="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy 12 r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Loading walks...
+                    </span>
                 </div>
 
                 <div x-show="!isLoading && filteredWalks.length === 0" class="p-4 text-center text-gray-500">
-                    No walks found.
+                    No walks found matching your criteria
                 </div>
             </div>
         </aside>
@@ -418,8 +445,8 @@ document.addEventListener('alpine:init', () => {
                 }
                 
                 if (this.filters.activeFilters.length > 0) {
-                    return walk.features?.some(f => 
-                        this.filters.activeFilters.includes(f)
+                    return walk.categories?.some(category => 
+                        this.filters.activeFilters.includes(category)
                     );
                 }
                 
@@ -459,7 +486,7 @@ document.addEventListener('alpine:init', () => {
                     .setHTML(`
                         <div class="p-3">
                             <h3 class="font-semibold">${walk.walk_name}</h3>
-                            <p class="text-sm text-gray-600">${walk.steepness_level} | ${walk.distance} miles</p>
+                            <p class="text-sm text-gray-600">${walk.steepness_level} | ${formatDistance(walk.distance)}</p>
                         </div>
                     `)
                 )
@@ -528,12 +555,24 @@ document.addEventListener('alpine:init', () => {
             this.getWalks();
         },
 
-        getWalks() {
-            const params = new URLSearchParams({
-                q: this.searchQuery,
-                categories: Alpine.store('walks').filters.activeFilters.join(',')
-            });
-            Alpine.store('walks').fetchWalks(params);
+        async getWalks() {
+            try {
+                this.isLoading = true;
+                const params = new URLSearchParams({
+                    search: this.searchQuery,
+                    categories: Alpine.store('walks').filters.activeFilters.join(',')
+                });
+
+                const response = await fetch(`/walks/filter/?${params}`);
+                if (!response.ok) throw new Error('Network response was not ok');
+                
+                const walks = await response.json();
+                Alpine.store('walks').setWalks(walks);
+            } catch (error) {
+                console.error('Error fetching walks:', error);
+            } finally {
+                this.isLoading = false;
+            }
         },
 
         loadWalks() {
