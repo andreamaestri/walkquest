@@ -125,18 +125,14 @@
 
     <!-- Main content with Alpine.js -->
     <div class="layout-container" 
-         x-data="walkInterface()"
-         x-init="$nextTick(() => init())">
+         x-data="walkInterface"
+         x-init="$nextTick(() => init())"
+         x-cloak>
         
         <!-- Sidebar with persisted state -->
         <aside class="sidebar"
                x-show="showSidebar"
-               x-transition:enter="transition ease-out duration-300"
-               x-transition:enter-start="-translate-x-full"
-               x-transition:enter-end="translate-x-0"
-               x-transition:leave="transition ease-in duration-300"
-               x-transition:leave-start="translate-x-0"
-               x-transition:leave-end="-translate-x-full">
+               x-transition>
             
             <!-- Toggle sidebar button with persisted state -->
             <button @click="showSidebar = !showSidebar"
@@ -151,22 +147,14 @@
                 <div class="relative">
                     <input type="text" 
                            x-model="searchQuery"
-                           x-on:input.debounce.500ms="handleSearch()"
-                           hx-post="{% url 'walks:search' %}"
-                           hx-trigger="search from:body"
-                           hx-target="#walk-list"
-                           hx-indicator="#search-indicator"
+                           x-on:input.debounce.500ms="searchWalks"
                            class="w-full px-4 py-2 pl-10 border rounded-lg focus:ring-2 focus:ring-primary-500"
-                           placeholder="Search walks..."
-                           :disabled="isLoading">
+                           placeholder="Search walks...">
                     <span class="absolute left-3 top-1/2 transform -translate-y-1/2">
                         <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                     </span>
-                    <div id="search-indicator" class="htmx-indicator">
-                        <div class="animate-spin h-4 w-4 border-2 border-primary-500"></div>
-                    </div>
                 </div>
             </div>
 
@@ -270,15 +258,32 @@
 
             <!-- Walk List with HTMX loading -->
             <div id="walk-list" 
-                 class="flex-1 overflow-y-auto"
-                 x-ref="walkList"
-                 @walk-selected.window="handleWalkSelection($event.detail)">
-                <template x-if="isLoading">
-                    <div class="p-4 text-center">
-                        <div class="animate-spin h-5 w-5 border-2 border-primary-500 rounded-full border-t-transparent mx-auto"></div>
-                        <p class="mt-2 text-sm text-gray-500">Loading walks...</p>
+                 class="flex-1 overflow-y-auto p-4"
+                 x-ref="walkList">
+                <template x-for="walk in filteredWalks" :key="walk.id">
+                    <div class="walk-card p-4 border-b cursor-pointer"
+                         @click="selectWalk(walk.id)"
+                         :class="{ 'walk-card--selected': selectedWalk === walk.id }"
+                         :data-walk-id="walk.id">
+                        <h3 class="font-semibold text-gray-900" x-text="walk.walk_name"></h3>
+                        <div class="mt-1 text-sm text-gray-600">
+                            <span class="distance" x-text="walk.distance + ' miles'"></span>
+                        </div>
+                        <div class="mt-2 flex flex-wrap gap-1 tags">
+                            <template x-for="tag in walk.tags" :key="tag">
+                                <span class="px-2 py-1 bg-gray-200 rounded-full text-xs" x-text="tag"></span>
+                            </template>
+                        </div>
                     </div>
                 </template>
+
+                <div x-show="isLoading" class="p-4 text-center">
+                    Loading walks...
+                </div>
+
+                <div x-show="!isLoading && filteredWalks.length === 0" class="p-4 text-center text-gray-500">
+                    No walks found.
+                </div>
             </div>
         </aside>
 
@@ -308,8 +313,17 @@
 {% endblock content %}
 
 {% block extra_js %}
+<!-- Alpine.js and Plugins -->
+<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<script defer src="https://unpkg.com/@alpinejs/persist@3.x.x/dist/cdn.min.js"></script>
+
+<!-- Initialize Alpine.js with plugins -->
 <script>
     document.addEventListener('alpine:init', () => {
+        // Initialize plugins first
+        Alpine.plugin(AlpinePersist);
+        
+        // Then initialize store
         Alpine.store('walks', {
             walks: [],
             selectedWalkId: Alpine.$persist(null).as('selectedWalkId'),
@@ -447,61 +461,105 @@
                 this.walks = [];
             }
         });
+
+        // Initialize walkInterface component
+        Alpine.data('walkInterface', () => ({
+            showSidebar: Alpine.$persist(true).as('showSidebar'),
+            searchQuery: Alpine.$persist('').as('searchQuery'),
+            selectedWalk: null,
+            isLoading: false,
+            filteredWalks: [],
+
+            init() {
+                this.$watch('selectedWalk', (walkId) => {
+                    Alpine.store('walks').selectWalk(walkId);
+                    this.centerMapOnWalk(walkId)
+                });
+
+                window.addEventListener('walk-data-loaded', () => { 
+                    this.isLoading = false 
+                });
+
+                this.$nextTick(() => {
+                    this.loadWalks();
+                    Alpine.store('walks').initialize().then((ready) => {
+                        if(ready) {
+                            Alpine.store('walks').map.on('load', () => {
+                                this.loadWalks();
+                            });
+                        }
+                    });
+                });
+            },
+
+            searchWalks() {
+                this.isLoading = true;
+                this.getWalks();
+            },
+
+            getWalks() {
+                const params = new URLSearchParams({
+                    q: this.searchQuery,
+                    categories: Alpine.store('walks').filters.activeFilters.join(',')
+                });
+                Alpine.store('walks').fetchWalks(params);
+            },
+
+            loadWalks() {
+                this.isLoading = true;
+                this.getWalks();
+            },
+
+            centerMapOnWalk(walkId) {
+                const walk = Alpine.store('walks').walks.find(walk => walk.id === walkId);
+                if(walk?.latitude && walk?.longitude && Alpine.store('walks').map) {
+                    Alpine.store('walks').map.flyTo({
+                        center: [walk.longitude, walk.latitude],
+                        zoom: 14
+                    });
+                }
+            }
+        }));
+
+        // Initialize categoryCombobox component
+        Alpine.data('categoryCombobox', (config) => ({
+            options: config.options,
+            isOpen: false,
+            searchQuery: '',
+            selectedOptions: Alpine.$persist([]).as('categorySelections'),
+            
+            get filteredOptions() {
+                return this.options.filter(option => 
+                    option.label.toLowerCase().includes(this.searchQuery.toLowerCase())
+                );
+            },
+            
+            toggleOption(option) {
+                const index = this.selectedOptions.findIndex(o => o.value === option.value);
+                if (index === -1) {
+                    this.selectedOptions.push(option);
+                } else {
+                    this.selectedOptions.splice(index, 1);
+                }
+                this.$dispatch('categories-updated', this.selectedOptions.map(o => o.value));
+            },
+            
+            isSelected(option) {
+                return this.selectedOptions.some(o => o.value === option.value);
+            },
+            
+            clearSelection() {
+                this.selectedOptions = [];
+                this.$dispatch('categories-updated', []);
+            }
+        }));
     });
 
-    function walkInterface() {
-        return function() {
-            return {
-                showSidebar: this.$persist(true).as('showSidebar'),
-                searchQuery: this.$persist('').as('userSearchQuery'),
-                activeFilters: this.$persist([]).as('userActiveFilters'),
-                isLoading: true,
-                
-                async init() {
-                    try {
-                        // Ensure store is available and initialized
-                        if (!Alpine.store('walks')) {
-                            throw new Error('Walks store not initialized');
-                        }
-
-                        // Initialize store
-                        await Alpine.store('walks').initialize();
-                        
-                        // Sync persisted values with store
-                        if (Alpine.store('walks').ready) {
-                            Alpine.store('walks').filters.searchQuery = this.searchQuery;
-                            Alpine.store('walks').filters.activeFilters = this.activeFilters;
-                            
-                            this.$watch('searchQuery', value => {
-                                Alpine.store('walks').search(value);
-                            });
-                            
-                            this.$watch('activeFilters', value => {
-                                Alpine.store('walks').setFilters(value);
-                            });
-                        }
-
-                        this.isLoading = false;
-                    } catch (error) {
-                        console.error('Failed to initialize interface:', error);
-                        this.isLoading = false;
-                    }
-                }
-                // ...existing methods...
-            }
-        }
-    }
-
-    // HTMX handlers
-    document.body.addEventListener('htmx:afterRequest', (evt) => {
-        if (evt.detail.successful) {
-            try {
-                const walks = JSON.parse(evt.detail.xhr.response);
-                Alpine.store('walks').setWalks(walks);
-            } catch (error) {
-                console.error('Failed to parse walks:', error);
-            }
-        }
+    // Ensure Alpine.js is ready before loading project.js
+    window.addEventListener('alpine:init', () => {
+        import('/static/js/project.js').then(module => {
+            window.walkStore = module.walkStore;
+        });
     });
 </script>
 

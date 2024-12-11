@@ -20,6 +20,7 @@ Author: A tired but proud bootcamper (Andrea Maestri)
 Last Updated: After a satisfying lunch break
 """
 
+import json
 import logging
 from typing import Any
 
@@ -176,32 +177,47 @@ class HomePageView(ListView):
     def get_context_data(self, **kwargs) -> dict[str, Any]:
         """Prepare context data including configuration and initial walks."""
         context = super().get_context_data(**kwargs)
-        context["config"] = WalkQuestConfig.get_config()
-        context["initial_walks"] = self.get_initial_walks()
-
-        # Add tags data with counts
-        tags_with_counts = []
         
-        # Get feature tag counts with renamed annotation
-        feature_tags = (
-            WalkFeatureTag.objects
-            .annotate(usage_count=Count('walk_set'))
-            .values('name', 'usage_count')
-            .filter(usage_count__gt=0)
-        )
-        tags_with_counts.extend(feature_tags)
+        try:
+            # Safely serialize configuration
+            config = WalkQuestConfig.get_config()
+            context["config"] = json.dumps(config, default=str)
+            
+            # Safely serialize initial walks
+            walks_data = self.get_initial_walks()
+            context["initial_walks"] = json.dumps(walks_data, default=str)
 
-        # Get category tag counts with renamed annotation
-        category_tags = (
-            WalkCategoryTag.objects
-            .annotate(usage_count=Count('walk_set'))
-            .values('name', 'usage_count')
-            .filter(usage_count__gt=0)
-        )
-        tags_with_counts.extend(category_tags)
+            # Get tags data with counts
+            tags_with_counts = []
+            
+            # Get feature tag counts
+            feature_tags = (
+                WalkFeatureTag.objects
+                .annotate(usage_count=Count('walk_set'))
+                .values('name', 'usage_count')
+                .filter(usage_count__gt=0)
+            )
+            tags_with_counts.extend(feature_tags)
 
-        # Add to context
-        context["tags_data"] = tags_with_counts
+            # Get category tag counts
+            category_tags = (
+                WalkCategoryTag.objects
+                .annotate(usage_count=Count('walk_set'))
+                .values('name', 'usage_count')
+                .filter(usage_count__gt=0)
+            )
+            tags_with_counts.extend(category_tags)
+
+            # Safely serialize tags data
+            context["tags_data"] = json.dumps(list(tags_with_counts), default=str)
+
+        except Exception as e:
+            logger.exception("Error serializing context data: %s", e)
+            context.update({
+                "config": "{}",
+                "initial_walks": "[]",
+                "tags_data": "[]"
+            })
 
         return context
 

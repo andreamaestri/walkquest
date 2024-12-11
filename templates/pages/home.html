@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+    <!-- Embed JSON data safely -->
+    {{ config|json_script:"config-data" }}
+    {{ initial_walks|json_script:"walks-data" }}
+    {{ tags_data|json_script:"tags-data" }}
+
+    <!-- Error container -->
+    <div id="error-container" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert"></div>
+
+    <!-- Main content with Alpine.js -->
+    <div class="layout-container" 
+         x-data="walkInterface()"
+         x-init="init"
+         x-cloak>
+        <!-- Sidebar -->
+        <aside class="sidebar"
+               x-show="showSidebar"
+               x-transition>
+            {% verbatim %}
+            <!-- Toggle sidebar button -->
+            <button @click="showSidebar = !showSidebar"
+                    class="absolute -right-12 top-4 bg-white p-2 rounded-r shadow-md"
+                    :aria-label="showSidebar ? 'Hide sidebar' : 'Show sidebar'">
+                <iconify-icon :icon="showSidebar ? 'mdi:chevron-left' : 'mdi:chevron-right'"
+                             class="text-xl"></iconify-icon>
+            </button>
+            {% endverbatim %}
+
+            <!-- Search and filters section -->
+            <div class="p-4 border-b">
+                {% verbatim %}
+                <div class="relative">
+                    <input type="text" 
+                           x-model="searchQuery"
+                           x-on:input.debounce.500ms="searchWalks"
+                           class="w-full px-4 py-2 pl-10 border rounded-lg focus:ring-2 focus:ring-primary-500"
+                           placeholder="Search walks...">
+                    <!-- ...existing search icon... -->
+                </div>
+                {% endverbatim %}
+            </div>
+
+            <!-- Walk list with mixed content -->
+            <div id="walk-list" 
+                 class="flex-1 overflow-y-auto p-4"
+                 x-ref="walkList">
+                {% verbatim %}
+                <template x-for="walk in filteredWalks" :key="walk.id">
+                    <!-- ...existing walk card template... -->
+                </template>
+                {% endverbatim %}
+            </div>
+        </aside>
+
+        <!-- Map container -->
+        {% verbatim %}
+        <div class="map-wrapper" :class="{ 'w-full': !showSidebar }">
+            <div id="map" x-ref="map"></div>
+        </div>
+        {% endverbatim %}
+    </div>
+{% endblock content %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('alpine:init', () => {
+        // Initialize walkInterface component with Django data
+        Alpine.data('walkInterface', () => ({
+            showSidebar: true,
+            searchQuery: '',
+            selectedWalk: null,
+            isLoading: false,
+            filteredWalks: [],
+            // Parse Django-provided JSON data
+            config: JSON.parse(document.getElementById('config-data').textContent || '{}'),
+            walks: JSON.parse(document.getElementById('walks-data').textContent || '[]'),
+            tags: JSON.parse(document.getElementById('tags-data').textContent || '[]'),
+
+            init() {
+                // Initialize with parsed data
+                this.filteredWalks = this.walks;
+                
+                this.$watch('selectedWalk', (walkId) => {
+                    if (walkId) this.centerMapOnWalk(walkId);
+                });
+
+                this.$nextTick(() => {
+                    this.initializeMap();
+                });
+            },
+
+            // ...existing component methods...
+        }));
+    });
+</script>
+{% endblock extra_js %}
