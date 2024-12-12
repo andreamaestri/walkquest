@@ -6,8 +6,8 @@
     "mapbox-gl": "^3.8.0"
   },
   "imports": {
-    "#walkquest/*": "./walkquest/static/js/*",
-    "#components/*": "./walkquest/static/js/components/*"
+    "#walkquest/*": "./static/js/*",
+    "#components/*": "./static/js/components/*"
   },
   "volta": {
     "node": "22.12.0"
