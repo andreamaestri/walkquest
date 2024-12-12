@@ -1,0 +1,90 @@
+/* /static/css/input.css */
+
+/* Tailwind base styles */
+@tailwind base;
+
+/* Tailwind component styles */
+@tailwind components;
+
+/* Tailwind utility styles */
+@tailwind utilities;
+
+/* Custom Styles */
+@layer base {
+    body {
+        @apply bg-gray-50;
+    }
+}
+
+@layer components {
+    .nav-link {
+        @apply text-gray-600 hover:text-primary-500 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200;
+    }
+
+    .message {
+        @apply p-4 rounded-lg shadow-lg max-w-md bg-white relative;
+    }
+
+    .message-success {
+        @apply bg-green-100 text-green-800 border-l-4 border-green-500;
+    }
+
+    .message-error {
+        @apply bg-red-100 text-red-800 border-l-4 border-red-500;
+    }
+
+    .message-info {
+        @apply bg-blue-100 text-blue-800 border-l-4 border-blue-500;
+    }
+
+    .message-warning {
+        @apply bg-yellow-100 text-yellow-800 border-l-4 border-yellow-500;
+    }
+
+    .map-container {
+        @apply w-full h-full absolute inset-0;
+        z-index: 1;
+    }
+
+    .sidebar {
+        @apply fixed top-0 right-0 h-full bg-white shadow-lg z-10 transition-transform duration-300 ease-in-out;
+        width: 400px;
+    }
+
+    .sidebar.hidden {
+        transform: translateX(100%);
+    }
+
+    .sidebar-toggle {
+        @apply fixed top-4 right-4 z-20 bg-white rounded-full p-2 shadow-lg;
+    }
+
+    .mapboxgl-map {
+        @apply w-full h-full absolute;
+    }
+
+    .mapboxgl-marker {
+        @apply cursor-pointer transition-all duration-200;
+    }
+
+    .marker-selected {
+        @apply scale-125;
+    }
+}
+
+/* Theme Configuration */
+:root {
+    --primary-50: #f0f9ff;
+    --primary-100: #e0f2fe;
+    --primary-500: #1D4ED8;
+    --primary-600: #0284c7;
+    --primary-700: #0369a1;
+    --secondary-500: #9333EA;
+    --secondary-600: #7e22ce;
+}
+
+.iconify-icon {
+    @apply w-6 h-6 text-gray-700;
+}
+
+/* You can add more custom styles below */
