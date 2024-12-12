@@ -69,21 +69,16 @@ const storage = {
 const walkStore = {
     map: null,
     walks: [],
-    markers: new Map(),
-    currentLineLayer: null,
     selectedWalkId: null,
+    currentLineLayer: null,
 
     async initialize() {
         try {
-            // Get configuration
             const config = utils.getJsonData('config-data', {});
             const walks = utils.getJsonData('walks-data', []);
 
-            if (!config.mapboxToken) {
-                throw new Error('Mapbox token not found');
-            }
+            if (!config.mapboxToken) throw new Error('Mapbox token not found');
 
-            // Initialize map with optimizations
             mapboxgl.accessToken = config.mapboxToken;
             this.map = new mapboxgl.Map({
                 container: 'map',
@@ -93,26 +88,36 @@ const walkStore = {
                 maxBounds: CONFIG.map.maxBounds,
                 minZoom: CONFIG.map.minZoom,
                 maxZoom: CONFIG.map.maxZoom,
-                renderWorldCopies: false,           // Disable world copies for better performance
-                preserveDrawingBuffer: false,       // Disable drawing buffer preservation
-                antialias: false,                   // Disable antialiasing for better performance
-                ...CONFIG.map.performanceOptions    // Add performance options
+                renderWorldCopies: false,
+                preserveDrawingBuffer: false,
+                antialias: false,
+                ...CONFIG.map.performanceOptions
             });
 
-            // Add performance monitoring
-            this.map.on('sourcedata', () => {
-                if (this.map.loaded() && !this._sourcesLoaded) {
-                    this._sourcesLoaded = true;
-                    console.log('Sources loaded in:', performance.now());
+            // Wait for map and style to load
+            await new Promise(resolve => this.map.on('load', resolve));
+
+            // Load custom marker image
+            await this.loadMarkerImage();
+
+            // Initialize walks data
+            this.walks = walks;
+            this.initializeWalkLayers();
+
+            // Add click handler for markers
+            this.map.on('click', 'walk-points', (e) => {
+                if (e.features.length > 0) {
+                    this.selectWalk(e.features[0].properties.id);
                 }
             });
 
-            // Optimize marker creation
-            await new Promise(resolve => this.map.on('load', resolve));
-            
-            // Create markers in batches for better performance
-            this.walks = walks;
-            await this.createMarkersOptimized();
+            // Change cursor on marker hover
+            this.map.on('mouseenter', 'walk-points', () => {
+                this.map.getCanvas().style.cursor = 'pointer';
+            });
+            this.map.on('mouseleave', 'walk-points', () => {
+                this.map.getCanvas().style.cursor = '';
+            });
 
             return true;
         } catch (error) {
@@ -121,51 +126,92 @@ const walkStore = {
         }
     },
 
-    async createMarkersOptimized() {
-        // Create markers in batches of 10
-        const BATCH_SIZE = 10;
-        const walks = [...this.walks];
-
-        while (walks.length > 0) {
-            const batch = walks.splice(0, BATCH_SIZE);
-            
-            batch.forEach(walk => {
-                const marker = new mapboxgl.Marker({
-                    element: this.createMarkerElement(walk),
-                    anchor: 'bottom'
-                })
-                .setLngLat([walk.longitude, walk.latitude])
-                .addTo(this.map);
-
-                this.markers.set(walk.id, marker);
-            });
-
-            // Allow browser to render between batches
-            await new Promise(resolve => setTimeout(resolve, 0));
-        }
+    async loadMarkerImage() {
+        return new Promise((resolve, reject) => {
+            this.map.loadImage(
+                'https://docs.mapbox.com/mapbox-gl-js/assets/custom_marker.png',
+                (error, image) => {
+                    if (error) reject(error);
+                    this.map.addImage('walk-marker', image);
+                    resolve();
+                }
+            );
+        });
     },
 
-    createMarkerElement(walk) {
-        const el = document.createElement('div');
-        el.className = 'marker';
-        el.addEventListener('click', () => this.selectWalk(walk.id));
-        return el;
+    initializeWalkLayers() {
+        // Convert walks to GeoJSON
+        const geojson = {
+            type: 'FeatureCollection',
+            features: this.walks.map(walk => ({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [walk.longitude, walk.latitude]
+                },
+                properties: {
+                    id: walk.id,
+                    title: walk.walk_name,
+                    distance: walk.distance,
+                    steepness: walk.steepness_level,
+                    selected: false
+                }
+            }))
+        };
+
+        // Add walks source
+        this.map.addSource('walks', {
+            type: 'geojson',
+            data: geojson
+        });
+
+        // Add symbol layer for walk points
+        this.map.addLayer({
+            id: 'walk-points',
+            type: 'symbol',
+            source: 'walks',
+            layout: {
+                'icon-image': 'walk-marker',
+                'icon-size': [
+                    'case',
+                    ['get', 'selected'], 1.25,
+                    1
+                ],
+                'icon-allow-overlap': true,
+                'text-field': ['get', 'title'],
+                'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
+                'text-offset': [0, 1.25],
+                'text-anchor': 'top',
+                'text-optional': true
+            },
+            paint: {
+                'text-color': '#1D4ED8',
+                'text-halo-color': '#ffffff',
+                'text-halo-width': 1
+            }
+        });
     },
 
     async selectWalk(id) {
-        // Clear previous selection
+        // Update selected state in source data
+        const source = this.map.getSource('walks');
+        if (source) {
+            const data = source._data;
+            data.features.forEach(f => {
+                f.properties.selected = f.properties.id === id;
+            });
+            source.setData(data);
+        }
+
+        this.selectedWalkId = id;
+
+        // Handle walk line display
         if (this.currentLineLayer) {
             this.map.removeLayer(this.currentLineLayer);
             this.map.removeSource(this.currentLineLayer);
         }
 
-        this.selectedWalkId = id;
-
-        // Update marker appearances
-        this.updateMarkers();
-
         if (id) {
-            // Load and display walk line
             try {
                 const response = await fetch(`/api/walks/${id}/line/`);
                 const lineString = await response.json();
@@ -192,7 +238,7 @@ const walkStore = {
 
                 this.currentLineLayer = layerId;
 
-                // Fit map to line bounds
+                // Fit bounds to selected walk
                 const coordinates = lineString.geometry.coordinates;
                 const bounds = coordinates.reduce(
                     (bounds, coord) => bounds.extend(coord),
@@ -204,12 +250,6 @@ const walkStore = {
                 console.error('Error loading walk line:', error);
             }
         }
-    },
-
-    updateMarkers() {
-        this.markers.forEach((marker, walkId) => {
-            marker.getElement().classList.toggle('marker-selected', walkId === this.selectedWalkId);
-        });
     }
 };
 
