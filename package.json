@@ -3,7 +3,8 @@
     "@tailwindcss/postcss": "^4.0.0-beta.6",
     "alpinejs": "^3.14.7",
     "htmx.org": "^1.9.12",
-    "mapbox-gl": "^3.8.0"
+    "mapbox-gl": "^3.8.0",
+    "serialize-to-js": "^3.1.2"
   },
   "imports": {
     "#walkquest/*": "./static/js/*",
