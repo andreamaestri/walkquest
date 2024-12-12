@@ -53,4 +53,8 @@
     --secondary-600: #7e22ce;
 }
 
+.iconify-icon {
+    @apply w-6 h-6 text-gray-700;
+}
+
 /* You can add more custom styles below */

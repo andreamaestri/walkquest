@@ -353,6 +353,13 @@ STATICFILES_FINDERS = [
     "compressor.finders.CompressorFinder",
 ]
 
+ESM_IMPORTMAP = {
+    "imports": {
+        "#walkquest/*": "static/js/*",
+        "#components/*": "static/js/components/*"
+    }
+}
+
 # Maps
 MAPBOX_TOKEN = env("MAPBOX_TOKEN", default=None)
 THUNDERFOREST_API_KEY = env("THUNDERFOREST_API_KEY", default=None)

@@ -2,6 +2,7 @@
 {% load static %}
 {% load i18n %}
 {% load compress %}
+{% load esm %}
 {% get_current_language as LANGUAGE_CODE %}
 <html lang="{{ LANGUAGE_CODE }}">
 <head>
@@ -12,27 +13,34 @@
     <meta name="author" content="Andrea Maestri">
     <meta property="og:title" content="{% block og_title %}{{ block.super }}{% endblock %}">
     <meta property="og:description" content="Discover Cornwall's beautiful walking paths">
-    
+    <script type="importmap">{% importmap %}</script>
+
+    <!-- Add Iconify custom element script -->
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@2.2.0/dist/iconify-icon.min.js"></script>
     <title>{% block title %}WalkQuest{% endblock title %}</title>
     
     <link rel="icon" href="{% static 'images/favicons/favicon.ico' %}">
 
     <!-- Core Dependencies -->
     <link href="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.css" rel="stylesheet">
-    
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.js"></script>
     <!-- CSS files -->
     <link href="{% static 'css/project.css' %}" rel="stylesheet">
 
     <!-- importmap with Django ESM imports -->
     <script type="module">
         import Alpine from 'alpinejs';
-        import htmx from 'htmx.org';
-        import mapboxgl from 'mapbox-gl';
-        import WalkQuestExtension from '#walkquest/js/project.js';
-        import WalkQuestComponents from '#walkquest/js/alpine-components.js';
+        import * as htmx from 'htmx.org';
+        import WalkQuestExtension from '{% static "js/project.js" %}';
+        import WalkQuestComponents from '{% static "js/alpine-components.js" %}';
 
         window.Alpine = Alpine;
-        window.mapboxgl = mapboxgl;
+        window.MapboxMap = {
+            Map: mapboxgl.Map,
+            Popup: mapboxgl.Popup,
+            Marker: mapboxgl.Marker,
+            LngLatBounds: mapboxgl.LngLatBounds
+        };
         
         document.addEventListener('alpine:init', () => {
             WalkQuestExtension.init();
@@ -50,7 +58,7 @@
 </head>
 
 <body class="{% block bodyclass %}{% endblock bodyclass %}" 
-      x-data 
+      x-data="{ mobileMenuOpen: false }" 
       x-init="() => { Alpine.store('app').initialize() }"
       :class="{ 'opacity-0': !Alpine.store('app').initialized }">
     

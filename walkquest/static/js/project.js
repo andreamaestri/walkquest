@@ -143,9 +143,7 @@ const walkStore = {
 
     async initializeMapAndMarkers() {
         const { config, walks } = await this.loadInitialData();
-        
-        mapboxgl.accessToken = config.mapboxToken;
-        await this.initializeMap();
+        await this.initializeMap(config.mapboxToken);
         this.setWalks(walks);
     },
 
@@ -182,7 +180,7 @@ const walkStore = {
         }
     },
 
-    initializeMap() {
+    initializeMap(token) {
         const mapContainer = document.getElementById('map');
         if (!mapContainer) throw new Error('Map container not found');
         
@@ -193,7 +191,8 @@ const walkStore = {
             zoom: CONFIG.map.defaultZoom,
             maxBounds: CONFIG.map.maxBounds,
             minZoom: CONFIG.map.minZoom,
-            maxZoom: CONFIG.map.maxZoom
+            maxZoom: CONFIG.map.maxZoom,
+            accessToken: token
         });
 
         return new Promise((resolve) => {
@@ -542,7 +541,6 @@ const WalkQuestExtension = {
                 this.filteredWalks = filtered;
             },
 
-            // ...existing helper methods...
 
             handleError(error) {
                 console.error('Operation failed:', error);

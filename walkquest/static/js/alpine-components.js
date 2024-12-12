@@ -91,6 +91,44 @@ const WalkQuestComponents = {
                 this.$dispatch('categories-updated', []);
             }
         }));
+
+        // Initialize walk interface
+        Alpine.data('walkInterface', () => ({
+            isLoading: false,
+            showSidebar: true,
+            searchQuery: '',
+            selectedWalk: null,
+            filteredWalks: [],
+            
+            formatDistance(distance) {
+                return distance ? `${distance.toFixed(1)} km` : 'Unknown distance';
+            },
+
+            init() {
+                // Initialize with walks data
+                this.filteredWalks = JSON.parse(document.getElementById('walks-data').textContent || '[]');
+            },
+
+            toggleSidebar() {
+                this.showSidebar = !this.showSidebar;
+            },
+
+            handleSearch() {
+                // Implement search logic
+            },
+
+            selectWalk(id) {
+                this.selectedWalk = id;
+            }
+        }));
+
+        // Initialize store
+        Alpine.store('app', {
+            initialized: false,
+            initialize() {
+                this.initialized = true;
+            }
+        });
     }
 };
 

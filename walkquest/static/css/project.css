@@ -1365,6 +1365,13 @@ body {
   --secondary-600: #7e22ce;
 }
 
+.iconify-icon {
+  height: 1.5rem;
+  width: 1.5rem;
+  --tw-text-opacity: 1;
+  color: rgb(55 65 81 / var(--tw-text-opacity, 1));
+}
+
 /* You can add more custom styles below */
 
 .hover\:bg-gray-100:hover {
