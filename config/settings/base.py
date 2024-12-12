@@ -87,7 +87,6 @@ THIRD_PARTY_APPS = [
     "allauth.mfa",
     "allauth.socialaccount",
     "django_celery_beat",
-    "corsheaders",
     "tagulous",
     "slippers",
 ]
@@ -374,16 +373,6 @@ MAP_ATTRIBUTION = "© OpenStreetMap contributors" + (". Maps © Thunderforest" i
 # Make map settings available to templates
 TEMPLATES[0]["OPTIONS"]["context_processors"].append("walkquest.utils.context_processors.map_settings")
 
-# CORS Configuration
-# ------------------------------------------------------------------------------
-CORS_ALLOWED_ORIGINS = [
-    "https://tile.thunderforest.com",
-    "https://tile.openstreetmap.org",
-]
-CORS_URLS_REGEX = r"^/api/.*$"
-CORS_ALLOW_METHODS = [
-    "GET",
-]
 
 # Your stuff...
 # ------------------------------------------------------------------------------
