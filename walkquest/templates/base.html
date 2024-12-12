@@ -18,20 +18,29 @@
     <link rel="icon" href="{% static 'images/favicons/favicon.ico' %}">
 
     <!-- Core Dependencies -->
-    <script src="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.js"></script>
     <link href="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.css" rel="stylesheet">
-    <script src="https://unpkg.com/supercluster@8.0.1/dist/supercluster.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/htmx.org@1.9.10"></script>
-    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
 
-    <!-- Alpine.js Core and Plugins -->
-    <script defer src="https://unpkg.com/alpinejs@3.14.7/dist/cdn.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/persist@3.14.7/dist/cdn.min.js"></script>
-    
-    <!-- Initialize Alpine Store -->
-    <script>
-        document.addEventListener('alpine:init', () => {
+    <!-- Import map for module resolution -->
+    <script type="importmap">
+    {
+        "imports": {
+            "alpinejs": "https://esm.sh/alpinejs",
+            "@alpinejs/persist": "https://esm.sh/@alpinejs/persist",
+            "mapbox-gl": "https://esm.sh/mapbox-gl@3.8.0",
+            "htmx.org": "https://esm.sh/htmx.org@2.0.3"
+        }
+    }
+    </script>
+
+    <!-- Alpine.js initialization using native ES modules -->
+    <script type="module">
+        import Alpine from 'alpinejs';
+        import persist from '@alpinejs/persist';
+        
+        window.Alpine = Alpine;
+        Alpine.plugin(persist);
+        
+        document.addEventListener('alpine:initializing', () => {
             Alpine.store('app', {
                 initialized: false,
                 async initialize() {
@@ -47,6 +56,8 @@
                 }
             });
         });
+
+        Alpine.start();
     </script>
 
     <!-- Tailwind Config -->
@@ -116,7 +127,7 @@
 </head>
 
 <body class="{% block bodyclass %}{% endblock bodyclass %}" 
-      x-data 
+      x-data="{ mobileMenuOpen: false }"
       x-init="$nextTick(() => $store.app.initialize())"
       x-cloak
       :class="{ 'loading': !$store.app.initialized }">

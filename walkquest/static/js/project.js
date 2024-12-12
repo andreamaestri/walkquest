@@ -1,3 +1,6 @@
+import mapboxgl from 'mapbox-gl';
+import htmx from 'htmx.org';
+
 let Alpine = null;
 
 // Export init function to be called after Alpine.js is ready
@@ -19,10 +22,6 @@ function getAlpine() {
     return Alpine;
 }
 
-// Import dependencies
-const mapboxgl = window.mapboxgl;
-const Supercluster = window.Supercluster;
-
 // Core configuration
 export const CONFIG = {
     map: {
@@ -36,13 +35,6 @@ export const CONFIG = {
         markerColors: { 
             default: "#3FB1CE", 
             selected: "#DC2626"
-        }
-    },
-    markers: {
-        clustering: {
-            radius: 50,
-            maxZoom: 14,
-            minPoints: 2
         }
     }
 };
@@ -310,7 +302,9 @@ export const walkStore = {
     }
 };
 
-// Initialize when document is ready
-document.addEventListener('alpine:init', () => {
-    initAlpine(window.Alpine);
+// Initialize when Alpine is ready
+document.addEventListener('alpine:initialized', () => {
+    import('alpinejs').then(module => {
+        initAlpine(module.default);
+    });
 });

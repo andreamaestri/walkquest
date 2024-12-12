@@ -376,151 +376,13 @@ function getCategoryColor(category) {
 </script>
 
 <!-- Alpine.js Initialization -->
-<script>
-document.addEventListener('alpine:init', () => {
-    // Initialize plugins first
-    Alpine.plugin(AlpinePersist);
+<script type="module">
+    import Alpine from 'alpinejs';
+    import persist from '@alpinejs/persist';
+    
+    Alpine.plugin(persist);
     
     // Initialize stores and components
-    Alpine.store('walks', {
-        walks: [],
-        selectedWalkId: Alpine.$persist(null).as('selectedWalkId'),
-        map: null,
-        markers: new Map(),
-        filters: {
-            searchQuery: Alpine.$persist('').as('searchQuery'),
-            activeFilters: Alpine.$persist([]).as('activeFilters')
-        },
-        isLoading: false,
-
-        async initialize() {
-            try {
-                const config = JSON.parse(document.getElementById('config-data').textContent);
-                const initialWalks = JSON.parse(document.getElementById('walks-data').textContent);
-                
-                // Initialize Mapbox
-                mapboxgl.accessToken = config.mapboxToken;
-                this.initializeMap();
-                
-                // Load initial walks
-                this.setWalks(initialWalks);
-                
-                return true;
-            } catch (error) {
-                console.error('Initialization failed:', error);
-                return false;
-            }
-        },
-
-        initializeMap() {
-            const mapContainer = document.getElementById('map');
-            if (!mapContainer) throw new Error('Map container not found');
-
-            this.map = new mapboxgl.Map({
-                container: mapContainer,
-                style: "mapbox://styles/mapbox/outdoors-v12",
-                center: [-4.85, 50.4],
-                zoom: 9.5,
-                maxBounds: [
-                    [-6.5, 49.5],
-                    [-3.5, 51.5]
-                ],
-                minZoom: 8,
-                maxZoom: 16
-            });
-
-            this.map.addControl(new mapboxgl.NavigationControl());
-        },
-
-        setWalks(walks) {
-            this.walks = walks.filter(w => w?.id && w?.walk_name);
-            this.updateMarkers();
-        },
-
-        getFilteredWalks() {
-            return this.walks.filter(walk => {
-                if (this.filters.searchQuery) {
-                    const term = this.filters.searchQuery.toLowerCase();
-                    if (!walk.walk_name.toLowerCase().includes(term)) return false;
-                }
-                
-                if (this.filters.activeFilters.length > 0) {
-                    return walk.categories?.some(category => 
-                        this.filters.activeFilters.includes(category)
-                    );
-                }
-                
-                return true;
-            });
-        },
-
-        selectWalk(walkId) {
-            this.selectedWalkId = walkId;
-            const walk = this.walks.find(w => w.id === walkId);
-            
-            if (walk?.latitude && walk?.longitude) {
-                this.map.flyTo({
-                    center: [walk.longitude, walk.latitude],
-                    zoom: 14,
-                    duration: 1500
-                });
-            }
-
-            this.updateMarkers();
-        },
-
-        updateMarkers() {
-            // Clear existing markers
-            this.markers.forEach(m => m.remove());
-            this.markers.clear();
-
-            // Create new markers for filtered walks
-            this.getFilteredWalks().forEach(walk => {
-                const marker = new mapboxgl.Marker({
-                    color: walk.id === this.selectedWalkId ? '#DC2626' : '#3FB1CE',
-                    scale: walk.id === this.selectedWalkId ? 1.2 : 1
-                })
-                .setLngLat([walk.longitude, walk.latitude])
-                .setPopup(
-                    new mapboxgl.Popup({ offset: 25 })
-                    .setHTML(`
-                        <div class="p-3">
-                            <h3 class="font-semibold">${walk.walk_name}</h3>
-                            <p class="text-sm text-gray-600">${walk.steepness_level} | ${formatDistance(walk.distance)}</p>
-                        </div>
-                    `)
-                )
-                .addTo(this.map);
-
-                // Add click handler
-                marker.getElement().addEventListener('click', () => {
-                    this.selectWalk(walk.id);
-                });
-
-                this.markers.set(walk.id, marker);
-            });
-        },
-
-        search(query) {
-            this.filters.searchQuery = query;
-            this.updateMarkers();
-        },
-
-        setFilters(filters) {
-            this.filters.activeFilters = filters;
-            this.updateMarkers();
-        },
-
-        cleanup() {
-            this.markers.forEach(m => m.remove());
-            this.markers.clear();
-            if (this.map) this.map.remove();
-            this.map = null;
-            this.walks = [];
-        }
-    });
-
-    // Initialize walkInterface component
     Alpine.data('walkInterface', () => ({
         showSidebar: Alpine.$persist(true).as('showSidebar'),
         searchQuery: Alpine.$persist('').as('searchQuery'),
@@ -623,13 +485,9 @@ document.addEventListener('alpine:init', () => {
             this.$dispatch('categories-updated', []);
         }
     }));
-});
 
-// Ensure Alpine.js is ready before loading project.js
-window.addEventListener('alpine:init', () => {
-    import('/static/js/project.js').then(module => {
-        window.walkStore = module.walkStore;
-    });
-});
+    // Load project.js as a module
+    const projectModule = await import('/static/js/project.js');
+    window.walkStore = projectModule.walkStore;
 </script>
 {% endblock extra_js %}
