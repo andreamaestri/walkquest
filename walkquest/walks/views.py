@@ -20,7 +20,6 @@ Author: A tired but proud bootcamper (Andrea Maestri)
 Last Updated: After a satisfying lunch break
 """
 
-import json
 import logging
 from typing import Any
 
@@ -36,9 +35,9 @@ from django.views.decorators.csrf import csrf_protect
 from django.views.generic import ListView
 from tagulous.views import autocomplete
 
-from walkquest.walks.models import Walk  # Add WalkCategoryTag import
-from walkquest.walks.models import WalkCategoryTag  # Add WalkCategoryTag import
-from walkquest.walks.models import WalkFeatureTag  # Add WalkCategoryTag import
+from walkquest.walks.models import Walk
+from walkquest.walks.models import WalkCategoryTag
+from walkquest.walks.models import WalkFeatureTag
 
 logger = logging.getLogger(__name__)
 
@@ -175,48 +174,57 @@ class HomePageView(ListView):
         return walks_data
 
     def get_context_data(self, **kwargs) -> dict[str, Any]:
-        """Prepare context data including configuration and initial walks."""
+        """Prepare context data with clean Python structures for JSON serialization."""
         context = super().get_context_data(**kwargs)
         
         try:
-            # Safely serialize configuration
-            config = WalkQuestConfig.get_config()
-            context["config"] = json.dumps(config, default=str)
+            # Ensure config is a clean Python dict
+            context["config"] = {
+                "mapboxToken": settings.MAPBOX_TOKEN,
+                "map": {
+                    "style": WalkQuestConfig.MAP_CONFIG["style"],
+                    "defaultCenter": WalkQuestConfig.MAP_CONFIG["defaultCenter"],
+                    "defaultZoom": WalkQuestConfig.MAP_CONFIG["defaultZoom"],
+                    "markerColors": dict(WalkQuestConfig.MAP_CONFIG["markerColors"])
+                },
+                "filters": {
+                    "categories": list(WalkQuestConfig.CATEGORIES)
+                }
+            }
             
-            # Safely serialize initial walks
-            walks_data = self.get_initial_walks()
-            context["initial_walks"] = json.dumps(walks_data, default=str)
+            # Ensure walks data is a clean Python list
+            context["initial_walks"] = [
+                self.serialize_walk(walk) 
+                for walk in self.get_queryset()
+            ]
 
-            # Get tags data with counts
+            # Clean tag data structure
             tags_with_counts = []
             
-            # Get feature tag counts
-            feature_tags = (
-                WalkFeatureTag.objects
-                .annotate(usage_count=Count('walk_set'))
-                .values('name', 'usage_count')
-                .filter(usage_count__gt=0)
-            )
-            tags_with_counts.extend(feature_tags)
+            for tag_type in [WalkFeatureTag, WalkCategoryTag]:
+                tags = (
+                    tag_type.objects
+                    .annotate(usage_count=Count('walk_set'))
+                    .filter(usage_count__gt=0)
+                    .values('name', 'usage_count')
+                )
+                tags_with_counts.extend([
+                    {
+                        "name": tag["name"],
+                        "usage_count": tag["usage_count"],
+                        "type": tag_type.__name__.lower()
+                    }
+                    for tag in tags
+                ])
 
-            # Get category tag counts
-            category_tags = (
-                WalkCategoryTag.objects
-                .annotate(usage_count=Count('walk_set'))
-                .values('name', 'usage_count')
-                .filter(usage_count__gt=0)
-            )
-            tags_with_counts.extend(category_tags)
-
-            # Safely serialize tags data
-            context["tags_data"] = json.dumps(list(tags_with_counts), default=str)
+            context["tags_data"] = tags_with_counts
 
         except Exception as e:
-            logger.exception("Error serializing context data: %s", e)
+            logger.exception("Error preparing context data: %s", e)
             context.update({
-                "config": "{}",
-                "initial_walks": "[]",
-                "tags_data": "[]"
+                "config": {},
+                "initial_walks": [],
+                "tags_data": []
             })
 
         return context
@@ -319,7 +327,7 @@ class WalkFilterView(ListView):
 
         queryset = self.model.objects.all()
 
-        if categories:
+        if (categories):
             # Filter walks that have ALL selected categories
             for category in categories:
                 queryset = queryset.filter(related_categories=category)

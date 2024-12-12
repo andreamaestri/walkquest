@@ -4,160 +4,75 @@
 {% block title %}Walks - WalkQuest{% endblock title %}
 
 {% block extra_css %}
-<style>
-    /* Map container styles */
-    #map {
-        width: 100%;
-        height: 100%;  /* Changed from 100vh */
-        position: relative;  /* Changed from absolute */
-    }
-
-    /* Ensure map elements are visible */
-    #map > *:not(.mapboxgl-map):not(.mapboxgl-control-container) {
-        z-index: 1;
-    }
-
-    /* Layout structure */
-    .layout-container {
-        height: 100vh;  /* Changed from calc */
-        width: 100vw;
-        display: flex;
-        position: relative;
-        overflow: hidden;  /* Add this to prevent scrolling issues */
-    }
-
-    /* Sidebar styles */
-    .sidebar {
-        width: 24rem;
-        height: 100%;  /* Changed from specific height */
-        flex-shrink: 0;  /* Add this to prevent sidebar from shrinking */
-        z-index: 10;
-        background: white;
-        display: flex;
-        flex-direction: column;
-        box-shadow: 2px 0 10px rgba(0,0,0,0.1);
-    }
-
-    /* Map wrapper styles */
-    .map-wrapper {
-        flex: 1;
-        position: relative;  /* Ensure this is relative */
-        height: 100%;  /* Add this */
-    }
-
-    /* Existing styles */
-    .walk-card {
-        background: white;
-        transition: all 0.2s;
-    }
-
-    .walk-card:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-
-    .walk-card--selected {
-        border-left: 4px solid #4F46E5;
-    }
-
-    .filter-option {
-        transition: all 0.2s;
-    }
-
-    .filter-option:hover {
-        background-color: #F3F4F6;
-    }
-
-    .count {
-        color: #6B7280;
-        font-size: 0.875rem;
-        margin-left: auto;
-    }
-
-    .loading::after {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background: rgba(255, 255, 255, 0.8);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    /* Tag Cloud Styles */
-    .filter-option {
-        transition: all 0.2s ease;
-    }
-
-    .filter-option:hover {
-        background-color: #F3F4F6;
-    }
-
-    .filter-option input:checked + span {
-        color: #4F46E5;
-        font-weight: 600;
-    }
-
-    .filter-option.selected {
-        background-color: #EEF2FF;
-        border-color: #4F46E5;
-    }
+<style type="text/tailwindcss">
+    /* Only essential styles that can't be inlined */
 </style>
 {% endblock extra_css %}
 
 {% block content %}
-    <!-- Embed JSON data without extra <script> tags -->
-    {% if config %}
-        {{ config|json_script:"config-data" }}
-    {% endif %}
-    
-    {% if initial_walks %}
-        {{ initial_walks|json_script:"walks-data" }}
-    {% endif %}
-
-    <!-- Add this near the other JSON data scripts -->
-    {% if tags_data %}
-        {{ tags_data|json_script:"tags-data" }}
-    {% endif %}
+    <!-- JSON data embedding with safeguards -->
+    <script type="application/json" id="config-data">
+        {% if config %}{{ config|json_script:"config-data"|safe }}{% else %}{}{% endif %}
+    </script>
+    <script type="application/json" id="walks-data">
+        {% if initial_walks %}{{ initial_walks|json_script:"walks-data"|safe }}{% else %}[]{% endif %}
+    </script>
+    <script type="application/json" id="tags-data">
+        {% if tags_data %}{{ tags_data|json_script:"tags-data"|safe }}{% else %}[]{% endif %}
+    </script>
 
     <!-- Error container -->
-    <div id="error-container" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert"></div>
+    <div id="error-container" 
+         class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4" 
+         role="alert"
+         aria-live="polite"></div>
 
     <!-- Main content with Alpine.js -->
-    <div class="layout-container" 
+    <div class="h-screen w-screen flex relative overflow-hidden" 
          x-data="walkInterface"
-         x-init="$nextTick(() => init())"
-         x-show="$store.app.initialized"
+         x-init="await initializeData()"
+         x-show="Alpine.store('app').initialized"
          x-cloak>
         
         <!-- Loading State -->
         <div x-show="isLoading" 
-             class="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+             class="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50"
+             x-transition
+             role="status"
+             aria-live="polite">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"
+                 aria-label="Loading"></div>
         </div>
         
-        <!-- Sidebar with persisted state -->
-        <aside class="sidebar"
+        <!-- Sidebar -->
+        <aside class="w-96 h-full flex-shrink-0 z-10 bg-white flex flex-col shadow-md"
                x-show="showSidebar"
-               x-transition>
+               x-transition
+               role="complementary"
+               aria-label="Walk filters and list">
             
-            <!-- Toggle sidebar button with persisted state -->
-            <button @click="showSidebar = !showSidebar"
+            <!-- Toggle sidebar button -->
+            <button @click="toggleSidebar()"
                     class="absolute -right-12 top-4 bg-white p-2 rounded-r shadow-md"
-                    :aria-label="showSidebar ? 'Hide sidebar' : 'Show sidebar'">
+                    :aria-label="showSidebar ? 'Hide sidebar' : 'Show sidebar'"
+                    :aria-expanded="showSidebar">
                 <iconify-icon :icon="showSidebar ? 'mdi:chevron-left' : 'mdi:chevron-right'"
-                             class="text-xl"></iconify-icon>
+                             class="text-xl"
+                             aria-hidden="true"></iconify-icon>
             </button>
 
-            <!-- Search with persisted query -->
+            <!-- Search section -->
             <div class="p-4 border-b">
+                <label for="walk-search" class="sr-only">Search walks</label>
                 <div class="relative">
                     <input type="text" 
+                           id="walk-search"
                            x-model="searchQuery"
-                           x-on:input.debounce.500ms="searchWalks"
+                           @input.debounce.300ms="handleSearch()"
                            class="w-full px-4 py-2 pl-10 border rounded-lg focus:ring-2 focus:ring-primary-500"
-                           placeholder="Search walks...">
-                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2">
+                           placeholder="Search walks..."
+                           aria-label="Search walks">
+                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2" aria-hidden="true">
                         <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
@@ -171,11 +86,9 @@
                     options: JSON.parse(document.getElementById('tags-data').textContent).map(tag => ({
                         value: tag.name,
                         label: tag.name,
-                        count: tag.usage_count,
-                        emoji: getCategoryEmoji(tag.name),
-                        color: getCategoryColor(tag.name)
+                        count: tag.usage_count
                     }))
-                })" class="w-full flex flex-col gap-1">
+                })" class="w-full flex flex-col gap-1" @categories-updated="handleFilterChange($event.detail)">
                     <label class="w-fit pl-0.5 text-sm text-gray-700 flex items-center justify-between">
                         Walk Categories
                         <button type="button" 
@@ -235,7 +148,6 @@
                                 <template x-for="(option, index) in filteredOptions" :key="option.value">
                                     <li class="relative flex items-center px-4 py-2 cursor-pointer hover:bg-gray-100 focus:bg-gray-100 outline-none"
                                         :class="{'bg-gray-100': isSelected(option)}"
-                                        :style="{ borderLeft: `4px solid ${option.color}` }"
                                         @click="toggleOption(option)"
                                         @keydown.enter.prevent="toggleOption(option)"
                                         @keydown.space.prevent="toggleOption(option)"
@@ -251,7 +163,6 @@
                                                @click.stop="toggleOption(option)"
                                                aria-label="Select {{ option.label }}">
                                         <span class="ml-3 flex items-center space-x-2">
-                                            <span x-text="option.emoji" class="text-lg"></span>
                                             <span x-text="option.label" class="font-medium"></span>
                                             <span class="ml-auto text-sm text-gray-500" x-text="`(${option.count})`"></span>
                                         </span>
@@ -263,15 +174,20 @@
                 </div>
             </div>
 
-            <!-- Walk List with HTMX loading -->
+            <!-- Walk List -->
             <div id="walk-list" 
                  class="flex-1 overflow-y-auto p-4"
-                 x-ref="walkList">
+                 x-ref="walkList"
+                 role="list"
+                 aria-label="Available walks">
                 <template x-for="walk in filteredWalks" :key="walk.id">
-                    <div class="walk-card p-4 border-b cursor-pointer"
+                    <div class="bg-white transition-all duration-200 cursor-pointer p-4 border-b"
                          @click="selectWalk(walk.id)"
-                         :class="{ 'walk-card--selected': selectedWalk === walk.id }"
-                         :data-walk-id="walk.id">
+                         @keydown.enter="selectWalk(walk.id)"
+                         :class="{ 'bg-primary-50 border-l-4 border-primary-500': selectedWalk === walk.id }"
+                         :data-walk-id="walk.id"
+                         tabindex="0"
+                         role="listitem">
                         <h3 class="font-semibold text-gray-900" x-text="walk.walk_name"></h3>
                         <div class="mt-1 text-sm text-gray-600 flex items-center gap-2">
                             <span class="distance" x-text="formatDistance(walk.distance)"></span>
@@ -279,9 +195,7 @@
                         </div>
                         <div class="mt-2 flex flex-wrap gap-1">
                             <template x-for="category in walk.categories" :key="category">
-                                <span class="px-2 py-1 text-xs rounded-full"
-                                      :style="{ backgroundColor: getCategoryColor(category) + '20', 
-                                              color: getCategoryColor(category) }"
+                                <span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700"
                                       x-text="category">
                                 </span>
                             </template>
@@ -297,8 +211,11 @@
                     </div>
                 </template>
 
-                <!-- Loading and empty states -->
-                <div x-show="isLoading" class="p-4 text-center">
+                <!-- States -->
+                <div x-show="isLoading" 
+                     class="p-4 text-center"
+                     role="status"
+                     aria-live="polite">
                     <span class="inline-flex items-center">
                         <svg class="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy 12 r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
@@ -308,15 +225,24 @@
                     </span>
                 </div>
 
-                <div x-show="!isLoading && filteredWalks.length === 0" class="p-4 text-center text-gray-500">
+                <div x-show="!isLoading && filteredWalks.length === 0" 
+                     class="p-4 text-center text-gray-500"
+                     role="status"
+                     aria-live="polite">
                     No walks found matching your criteria
                 </div>
             </div>
         </aside>
 
-        <!-- Updated map container structure -->
-        <div class="map-wrapper" :class="{ 'w-full': !showSidebar }">
-            <div id="map" x-ref="map"></div>
+        <!-- Map container -->
+        <div class="flex-1 relative h-full" 
+             :class="{ 'w-full': !showSidebar }"
+             x-transition>
+            <div id="map" 
+                 x-ref="map"
+                 class="w-full h-full"
+                 role="region"
+                 aria-label="Interactive map of walks"></div>
         </div>
     </div>
 
@@ -327,7 +253,7 @@
 
     <!-- Add walk card template -->
     <template id="walk-card-template">
-        <div class="walk-card p-4 border-b cursor-pointer" data-walk-id="">
+        <div class="bg-white transition-all duration-200 cursor-pointer p-4 border-b" data-walk-id="">
             <h3 class="font-semibold text-gray-900"></h3>
             <div class="mt-1 text-sm text-gray-600">
                 <span class="distance"></span>
@@ -337,157 +263,35 @@
             </div>
         </div>
     </template>
+
+    <!-- Add initialization script -->
+    <script>
+        function getJsonData(elementId, fallback) {
+            try {
+                const element = document.getElementById(elementId);
+                return element ? JSON.parse(element.textContent) : fallback;
+            } catch (e) {
+                console.error(`Error parsing ${elementId}:`, e);
+                return fallback;
+            }
+        }
+
+        // Update Alpine.js data initialization
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('walkInterface', () => ({
+                async initializeData() {
+                    const config = getJsonData('config-data', {});
+                    const walks = getJsonData('walks-data', []);
+                    const tags = getJsonData('tags-data', []);
+                    
+                    await Alpine.store('app').initialize({ config, walks, tags });
+                }
+                // ... rest of walkInterface implementation
+            }));
+        });
+    </script>
 {% endblock content %}
 
 {% block extra_js %}
-<!-- Utils -->
-<script>
-function getCategoryEmoji(category) {
-    const emojiMap = {
-        'coastal': '🏖️',
-        'woodland': '🌳',
-        'historical': '🏛️',
-        'scenic': '🌅',
-        'family-friendly': '👨‍👩‍👧‍👦',
-        'challenging': '🏃',
-        'easy': '🚶',
-        'moderate': '⛰️',
-        'waterfall': '💦',
-        'wildlife': '🦊'
-    };
-    return emojiMap[category.toLowerCase()] || '🚶‍♂️';
-}
-
-function getCategoryColor(category) {
-    const colorMap = {
-        'coastal': '#0EA5E9',
-        'woodland': '#22C55E',
-        'historical': '#8B5CF6',
-        'scenic': '#F59E0B',
-        'family-friendly': '#EC4899',
-        'challenging': '#EF4444',
-        'easy': '#10B981',
-        'moderate': '#6366F1',
-        'waterfall': '#06B6D4',
-        'wildlife': '#84CC16'
-    };
-    return colorMap[category.toLowerCase()] || '#6B7280';
-}
-</script>
-
-<!-- Alpine.js Initialization -->
-<script type="module">
-    import Alpine from 'alpinejs';
-    import persist from '@alpinejs/persist';
-    
-    Alpine.plugin(persist);
-    
-    // Initialize stores and components
-    Alpine.data('walkInterface', () => ({
-        showSidebar: Alpine.$persist(true).as('showSidebar'),
-        searchQuery: Alpine.$persist('').as('searchQuery'),
-        selectedWalk: null,
-        isLoading: false,
-        filteredWalks: [],
-
-        init() {
-            this.$watch('selectedWalk', (walkId) => {
-                Alpine.store('walks').selectWalk(walkId);
-                this.centerMapOnWalk(walkId)
-            });
-
-            window.addEventListener('walk-data-loaded', () => { 
-                this.isLoading = false 
-            });
-
-            this.$nextTick(() => {
-                this.loadWalks();
-                Alpine.store('walks').initialize().then((ready) => {
-                    if(ready) {
-                        Alpine.store('walks').map.on('load', () => {
-                            this.loadWalks();
-                        });
-                    }
-                });
-            });
-        },
-
-        searchWalks() {
-            this.isLoading = true;
-            this.getWalks();
-        },
-
-        async getWalks() {
-            try {
-                this.isLoading = true;
-                const params = new URLSearchParams({
-                    search: this.searchQuery,
-                    categories: Alpine.store('walks').filters.activeFilters.join(',')
-                });
-
-                const response = await fetch(`/walks/filter/?${params}`);
-                if (!response.ok) throw new Error('Network response was not ok');
-                
-                const walks = await response.json();
-                Alpine.store('walks').setWalks(walks);
-            } catch (error) {
-                console.error('Error fetching walks:', error);
-            } finally {
-                this.isLoading = false;
-            }
-        },
-
-        loadWalks() {
-            this.isLoading = true;
-            this.getWalks();
-        },
-
-        centerMapOnWalk(walkId) {
-            const walk = Alpine.store('walks').walks.find(walk => walk.id === walkId);
-            if(walk?.latitude && walk?.longitude && Alpine.store('walks').map) {
-                Alpine.store('walks').map.flyTo({
-                    center: [walk.longitude, walk.latitude],
-                    zoom: 14
-                });
-            }
-        }
-    }));
-
-    // Initialize categoryCombobox component
-    Alpine.data('categoryCombobox', (config) => ({
-        options: config.options,
-        isOpen: false,
-        searchQuery: '',
-        selectedOptions: Alpine.$persist([]).as('categorySelections'),
-        
-        get filteredOptions() {
-            return this.options.filter(option => 
-                option.label.toLowerCase().includes(this.searchQuery.toLowerCase())
-            );
-        },
-        
-        toggleOption(option) {
-            const index = this.selectedOptions.findIndex(o => o.value === option.value);
-            if (index === -1) {
-                this.selectedOptions.push(option);
-            } else {
-                this.selectedOptions.splice(index, 1);
-            }
-            this.$dispatch('categories-updated', this.selectedOptions.map(o => o.value));
-        },
-        
-        isSelected(option) {
-            return this.selectedOptions.some(o => o.value === option.value);
-        },
-        
-        clearSelection() {
-            this.selectedOptions = [];
-            this.$dispatch('categories-updated', []);
-        }
-    }));
-
-    // Load project.js as a module
-    const projectModule = await import('/static/js/project.js');
-    window.walkStore = projectModule.walkStore;
-</script>
+<script src="{% static 'js/alpine-components.js' %}" type="module"></script>
 {% endblock extra_js %}

@@ -1,4 +1,4 @@
-/* Map container styles */
+/* Essential map styles that can't be handled by Tailwind */
 #map {
     position: relative;
     width: 100%;
@@ -6,62 +6,17 @@
     overflow: hidden;
 }
 
+/* Z-index control for map elements */
+#map > *:not(.mapboxgl-map):not(.mapboxgl-control-container) {
+    z-index: 1;
+}
+
 .mapboxgl-control-container {
     position: absolute;
     z-index: 1;
 }
 
-/* Existing styles */
-.mapboxgl-popup-content { @apply p-4 rounded-lg shadow-lg; }
-
-/* Enhanced Walk Card Styles */
-.walk-card {
-    @apply p-4 border-b bg-white transition-all duration-200 cursor-pointer;
-}
-
-.walk-card:hover {
-    @apply bg-gray-50 transform -translate-y-px shadow-sm;
-}
-
-.walk-card--selected {
-    @apply bg-primary-50 border-l-4 border-primary-500;
-}
-
-/* Remove loading indicator styles */
-.loading { @apply overflow-hidden; }
-#loading-indicator { 
-    /* Removed spinner styles */
-}
-.loading #loading-indicator { display: none; }
-
-/* Filter styles */
-.filter-option {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    @apply text-sm text-gray-700;
-}
-
-.count {
-    @apply text-sm text-gray-500 ml-auto;
-}
-
-.filter-group + .filter-group {
-    @apply mt-4;
-}
-
-/* Popup Styles - Simplified */
-.walk-popup .mapboxgl-popup-content {
-    padding: 0;
-    border-radius: 0.5rem;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-
-.walk-popup--selected .mapboxgl-popup-content {
-    border-left: 4px solid #4F46E5;
-}
-
-/* Cluster Styles - Simplified */
+/* Cluster marker styles - requires custom CSS */
 .marker-cluster {
     color: white;
     background: #4F46E5;

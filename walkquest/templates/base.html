@@ -19,47 +19,7 @@
 
     <!-- Core Dependencies -->
     <link href="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.css" rel="stylesheet">
-
-    <!-- Import map for module resolution -->
-    <script type="importmap">
-    {
-        "imports": {
-            "alpinejs": "https://esm.sh/alpinejs",
-            "@alpinejs/persist": "https://esm.sh/@alpinejs/persist",
-            "mapbox-gl": "https://esm.sh/mapbox-gl@3.8.0",
-            "htmx.org": "https://esm.sh/htmx.org@2.0.3"
-        }
-    }
-    </script>
-
-    <!-- Alpine.js initialization using native ES modules -->
-    <script type="module">
-        import Alpine from 'alpinejs';
-        import persist from '@alpinejs/persist';
-        
-        window.Alpine = Alpine;
-        Alpine.plugin(persist);
-        
-        document.addEventListener('alpine:initializing', () => {
-            Alpine.store('app', {
-                initialized: false,
-                async initialize() {
-                    try {
-                        this.initialized = false;
-                        await Promise.all([
-                            // Add other initialization tasks here
-                        ]);
-                        this.initialized = true;
-                    } catch (error) {
-                        console.error('Failed to initialize app:', error);
-                    }
-                }
-            });
-        });
-
-        Alpine.start();
-    </script>
-
+    <script src="https://cdn.tailwindcss.com/"></script>
     <!-- Tailwind Config -->
     <script>
         tailwind.config = {
@@ -84,34 +44,38 @@
             }
         };
     </script>
+    <!-- Import map for module resolution -->
+    <script type="importmap">
+    {
+        "imports": {
+            "alpinejs": "https://esm.sh/alpinejs",
+            "mapbox-gl": "https://esm.sh/mapbox-gl@3.8.0",
+            "htmx.org": "https://esm.sh/htmx.org@2.0.3"
+        }
+    }
+    </script>
+
+    <!-- Initialize Alpine.js with components -->
+    <script type="module">
+        import Alpine from 'alpinejs';
+        import WalkQuestExtension from '/static/js/project.js';
+        import WalkQuestComponents from '/static/js/alpine-components.js';
+
+        window.Alpine = Alpine;
+        
+        document.addEventListener('alpine:init', () => {
+            WalkQuestExtension.init();
+            WalkQuestComponents.init();
+        });
+
+        Alpine.start();
+    </script>
 
     {% compress css %}
-    <style>
+    <style type="text/tailwindcss">
         @layer base {
             body { @apply bg-gray-50; }
         }
-
-        .loading { @apply overflow-hidden; }
-        #loading-indicator { 
-            @apply fixed inset-0 flex items-center justify-center bg-white bg-opacity-75 z-50;
-            display: none;
-        }
-        .loading #loading-indicator { display: flex; }
-
-        .htmx-indicator { @apply hidden; }
-        .htmx-request .htmx-indicator,
-        .htmx-request.htmx-indicator { @apply inline-block; }
-
-        .nav-link {
-            @apply px-4 py-1.5 rounded text-sm font-medium text-primary-500 
-                   hover:bg-primary-50 transition-colors;
-        }
-
-        .message { @apply relative px-4 py-3 rounded mb-4; }
-        .message-success { @apply bg-green-100 text-green-700; }
-        .message-error { @apply bg-red-100 text-red-700; }
-        .message-info { @apply bg-blue-100 text-blue-700; }
-        .message-warning { @apply bg-yellow-100 text-yellow-700; }
     </style>
     {% endcompress %}
 
@@ -127,20 +91,22 @@
 </head>
 
 <body class="{% block bodyclass %}{% endblock bodyclass %}" 
-      x-data="{ mobileMenuOpen: false }"
-      x-init="$nextTick(() => $store.app.initialize())"
-      x-cloak
-      :class="{ 'loading': !$store.app.initialized }">
+      x-data 
+      x-init="() => { Alpine.store('app').initialize() }"
+      :class="{ 'opacity-0': !Alpine.store('app').initialized }">
     
     <!-- Loading State -->
-    <div x-show="!$store.app.initialized"
+    <div x-show="!Alpine.store('app').initialized"
          x-cloak
          class="fixed inset-0 z-50 bg-white bg-opacity-75 flex items-center justify-center">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
     </div>
 
     <!-- Main content -->
-    <div x-show="$store.app.initialized" x-transition.opacity>
+    <div x-show="Alpine.store('app').initialized" 
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100">
         {% block body %}
         <!-- Remove the loading indicator -->
         <div id="loading-indicator">
