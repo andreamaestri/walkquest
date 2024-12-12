@@ -77,6 +77,7 @@ DJANGO_APPS = [
     "unfold.contrib.inlines",  # optional, if special inlines are needed
     "django.contrib.admin",
     "django.forms",
+    "django_esm",
 ]
 THIRD_PARTY_APPS = [
     "crispy_forms",
@@ -170,11 +171,15 @@ STATIC_ROOT = str(BASE_DIR / "staticfiles")
 # https://docs.djangoproject.com/en/dev/ref/settings/#static-url
 STATIC_URL = "/static/"
 # https://docs.djangoproject.com/en/dev/ref/contrib/staticfiles/#std:setting-STATICFILES_DIRS
-STATICFILES_DIRS = [str(APPS_DIR / "static")]
+STATICFILES_DIRS = [
+    str(APPS_DIR / "static"),
+    BASE_DIR / "node_modules",
+]
 # https://docs.djangoproject.com/en/dev/ref/contrib/staticfiles/#staticfiles-finders
 STATICFILES_FINDERS = [
     "django.contrib.staticfiles.finders.FileSystemFinder",
     "django.contrib.staticfiles.finders.AppDirectoriesFinder",
+    "django_esm.finders.ESMFinder",
 ]
 
 # MEDIA

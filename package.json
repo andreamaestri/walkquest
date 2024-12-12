@@ -1,0 +1,29 @@
+{
+  "dependencies": {
+    "@tailwindcss/postcss": "^4.0.0-beta.6",
+    "alpinejs": "^3.14.7",
+    "autoprefixer": "^10.4.20",
+    "htmx.org": "^1.9.12",
+    "mapbox-gl": "^3.8.0",
+    "postcss": "^8.4.49"
+  },
+  "devDependencies": {
+    "tailwindcss": "^4.0.0-beta.6"
+  },
+  "volta": {
+    "node": "22.12.0"
+  },
+  "name": "walkquest",
+  "version": "1.0.0",
+  "description": "Walk in the quest!",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}

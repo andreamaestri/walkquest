@@ -20,6 +20,7 @@ Author: A tired but proud bootcamper (Andrea Maestri)
 Last Updated: After a satisfying lunch break
 """
 
+import json
 import logging
 from typing import Any
 
@@ -30,6 +31,7 @@ from django.db.models import QuerySet
 from django.http import HttpResponse
 from django.http import JsonResponse
 from django.utils.decorators import method_decorator
+from django.views import View
 from django.views.decorators.cache import cache_page
 from django.views.decorators.csrf import csrf_protect
 from django.views.generic import ListView
@@ -40,6 +42,7 @@ from walkquest.walks.models import WalkCategoryTag
 from walkquest.walks.models import WalkFeatureTag
 
 logger = logging.getLogger(__name__)
+
 
 class WalkQuestConfig:
     """Configuration manager for WalkQuest application."""
@@ -75,6 +78,7 @@ class WalkQuestConfig:
                 "categories": cls.CATEGORIES,
             },
         }
+
 
 class HomePageView(ListView):
     """Main view for displaying walking routes with filtering and mapping capabilities."""
@@ -112,13 +116,13 @@ class HomePageView(ListView):
 
         if not stats:
             try:
-                # Get feature counts
                 feature_counts = {}
                 walks = self.model.objects.exclude(features__isnull=True)
                 for walk in walks:
                     if isinstance(walk.features, list):
                         for feature in walk.features:
-                            feature_counts[feature] = feature_counts.get(feature, 0) + 1
+                            feature_counts[feature] = feature_counts.get(
+                                feature, 0) + 1
 
                 stats = {
                     "features": feature_counts,
@@ -145,13 +149,15 @@ class HomePageView(ListView):
                 "steepness_level": walk.steepness_level,
                 "latitude": float(walk.latitude),
                 "longitude": float(walk.longitude),
-                "features": [str(tag) for tag in walk.features.all()],  # Convert tags to strings
+                # Convert tags to strings
+                "features": [str(tag) for tag in walk.features.all()],
                 "categories": [str(tag) for tag in walk.related_categories.all()],
                 "has_pub": bool(walk.has_pub),
                 "has_cafe": bool(walk.has_cafe),
                 "has_bus_access": bool(walk.has_bus_access),
                 "has_stiles": bool(walk.has_stiles),
                 "created_at": walk.created_at.isoformat() if walk.created_at else None,
+                # Geometry will be loaded separately when needed
             }
         except Exception as e:
             logger.exception(f"Walk serialization error for {walk.id}: {e}")
@@ -164,11 +170,11 @@ class HomePageView(ListView):
 
         if not walks_data:
             try:
-                walks = self.get_queryset()
-                walks_data = [self.serialize_walk(walk) for walk in walks]
-                cache.set(cache_key, walks_data, 60 * 15)
+                queryset = self.get_queryset()
+                walks_data = [self.serialize_walk(walk) for walk in queryset]
+                cache.set(cache_key, walks_data, self.cache_timeout)
             except Exception as e:
-                logger.exception(f"Error getting initial walks: {e}")
+                logger.exception(f"Error retrieving initial walks: {e}")
                 walks_data = []
 
         return walks_data
@@ -176,7 +182,7 @@ class HomePageView(ListView):
     def get_context_data(self, **kwargs) -> dict[str, Any]:
         """Prepare context data with clean Python structures for JSON serialization."""
         context = super().get_context_data(**kwargs)
-        
+
         try:
             # Ensure config is a clean Python dict
             context["config"] = {
@@ -191,16 +197,16 @@ class HomePageView(ListView):
                     "categories": list(WalkQuestConfig.CATEGORIES)
                 }
             }
-            
+
             # Ensure walks data is a clean Python list
             context["initial_walks"] = [
-                self.serialize_walk(walk) 
+                self.serialize_walk(walk)
                 for walk in self.get_queryset()
             ]
 
             # Clean tag data structure
             tags_with_counts = []
-            
+
             for tag_type in [WalkFeatureTag, WalkCategoryTag]:
                 tags = (
                     tag_type.objects
@@ -235,15 +241,10 @@ class HomePageView(ListView):
         try:
             if request.headers.get("HX-Request"):
                 return self._handle_htmx_request(request)
-
-            response = super().get(request, *args, **kwargs)
-            logger.info(f"Successfully rendered home page for {request.path}")
-            return response
-
+            return super().get(request, *args, **kwargs)
         except Exception as e:
-            logger.exception("Error processing request")
-            context = self.get_context_data(error=str(e))
-            return self.render_to_response(context)
+            logger.exception(f"Error handling GET request: {e}")
+            return JsonResponse({"error": "Internal Server Error"}, status=500)
 
     def _handle_htmx_request(self, request) -> JsonResponse:
         """Handle HTMX requests with rate limiting."""
@@ -288,7 +289,7 @@ class WalkSearchView(ListView):
         query = request.GET.get("q", "").strip()
         queryset = self.model.objects.none()  # Empty by default
 
-        if query:
+        if (query):
             queryset = (
                 self.model.objects
                 .filter(walk_name__icontains=query)
@@ -315,6 +316,7 @@ class WalkSearchView(ListView):
             "highlights": walk.highlights,
         }
 
+
 @method_decorator(csrf_protect, name="dispatch")
 class WalkFilterView(ListView):
     """HTMX view for filtering walks."""
@@ -323,7 +325,8 @@ class WalkFilterView(ListView):
     context_object_name = "walks"
 
     def post(self, request, *args, **kwargs):
-        categories = request.POST.getlist("tag")  # Changed from "feature" to "tag"
+        # Changed from "feature" to "tag"
+        categories = request.POST.getlist("tag")
 
         queryset = self.model.objects.all()
 
@@ -346,6 +349,7 @@ class WalkFilterView(ListView):
             "has_pub": bool(walk.has_pub),
             "has_cafe": bool(walk.has_cafe),
         }
+
 
 @method_decorator(csrf_protect, name="dispatch")
 class WalkListView(ListView):
@@ -403,6 +407,7 @@ class WalkListView(ListView):
             logger.exception(f"Walk serialization error for {walk.id}: {e}")
             return {}
 
+
 def walk_features_autocomplete(request):
     """Autocomplete view for walk features."""
     return autocomplete(
@@ -410,3 +415,65 @@ def walk_features_autocomplete(request):
         WalkFeatureTag,
         settings.TAGULOUS_AUTOCOMPLETE_LIMIT,
     )
+
+
+class WalkGeometryView(View):
+    """API endpoint for fetching walk geometry data."""
+
+    CONTENT_TYPE="application/geo+json"
+    CACHE_TIMEOUT=60 * 30  # 30 minutes
+
+    @method_decorator(csrf_protect)
+    def get(self, request, walk_id):
+        """Handle GET request for walk geometry."""
+        cache_key=f"walk_geometry_{walk_id}"
+
+        try:
+            # Try to get cached geometry
+            geometry_data=cache.get(cache_key)
+
+            if not geometry_data:
+                walk=Walk.objects.get(id=walk_id)
+
+                if not walk.geometry:
+                    return HttpResponse(
+                        '{"error": "No geometry data available"}',
+                        content_type=self.CONTENT_TYPE,
+                        status=404
+                    )
+
+                # Create GeoJSON structure
+                geometry_data={
+                    "type": "Feature",
+                    "geometry": walk.geometry,
+                    "properties": {
+                        "walk_id": str(walk.id),
+                        "walk_name": walk.walk_name
+                    }
+                }
+
+                # Cache the geometry
+                cache.set(cache_key, geometry_data, self.CACHE_TIMEOUT)
+
+            return HttpResponse(
+                json.dumps(geometry_data),
+                content_type=self.CONTENT_TYPE
+            )
+
+        except Walk.DoesNotExist:
+            return HttpResponse(
+                '{"error": "Walk not found"}',
+                content_type=self.CONTENT_TYPE,
+                status=404
+            )
+        except Exception as e:
+            logger.exception(
+                f"Error fetching geometry for walk {walk_id}: {e}")
+            return HttpResponse(
+                '{"error": "Internal server error"}',
+                content_type=self.CONTENT_TYPE,
+                status=500
+            )
+
+# Add to url patterns in urls.py:
+# path('walks/<uuid:walk_id>/geometry/', views.WalkGeometryView.as_view(), name='walk_geometry'),

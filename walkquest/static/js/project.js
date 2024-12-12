@@ -27,7 +27,17 @@ const utils = {
             <h3 class="font-semibold">${walk.walk_name}</h3>
             <p class="text-sm text-gray-600">${walk.steepness_level} | ${walk.distance} miles</p>
         </div>
-    `
+    `,
+
+    getJsonData(elementId, fallback) {
+        try {
+            const element = document.getElementById(elementId);
+            return element ? JSON.parse(element.textContent.trim()) : fallback;
+        } catch (e) {
+            console.error(`Error parsing ${elementId}:`, e);
+            return fallback;
+        }
+    }
 };
 
 // Add localStorage utility functions
@@ -57,32 +67,58 @@ const walkStore = {
     selectedWalkId: null,
     map: null,
     markers: new Map(),
+    currentLineLayer: null,
     filters: {
         searchQuery: '',
         activeFilters: []
     },
     isLoading: false,
+    initializationInProgress: false,
 
     init() {
-        // Load initial values from localStorage
-        this.selectedWalkId = storage.get('selectedWalkId', null);
-        this.filters = {
+        // Guard against multiple initialization attempts
+        if (this.initializationInProgress) {
+            console.warn('Initialization already in progress');
+            return;
+        }
+        
+        // Load stored values without triggering effects
+        this.loadStoredValues();
+        
+        // Initialize the store
+        this.initialize();
+    },
+
+    loadStoredValues() {
+        // Load values without triggering reactive updates
+        const storedValues = {
+            selectedWalkId: storage.get('selectedWalkId', null),
             searchQuery: storage.get('searchQuery', ''),
             activeFilters: storage.get('activeFilters', [])
         };
 
-        // Setup persistence
-        Alpine.effect(() => {
-            storage.set('selectedWalkId', this.selectedWalkId);
-            storage.set('searchQuery', this.filters.searchQuery);
-            storage.set('activeFilters', this.filters.activeFilters);
-        });
+        this.selectedWalkId = storedValues.selectedWalkId;
+        this.filters = {
+            searchQuery: storedValues.searchQuery,
+            activeFilters: storedValues.activeFilters
+        };
+    },
 
-        this.initialize();
+    setupPersistence() {
+        // Setup persistence separately from initialization
+        Alpine.effect(() => {
+            if (this.ready) {  // Only persist after initialization
+                storage.set('selectedWalkId', this.selectedWalkId);
+                storage.set('searchQuery', this.filters.searchQuery);
+                storage.set('activeFilters', this.filters.activeFilters);
+            }
+        });
     },
 
     async initialize() {
-        if (this.ready) return true;
+        if (this.ready || this.initializationInProgress) return true;
+        
+        this.initializationInProgress = true;
         
         try {
             if (!this.checkLocalStorage()) {
@@ -90,19 +126,30 @@ const walkStore = {
                 return false;
             }
 
-            // Initialize map and data
-            await this.initializeMapAndData();
+            await this.initializeMapAndMarkers();
             
-            // Set ready state
+            // Setup persistence after successful initialization
+            this.setupPersistence();
+            
             this.ready = true;
             return true;
         } catch (error) {
             console.error('Initialization failed:', error);
             return false;
+        } finally {
+            this.initializationInProgress = false;
         }
     },
 
-    async initializeMapAndData() {
+    async initializeMapAndMarkers() {
+        const { config, walks } = await this.loadInitialData();
+        
+        mapboxgl.accessToken = config.mapboxToken;
+        await this.initializeMap();
+        this.setWalks(walks);
+    },
+
+    async loadInitialData() {
         const configElement = document.getElementById('config-data');
         const walksElement = document.getElementById('walks-data');
             
@@ -110,27 +157,19 @@ const walkStore = {
             throw new Error('Required data elements not found');
         }
 
-        let config, initialWalks;
-        
         try {
-            // Get the text content and trim any whitespace
-            const configText = configElement.textContent.trim();
-            const walksText = walksElement.textContent.trim();
+            const config = JSON.parse(configElement.textContent.trim());
+            const walks = JSON.parse(walksElement.textContent.trim());
             
-            config = JSON.parse(configText);
-            initialWalks = JSON.parse(walksText);
+            if (!config.mapboxToken) {
+                throw new Error('Mapbox token not found in configuration');
+            }
+
+            return { config, walks };
         } catch (error) {
             console.error('Error parsing JSON data:', error);
             throw new Error('Failed to parse configuration data');
         }
-
-        if (!config.mapboxToken) {
-            throw new Error('Mapbox token not found in configuration');
-        }
-        
-        mapboxgl.accessToken = config.mapboxToken;
-        await this.initializeMap();
-        this.setWalks(initialWalks);
     },
 
     checkLocalStorage() {
@@ -187,9 +226,94 @@ const walkStore = {
         });
     },
 
-    selectWalk(id) {
+    async selectWalk(id) {
+        // Remove previous LineString if exists
+        this.removeCurrentLineLayer();
+        
         this.selectedWalkId = id;
-        this.updateMarkers();
+        
+        // Highlight selected marker
+        this.updateMarkerStates();
+        
+        if (id) {
+            await this.loadAndDisplayWalkLine(id);
+        }
+    },
+
+    updateMarkerStates() {
+        this.markers.forEach((marker, walkId) => {
+            const element = marker.getElement();
+            if (walkId === this.selectedWalkId) {
+                element.classList.add('marker-selected');
+            } else {
+                element.classList.remove('marker-selected');
+            }
+        });
+    },
+
+    async loadAndDisplayWalkLine(walkId) {
+        try {
+            const response = await fetch(`/api/walks/${walkId}/line/`);
+            if (!response.ok) throw new Error('Failed to fetch walk line');
+            
+            const lineString = await response.json();
+            this.displayWalkLine(lineString);
+        } catch (error) {
+            console.error('Error loading walk line:', error);
+        }
+    },
+
+    displayWalkLine(lineString) {
+        if (!this.map || !lineString) return;
+
+        const layerId = `walk-line-${this.selectedWalkId}`;
+
+        // Add the line layer
+        this.map.addSource(layerId, {
+            'type': 'geojson',
+            'data': lineString
+        });
+
+        this.map.addLayer({
+            'id': layerId,
+            'type': 'line',
+            'source': layerId,
+            'layout': {
+                'line-join': 'round',
+                'line-cap': 'round'
+            },
+            'paint': {
+                'line-color': '#FF4500',
+                'line-width': 3
+            }
+        });
+
+        this.currentLineLayer = layerId;
+
+        // Fit bounds to the line
+        const coordinates = lineString.geometry.coordinates;
+        if (coordinates.length > 0) {
+            const bounds = coordinates.reduce((bounds, coord) => {
+                return bounds.extend(coord);
+            }, new mapboxgl.LngLatBounds(coordinates[0], coordinates[0]));
+
+            this.map.fitBounds(bounds, {
+                padding: 50,
+                maxZoom: 15
+            });
+        }
+    },
+
+    removeCurrentLineLayer() {
+        if (this.currentLineLayer && this.map) {
+            if (this.map.getLayer(this.currentLineLayer)) {
+                this.map.removeLayer(this.currentLineLayer);
+            }
+            if (this.map.getSource(this.currentLineLayer)) {
+                this.map.removeSource(this.currentLineLayer);
+            }
+            this.currentLineLayer = null;
+        }
     },
 
     search(query) {
@@ -203,6 +327,7 @@ const walkStore = {
     },
 
     cleanup() {
+        this.removeCurrentLineLayer();
         if (this.markers) {
             this.markers.forEach(m => m.remove());
             this.markers.clear();
@@ -213,40 +338,56 @@ const walkStore = {
         }
         this.walks = [];
         this.ready = false;
+        this.initializationInProgress = false;
     }
 };
 
 const appStore = {
     initialized: false,
+    initializationPromise: null,
 
     async initialize() {
-        try {
-            this.initialized = false;
-            
-            // Ensure walks store exists
-            if (!Alpine.store('walks')) {
-                throw new Error('Walks store not registered');
-            }
-
-            // Initialize walks store and wait for completion
-            const walksInitialized = await Alpine.store('walks').initialize();
-            if (!walksInitialized) {
-                throw new Error('Walks store initialization failed');
-            }
-
-            this.initialized = true;
-            return true;
-        } catch (error) {
-            console.error('App initialization failed:', error);
-            this.initialized = false;
-            return false;
+        // Return existing initialization promise if in progress
+        if (this.initializationPromise) {
+            return this.initializationPromise;
         }
+
+        this.initializationPromise = (async () => {
+            try {
+                if (this.initialized) return true;
+                this.initialized = false;
+                
+                if (!Alpine.store('walks')) {
+                    throw new Error('Walks store not registered');
+                }
+
+                const walksInitialized = await Alpine.store('walks').initialize();
+                if (!walksInitialized) {
+                    throw new Error('Walks store initialization failed');
+                }
+
+                this.initialized = true;
+                return true;
+            } catch (error) {
+                console.error('App initialization failed:', error);
+                this.initialized = false;
+                return false;
+            } finally {
+                this.initializationPromise = null;
+            }
+        })();
+
+        return this.initializationPromise;
     }
 };
 
 // Define Alpine extension with lifecycle hooks
 const WalkQuestExtension = {
+    initialized: false,
+    
     init() {
+        if (this.initialized) return;
+        
         if (!window.Alpine) {
             console.error('Alpine.js not found');
             return;
@@ -261,6 +402,7 @@ const WalkQuestExtension = {
 
             // Initialize app store with proper timing
             this.initializeAppStore();
+            this.initialized = true;
         } catch (error) {
             console.error('Failed to initialize WalkQuest:', error);
         }
@@ -288,31 +430,88 @@ const WalkQuestExtension = {
             selectedWalk: null,
             isLoading: false,
             filteredWalks: [],
+            initialized: false,
+            initializationError: null,
 
-            init() {
-                // Setup persistence effects
+            async init() {
+                if (this.initialized) return;
+                
+                try {
+                    this.isLoading = true;
+                    
+                    // Load initial data
+                    const config = utils.getJsonData('config-data', {});
+                    const walks = utils.getJsonData('walks-data', []);
+                    const tags = utils.getJsonData('tags-data', []);
+                    
+                    if (!config.mapboxToken) {
+                        throw new Error('Missing Mapbox token in configuration');
+                    }
+
+                    // Initialize stores
+                    await Alpine.store('app').initialize({ config, walks, tags });
+                    
+                    // Setup state management
+                    this.setupStateManagement();
+                    
+                    // Initial data processing
+                    await this.processInitialData(walks);
+                    
+                    this.initialized = true;
+                } catch (error) {
+                    console.error('Failed to initialize walkInterface:', error);
+                    this.initializationError = error.message;
+                } finally {
+                    this.isLoading = false;
+                }
+            },
+
+            setupStateManagement() {
+                // Persistence
                 Alpine.effect(() => {
+                    if (!this.initialized) return;
                     storage.set('showSidebar', this.showSidebar);
                     storage.set('searchQuery', this.searchQuery);
                 });
 
-                // Watch for selected walk changes
+                // Watchers
                 this.$watch('selectedWalk', (walkId) => {
-                    if (walkId !== null) {
+                    if (walkId !== null && this.initialized) {
                         this.$store.walks.selectWalk(walkId);
                         this.centerMapOnWalk(walkId);
                     }
                 });
 
-                // Initial data load
-                this.loadWalks();
+                // Filter effects
+                Alpine.effect(() => {
+                    if (!this.initialized) return;
+                    this.applyFilters();
+                });
             },
 
+            async processInitialData(walks) {
+                this.filteredWalks = walks;
+                
+                // Restore saved state
+                const savedWalkId = storage.get('selectedWalkId');
+                if (savedWalkId && walks.some(w => w.id === savedWalkId)) {
+                    this.selectedWalk = savedWalkId;
+                }
+
+                // Apply any saved filters
+                const savedQuery = storage.get('searchQuery', '');
+                if (savedQuery) {
+                    this.searchQuery = savedQuery;
+                    this.handleSearch();
+                }
+            },
+
+            // Existing methods with error handling added
             async loadWalks() {
-                this.isLoading = true;
                 try {
+                    this.isLoading = true;
                     this.filteredWalks = this.$store.walks.walks;
-                    this.applyFilters();
+                    await this.applyFilters();
                 } catch (error) {
                     console.error('Failed to load walks:', error);
                     this.filteredWalks = [];
@@ -322,18 +521,18 @@ const WalkQuestExtension = {
             },
 
             applyFilters() {
+                if (!this.$store.walks.walks) return;
+                
                 let filtered = this.$store.walks.walks;
 
-                // Apply search query filter
                 if (this.searchQuery) {
                     const query = this.searchQuery.toLowerCase();
                     filtered = filtered.filter(walk => 
                         walk.walk_name.toLowerCase().includes(query) ||
-                        walk.description.toLowerCase().includes(query)
+                        walk.description?.toLowerCase().includes(query)
                     );
                 }
 
-                // Apply active filters if any
                 if (this.$store.walks.filters.activeFilters.length > 0) {
                     filtered = filtered.filter(walk => 
                         this.$store.walks.filters.activeFilters.includes(walk.steepness_level)
@@ -343,33 +542,34 @@ const WalkQuestExtension = {
                 this.filteredWalks = filtered;
             },
 
-            centerMapOnWalk(walkId) {
-                const walk = this.$store.walks.walks.find(w => w.id === walkId);
-                if (walk && this.$store.walks.map) {
-                    this.$store.walks.map.flyTo({
-                        center: [walk.longitude, walk.latitude],
-                        zoom: 14,
-                        essential: true
-                    });
-                }
+            // ...existing helper methods...
+
+            handleError(error) {
+                console.error('Operation failed:', error);
+                this.initializationError = error.message;
+            },
+
+            // Public actions
+            selectWalk(id) {
+                if (!this.initialized) return;
+                this.selectedWalk = id;
             },
 
             toggleSidebar() {
+                if (!this.initialized) return;
                 this.showSidebar = !this.showSidebar;
             },
 
             handleSearch() {
+                if (!this.initialized) return;
                 this.$store.walks.search(this.searchQuery);
                 this.applyFilters();
             },
 
             handleFilterChange(filters) {
+                if (!this.initialized) return;
                 this.$store.walks.setFilters(filters);
                 this.applyFilters();
-            },
-
-            formatDistance(distance) {
-                return utils.formatDistance(distance);
             }
         }));
     }
