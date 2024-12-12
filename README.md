@@ -1,79 +1,142 @@
-# walkquest
+# WalkQuest
 
-Walk in the quest!
+**Walk in the Quest!** 🚶‍♂️🧭
 
 [![Built with Cookiecutter Django](https://img.shields.io/badge/built%20with-Cookiecutter%20Django-ff69b4.svg?logo=cookiecutter)](https://github.com/cookiecutter/cookiecutter-django/)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
-## Settings
+## Overview
 
-Moved to [settings](https://cookiecutter-django.readthedocs.io/en/latest/1-getting-started/settings.html).
+WalkQuest is an **adventure-driven, gamified walking app** designed to immerse users in Cornwall’s rich history, nature, and folklore through thematic walking adventures. Complete curated walks, uncover hidden stories, and earn achievements as you explore.
 
+---
+## Key Features
+
+### 🗺️ Thematic Adventures
+Embark on curated adventures like **"Smuggler's Secrets Coast"**, **"Mining Heritage Trail"**, or **"Celtic Myths & Legends"**, complete with detailed routes, historical highlights, and immersive challenges.
+
+### 🥾 Gamified Exploration
+- **Adventure Levels:** Progress from **Novice Wanderer** to **Master Wayfarer**.
+- **Achievements & Challenges:** Complete paths, unlock secrets, and earn badges.
+
+### 🌿 Nature Meets History
+Discover hidden gems, historic landmarks, and nature trails across Cornwall, from **ancient ruins** to **secluded coves**.
+
+### 🚶 Personalized Walks
+Filter walks by difficulty, duration, features, and more, ensuring the perfect adventure for every explorer.
+
+---
+## Development Guide
+
+### Setting Up Your Environment
+
+#### Install Dependencies
+```bash
+pip install -r requirements/local.txt
+npm install
+```
+
+### Running the Project
+```bash
+python manage.py migrate
+python manage.py runserver
+```
+
+---
 ## Basic Commands
 
-### Setting Up Your Users
+### Create a Superuser
+```bash
+python manage.py createsuperuser
+```
 
-- To create a **normal user account**, just go to Sign Up and fill out the form. Once you submit it, you'll see a "Verify Your E-mail Address" page. Go to your console to see a simulated email verification message. Copy the link into your browser. Now the user's email should be verified and ready to go.
+### Type Checks
+```bash
+mypy walkquest
+```
 
-- To create a **superuser account**, use this command:
+### Test Coverage
+```bash
+pytest
+coverage run -m pytest
+coverage html
+open htmlcov/index.html
+```
 
-      $ python manage.py createsuperuser
+---
+## Development Tools
 
-For convenience, you can keep your normal user logged in on Chrome and your superuser logged in on Firefox (or similar), so that you can see how the site behaves for both kinds of users.
-
-### Type checks
-
-Running type checks with mypy:
-
-    $ mypy walkquest
-
-### Test coverage
-
-To run the tests, check your test coverage, and generate an HTML coverage report:
-
-    $ coverage run -m pytest
-    $ coverage html
-    $ open htmlcov/index.html
-
-#### Running tests with pytest
-
-    $ pytest
-
-### Live reloading and Sass CSS compilation
-
-Moved to [Live reloading and SASS compilation](https://cookiecutter-django.readthedocs.io/en/latest/2-local-development/developing-locally.html#using-webpack-or-gulp).
-
-### Celery
-
-This app comes with Celery.
-
-To run a celery worker:
-
+### Celery Task Queue
+Run Celery workers:
 ```bash
 cd walkquest
 celery -A config.celery_app worker -l info
 ```
-
-Please note: For Celery's import magic to work, it is important _where_ the celery commands are run. If you are in the same folder with _manage.py_, you should be right.
-
-To run [periodic tasks](https://docs.celeryq.dev/en/stable/userguide/periodic-tasks.html), you'll need to start the celery beat scheduler service. You can start it as a standalone process:
-
+Run Celery beat for periodic tasks:
 ```bash
 cd walkquest
 celery -A config.celery_app beat
 ```
 
-or you can embed the beat service inside a worker with the `-B` option (not recommended for production use):
+---
+## Deployment Guide
 
-```bash
-cd walkquest
-celery -A config.celery_app worker -B -l info
-```
+### Deployment on Heroku
+Follow the [Heroku Deployment Guide](https://cookiecutter-django.readthedocs.io/en/latest/3-deployment/deployment-on-heroku.html).
 
-## Deployment
+---
+## Design & User Experience
 
-The following details how to deploy this application.
+### Target Audience
+**Adventurers & Nature Enthusiasts** who enjoy exploring Cornwall’s landscapes, historic landmarks, and hidden trails in a gamified experience.
 
-### Heroku
+### User Stories
+#### Must-Have
+- **Explore Thematic Adventures:** Users can browse and select curated adventures.
+- **Complete Walks:** Users can track their walk progress and achievements.
 
-See detailed [cookiecutter-django Heroku documentation](https://cookiecutter-django.readthedocs.io/en/latest/3-deployment/deployment-on-heroku.html).
+#### Should-Have
+- **Personalized Walk Recommendations:** Suggest walks based on user preferences.
+- **Community Contributions:** Allow user-submitted adventure recommendations.
+
+#### Could-Have
+- **Adventure Challenges:** Time-limited events with exclusive rewards.
+
+---
+## Design Considerations
+
+### Wireframes & Visual Identity
+- **Nature-Inspired UI:** Earthy tones, clean design, and adventure-themed icons.
+- **Accessibility:** WCAG-compliant colors and descriptive alt text.
+
+### Tools Used
+- **GitHub Copilot:** Assisted with Django and JavaScript development.
+- **DALL-E:** Generated illustrative images for thematic adventures.
+
+---
+## Testing & Validation
+
+### Testing Results
+- Device Compatibility: Desktop, tablet, and mobile views tested using Chrome DevTools.
+- Accessibility Checks: Ensured screen reader compatibility and high contrast text.
+
+### Validation
+- **HTML/CSS Validation:** Verified through W3C validators.
+- **Code Quality:** Checked using `ruff`, `pytest`, and `mypy`.
+
+---
+## Future Improvements
+
+### Expansion Ideas
+- **Global Adventures:** Add walks outside Cornwall.
+- **User-Created Content:** Enable custom adventures and reviews.
+- **Enhanced Gamification:** Weekly leaderboards and community challenges.
+
+---
+## Attribution
+- Built with [Cookiecutter Django](https://github.com/cookiecutter/cookiecutter-django/).
+- Icons by [Iconify](https://iconify.design/).
+- Historical references sourced from public archives and local guides.
+
+Explore the Quest. **Walk in the adventure!** 🧭🥾
+
