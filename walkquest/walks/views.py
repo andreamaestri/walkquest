@@ -2,7 +2,8 @@
 WalkQuest Homepage View
 =======================
 
-Django view for the WalkQuest walking routes application, focusing on Cornwall's beautiful paths.
+Django view for the WalkQuest walking routes application,
+focusing on Cornwall's beautiful paths.
 
 Features:
     - Displays available walks with elegant organization
@@ -68,6 +69,8 @@ class WalkQuestConfig:
         },
     }
 
+    REQUEST_LIMIT = 100  # requests per minute
+
     @classmethod
     def get_config(cls):
         """Get consolidated configuration."""
@@ -81,7 +84,8 @@ class WalkQuestConfig:
 
 
 class HomePageView(ListView):
-    """Main view for displaying walking routes with filtering and mapping capabilities."""
+    """Main view for displaying walking routes with filtering
+    and mapping capabilities."""
 
     model = Walk
     template_name = "pages/home.html"
@@ -121,18 +125,17 @@ class HomePageView(ListView):
                 for walk in walks:
                     if isinstance(walk.features, list):
                         for feature in walk.features:
-                            feature_counts[feature] = feature_counts.get(
-                                feature, 0) + 1
+                            feature_counts[feature] = (
+                                feature_counts.get(feature, 0) + 1
+                            )
 
                 stats = {
                     "features": feature_counts,
                 }
 
-                # Cache for 15 minutes
-                cache.set(cache_key, stats, 60 * 15)
-
-            except Exception as e:
-                logger.exception(f"Error calculating statistics: {e}")
+                cache.set(cache_key, stats, 60 * 15)  # Cache for 15 minutes
+            except Exception:
+                logger.exception("Error calculating statistics")
                 stats = {"features": {}}
 
         return stats
@@ -159,8 +162,9 @@ class HomePageView(ListView):
                 "created_at": walk.created_at.isoformat() if walk.created_at else None,
                 # Geometry will be loaded separately when needed
             }
-        except Exception as e:
-            logger.exception(f"Walk serialization error for {walk.id}: {e}")
+        except Exception:
+            logger.exception(
+                "Walk serialization error for walk ID %s", walk.id)
             return {}
 
     def get_initial_walks(self) -> list[dict[str, Any]]:
@@ -173,8 +177,8 @@ class HomePageView(ListView):
                 queryset = self.get_queryset()
                 walks_data = [self.serialize_walk(walk) for walk in queryset]
                 cache.set(cache_key, walks_data, self.cache_timeout)
-            except Exception as e:
-                logger.exception(f"Error retrieving initial walks: {e}")
+            except Exception:
+                logger.exception("Error retrieving initial walks")
                 walks_data = []
 
         return walks_data
@@ -191,11 +195,11 @@ class HomePageView(ListView):
                     "style": WalkQuestConfig.MAP_CONFIG["style"],
                     "defaultCenter": WalkQuestConfig.MAP_CONFIG["defaultCenter"],
                     "defaultZoom": WalkQuestConfig.MAP_CONFIG["defaultZoom"],
-                    "markerColors": dict(WalkQuestConfig.MAP_CONFIG["markerColors"])
+                    "markerColors": dict(WalkQuestConfig.MAP_CONFIG["markerColors"]),
                 },
                 "filters": {
-                    "categories": list(WalkQuestConfig.CATEGORIES)
-                }
+                    "categories": list(WalkQuestConfig.CATEGORIES),
+                },
             }
 
             # Ensure walks data is a clean Python list
@@ -210,27 +214,27 @@ class HomePageView(ListView):
             for tag_type in [WalkFeatureTag, WalkCategoryTag]:
                 tags = (
                     tag_type.objects
-                    .annotate(usage_count=Count('walk_set'))
+                    .annotate(usage_count=Count("walk_set"))
                     .filter(usage_count__gt=0)
-                    .values('name', 'usage_count')
+                    .values("name", "usage_count")
                 )
                 tags_with_counts.extend([
                     {
                         "name": tag["name"],
                         "usage_count": tag["usage_count"],
-                        "type": tag_type.__name__.lower()
+                        "type": tag_type.__name__.lower(),
                     }
                     for tag in tags
                 ])
 
             context["tags_data"] = tags_with_counts
 
-        except Exception as e:
-            logger.exception("Error preparing context data: %s", e)
+        except Exception:
+            logger.exception("Error preparing context data")
             context.update({
                 "config": {},
                 "initial_walks": [],
-                "tags_data": []
+                "tags_data": [],
             })
 
         return context
@@ -242,8 +246,8 @@ class HomePageView(ListView):
             if request.headers.get("HX-Request"):
                 return self._handle_htmx_request(request)
             return super().get(request, *args, **kwargs)
-        except Exception as e:
-            logger.exception(f"Error handling GET request: {e}")
+        except Exception:
+            logger.exception("Error handling GET request")
             return JsonResponse({"error": "Internal Server Error"}, status=500)
 
     def _handle_htmx_request(self, request) -> JsonResponse:
@@ -268,12 +272,10 @@ class HomePageView(ListView):
 
         try:
             request_count = cache.get(rate_key, 0)
-            if request_count > 100:  # 100 requests per minute
+            if request_count > WalkQuestConfig.REQUEST_LIMIT:
                 return False
-
-            cache.set(rate_key, request_count + 1, 60)  # Reset after 1 minute
+            cache.set(rate_key, request_count + 1, 60)
             return True
-
         except Exception:
             logger.exception("Rate limiting error")
             return True  # Allow request if rate limiting fails
@@ -289,12 +291,12 @@ class WalkSearchView(ListView):
         query = request.GET.get("q", "").strip()
         queryset = self.model.objects.none()  # Empty by default
 
-        if (query):
+        if query:
             queryset = (
                 self.model.objects
                 .filter(walk_name__icontains=query)
                 .select_related("adventure")
-                [:20]  # Limit results
+                [:20],  # Limit results
             )
 
         walks = [self.serialize_walk(walk) for walk in queryset]
@@ -382,8 +384,8 @@ class WalkListView(ListView):
 
             return self.render_to_response({"walks": response_data})
 
-        except Exception as e:
-            logger.exception(f"Error in walk list view: {e}")
+        except Exception:
+            logger.exception("Error in walk list view")
             return JsonResponse(
                 {"error": "Unable to load walks"},
                 status=500,
@@ -403,8 +405,9 @@ class WalkListView(ListView):
                 "has_pub": bool(walk.has_pub),
                 "has_cafe": bool(walk.has_cafe),
             }
-        except Exception as e:
-            logger.exception(f"Walk serialization error for {walk.id}: {e}")
+        except Exception:
+            logger.exception(
+                "Walk serialization error for walk ID %s", walk.id)
             return {}
 
 
@@ -420,60 +423,56 @@ def walk_features_autocomplete(request):
 class WalkGeometryView(View):
     """API endpoint for fetching walk geometry data."""
 
-    CONTENT_TYPE="application/geo+json"
-    CACHE_TIMEOUT=60 * 30  # 30 minutes
+    CONTENT_TYPE = "application/geo+json"
+    CACHE_TIMEOUT = 60 * 30  # 30 minutes
 
     @method_decorator(csrf_protect)
     def get(self, request, walk_id):
         """Handle GET request for walk geometry."""
-        cache_key=f"walk_geometry_{walk_id}"
+        cache_key = f"walk_geometry_{walk_id}"
 
         try:
             # Try to get cached geometry
-            geometry_data=cache.get(cache_key)
+            geometry_data = cache.get(cache_key)
 
             if not geometry_data:
-                walk=Walk.objects.get(id=walk_id)
+                walk = Walk.objects.get(id=walk_id)
 
                 if not walk.geometry:
                     return HttpResponse(
                         '{"error": "No geometry data available"}',
                         content_type=self.CONTENT_TYPE,
-                        status=404
+                        status=404,
                     )
 
-                # Create GeoJSON structure
-                geometry_data={
+                geometry_data = {
                     "type": "Feature",
                     "geometry": walk.geometry,
                     "properties": {
                         "walk_id": str(walk.id),
-                        "walk_name": walk.walk_name
-                    }
+                        "walk_name": walk.walk_name,
+                    },
                 }
 
-                # Cache the geometry
                 cache.set(cache_key, geometry_data, self.CACHE_TIMEOUT)
 
             return HttpResponse(
                 json.dumps(geometry_data),
-                content_type=self.CONTENT_TYPE
+                content_type=self.CONTENT_TYPE,
             )
 
         except Walk.DoesNotExist:
             return HttpResponse(
                 '{"error": "Walk not found"}',
                 content_type=self.CONTENT_TYPE,
-                status=404
+                status=404,
             )
-        except Exception as e:
-            logger.exception(
-                f"Error fetching geometry for walk {walk_id}: {e}")
+        except Exception:
+            logger.exception("Error fetching geometry for walk %s", walk_id)
             return HttpResponse(
                 '{"error": "Internal server error"}',
                 content_type=self.CONTENT_TYPE,
-                status=500
+                status=500,
             )
 
-# Add to url patterns in urls.py:
-# path('walks/<uuid:walk_id>/geometry/', views.WalkGeometryView.as_view(), name='walk_geometry'),
+

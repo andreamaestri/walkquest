@@ -356,8 +356,8 @@ STATICFILES_FINDERS = [
 ESM_IMPORTMAP = {
     "imports": {
         "#walkquest/*": "static/js/*",
-        "#components/*": "static/js/components/*"
-    }
+        "#components/*": "static/js/components/*",
+    },
 }
 
 # Maps
