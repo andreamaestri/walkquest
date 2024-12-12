@@ -8,7 +8,7 @@
 ## Overview
 
 WalkQuest is an **adventure-driven, gamified walking app** designed to immerse users in Cornwall’s rich history, nature, and folklore through thematic walking adventures. Complete curated walks, uncover hidden stories, and earn achievements as you explore.
-
+Agile board can be found on notion: https://www.notion.so/walkquest-14b1c34ea4638055afa8ef67df8b5327
 ---
 ## Key Features
 
