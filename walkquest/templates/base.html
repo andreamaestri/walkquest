@@ -30,24 +30,14 @@
     <!-- importmap with Django ESM imports -->
     <script type="module">
         import Alpine from 'alpinejs';
-        import * as htmx from 'htmx.org';
         import WalkQuestExtension from '{% static "js/project.js" %}';
-        import WalkQuestComponents from '{% static "js/alpine-components.js" %}';
 
         window.Alpine = Alpine;
-        window.MapboxMap = {
-            Map: mapboxgl.Map,
-            Popup: mapboxgl.Popup,
-            Marker: mapboxgl.Marker,
-            LngLatBounds: mapboxgl.LngLatBounds
-        };
         
-        document.addEventListener('alpine:init', () => {
+        document.addEventListener('DOMContentLoaded', () => {
             WalkQuestExtension.init();
-            WalkQuestComponents.init();
+            Alpine.start();
         });
-
-        Alpine.start();
     </script>
 
     <!-- Page-specific styles -->

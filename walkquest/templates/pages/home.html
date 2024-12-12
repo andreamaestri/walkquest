@@ -31,157 +31,62 @@
     <div class="h-screen w-screen flex relative overflow-hidden" 
          x-data="walkInterface"
          x-init="init()"
-         x-show="Alpine.store('app').initialized"
          x-cloak>
         
         <!-- Loading State -->
         <div x-show="isLoading" 
-             class="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50"
-             x-transition
-             role="status"
-             aria-live="polite">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"
-                 aria-label="Loading"></div>
+             class="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
         </div>
         
         <!-- Sidebar -->
         <aside class="w-96 h-full flex-shrink-0 z-10 bg-white flex flex-col shadow-md"
                x-show="showSidebar"
-               x-transition
-               role="complementary"
-               aria-label="Walk filters and list">
+               x-transition>
             
             <!-- Toggle sidebar button -->
             <button @click="toggleSidebar()"
-                    class="absolute -right-12 top-4 bg-white p-2 rounded-r shadow-md"
-                    :aria-label="showSidebar ? 'Hide sidebar' : 'Show sidebar'"
-                    :aria-expanded="showSidebar">
+                    class="absolute -right-12 top-4 bg-white p-2 rounded-r shadow-md">
                 <iconify-icon :icon="showSidebar ? 'mdi:chevron-left' : 'mdi:chevron-right'"
-                             class="text-xl"
-                             aria-hidden="true"></iconify-icon>
+                             class="text-xl"></iconify-icon>
             </button>
     
             <!-- Search section -->
             <div class="p-4 border-b">
-                <label for="walk-search" class="sr-only">Search walks</label>
-                <div class="relative">
-                    <input type="text" 
-                           id="walk-search"
-                           x-model="searchQuery"
-                           @input.debounce.300ms="handleSearch()"
-                           class="w-full px-4 py-2 pl-10 border rounded-lg focus:ring-2 focus:ring-primary-500"
-                           placeholder="Search walks..."
-                           aria-label="Search walks">
-                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2" aria-hidden="true">
-                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                    </span>
-                </div>
-            </div>
-    
-            <!-- Filter Sections with persisted selections -->
-            <div class="p-4 border-b overflow-y-auto">
-                <div x-data="categoryCombobox({
-                    options: JSON.parse(document.getElementById('tags-data').textContent).map(tag => ({
-                        value: tag.name,
-                        label: tag.name,
-                        count: tag.usage_count
-                    }))
-                })" class="w-full flex flex-col gap-1" @categories-updated="handleFilterChange($event.detail)">
-                    <label class="w-fit pl-0.5 text-sm text-gray-700 flex items-center justify-between">
-                        Walk Categories
-                        <button type="button" 
-                                @click="clearSelection()"
-                                x-show="selectedOptions.length"
-                                class="text-sm text-primary-500 hover:text-primary-600 ml-2">
-                            Clear all
-                        </button>
-                    </label>
-                    
-                    <!-- Combobox Container -->
-                    <div class="relative"
-                         x-on:keydown.escape.prevent.stop="isOpen = false"
-                         x-on:focusin.window="!$el.contains($event.target) && (isOpen = false)">
-                        <!-- Trigger Button -->
-                        <button type="button" 
-                                class="inline-flex w-full items-center justify-between gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 transition"
-                                @click="isOpen = !isOpen">
-                            <!-- Button Content -->
-                        </button>
-    
-                        <!-- Dropdown -->
-                        <div x-show="isOpen" 
-                             class="absolute mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
-                            <!-- Dropdown Content -->
-                        </div>
-                    </div>
-                </div>
+                <input type="text" 
+                       x-model="searchQuery"
+                       @input.debounce.300ms="handleSearch()"
+                       class="w-full px-4 py-2 border rounded-lg"
+                       placeholder="Search walks...">
             </div>
     
             <!-- Walk List -->
-            <div id="walk-list" 
-                 class="flex-1 overflow-y-auto p-4"
-                 x-ref="walkList"
-                 role="list"
-                 aria-label="Available walks">
-                <template x-for="walk in filteredWalks" :key="walk.id">
-                    <div class="bg-white transition-all duration-200 cursor-pointer p-4 border-b"
-                         @click="selectWalk(walk.id)"
-                         @keydown.enter="selectWalk(walk.id)"
-                         :class="{ 'bg-primary-50 border-l-4 border-primary-500': selectedWalk === walk.id }"
-                         :data-walk-id="walk.id"
-                         tabindex="0"
-                         role="listitem">
-                        <h3 class="font-semibold text-gray-900" x-text="walk.walk_name"></h3>
+            <div class="flex-1 overflow-y-auto p-4">
+                <template x-for="walk in $store.walks.walks" :key="walk.id">
+                    <div class="cursor-pointer p-4 border-b hover:bg-gray-50"
+                         @click="$store.walks.selectWalk(walk.id)"
+                         :class="{ 'bg-primary-50 border-l-4 border-primary-500': $store.walks.selectedWalkId === walk.id }">
+                        <h3 class="font-semibold" x-text="walk.walk_name"></h3>
                         <div class="mt-1 text-sm text-gray-600 flex items-center gap-2">
-                            <span class="distance" x-text="formatDistance(walk.distance)"></span>
-                            <span class="steepness" x-text="walk.steepness_level"></span>
-                        </div>
-                        <div class="mt-2 flex flex-wrap gap-1">
-                            <template x-for="feature in walk.features" :key="feature">
-                                <span class="bg-gray-200 text-gray-800 px-2 py-1 rounded text-xs" x-text="feature"></span>
-                            </template>
+                            <span x-text="`${walk.distance} miles`"></span>
+                            <span x-text="walk.steepness_level"></span>
                         </div>
                         <div class="mt-2 flex gap-2 text-sm text-gray-600">
-                            <span x-show="walk.has_pub">📍 Pub Nearby</span>
-                            <span x-show="walk.has_cafe">☕ Cafe Available</span>
+                            <span x-show="walk.has_pub" class="flex items-center">
+                                <iconify-icon icon="mdi:beer" class="mr-1"></iconify-icon> Pub
+                            </span>
+                            <span x-show="walk.has_cafe" class="flex items-center">
+                                <iconify-icon icon="mdi:coffee" class="mr-1"></iconify-icon> Cafe
+                            </span>
                         </div>
                     </div>
                 </template>
-    
-                <!-- States -->
-                <div x-show="isLoading" 
-                     class="p-4 text-center"
-                     role="status"
-                     aria-live="polite">
-                    <span class="inline-flex items-center">
-                        <svg class="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-                        </svg>
-                        Loading walks...
-                    </span>
-                </div>
-    
-                <div x-show="!isLoading && filteredWalks.length === 0" 
-                     class="p-4 text-center text-gray-500"
-                     role="status"
-                     aria-live="polite">
-                    No walks found matching your criteria
-                </div>
             </div>
         </aside>
     
         <!-- Map container -->
-        <div class="flex-1 relative h-full" 
-             :class="{ 'w-full': !showSidebar }"
-             x-transition>
-            <div id="map" 
-                 x-ref="map"
-                 class="w-full h-full"
-                 role="region"
-                 aria-label="Interactive map of walks"></div>
+        <div class="flex-1 relative h-full">
+            <div id="map" class="absolute inset-0"></div>
         </div>
     </div>
     

@@ -40,6 +40,36 @@
     .message-warning {
         @apply bg-yellow-100 text-yellow-800 border-l-4 border-yellow-500;
     }
+
+    .map-container {
+        @apply w-full h-full absolute inset-0;
+        z-index: 1;
+    }
+
+    .sidebar {
+        @apply fixed top-0 right-0 h-full bg-white shadow-lg z-10 transition-transform duration-300 ease-in-out;
+        width: 400px;
+    }
+
+    .sidebar.hidden {
+        transform: translateX(100%);
+    }
+
+    .sidebar-toggle {
+        @apply fixed top-4 right-4 z-20 bg-white rounded-full p-2 shadow-lg;
+    }
+
+    .mapboxgl-map {
+        @apply w-full h-full absolute;
+    }
+
+    .mapboxgl-marker {
+        @apply cursor-pointer transition-all duration-200;
+    }
+
+    .marker-selected {
+        @apply scale-125;
+    }
 }
 
 /* Theme Configuration */
