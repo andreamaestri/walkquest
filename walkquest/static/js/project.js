@@ -8,13 +8,18 @@ const mapboxgl = window.mapboxgl;
 // Core configuration
 export const CONFIG = {
     map: {
-        style: "mapbox://styles/mapbox/outdoors-v12",
+        style: "mapbox://styles/mapbox/outdoors-v12?optimize=true", // Add style optimization
         defaultCenter: [-4.85, 50.4],
         defaultZoom: 9.5,
         bounds: [[-5.75, 49.95], [-4.15, 50.85]],
         maxBounds: [[-6.5, 49.5], [-3.5, 51.5]],
         minZoom: 8,
-        maxZoom: 16
+        maxZoom: 16,
+        performanceOptions: {
+            maxParallelImageRequests: 3,    // Limit parallel requests
+            fadeDuration: 0,                // Disable fading for better performance
+            crossSourceCollisions: false     // Disable cross-source collision checks
+        }
     }
 };
 
@@ -78,10 +83,8 @@ const walkStore = {
                 throw new Error('Mapbox token not found');
             }
 
-            // Initialize map
+            // Initialize map with optimizations
             mapboxgl.accessToken = config.mapboxToken;
-
-            // Create map instance
             this.map = new mapboxgl.Map({
                 container: 'map',
                 style: CONFIG.map.style,
@@ -89,22 +92,27 @@ const walkStore = {
                 zoom: CONFIG.map.defaultZoom,
                 maxBounds: CONFIG.map.maxBounds,
                 minZoom: CONFIG.map.minZoom,
-                maxZoom: CONFIG.map.maxZoom
+                maxZoom: CONFIG.map.maxZoom,
+                renderWorldCopies: false,           // Disable world copies for better performance
+                preserveDrawingBuffer: false,       // Disable drawing buffer preservation
+                antialias: false,                   // Disable antialiasing for better performance
+                ...CONFIG.map.performanceOptions    // Add performance options
             });
 
-            // Wait for map to load and add controls
-            await new Promise((resolve, reject) => {
-                this.map.on('load', resolve);
-                this.map.on('error', reject);
-                // Force map resize after small delay to ensure container is ready
-                setTimeout(() => this.map.resize(), 100);
+            // Add performance monitoring
+            this.map.on('sourcedata', () => {
+                if (this.map.loaded() && !this._sourcesLoaded) {
+                    this._sourcesLoaded = true;
+                    console.log('Sources loaded in:', performance.now());
+                }
             });
 
-            this.map.addControl(new mapboxgl.NavigationControl(), 'top-left');
-
-            // Initialize walks and markers
+            // Optimize marker creation
+            await new Promise(resolve => this.map.on('load', resolve));
+            
+            // Create markers in batches for better performance
             this.walks = walks;
-            this.createMarkers();
+            await this.createMarkersOptimized();
 
             return true;
         } catch (error) {
@@ -113,24 +121,35 @@ const walkStore = {
         }
     },
 
-    createMarkers() {
-        this.walks.forEach(walk => {
-            const marker = new mapboxgl.Marker()
+    async createMarkersOptimized() {
+        // Create markers in batches of 10
+        const BATCH_SIZE = 10;
+        const walks = [...this.walks];
+
+        while (walks.length > 0) {
+            const batch = walks.splice(0, BATCH_SIZE);
+            
+            batch.forEach(walk => {
+                const marker = new mapboxgl.Marker({
+                    element: this.createMarkerElement(walk),
+                    anchor: 'bottom'
+                })
                 .setLngLat([walk.longitude, walk.latitude])
-                .setPopup(
-                    new mapboxgl.Popup({ offset: 25 })
-                    .setHTML(`
-                        <div class="p-3">
-                            <h3 class="font-semibold">${walk.walk_name}</h3>
-                            <p class="text-sm text-gray-600">${walk.steepness_level} | ${walk.distance} miles</p>
-                        </div>
-                    `)
-                )
                 .addTo(this.map);
 
-            marker.getElement().addEventListener('click', () => this.selectWalk(walk.id));
-            this.markers.set(walk.id, marker);
-        });
+                this.markers.set(walk.id, marker);
+            });
+
+            // Allow browser to render between batches
+            await new Promise(resolve => setTimeout(resolve, 0));
+        }
+    },
+
+    createMarkerElement(walk) {
+        const el = document.createElement('div');
+        el.className = 'marker';
+        el.addEventListener('click', () => this.selectWalk(walk.id));
+        return el;
     },
 
     async selectWalk(id) {
@@ -143,9 +162,7 @@ const walkStore = {
         this.selectedWalkId = id;
 
         // Update marker appearances
-        this.markers.forEach((marker, walkId) => {
-            marker.getElement().classList.toggle('marker-selected', walkId === id);
-        });
+        this.updateMarkers();
 
         if (id) {
             // Load and display walk line
@@ -187,6 +204,12 @@ const walkStore = {
                 console.error('Error loading walk line:', error);
             }
         }
+    },
+
+    updateMarkers() {
+        this.markers.forEach((marker, walkId) => {
+            marker.getElement().classList.toggle('marker-selected', walkId === this.selectedWalkId);
+        });
     }
 };
 

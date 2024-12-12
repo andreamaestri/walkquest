@@ -39,8 +39,8 @@
             <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
         </div>
         
-        <!-- Sidebar -->
-        <aside class="w-96 h-full flex-shrink-0 z-10 bg-white flex flex-col shadow-md"
+        <!-- Sidebar with fixed width -->
+        <aside class="w-96 h-full flex-none bg-white flex flex-col shadow-md"
                x-show="showSidebar"
                x-transition>
             
@@ -84,7 +84,7 @@
             </div>
         </aside>
     
-        <!-- Map container -->
+        <!-- Map container taking remaining space -->
         <div class="flex-1 relative h-full">
             <div id="map" class="absolute inset-0"></div>
         </div>
