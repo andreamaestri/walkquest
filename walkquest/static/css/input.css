@@ -1,0 +1,56 @@
+/* /static/css/input.css */
+
+/* Tailwind base styles */
+@tailwind base;
+
+/* Tailwind component styles */
+@tailwind components;
+
+/* Tailwind utility styles */
+@tailwind utilities;
+
+/* Custom Styles */
+@layer base {
+    body {
+        @apply bg-gray-50;
+    }
+}
+
+@layer components {
+    .nav-link {
+        @apply text-gray-600 hover:text-primary-500 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200;
+    }
+
+    .message {
+        @apply p-4 rounded-lg shadow-lg max-w-md bg-white relative;
+    }
+
+    .message-success {
+        @apply bg-green-100 text-green-800 border-l-4 border-green-500;
+    }
+
+    .message-error {
+        @apply bg-red-100 text-red-800 border-l-4 border-red-500;
+    }
+
+    .message-info {
+        @apply bg-blue-100 text-blue-800 border-l-4 border-blue-500;
+    }
+
+    .message-warning {
+        @apply bg-yellow-100 text-yellow-800 border-l-4 border-yellow-500;
+    }
+}
+
+/* Theme Configuration */
+:root {
+    --primary-50: #f0f9ff;
+    --primary-100: #e0f2fe;
+    --primary-500: #1D4ED8;
+    --primary-600: #0284c7;
+    --primary-700: #0369a1;
+    --secondary-500: #9333EA;
+    --secondary-600: #7e22ce;
+}
+
+/* You can add more custom styles below */

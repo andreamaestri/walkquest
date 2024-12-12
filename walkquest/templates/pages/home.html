@@ -3,12 +3,6 @@
 
 {% block title %}Walks - WalkQuest{% endblock title %}
 
-{% block extra_css %}
-<style type="text/tailwindcss">
-    /* Only essential styles that can't be inlined */
-</style>
-{% endblock extra_css %}
-
 {% block content %}
     <!-- JSON data embedding with safeguards -->
     {% if config %}
@@ -36,7 +30,7 @@
     <!-- Main content with Alpine.js -->
     <div class="h-screen w-screen flex relative overflow-hidden" 
          x-data="walkInterface"
-         x-init="initializeWalkInterface()"
+         x-init="init()"
          x-show="Alpine.store('app').initialized"
          x-cloak>
         
@@ -209,31 +203,3 @@
         </div>
     </template>
 {% endblock content %}
-
-{% block extra_js %}
-<script>
-    function getJsonData(elementId, fallback) {
-        try {
-            const element = document.getElementById(elementId);
-            return element ? JSON.parse(element.textContent) : fallback;
-        } catch (e) {
-            console.error(`Error parsing ${elementId}:`, e);
-            return fallback;
-        }
-    }
-
-    // Alpine.js data initialization
-    document.addEventListener('alpine:init', () => {
-        Alpine.data('walkInterface', () => ({
-            initializeWalkInterface() {
-                const config = getJsonData('config-data', {});
-                const walks = getJsonData('walks-data', []);
-                const tags = getJsonData('tags-data', []);
-                
-                Alpine.store('app').initialize({ config, walks, tags });
-            }
-            // ... rest of walkInterface implementation
-        }));
-    });
-</script>
-{% endblock extra_js %}
