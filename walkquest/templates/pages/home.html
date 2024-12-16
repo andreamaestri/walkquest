@@ -1,29 +1,64 @@
 {% extends "base.html" %}
 {% load static %}
-{% load tetra %}
+{% load i18n %}
+
+{% block title %}{% translate "Walks" %} - {{ block.super }}{% endblock %}
 
 {% block content %}
-<div x-data class="walks-app">
+<div id="walks-app" class="walks-app">
+    <!-- Error Container -->
+    <div id="error-container" class="error-container" style="display: none;"></div>
+
     <!-- Loading indicator -->
-    <div class="loading-indicator hidden" x-show="$store.loading">
+    <div id="loading-indicator" class="loading-indicator hidden">
         <div class="spinner"></div>
     </div>
 
-    <!-- Sidebar -->
-    <aside class="sidebar">
-        <div class="search-box">
-            <input type="text" 
-                   x-model="$store.searchQuery"
-                   @input.debounce.300ms="$store.filterWalks()"
-                   class="search-input" 
-                   placeholder="Search walks...">
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="search-box">
+                <input type="text" 
+                       id="search-input"
+                       class="search-input" 
+                       placeholder="{% translate 'Search walks...' %}">
+            </div>
+
+            <!-- Filters -->
+            <div class="filters">
+                <h4>{% translate "Categories" %}</h4>
+                <div id="category-filters" class="filter-group"></div>
+                
+                <h4>{% translate "Features" %}</h4>
+                <div id="feature-filters" class="filter-group"></div>
+            </div>
+
+            <!-- Walk list -->
+            <div id="walk-list" class="walk-list"></div>
+        </aside>
+
+        <!-- Map container -->
+        <div id="map" class="map-container"></div>
+    </div>
+
+    <!-- Walk Detail Modal -->
+    <div id="walk-modal" class="walk-modal hidden">
+        <div class="walk-modal-content">
+            <span id="close-modal" class="close-button">&times;</span>
+            <div id="walk-details">
+                <!-- Walk details will be populated here -->
+            </div>
         </div>
-
-        <!-- Walk list -->
-        <div class="walk-list" x-ref="walkList"></div>
-    </aside>
-
-    <!-- Map container -->
-    {% component 'walks/map.py' %}
+    </div>
 </div>
+{% endblock %}
+
+{% block extra_javascript %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (!document.getElementById('map')) {
+            console.error('Map container not found');
+        }
+    });
+</script>
 {% endblock %}

@@ -15,21 +15,21 @@ class TagBaseSchema(BaseModel):
     slug: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class WalkFeatureTagSchema(TagBaseSchema):
     class Config:
-        orm_mode = True
+        from_attributes = True
         model = WalkFeatureTag
         model_fields = ['name', 'slug']
 
 class WalkCategoryTagSchema(TagBaseSchema):
     class Config:
-        orm_mode = True
+        from_attributes = True
         model = WalkCategoryTag
         model_fields = ['name', 'slug']
 
-class WalkOutSchema(ModelSchema):
+class WalkOutSchema(BaseModel):
     id: str
     walk_id: str
     walk_name: str
@@ -38,42 +38,40 @@ class WalkOutSchema(ModelSchema):
     longitude: float
     has_pub: bool
     has_cafe: bool
+    is_favorite: bool = False  # Default to False
     features: List[WalkFeatureTagSchema]
     categories: List[WalkCategoryTagSchema]
     related_categories: List[WalkCategoryTagSchema]
 
     class Config:
-        model = Walk
-        model_fields = [
-            'id', 'walk_id', 'walk_name', 'distance',
-            'latitude', 'longitude', 'has_pub', 'has_cafe'
-        ]
-        orm_mode = True
-
-    @staticmethod
-    def resolve_features(obj):
-        return [
-            {"name": feature.name, "slug": feature.slug}
-            for feature in obj.features.all()
-        ]
-
-    @staticmethod
-    def resolve_categories(obj):
-        return [
-            {"name": category.name, "slug": category.slug}
-            for category in obj.categories.all()
-        ]
-
-    @staticmethod
-    def resolve_related_categories(obj):
-        return [
-            {"name": category.name, "slug": category.slug}
-            for category in obj.related_categories.all()
-        ]
-
-    @staticmethod
-    def resolve_id(obj):
-        return str(obj.id)
+        from_attributes = True
+        
+    @classmethod
+    def from_orm(cls, obj):
+        # Handle both model fields and annotated fields
+        return cls(
+            id=str(obj.id),
+            walk_id=obj.walk_id,
+            walk_name=obj.walk_name,
+            distance=float(obj.distance) if obj.distance else None,
+            latitude=float(obj.latitude),
+            longitude=float(obj.longitude),
+            has_pub=bool(obj.has_pub),
+            has_cafe=bool(obj.has_cafe),
+            is_favorite=bool(getattr(obj, 'is_favorite', False)),
+            features=[
+                WalkFeatureTagSchema(name=feature.name, slug=feature.slug)
+                for feature in obj.features.all()
+            ],
+            categories=[
+                WalkCategoryTagSchema(name=category.name, slug=category.slug)
+                for category in obj.categories.all()
+            ],
+            related_categories=[
+                WalkCategoryTagSchema(name=category.name, slug=category.slug)
+                for category in obj.related_categories.all()
+            ]
+        )
 
 class TagSchema(Schema):
     name: str
@@ -87,7 +85,7 @@ class TagResponseSchema(BaseModel):
     type: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class WalkFilterSchema(BaseModel):
     search: Optional[str] = None
@@ -98,7 +96,7 @@ class WalkFilterSchema(BaseModel):
     max_distance: Optional[float] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class WalkGeometrySchema(BaseModel):
     type: str = "Feature"
@@ -106,7 +104,7 @@ class WalkGeometrySchema(BaseModel):
     properties: dict
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class ConfigSchema(Schema):
     mapboxToken: str

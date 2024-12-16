@@ -1,20 +1,44 @@
 <!DOCTYPE html>
 {% load static %}
-{% load tetra %}
+{% load i18n %}
+
 <html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
     <title>{% block title %}WalkQuest{% endblock %}</title>
     
-    <!-- Tetra framework requirements -->
-    {% tetra_styles %}
-    {% tetra_scripts include_alpine=True %}
+    <!-- MapLibre GL JS -->
+    <link href="https://unpkg.com/maplibre-gl@3.3.1/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://unpkg.com/maplibre-gl@3.3.1/dist/maplibre-gl.js"></script>
     
+    <!-- Iconify -->
+    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+    
+    <!-- Core Dependencies - Load these before other scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.13/plugin/relativeTime.js"></script>
+
     <!-- App CSS -->
     <link href="{% static 'css/project.css' %}" rel="stylesheet">
-    
-    {% csrf_token %}
+
+    <!-- Initialize libraries -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if libraries are loaded
+            if (typeof _ === 'undefined') {
+                console.error('Lodash failed to load');
+            }
+            if (typeof dayjs === 'undefined') {
+                console.error('Day.js failed to load');
+            } else {
+                // Initialize Day.js plugins
+                dayjs.extend(window.dayjs_plugin_relativeTime);
+            }
+        });
+    </script>
 </head>
 <body>
     <nav class="main-nav">
@@ -29,10 +53,9 @@
                 <!-- Mobile menu button -->
                 <div class="md:hidden">
                     <button type="button" 
-                            class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
+                            class="mobile-menu-button inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
                             aria-controls="mobile-menu"
-                            aria-expanded="false"
-                            data-action="click->navbar#toggle">
+                            aria-expanded="false">
                         <iconify-icon icon="mdi:menu" class="text-2xl"></iconify-icon>
                     </button>
                 </div>
@@ -74,11 +97,7 @@
         </div>
 
         <!-- Mobile menu -->
-        <div class="md:hidden" 
-             id="mobile-menu" 
-             data-navbar-active-value="false"
-             class="hidden"
-             data-action="click->navbar#close">
+        <div class="md:hidden hidden" id="mobile-menu">
             <div class="px-2 pt-2 pb-3 space-y-1">
                 <a href="{% url 'home' %}" class="nav-link block">
                     <iconify-icon icon="mdi:home" class="mr-1"></iconify-icon>
@@ -118,6 +137,12 @@
         {% block content %}{% endblock %}
     </main>
 
-    {% block inline_javascript %}{% endblock %}
+    {% block javascript %}
+        <!-- App JavaScript - Load these after dependencies -->
+        <script defer src="{% static 'js/services.js' %}" type="module"></script>
+        <script defer src="{% static 'js/project.js' %}" type="module"></script>
+    {% endblock javascript %}
+
+    {% block extra_javascript %}{% endblock %}
 </body>
 </html>

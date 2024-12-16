@@ -1,5 +1,6 @@
 import uuid
 
+from django.contrib.auth import get_user_model
 from django.contrib.gis.db import models
 from django.utils.translation import gettext_lazy as _
 from tagulous.models import TagField
@@ -264,6 +265,12 @@ class Walk(models.Model):
         blank=True,
         help_text=_("Primary categories for this walk")
     )
+    favorites = models.ManyToManyField(
+        get_user_model(),
+        related_name='favorite_walks',
+        blank=True,
+        help_text=_("Users who have favorited this walk")
+    )
     has_stiles = models.BooleanField(default=False)
     has_cafe = models.BooleanField(default=False)
     has_bus_access = models.BooleanField(default=False)
@@ -301,6 +308,12 @@ class Walk(models.Model):
             self.description = "This historic walking route is waiting for its story to be told."
         super().save(*args, **kwargs)
 
+    def is_favorite_of(self, user) -> bool:
+        """Check if walk is favorited by given user"""
+        if not user or not user.is_authenticated:
+            return False
+        return self.favorites.filter(id=user.id).exists()
+
     @property
     def title(self):
         return self.walk_name
@@ -314,3 +327,16 @@ class Walk(models.Model):
 
     def get_categories(self):
         return [category.to_dict() for category in self.categories.all()]
+
+# Optional: Only add this if you need to store additional favorite-related data
+class WalkFavorite(models.Model):
+    user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
+    walk = models.ForeignKey(Walk, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'walk')
+        indexes = [
+            models.Index(fields=['user', 'walk']),
+            models.Index(fields=['created_at']),
+        ]

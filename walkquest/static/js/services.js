@@ -45,8 +45,13 @@ class ApiService {
 
     // API endpoints with proper response handling
     async getWalks(params = {}) {
-        const searchParams = new URLSearchParams(params);
-        const data = await this.fetch(`/walks?${searchParams}`);
+        const queryParams = new URLSearchParams();
+        if (params.search) queryParams.append('search', params.search);
+        if (params.categories?.length) {
+            queryParams.append('categories', params.categories.join(','));
+        }
+        
+        const data = await this.fetch(`/walks?${queryParams}`);
         return {
             walks: data.walks || [],
             total: data.total || 0
@@ -76,7 +81,16 @@ class ApiService {
     }
 
     async getConfig() {
-        return this.fetch('/config');
+        try {
+            const data = await this.fetch('/config');
+            if (!data) {
+                throw new Error('Empty configuration received');
+            }
+            return data;
+        } catch (error) {
+            console.error('Config fetch error:', error);
+            throw error; // Let walkStore handle the fallback
+        }
     }
 
     async toggleFavorite(walkId) {

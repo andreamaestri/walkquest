@@ -1,71 +1,118 @@
-from typing import List, Optional, Dict
+from typing import List
+from typing import Optional
 from uuid import UUID
-from ninja import NinjaAPI, Schema, Router
-from django.shortcuts import get_object_or_404
 from django.conf import settings
-from django.db.models import Count, Prefetch
-from pydantic import BaseModel
 
-from .models import Walk, WalkFeatureTag, WalkCategoryTag
-from .schemas import WalkOutSchema, TagResponseSchema
+from django.db.models import Count
+from django.db.models import Exists
+from django.db.models import OuterRef
+from django.db.models import Value
+from django.http import HttpRequest
+from django.shortcuts import get_object_or_404
+from ninja import NinjaAPI
+from ninja import Router
+from ninja import Schema
 
-# Add new response schemas
-class FavoriteResponse(Schema):
-    status: str
-    is_favorite: bool
-    walk_id: str
-
-class WalkListResponse(Schema):
-    total: int
-    walks: List[WalkOutSchema]
+from .models import Walk
+from .models import WalkCategoryTag
+from .models import WalkFeatureTag
+from .schemas import TagResponseSchema
+from .schemas import WalkOutSchema
+from .schemas import ConfigSchema
 
 api = NinjaAPI(title="WalkQuest API", version="1.0.0", csrf=True)
+router = Router()
 
-# List walks
-@api.get("/walks", response=WalkListResponse)
-def list_walks(request, search: str = None):
-    """Get all walks with optional search"""
-    queryset = Walk.objects.select_related('adventure').prefetch_related(
-        'features',
-        'categories',
-        'related_categories'
-    )
-    if search:
-        queryset = queryset.filter(walk_name__icontains=search)
-    
-    walks = list(queryset)  # Materialize queryset
-    return {
-        "total": len(walks),
-        "walks": walks
-    }
-
-# Get single walk
-@api.get("/walks/{walk_id}", response=WalkOutSchema)
-def get_walk(request, walk_id: UUID):
-    """Get a single walk by ID"""
-    walk = get_object_or_404(
-        Walk.objects.prefetch_related(
+@router.get("/walks", response=List[WalkOutSchema])
+def list_walks(
+    request: HttpRequest,
+    search: Optional[str] = None,
+    categories: Optional[str] = None,  # Changed from List[str] to str
+    features: Optional[str] = None,    # Changed from List[str] to str
+):
+    """List walks with optional filtering"""
+    try:
+        walks = Walk.objects.prefetch_related(
             'features',
             'categories',
             'related_categories'
-        ),
-        id=walk_id
-    )
-    return walk
+        )
+        
+        if search:
+            walks = walks.filter(walk_name__icontains=search)
+        
+        if categories:
+            category_list = [cat.strip() for cat in categories.split(',')]
+            walks = walks.filter(categories__slug__in=category_list)
+        
+        if features:
+            feature_list = [feat.strip() for feat in features.split(',')]
+            walks = walks.filter(features__slug__in=feature_list)
+        
+        if request.user.is_authenticated:
+            walks = walks.annotate(
+                is_favorite=Exists(
+                    Walk.favorites.through.objects.filter(
+                        walk_id=OuterRef('pk'),
+                        user=request.user
+                    )
+                )
+            )
+        else:
+            walks = walks.annotate(
+                is_favorite=Value(False)
+            )
+        
+        # Ensure we're returning a list of serialized walks
+        return [WalkOutSchema.from_orm(walk) for walk in walks]
+    except Exception as e:
+        print(f"Error in list_walks: {e}")  # Debug log
+        return []
 
-# Get walk geometry
-@api.get("/walks/{walk_id}/geometry")
-def get_walk_geometry(request, walk_id: UUID):
+@router.get("/walks/{walk_id}", response=WalkOutSchema)
+def get_walk(request: HttpRequest, walk_id: UUID):
+    """Get a single walk"""
+    walk = Walk.objects.annotate(
+        is_favorite=Exists(
+            Walk.favorites.through.objects.filter(
+                walk_id=OuterRef('pk'),
+                user=request.user
+            )
+        ) if request.user.is_authenticated else Value(False)
+    ).get(id=walk_id)
+
+    # Serialize Walk instance using WalkOutSchema
+    serialized_walk = WalkOutSchema.from_orm(walk)
+    return serialized_walk
+
+@router.get("/walks/{walk_id}/geometry")
+def get_walk_geometry(request: HttpRequest, walk_id: UUID):
     """Get geometry data for a specific walk"""
-    walk = Walk.objects.get(id=walk_id)
-    return {
-        "type": "Feature",
-        "geometry": walk.geometry,
-        "properties": {
-            "walk_id": str(walk.id),
-            "walk_name": walk.walk_name,
+    walk = get_object_or_404(Walk, id=walk_id)
+
+    if not walk.route_geometry:
+        return {
+            "status": "error",
+            "message": "No route geometry available for this walk",
+            "walk_id": str(walk_id)
         }
-    }
+
+    try:
+        return {
+            "type": "Feature",
+            "geometry": walk.route_geometry.geojson,
+            "properties": {
+                "walk_id": str(walk.id),
+                "walk_name": walk.walk_name,
+                "status": "success"
+            }
+        }
+    except AttributeError:
+        return {
+            "status": "error",
+            "message": "Invalid geometry data format",
+            "walk_id": str(walk_id)
+        }
 
 class TagResponseSchema(Schema):
     name: str
@@ -78,7 +125,7 @@ class TagResponseSchema(Schema):
 def list_tags(request):
     """Get all walk tags with usage counts"""
     tags = []
-    
+
     # Get category tags with counts
     category_tags = (
         WalkCategoryTag.objects
@@ -89,117 +136,57 @@ def list_tags(request):
         .filter(usage_count__gt=0)
         .values('name', 'slug', 'usage_count')
     )
-    tags.extend([
-        {
+
+    # Add type field for category tags
+    for tag in category_tags:
+        tags.append({
             "name": tag["name"],
             "slug": tag["slug"],
             "usage_count": tag["usage_count"],
             "type": "category"
-        }
-        for tag in category_tags
-    ])
+        })
 
     # Get feature tags with counts
     feature_tags = (
         WalkFeatureTag.objects
-        .annotate(usage_count=Count('walks', distinct=True))
+        .annotate(
+            usage_count=Count('walks', distinct=True)
+        )
         .filter(usage_count__gt=0)
         .values('name', 'slug', 'usage_count')
     )
-    tags.extend([
-        {
+
+    # Add type field for feature tags
+    for tag in feature_tags:
+        tags.append({
             "name": tag["name"],
             "slug": tag["slug"],
             "usage_count": tag["usage_count"],
             "type": "feature"
-        }
-        for tag in feature_tags
-    ])
+        })
 
     return tags
 
-class MapConfigSchema(BaseModel):
-    style: str
-    defaultCenter: List[float]
-    defaultZoom: float
-    markerColors: Dict[str, str]
-
-class ConfigSchema(BaseModel):
-    map: MapConfigSchema
-    mapboxToken: str
-
-# Get application config
-@api.get("/config", response=ConfigSchema)
+@router.get("/config", response=ConfigSchema)
 def get_config(request):
     """Get application configuration"""
     return {
         "mapboxToken": settings.MAPBOX_TOKEN,
         "map": {
-            "style": "mapbox://styles/mapbox/outdoors-v12?optimize=true",
-            "defaultCenter": [-4.85, 50.4],
+            "style": "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json",
+            "defaultCenter": [-4.85, 50.4],  # Cornwall's approximate center
             "defaultZoom": 9.5,
             "markerColors": {
                 "default": "#FF0000",    # Red markers
-                "selected": "#00FF00"    # Green markers for selected
+                "selected": "#00FF00",    # Green markers for selected
+                "favorite": "#FFD700"     # Gold for favorites
             }
+        },
+        "filters": {
+            "categories": True,
+            "features": True,
+            "distance": True
         }
     }
 
-# Toggle favorite status
-@api.post("/walks/{walk_id}/favorite", response=FavoriteResponse)
-def toggle_favorite(request, walk_id: UUID):
-    """Toggle favorite status for a walk"""
-    if not request.user.is_authenticated:
-        return {"status": "error", "message": "Authentication required"}
-    
-    walk = get_object_or_404(Walk, id=walk_id)
-    is_favorite = request.user.favorite_walks.filter(id=walk_id).exists()
-    
-    if is_favorite:
-        request.user.favorite_walks.remove(walk)
-        status = "unfavorited"
-    else:
-        request.user.favorite_walks.add(walk)
-        status = "favorited"
-    
-    return {
-        "status": status,
-        "is_favorite": not is_favorite,
-        "walk_id": str(walk_id)
-    }
-
-# Filter walks by categories
-@api.post("/walks/filter", response=List[WalkOutSchema])
-def filter_walks(request, categories: List[str]):
-    """Filter walks by categories"""
-    queryset = Walk.objects.prefetch_related(
-        'features',
-        'categories',
-        'related_categories'
-    ).filter(related_categories__name__in=categories).distinct()
-    return queryset
-
-def _serialize_walk(walk: Walk) -> dict:
-    """Helper function to serialize a walk instance"""
-    return {
-        "id": str(walk.id),
-        "walk_id": walk.walk_id,
-        "walk_name": walk.walk_name,
-        "distance": float(walk.distance) if walk.distance else None,
-        "latitude": float(walk.latitude),
-        "longitude": float(walk.longitude),
-        "has_pub": bool(walk.has_pub),
-        "has_cafe": bool(walk.has_cafe),
-        "features": [
-            {"name": feature.name, "slug": feature.slug}
-            for feature in walk.features.all()
-        ],
-        "categories": [
-            {"name": category.name, "slug": category.slug}
-            for category in walk.categories.all()
-        ],
-        "related_categories": [
-            {"name": category.name, "slug": category.slug}
-            for category in walk.related_categories.all()
-        ]
-    }
+api.add_router("/", router)
