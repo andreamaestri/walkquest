@@ -160,32 +160,32 @@ const walkStore = {
             }
 
             // Rest of data fetching
-            const [tags, walksResponse] = await Promise.all([
+            const [tags, walksData] = await Promise.all([
                 api.getTags(),
                 api.getWalks()
             ]);
 
-            console.log('Raw walks data:', walksResponse); // Debug log
+            console.log('Raw walks response:', walksData); // Debug log
 
             this.features = tags.filter(tag => tag.type === 'feature');
             this.categories = tags.filter(tag => tag.type === 'category');
             
             // Handle both array and object responses
-            const walks = Array.isArray(walksResponse.walks) ? walksResponse.walks : [];
+            const walks = walksData.walks || [];
             
             if (!Array.isArray(walks)) {
-                console.error('Invalid walks data format:', walks);
+                console.error('Invalid walks array format:', walks);
                 throw new Error('Invalid walks data format received');
             }
 
             this.walks = walks;
-            console.log('Processed walks:', this.walks);
+            console.log('Processed walks:', this.walks, 'Total:', walksData.total); // Debug log
             
             if (this.walks.length > 0) {
                 await this.updateMarkers(this.walks);
                 this.renderWalkList();
             } else {
-                console.warn('No walks data received');
+                console.warn('No walks received from API');
             }
         } catch (error) {
             console.error('Initialization error:', error);
@@ -199,16 +199,15 @@ const walkStore = {
         this.isLoading = true;
         this.error = null;
         try {
-            const response = await api.filterWalks({
+            const filterResponse = await api.filterWalks({
                 search: this.filters.search,
                 categories: this.filters.categories,
                 features: this.filters.features
             });
 
-            console.log('Filter API response:', response); // Debug log
+            console.log('Filter response:', filterResponse); // Debug log
 
-            // Handle both array and object responses
-            const walks = Array.isArray(response.walks) ? response.walks : [];
+            const walks = filterResponse.walks || [];
             
             if (!Array.isArray(walks)) {
                 console.error('Invalid filtered walks format:', walks);
@@ -216,7 +215,7 @@ const walkStore = {
             }
 
             this.walks = walks;
-            console.log('Updated walks list:', this.walks);
+            console.log('Updated walks list:', this.walks, 'Total:', filterResponse.total); // Debug log
             
             await this.updateMarkers(this.walks);
             this.renderWalkList();

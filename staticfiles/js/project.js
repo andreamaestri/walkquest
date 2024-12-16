@@ -160,18 +160,18 @@ const walkStore = {
             }
 
             // Rest of data fetching
-            const [tags, walksData] = await Promise.all([
+            const [tags, walksResponse] = await Promise.all([
                 api.getTags(),
                 api.getWalks()
             ]);
 
-            console.log('Raw walks data:', walksData); // Debug log
+            console.log('Raw walks data:', walksResponse); // Debug log
 
             this.features = tags.filter(tag => tag.type === 'feature');
             this.categories = tags.filter(tag => tag.type === 'category');
             
             // Handle both array and object responses
-            const walks = Array.isArray(walksData) ? walksData : walksData.walks || [];
+            const walks = Array.isArray(walksResponse.walks) ? walksResponse.walks : [];
             
             if (!Array.isArray(walks)) {
                 console.error('Invalid walks data format:', walks);
@@ -208,7 +208,7 @@ const walkStore = {
             console.log('Filter API response:', response); // Debug log
 
             // Handle both array and object responses
-            const walks = Array.isArray(response) ? response : response.walks || [];
+            const walks = Array.isArray(response.walks) ? response.walks : [];
             
             if (!Array.isArray(walks)) {
                 console.error('Invalid filtered walks format:', walks);

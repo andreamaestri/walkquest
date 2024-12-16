@@ -5,11 +5,21 @@ class ApiService {
     }
 
     async fetch(endpoint, options = {}) {
+        // Conditionally set headers based on the request method
+        const defaultHeaders = {
+            'Accept': 'application/json'
+        };
+
+        // If the method is not GET, include Content-Type and X-CSRFToken
+        if (options.method && options.method.toUpperCase() !== 'GET') {
+            defaultHeaders['Content-Type'] = 'application/json';
+            defaultHeaders['X-CSRFToken'] = this.csrfToken;
+        }
+
         const defaultOptions = {
             headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': this.csrfToken,
-                'Accept': 'application/json'
+                ...defaultHeaders,
+                ...options.headers
             },
             credentials: 'same-origin' // Include cookies for authentication
         };
@@ -18,11 +28,7 @@ class ApiService {
             const url = `${this.baseUrl}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
             const response = await fetch(url, {
                 ...defaultOptions,
-                ...options,
-                headers: {
-                    ...defaultOptions.headers,
-                    ...options.headers
-                }
+                ...options
             });
 
             if (!response.ok) {
