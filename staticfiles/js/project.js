@@ -1,377 +1,218 @@
-/**
- * Main WalkQuest application logic
- * This is the sole location for walkInterface component registration
- * CategoryCombobox is registered in alpine-components.js
- */
-const mapboxgl = window.mapboxgl;
+import { api } from './services.js';
+import { getCategoryEmoji, getCategoryColor } from './alpine-components.js';
 
-// Core configuration
-export const CONFIG = {
-    map: {
-        style: "mapbox://styles/mapbox/outdoors-v12?optimize=true", // Add style optimization
-        defaultCenter: [-4.85, 50.4],
-        defaultZoom: 9.5,
-        bounds: [[-5.75, 49.95], [-4.15, 50.85]],
-        maxBounds: [[-6.5, 49.5], [-3.5, 51.5]],
-        minZoom: 8,
-        maxZoom: 16,
-        performanceOptions: {
-            maxParallelImageRequests: 3,    // Limit parallel requests
-            fadeDuration: 0,                // Disable fading for better performance
-            crossSourceCollisions: false     // Disable cross-source collision checks
-        }
-    }
-};
+// Initialize Stimulus.js
+import { Application } from '@hotwired/stimulus';
+import WalkInterfaceController from './controllers/walk_interface_controller.js';
+import NavbarController from './controllers/navbar_controller.js';
+import LoadingController from './controllers/loading_controller.js';
+import ErrorController from './controllers/error_controller.js';
+
+const application = Application.start();
+application.register('walk-interface', WalkInterfaceController);
+application.register('navbar', NavbarController);
+application.register('loading', LoadingController);
+application.register('error', ErrorController);
 
 // Utility functions
 const utils = {
-    formatDistance: d => d ? `${Number(d).toFixed(1)} miles` : "Distance unknown",
-    
-    createMarkerPopup: (walk) => `
-        <div class="p-3">
-            <h3 class="font-semibold">${walk.walk_name}</h3>
-            <p class="text-sm text-gray-600">${walk.steepness_level} | ${walk.distance} miles</p>
-        </div>
-    `,
-
-    getJsonData(elementId, fallback) {
-        try {
-            const element = document.getElementById(elementId);
-            return element ? JSON.parse(element.textContent.trim()) : fallback;
-        } catch (e) {
-            console.error(`Error parsing ${elementId}:`, e);
-            return fallback;
-        }
-    }
+    formatDistance: (distance) => `${(distance / 1000).toFixed(1)}km`,
 };
 
-// Add localStorage utility functions
-const storage = {
-    get: (key, defaultValue = null) => {
-        try {
-            const item = localStorage.getItem(key);
-            return item ? JSON.parse(item) : defaultValue;
-        } catch (e) {
-            console.error('Error reading from localStorage:', e);
-            return defaultValue;
-        }
-    },
-    set: (key, value) => {
-        try {
-            localStorage.setItem(key, JSON.stringify(value));
-        } catch (e) {
-            console.error('Error writing to localStorage:', e);
-        }
-    }
-};
-
-// Simple store implementation
+// Define walkStore and make it globally available
 const walkStore = {
     map: null,
+    markers: new Map(),
+    currentRoute: null,
+    config: null,
+    isInitialized: false,
+    isLoading: true,
+    error: null,
+    tags: [],
     walks: [],
     selectedWalkId: null,
-    currentLineLayer: null,
+    selectedWalk: null,
+    filters: {
+        search: '',
+        categories: [],
+        features: []
+    },
+    initializationAttempts: 0,
+    maxInitAttempts: 3,
 
-    async initialize() {
+    async initialize(config) {
+        this.config = config;
+        
         try {
-            const config = utils.getJsonData('config-data', {});
-            const walks = utils.getJsonData('walks-data', []);
-
-            if (!config.mapboxToken) throw new Error('Mapbox token not found');
-
-            mapboxgl.accessToken = config.mapboxToken;
             this.map = new mapboxgl.Map({
                 container: 'map',
-                style: CONFIG.map.style,
-                center: CONFIG.map.defaultCenter,
-                zoom: CONFIG.map.defaultZoom,
-                maxBounds: CONFIG.map.maxBounds,
-                minZoom: CONFIG.map.minZoom,
-                maxZoom: CONFIG.map.maxZoom,
-                renderWorldCopies: false,
-                preserveDrawingBuffer: false,
-                antialias: false,
-                ...CONFIG.map.performanceOptions
+                style: config.map.style,
+                center: config.map.defaultCenter,
+                zoom: config.map.defaultZoom
             });
 
-            // Wait for map and style to load
+            // Add navigation controls
+            this.map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+            
+            // Wait for map to load
             await new Promise(resolve => this.map.on('load', resolve));
-
-            // Load custom marker image
-            await this.loadMarkerImage();
-
-            // Initialize walks data
-            this.walks = walks;
-            this.initializeWalkLayers();
-
-            // Add click handler for markers
-            this.map.on('click', 'walk-points', (e) => {
-                if (e.features.length > 0) {
-                    this.selectWalk(e.features[0].properties.id);
-                }
-            });
-
-            // Change cursor on marker hover
-            this.map.on('mouseenter', 'walk-points', () => {
-                this.map.getCanvas().style.cursor = 'pointer';
-            });
-            this.map.on('mouseleave', 'walk-points', () => {
-                this.map.getCanvas().style.cursor = '';
-            });
-
+            
+            this.isInitialized = true;
+            this.isLoading = false;
+            
             return true;
         } catch (error) {
             console.error('Map initialization failed:', error);
-            throw error;
+            this.error = 'Map initialization failed';
+            this.isLoading = false;
+            return false;
         }
     },
 
-    async loadMarkerImage() {
-        return new Promise((resolve, reject) => {
-            this.map.loadImage(
-                'https://docs.mapbox.com/mapbox-gl-js/assets/custom_marker.png',
-                (error, image) => {
-                    if (error) reject(error);
-                    this.map.addImage('walk-marker', image);
-                    resolve();
-                }
-            );
+    async fetchInitialData() {
+        try {
+            this.config = await api.getConfig();
+            if (!this.config) throw new Error('Failed to load configuration');
+
+            const mapInit = await this.initialize(this.config);
+            if (!mapInit) throw new Error('Map initialization failed');
+
+            this.tags = await api.getTags();
+            const walksData = await api.getWalks();
+            this.walks = walksData.walks || [];
+            this.updateMarkers(this.walks);
+        } catch (error) {
+            console.error('Initialization error:', error);
+            this.error = error.message;
+        }
+    },
+
+    displayWalkGeometry(geometry) {
+        if (!this.map) return;
+
+        // Remove existing route
+        if (this.currentRoute) {
+            this.map.removeLayer(this.currentRoute);
+            this.map.removeSource(this.currentRoute);
+        }
+
+        // Add new route
+        const sourceId = `route-${geometry.properties.walk_id}`;
+        const layerId = `route-layer-${geometry.properties.walk_id}`;
+
+        this.map.addSource(sourceId, {
+            type: 'geojson',
+            data: geometry
+        });
+
+        this.map.addLayer({
+            id: layerId,
+            type: 'line',
+            source: sourceId,
+            layout: {
+                'line-join': 'round',
+                'line-cap': 'round'
+            },
+            paint: {
+                'line-color': this.config.map.markerColors.selected,
+                'line-width': 4
+            }
+        });
+
+        // Fit bounds to show full route
+        const bounds = new mapboxgl.LngLatBounds();
+        geometry.geometry.coordinates.forEach(coord => bounds.extend(coord));
+        this.map.fitBounds(bounds, { padding: 50 });
+
+        this.currentRoute = layerId;
+    },
+
+    updateMarkers(walks) {
+        if (!this.map) return;
+
+        // Remove existing markers
+        this.markers.forEach(marker => marker.remove());
+        this.markers.clear();
+
+        // Add new markers
+        walks.forEach(walk => {
+            const markerColor = this.config?.map?.markerColors?.default || '#FF0000';  // Fallback to red
+            const marker = new mapboxgl.Marker({
+                color: markerColor
+            })
+                .setLngLat([walk.longitude, walk.latitude])
+                .addTo(this.map);
+            
+            this.markers.set(walk.id, marker);
         });
     },
 
-    initializeWalkLayers() {
-        // Convert walks to GeoJSON
-        const geojson = {
-            type: 'FeatureCollection',
-            features: this.walks.map(walk => ({
-                type: 'Feature',
-                geometry: {
-                    type: 'Point',
-                    coordinates: [walk.longitude, walk.latitude]
-                },
-                properties: {
-                    id: walk.id,
-                    title: walk.walk_name,
-                    distance: walk.distance,
-                    steepness: walk.steepness_level,
-                    selected: false
-                }
-            }))
-        };
+    async search(query) {
+        this.filters.search = query;
+        await this.applyFilters();
+    },
 
-        // Add walks source
-        this.map.addSource('walks', {
-            type: 'geojson',
-            data: geojson
-        });
+    async filterByCategory(categories) {
+        this.filters.categories = categories;
+        await this.applyFilters();
+    },
 
-        // Add symbol layer for walk points
-        this.map.addLayer({
-            id: 'walk-points',
-            type: 'symbol',
-            source: 'walks',
-            layout: {
-                'icon-image': 'walk-marker',
-                'icon-size': [
-                    'case',
-                    ['get', 'selected'], 1.25,
-                    1
-                ],
-                'icon-allow-overlap': true,
-                'text-field': ['get', 'title'],
-                'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
-                'text-offset': [0, 1.25],
-                'text-anchor': 'top',
-                'text-optional': true
-            },
-            paint: {
-                'text-color': '#1D4ED8',
-                'text-halo-color': '#ffffff',
-                'text-halo-width': 1
+    async filterByFeature(features) {
+        this.filters.features = features;
+        await this.applyFilters();
+    },
+
+    async applyFilters() {
+        this.isLoading = true;
+        try {
+            const response = await api.getWalks(this.filters);
+            this.walks = response.walks || [];
+            this.updateMarkers(this.walks);
+        } catch (error) {
+            console.error('Filter application failed:', error);
+            this.error = 'Filter application failed';
+        } finally {
+            this.isLoading = false;
+        }
+    },
+
+    async toggleFavorite(walkId) {
+        try {
+            const result = await api.toggleFavorite(walkId);
+            const walk = this.walks.find(w => w.id === result.walk_id);
+            if (walk) {
+                walk.is_favorite = result.is_favorite;
             }
-        });
+        } catch (error) {
+            console.error('Toggle favorite failed:', error);
+            this.error = 'Failed to toggle favorite';
+        }
     },
 
     async selectWalk(id) {
-        // Update selected state in source data
-        const source = this.map.getSource('walks');
-        if (source) {
-            const data = source._data;
-            data.features.forEach(f => {
-                f.properties.selected = f.properties.id === id;
-            });
-            source.setData(data);
-        }
-
+        if (id === this.selectedWalkId) return;
+        
         this.selectedWalkId = id;
-
-        // Handle walk line display
-        if (this.currentLineLayer) {
-            this.map.removeLayer(this.currentLineLayer);
-            this.map.removeSource(this.currentLineLayer);
-        }
-
         if (id) {
             try {
-                const response = await fetch(`/api/walks/${id}/line/`);
-                const lineString = await response.json();
+                const [walk, geometry] = await Promise.all([
+                    api.getWalk(id),
+                    api.getWalkGeometry(id)
+                ]);
                 
-                const layerId = `walk-line-${id}`;
-                this.map.addSource(layerId, {
-                    type: 'geojson',
-                    data: lineString
-                });
-
-                this.map.addLayer({
-                    id: layerId,
-                    type: 'line',
-                    source: layerId,
-                    layout: {
-                        'line-join': 'round',
-                        'line-cap': 'round'
-                    },
-                    paint: {
-                        'line-color': '#FF4500',
-                        'line-width': 3
-                    }
-                });
-
-                this.currentLineLayer = layerId;
-
-                // Fit bounds to selected walk
-                const coordinates = lineString.geometry.coordinates;
-                const bounds = coordinates.reduce(
-                    (bounds, coord) => bounds.extend(coord),
-                    new mapboxgl.LngLatBounds(coordinates[0], coordinates[0])
-                );
-
-                this.map.fitBounds(bounds, { padding: 50, maxZoom: 15 });
+                this.selectedWalk = walk;
+                this.displayWalkGeometry(geometry);
             } catch (error) {
-                console.error('Error loading walk line:', error);
+                console.error('Failed to load walk details:', error);
+                this.selectedWalk = null;
+                this.error = 'Failed to load walk details';
             }
+        } else {
+            this.selectedWalk = null;
         }
     }
 };
 
-// Simple Alpine extension
-const WalkQuestExtension = {
-    init() {
-        if (!window.Alpine) return;
+window.walkStore = walkStore;
 
-        // Register app store
-        Alpine.store('app', {
-            initialized: false,
-            initialize() {
-                this.initialized = true;
-            }
-        });
-
-        // Register walks store with simplified structure
-        Alpine.store('walks', {
-            map: null,
-            walks: [],
-            markers: new Map(),
-            selectedWalkId: null,
-            isLoading: false,
-
-            async initialize() {
-                this.isLoading = true;
-                try {
-                    const config = document.getElementById('config-data');
-                    const walks = document.getElementById('walks-data');
-                    
-                    if (!config || !walks) return false;
-
-                    const configData = JSON.parse(config.textContent);
-                    const walksData = JSON.parse(walks.textContent);
-
-                    // Initialize map
-                    mapboxgl.accessToken = configData.mapboxToken;
-                    this.map = new mapboxgl.Map({
-                        container: 'map',
-                        style: CONFIG.map.style,
-                        center: CONFIG.map.defaultCenter,
-                        zoom: CONFIG.map.defaultZoom
-                    });
-
-                    this.map.addControl(new mapboxgl.NavigationControl());
-                    this.walks = walksData;
-                    this.createMarkers();
-                    return true;
-                } catch (error) {
-                    console.error('Map initialization failed:', error);
-                    return false;
-                } finally {
-                    this.isLoading = false;
-                }
-            },
-
-            createMarkers() {
-                this.walks.forEach(walk => {
-                    const marker = new mapboxgl.Marker()
-                        .setLngLat([walk.longitude, walk.latitude])
-                        .setPopup(
-                            new mapboxgl.Popup({ offset: 25 })
-                            .setHTML(utils.createMarkerPopup(walk))
-                        )
-                        .addTo(this.map);
-
-                    marker.getElement().addEventListener('click', () => this.selectWalk(walk.id));
-                    this.markers.set(walk.id, marker);
-                });
-            },
-
-            selectWalk(id) {
-                // Clear previous selection
-                if (this.selectedWalkId) {
-                    const prevMarker = this.markers.get(this.selectedWalkId);
-                    if (prevMarker) {
-                        prevMarker.getElement().classList.remove('marker-selected');
-                    }
-                }
-
-                this.selectedWalkId = id;
-                const marker = this.markers.get(id);
-                
-                if (marker) {
-                    marker.getElement().classList.add('marker-selected');
-                    
-                    // Center map on selected marker
-                    this.map.flyTo({
-                        center: marker.getLngLat(),
-                        zoom: 14,
-                        duration: 1000
-                    });
-
-                    marker.togglePopup();
-                }
-            },
-
-            getSelectedWalk() {
-                return this.walks.find(w => w.id === this.selectedWalkId);
-            }
-        });
-
-        // Simplified walkInterface component
-        Alpine.data('walkInterface', () => ({
-            showSidebar: true,
-
-            init() {
-                Alpine.store('app').initialize();
-                Alpine.store('walks').initialize();
-            },
-
-            toggleSidebar() {
-                this.showSidebar = !this.showSidebar;
-                // Trigger map resize when sidebar toggle changes
-                setTimeout(() => {
-                    if (Alpine.store('walks').map) {
-                        Alpine.store('walks').map.resize();
-                    }
-                }, 300);
-            }
-        }));
-    }
-};
-
-export default WalkQuestExtension;
+export { walkStore };

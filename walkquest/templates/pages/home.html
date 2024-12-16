@@ -1,110 +1,29 @@
 {% extends "base.html" %}
 {% load static %}
-
-{% block title %}Walks - WalkQuest{% endblock title %}
+{% load tetra %}
 
 {% block content %}
-    <!-- JSON data embedding with safeguards -->
-    {% if config %}
-        {{ config|json_script:"config-data" }}
-    {% else %}
-        <script id="config-data" type="application/json">{}</script>
-    {% endif %}
-    {% if initial_walks %}
-        {{ initial_walks|json_script:"walks-data" }}
-    {% else %}
-        <script id="walks-data" type="application/json">[]</script>
-    {% endif %}
-    {% if tags_data %}
-        {{ tags_data|json_script:"tags-data" }}
-    {% else %}
-        <script id="tags-data" type="application/json">[]</script>
-    {% endif %}
-    
-    <!-- Error container -->
-    <div id="error-container" 
-         class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4" 
-         role="alert"
-         aria-live="polite"></div>
-    
-    <!-- Main content with Alpine.js -->
-    <div class="h-screen w-screen flex relative overflow-hidden" 
-         x-data="walkInterface"
-         x-init="init()"
-         x-cloak>
-        
-        <!-- Loading State -->
-        <div x-show="isLoading" 
-             class="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
-        </div>
-        
-        <!-- Sidebar with fixed width -->
-        <aside class="w-96 h-full flex-none bg-white flex flex-col shadow-md"
-               x-show="showSidebar"
-               x-transition>
-            
-            <!-- Toggle sidebar button -->
-            <button @click="toggleSidebar()"
-                    class="absolute -right-12 top-4 bg-white p-2 rounded-r shadow-md">
-                <iconify-icon :icon="showSidebar ? 'mdi:chevron-left' : 'mdi:chevron-right'"
-                             class="text-xl"></iconify-icon>
-            </button>
-    
-            <!-- Search section -->
-            <div class="p-4 border-b">
-                <input type="text" 
-                       x-model="searchQuery"
-                       @input.debounce.300ms="handleSearch()"
-                       class="w-full px-4 py-2 border rounded-lg"
-                       placeholder="Search walks...">
-            </div>
-    
-            <!-- Walk List -->
-            <div class="flex-1 overflow-y-auto p-4">
-                <template x-for="walk in $store.walks.walks" :key="walk.id">
-                    <div class="cursor-pointer p-4 border-b hover:bg-gray-50"
-                         @click="$store.walks.selectWalk(walk.id)"
-                         :class="{ 'bg-primary-50 border-l-4 border-primary-500': $store.walks.selectedWalkId === walk.id }">
-                        <h3 class="font-semibold" x-text="walk.walk_name"></h3>
-                        <div class="mt-1 text-sm text-gray-600 flex items-center gap-2">
-                            <span x-text="`${walk.distance} miles`"></span>
-                            <span x-text="walk.steepness_level"></span>
-                        </div>
-                        <div class="mt-2 flex gap-2 text-sm text-gray-600">
-                            <span x-show="walk.has_pub" class="flex items-center">
-                                <iconify-icon icon="mdi:beer" class="mr-1"></iconify-icon> Pub
-                            </span>
-                            <span x-show="walk.has_cafe" class="flex items-center">
-                                <iconify-icon icon="mdi:coffee" class="mr-1"></iconify-icon> Cafe
-                            </span>
-                        </div>
-                    </div>
-                </template>
-            </div>
-        </aside>
-    
-        <!-- Map container taking remaining space -->
-        <div class="flex-1 relative h-full">
-            <div id="map" class="absolute inset-0"></div>
-        </div>
+<div x-data class="walks-app">
+    <!-- Loading indicator -->
+    <div class="loading-indicator hidden" x-show="$store.loading">
+        <div class="spinner"></div>
     </div>
-    
-    <!-- No Results Message -->
-    <div id="no-results" class="hidden p-4 text-center text-gray-500">
-        No walks found matching your criteria
-    </div>
-    
-    <!-- Add walk card template -->
-    <template id="walk-card-template">
-        <div class="bg-white transition-all duration-200 cursor-pointer p-4 border-b" data-walk-id="">
-            <h3 class="font-semibold text-gray-900"></h3>
-            <div class="mt-1 text-sm text-gray-600">
-                <span class="distance"></span>
-            </div>
-            <div class="mt-2 flex flex-wrap gap-1 tags">
-                <!-- Tags will be inserted here -->
-            </div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="search-box">
+            <input type="text" 
+                   x-model="$store.searchQuery"
+                   @input.debounce.300ms="$store.filterWalks()"
+                   class="search-input" 
+                   placeholder="Search walks...">
         </div>
-    </template>
-{% endblock content %}
+
+        <!-- Walk list -->
+        <div class="walk-list" x-ref="walkList"></div>
+    </aside>
+
+    <!-- Map container -->
+    {% component 'walks/map.py' %}
+</div>
+{% endblock %}

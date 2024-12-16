@@ -1,235 +1,123 @@
 <!DOCTYPE html>
 {% load static %}
-{% load i18n %}
-{% load compress %}
-{% load esm %}
-{% get_current_language as LANGUAGE_CODE %}
-<html lang="{{ LANGUAGE_CODE }}">
+{% load tetra %}
+<html lang="en">
 <head>
     <meta charset="utf-8">
-    <meta http-equiv="x-ua-compatible" content="ie=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="WalkQuest - Discover Cornwall's beautiful walking paths">
-    <meta name="author" content="Andrea Maestri">
-    <meta property="og:title" content="{% block og_title %}{{ block.super }}{% endblock %}">
-    <meta property="og:description" content="Discover Cornwall's beautiful walking paths">
-    <script type="importmap">{% importmap %}</script>
-
-    <!-- Add Iconify custom element script -->
-    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@2.2.0/dist/iconify-icon.min.js"></script>
-    <title>{% block title %}WalkQuest{% endblock title %}</title>
+    <title>{% block title %}WalkQuest{% endblock %}</title>
     
-    <link rel="icon" href="{% static 'images/favicons/favicon.ico' %}">
-
-    <!-- Core Dependencies -->
-    <link href="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.css" rel="stylesheet">
-    <script src="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.js"></script>
-    <!-- CSS files -->
+    <!-- Tetra framework requirements -->
+    {% tetra_styles %}
+    {% tetra_scripts include_alpine=True %}
+    
+    <!-- App CSS -->
     <link href="{% static 'css/project.css' %}" rel="stylesheet">
-
-    <!-- importmap with Django ESM imports -->
-    <script type="module">
-        import Alpine from 'alpinejs';
-        import WalkQuestExtension from '{% static "js/project.js" %}';
-
-        window.Alpine = Alpine;
-        
-        document.addEventListener('DOMContentLoaded', () => {
-            WalkQuestExtension.init();
-            Alpine.start();
-        });
-    </script>
-
-    <!-- Page-specific styles -->
-    {% block extra_css %}{% endblock %}
-
-    {{ form.media }}
-    {% block extra_head %}{% endblock %}
-</head>
-
-<body class="{% block bodyclass %}{% endblock bodyclass %}" 
-      x-data="{ mobileMenuOpen: false }" 
-      x-init="() => { Alpine.store('app').initialize() }"
-      :class="{ 'opacity-0': !Alpine.store('app').initialized }">
     
-    <!-- Loading State -->
-    <div x-show="!Alpine.store('app').initialized"
-         x-cloak
-         class="fixed inset-0 z-50 bg-white bg-opacity-75 flex items-center justify-center">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
-    </div>
+    {% csrf_token %}
+</head>
+<body>
+    <nav class="main-nav">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo -->
+                <a href="{% url 'home' %}" class="flex items-center space-x-2">
+                    <iconify-icon icon="mdi:hiking" class="text-2xl text-primary-500"></iconify-icon>
+                    <span class="font-semibold text-lg">WalkQuest</span>
+                </a>
 
-    <!-- Main content -->
-    <div x-show="Alpine.store('app').initialized" 
-         x-transition:enter="transition ease-out duration-300"
-         x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100">
-        {% block body %}
-        <!-- Remove the loading indicator -->
-        <div id="loading-indicator">
-            <!-- Removed spinner -->
-        </div>
-
-        <nav class="bg-white shadow-sm fixed top-0 left-0 right-0 z-50">
-            <div class="max-w-7xl mx-auto px-4">
-                <div class="flex items-center justify-between h-16">
-                    <!-- Logo -->
-                    <a href="{% url 'home' %}" class="flex items-center space-x-2">
-                        <iconify-icon icon="mdi:hiking" class="text-2xl text-primary-500"></iconify-icon>
-                        <span class="font-semibold text-lg">WalkQuest</span>
-                    </a>
-
-                    <!-- Mobile menu button -->
-                    <div class="md:hidden">
-                        <button type="button" 
-                                class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
-                                aria-controls="mobile-menu"
-                                x-bind:aria-expanded="mobileMenuOpen"
-                                @click="mobileMenuOpen = !mobileMenuOpen">
-                            <iconify-icon icon="mdi:menu" class="text-2xl"></iconify-icon>
-                        </button>
-                    </div>
-
-                    <!-- Desktop menu -->
-                    <div class="hidden md:flex md:items-center md:space-x-4">
-                        <a href="{% url 'home' %}" class="nav-link">
-                            <iconify-icon icon="mdi:home" class="mr-1"></iconify-icon>
-                            {% translate "Home" %}
-                        </a>
-                        <a href="{% url 'about' %}" class="nav-link">
-                            <iconify-icon icon="mdi:information" class="mr-1"></iconify-icon>
-                            {% translate "About" %}
-                        </a>
-                        
-                        {% if request.user.is_authenticated %}
-                            <a href="{% url 'users:detail' request.user.username %}" class="nav-link">
-                                <iconify-icon icon="mdi:account" class="mr-1"></iconify-icon>
-                                {% translate "My Profile" %}
-                            </a>
-                            <a href="{% url 'account_logout' %}" class="nav-link">
-                                <iconify-icon icon="mdi:logout" class="mr-1"></iconify-icon>
-                                {% translate "Sign Out" %}
-                            </a>
-                        {% else %}
-                            {% if ACCOUNT_ALLOW_REGISTRATION %}
-                                <a href="{% url 'account_signup' %}" id="sign-up-link" class="nav-link">
-                                    <iconify-icon icon="mdi:account-plus" class="mr-1"></iconify-icon>
-                                    {% translate "Sign Up" %}
-                                </a>
-                            {% endif %}
-                            <a href="{% url 'account_login' %}" id="log-in-link" class="nav-link">
-                                <iconify-icon icon="mdi:login" class="mr-1"></iconify-icon>
-                                {% translate "Sign In" %}
-                            </a>
-                        {% endif %}
-                    </div>
+                <!-- Mobile menu button -->
+                <div class="md:hidden">
+                    <button type="button" 
+                            class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
+                            aria-controls="mobile-menu"
+                            aria-expanded="false"
+                            data-action="click->navbar#toggle">
+                        <iconify-icon icon="mdi:menu" class="text-2xl"></iconify-icon>
+                    </button>
                 </div>
-            </div>
 
-            <!-- Mobile menu -->
-            <div class="md:hidden" 
-                 id="mobile-menu" 
-                 x-show="mobileMenuOpen" 
-                 x-transition:enter="transition ease-out duration-200"
-                 x-transition:enter-start="opacity-0 transform scale-95"
-                 x-transition:enter-end="opacity-100 transform scale-100"
-                 x-transition:leave="transition ease-in duration-100"
-                 x-transition:leave-start="opacity-100 transform scale-100"
-                 x-transition:leave-end="opacity-0 transform scale-95"
-                 @click.away="mobileMenuOpen = false">
-                <div class="px-2 pt-2 pb-3 space-y-1">
-                    <a href="{% url 'home' %}" class="nav-link block">
+                <!-- Desktop menu -->
+                <div class="hidden md:flex md:items-center md:space-x-4">
+                    <a href="{% url 'home' %}" class="nav-link">
                         <iconify-icon icon="mdi:home" class="mr-1"></iconify-icon>
                         {% translate "Home" %}
                     </a>
-                    <a href="{% url 'about' %}" class="nav-link block">
+                    <a href="{% url 'about' %}" class="nav-link">
                         <iconify-icon icon="mdi:information" class="mr-1"></iconify-icon>
                         {% translate "About" %}
                     </a>
                     
                     {% if request.user.is_authenticated %}
-                        <a href="{% url 'users:detail' request.user.username %}" class="nav-link block">
+                        <a href="{% url 'users:detail' request.user.username %}" class="nav-link">
                             <iconify-icon icon="mdi:account" class="mr-1"></iconify-icon>
                             {% translate "My Profile" %}
                         </a>
-                        <a href="{% url 'account_logout' %}" class="nav-link block">
+                        <a href="{% url 'account_logout' %}" class="nav-link">
                             <iconify-icon icon="mdi:logout" class="mr-1"></iconify-icon>
                             {% translate "Sign Out" %}
                         </a>
                     {% else %}
                         {% if ACCOUNT_ALLOW_REGISTRATION %}
-                            <a href="{% url 'account_signup' %}" id="sign-up-link" class="nav-link block">
+                            <a href="{% url 'account_signup' %}" id="sign-up-link" class="nav-link">
                                 <iconify-icon icon="mdi:account-plus" class="mr-1"></iconify-icon>
                                 {% translate "Sign Up" %}
                             </a>
                         {% endif %}
-                        <a href="{% url 'account_login' %}" id="log-in-link" class="nav-link block">
+                        <a href="{% url 'account_login' %}" id="log-in-link" class="nav-link">
                             <iconify-icon icon="mdi:login" class="mr-1"></iconify-icon>
                             {% translate "Sign In" %}
                         </a>
                     {% endif %}
                 </div>
             </div>
-        </nav>
-
-        {% if messages %}
-            <div class="fixed top-20 right-4 z-50 space-y-2">
-                {% for message in messages %}
-                    <div class="message message-{{ message.tags }} transform transition-all duration-300"
-                         data-auto-remove="5000">
-                        <div class="flex items-center">
-                            <iconify-icon icon="mdi:{{ message.tags }}" class="mr-2"></iconify-icon>
-                            <p>{{ message }}</p>
-                        </div>
-                        <button type="button" class="absolute top-2 right-2" onclick="this.parentElement.remove()">
-                            <iconify-icon icon="mdi:close" class="w-5 h-5"></iconify-icon>
-                        </button>
-                    </div>
-                {% endfor %}
-            </div>
-        {% endif %}
-
-        <!-- Main content area with proper blocks -->
-        <main class="{% if messages %}pt-16{% endif %}">
-            {% block main %}
-                {% block config_data %}{% endblock %}
-                {% block content %}
-                    <p>Use this document as a way to quick start any new project.</p>
-                {% endblock content %}
-            {% endblock main %}
-        </main>
-
-        <!-- Modal container with block -->
-        <div id="modal-container">
-            {% block modal %}{% endblock modal %}
         </div>
 
-        <!-- Base JavaScript -->
-        <script>
-            // Auto-remove messages
-            document.addEventListener('DOMContentLoaded', () => {
-                document.querySelectorAll('[data-auto-remove]').forEach(el => {
-                    const delay = parseInt(el.dataset.autoRemove, 10) || 5000;
-                    setTimeout(() => {
-                        el.style.opacity = '0';
-                        setTimeout(() => el.remove(), 300);
-                    }, delay);
-                });
-            });
+        <!-- Mobile menu -->
+        <div class="md:hidden" 
+             id="mobile-menu" 
+             data-navbar-active-value="false"
+             class="hidden"
+             data-action="click->navbar#close">
+            <div class="px-2 pt-2 pb-3 space-y-1">
+                <a href="{% url 'home' %}" class="nav-link block">
+                    <iconify-icon icon="mdi:home" class="mr-1"></iconify-icon>
+                    {% translate "Home" %}
+                </a>
+                <a href="{% url 'about' %}" class="nav-link block">
+                    <iconify-icon icon="mdi:information" class="mr-1"></iconify-icon>
+                    {% translate "About" %}
+                </a>
+                
+                {% if request.user.is_authenticated %}
+                    <a href="{% url 'users:detail' request.user.username %}" class="nav-link block">
+                        <iconify-icon icon="mdi:account" class="mr-1"></iconify-icon>
+                        {% translate "My Profile" %}
+                    </a>
+                    <a href="{% url 'account_logout' %}" class="nav-link block">
+                        <iconify-icon icon="mdi:logout" class="mr-1"></iconify-icon>
+                        {% translate "Sign Out" %}
+                    </a>
+                {% else %}
+                    {% if ACCOUNT_ALLOW_REGISTRATION %}
+                        <a href="{% url 'account_signup' %}" id="sign-up-link" class="nav-link block">
+                            <iconify-icon icon="mdi:account-plus" class="mr-1"></iconify-icon>
+                            {% translate "Sign Up" %}
+                        </a>
+                    {% endif %}
+                    <a href="{% url 'account_login' %}" id="log-in-link" class="nav-link block">
+                        <iconify-icon icon="mdi:login" class="mr-1"></iconify-icon>
+                        {% translate "Sign In" %}
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
 
-            // Wait for Alpine and store to be ready
-            document.addEventListener('alpine:initialized', () => {
-                document.body.classList.remove('loading');
-                if (window.walkStore?.initialize) {
-                    window.walkStore.initialize();
-                }
-            });
-        </script>
+    <main>
+        {% block content %}{% endblock %}
+    </main>
 
-        <!-- JavaScript blocks -->
-        {% block inline_javascript %}{% endblock %}
-        {% block extra_js %}{% endblock %}
-        {% endblock body %}
-    </div>
+    {% block inline_javascript %}{% endblock %}
 </body>
 </html>

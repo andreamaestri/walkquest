@@ -2,11 +2,11 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import include
-from django.urls import path
+from django.urls import include, path
 from django.views import defaults as default_views
 from django.views.generic import TemplateView
 from walkquest.walks.views import HomePageView 
+from walkquest.walks.api import api
 
 
 urlpatterns = [
@@ -22,11 +22,12 @@ urlpatterns = [
     path("users/", include("walkquest.users.urls", namespace="users")),
     path("accounts/", include("allauth.urls")),
     # Your stuff: custom urls includes go here
-    path("walks/", include(('walkquest.walks.urls'), namespace='walks')),
-    # ...
+    path("walks/", include(('walkquest.walks.urls', 'walks'), namespace='walks')),
     # Media files
     *static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT),
-]
+    path("api/", api.urls),
+    path('tetra/', include('tetra.urls')),
+] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 
 if settings.DEBUG:
@@ -54,4 +55,3 @@ if settings.DEBUG:
         import debug_toolbar
 
         urlpatterns = [path("__debug__/", include(debug_toolbar.urls))] + urlpatterns
-

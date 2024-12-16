@@ -27,6 +27,7 @@ from typing import Any
 
 from django.conf import settings
 from django.core.cache import cache
+from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models import Count
 from django.db.models import QuerySet
 from django.http import HttpResponse
@@ -37,6 +38,7 @@ from django.views.decorators.cache import cache_page
 from django.views.decorators.csrf import csrf_protect
 from django.views.generic import ListView
 from tagulous.views import autocomplete
+from tagulous.models.tagged import TaggedManager
 
 from walkquest.walks.models import Walk
 from walkquest.walks.models import WalkCategoryTag
@@ -98,15 +100,18 @@ class HomePageView(ListView):
         return f"walks_home_{hash(frozenset(query_params))}"
 
     def get_queryset(self) -> QuerySet:
-        """Get optimized and filtered queryset."""
+        """Get optimized and filtered queryset with proper tag handling."""
         queryset = (
             super()
             .get_queryset()
             .select_related("adventure")
-            .prefetch_related("related_categories")
+            .prefetch_related(
+                "features",
+                "categories",
+                "related_categories",
+            )
         )
 
-        # Apply search if provided
         search_query = self.request.GET.get("search", "").strip()
         if search_query:
             queryset = queryset.filter(walk_name__icontains=search_query)
@@ -141,7 +146,7 @@ class HomePageView(ListView):
         return stats
 
     def serialize_walk(self, walk: Walk) -> dict[str, Any]:
-        """Serialize walk instance to dictionary."""
+        """Serialize walk instance with proper tag handling."""
         try:
             return {
                 "id": str(walk.id),
@@ -152,19 +157,26 @@ class HomePageView(ListView):
                 "steepness_level": walk.steepness_level,
                 "latitude": float(walk.latitude),
                 "longitude": float(walk.longitude),
-                # Convert tags to strings
-                "features": [str(tag) for tag in walk.features.all()],
-                "categories": [str(tag) for tag in walk.related_categories.all()],
+                "features": [
+                    {"name": tag.name, "slug": tag.slug}
+                    for tag in walk.features.all()
+                ],
+                "categories": [
+                    {"name": tag.name, "slug": tag.slug}
+                    for tag in walk.related_categories.all()
+                ],
+                "related_categories": [
+                    {"name": tag.name, "slug": tag.slug}
+                    for tag in walk.related_categories.all()
+                ],
                 "has_pub": bool(walk.has_pub),
                 "has_cafe": bool(walk.has_cafe),
                 "has_bus_access": bool(walk.has_bus_access),
                 "has_stiles": bool(walk.has_stiles),
                 "created_at": walk.created_at.isoformat() if walk.created_at else None,
-                # Geometry will be loaded separately when needed
             }
-        except Exception:
-            logger.exception(
-                "Walk serialization error for walk ID %s", walk.id)
+        except Exception as e:
+            logger.exception(f"Walk serialization error for walk ID {walk.id}: {str(e)}")
             return {}
 
     def get_initial_walks(self) -> list[dict[str, Any]]:
@@ -188,49 +200,60 @@ class HomePageView(ListView):
         context = super().get_context_data(**kwargs)
 
         try:
-            # Ensure config is a clean Python dict
-            context["config"] = {
-                "mapboxToken": settings.MAPBOX_TOKEN,
-                "map": {
-                    "style": WalkQuestConfig.MAP_CONFIG["style"],
-                    "defaultCenter": WalkQuestConfig.MAP_CONFIG["defaultCenter"],
-                    "defaultZoom": WalkQuestConfig.MAP_CONFIG["defaultZoom"],
-                    "markerColors": dict(WalkQuestConfig.MAP_CONFIG["markerColors"]),
-                },
-                "filters": {
-                    "categories": list(WalkQuestConfig.CATEGORIES),
-                },
-            }
+            context["config"] = WalkQuestConfig.get_config()
 
-            # Ensure walks data is a clean Python list
             context["initial_walks"] = [
                 self.serialize_walk(walk)
                 for walk in self.get_queryset()
             ]
 
-            # Clean tag data structure
+            # Handle tag counts with proper Tagulous integration
             tags_with_counts = []
-
-            for tag_type in [WalkFeatureTag, WalkCategoryTag]:
-                tags = (
-                    tag_type.objects
-                    .annotate(usage_count=Count("walk_set"))
-                    .filter(usage_count__gt=0)
-                    .values("name", "usage_count")
+            
+            # Process category tags
+            category_tags = (
+                WalkCategoryTag.objects
+                .annotate(
+                    usage_count=Count('categorized_walks', distinct=True) +
+                               Count('related_walks', distinct=True)
                 )
-                tags_with_counts.extend([
-                    {
-                        "name": tag["name"],
-                        "usage_count": tag["usage_count"],
-                        "type": tag_type.__name__.lower(),
-                    }
-                    for tag in tags
-                ])
+                .filter(usage_count__gt=0)
+                .values('name', 'slug', 'usage_count')
+            )
+            
+            # Process feature tags
+            feature_tags = (
+                WalkFeatureTag.objects
+                .annotate(usage_count=Count('walks', distinct=True))
+                .filter(usage_count__gt=0)
+                .values('name', 'slug', 'usage_count')
+            )
+
+            # Combine tags with proper type identification
+            tags_with_counts.extend([
+                {
+                    "name": tag["name"],
+                    "slug": tag["slug"],
+                    "usage_count": tag["usage_count"],
+                    "type": "category"
+                }
+                for tag in category_tags
+            ])
+            
+            tags_with_counts.extend([
+                {
+                    "name": tag["name"],
+                    "slug": tag["slug"],
+                    "usage_count": tag["usage_count"],
+                    "type": "feature"
+                }
+                for tag in feature_tags
+            ])
 
             context["tags_data"] = tags_with_counts
 
-        except Exception:
-            logger.exception("Error preparing context data")
+        except Exception as e:
+            logger.exception(f"Error preparing context data: {str(e)}")
             context.update({
                 "config": {},
                 "initial_walks": [],
@@ -307,16 +330,7 @@ class WalkSearchView(ListView):
         return JsonResponse({"error": "Invalid request"}, status=400)
 
     def serialize_walk(self, walk):
-        return {
-            "id": str(walk.id),
-            "walk_name": walk.walk_name,
-            "steepness_level": walk.steepness_level,
-            "distance": float(walk.distance) if walk.distance else None,
-            "features": walk.features or [],
-            "has_pub": walk.has_pub,
-            "has_cafe": walk.has_cafe,
-            "highlights": walk.highlights,
-        }
+        return HomePageView().serialize_walk(walk)
 
 
 @method_decorator(csrf_protect, name="dispatch")
@@ -341,16 +355,7 @@ class WalkFilterView(ListView):
         return JsonResponse(walks, safe=False)
 
     def serialize_walk(self, walk):
-        return {
-            "id": str(walk.id),
-            "walk_name": walk.walk_name,
-            "distance": float(walk.distance) if walk.distance else None,
-            "related_categories": [str(tag) for tag in walk.related_categories.all()],
-            "latitude": float(walk.latitude),
-            "longitude": float(walk.longitude),
-            "has_pub": bool(walk.has_pub),
-            "has_cafe": bool(walk.has_cafe),
-        }
+        return HomePageView().serialize_walk(walk)
 
 
 @method_decorator(csrf_protect, name="dispatch")

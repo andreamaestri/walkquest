@@ -69,6 +69,7 @@ DJANGO_APPS = [
     "django.contrib.sessions",
     "django.contrib.sites",
     "django.contrib.messages",
+    "tetra",
     "django.contrib.staticfiles",
     "django.contrib.gis",
     "unfold",
@@ -89,12 +90,14 @@ THIRD_PARTY_APPS = [
     "django_celery_beat",
     "tagulous",
     "slippers",
+    "ninja",
 ]
 
 LOCAL_APPS = [
     "walkquest.users",
     "walkquest.walks",
     "walkquest.adventures",
+    "walkquest.components",
     # Your stuff: custom apps go here
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
@@ -161,6 +164,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "allauth.account.middleware.AccountMiddleware",
+    "tetra.middleware.TetraMiddleware",
 ]
 
 # STATIC

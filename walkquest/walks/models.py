@@ -18,6 +18,15 @@ class WalkCategoryTag(TagModel):
             models.UniqueConstraint(fields=["slug"], name="unique_category_slug"),
         ]
 
+    def __str__(self):
+        return self.name
+
+    def to_dict(self):
+        return {
+            'name': self.name,
+            'slug': self.slug
+        }
+
 class WalkFeatureTag(TagModel):
     class TagMeta:
         force_lowercase = True
@@ -41,6 +50,15 @@ class WalkFeatureTag(TagModel):
         constraints = [
             models.UniqueConstraint(fields=["slug"], name="unique_feature_slug"),
         ]
+
+    def __str__(self):
+        return self.name
+
+    def to_dict(self):
+        return {
+            'name': self.name,
+            'slug': self.slug
+        }
 
 class Adventure(models.Model):
     DIFFICULTY_CHOICES = [
@@ -228,17 +246,23 @@ class Walk(models.Model):
         ),
         blank=True,
     )
-    related_categories = TagField(
-        to=WalkCategoryTag,
+    related_categories = models.ManyToManyField(
+        'WalkCategoryTag',
+        related_name='related_walks',
         blank=True,
-        help_text=_("Categories related to this walk"),
-        related_name="walk_set",  # Change to standard Django name
+        help_text=_("Categories associated with this walk")
     )
-    features = TagField(
-        to=WalkFeatureTag,
+    features = models.ManyToManyField(
+        'WalkFeatureTag',
+        related_name='walks',
         blank=True,
-        help_text=_("Features of this walk"),
-        related_name="walk_set",  # Change to standard Django name
+        help_text=_("Features present on this walk")
+    )
+    categories = models.ManyToManyField(
+        'WalkCategoryTag',
+        related_name='categorized_walks',
+        blank=True,
+        help_text=_("Primary categories for this walk")
     )
     has_stiles = models.BooleanField(default=False)
     has_cafe = models.BooleanField(default=False)
@@ -284,3 +308,9 @@ class Walk(models.Model):
     @property
     def description(self):
         return self.highlights
+
+    def get_features(self):
+        return [feature.to_dict() for feature in self.features.all()]
+
+    def get_categories(self):
+        return [category.to_dict() for category in self.categories.all()]
