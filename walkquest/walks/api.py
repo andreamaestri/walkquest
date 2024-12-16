@@ -35,7 +35,7 @@ def list_walks(
         walks = Walk.objects.prefetch_related(
             'features',
             'categories',
-            'related_categories'
+            'related_categories'  # Ensure related_categories is prefetched
         )
         
         if search:
@@ -72,7 +72,11 @@ def list_walks(
 @router.get("/walks/{walk_id}", response=WalkOutSchema)
 def get_walk(request: HttpRequest, walk_id: UUID):
     """Get a single walk"""
-    walk = Walk.objects.annotate(
+    walk = Walk.objects.prefetch_related(
+        'features',
+        'categories',
+        'related_categories'  # Add prefetch for related_categories
+    ).annotate(
         is_favorite=Exists(
             Walk.favorites.through.objects.filter(
                 walk_id=OuterRef('pk'),

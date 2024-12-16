@@ -160,26 +160,68 @@ const walkStore = {
             }
 
             // Rest of data fetching
-            const [tags, walks] = await Promise.all([
+            const [tags, walksResponse] = await Promise.all([
                 api.getTags(),
                 api.getWalks()
             ]);
 
+            console.log('Raw walks data:', walksResponse); // Debug log
+
             this.features = tags.filter(tag => tag.type === 'feature');
             this.categories = tags.filter(tag => tag.type === 'category');
             
+            // Handle both array and object responses
+            const walks = Array.isArray(walksResponse.walks) ? walksResponse.walks : [];
+            
             if (!Array.isArray(walks)) {
+                console.error('Invalid walks data format:', walks);
                 throw new Error('Invalid walks data format received');
             }
 
             this.walks = walks;
+            console.log('Processed walks:', this.walks);
             
             if (this.walks.length > 0) {
                 await this.updateMarkers(this.walks);
                 this.renderWalkList();
+            } else {
+                console.warn('No walks data received');
             }
         } catch (error) {
             console.error('Initialization error:', error);
+            this.error = error.message;
+        } finally {
+            this.isLoading = false;
+        }
+    },
+
+    async applyFilters() {
+        this.isLoading = true;
+        this.error = null;
+        try {
+            const response = await api.filterWalks({
+                search: this.filters.search,
+                categories: this.filters.categories,
+                features: this.filters.features
+            });
+
+            console.log('Filter API response:', response); // Debug log
+
+            // Handle both array and object responses
+            const walks = Array.isArray(response.walks) ? response.walks : [];
+            
+            if (!Array.isArray(walks)) {
+                console.error('Invalid filtered walks format:', walks);
+                throw new Error('Invalid walks data format received');
+            }
+
+            this.walks = walks;
+            console.log('Updated walks list:', this.walks);
+            
+            await this.updateMarkers(this.walks);
+            this.renderWalkList();
+        } catch (error) {
+            console.error('Filter application failed:', error);
             this.error = error.message;
         } finally {
             this.isLoading = false;
@@ -285,32 +327,6 @@ const walkStore = {
     async filterByFeature(features) {
         this.filters.features = features;
         await this.applyFilters();
-    },
-
-    async applyFilters() {
-        this.isLoading = true;
-        this.error = null;
-        try {
-            const response = await api.filterWalks({
-                search: this.filters.search,
-                categories: this.filters.categories,
-                features: this.filters.features
-            });
-
-            if (!response.ok) {
-                throw new Error(`Filter request failed: ${response.statusText}`);
-            }
-
-            const walkData = await response.json();
-            this.walks = Array.isArray(walkData) ? walkData : [];
-            await this.updateMarkers(this.walks);
-            this.renderWalkList();
-        } catch (error) {
-            console.error('Filter application failed:', error);
-            this.error = error.message;
-        } finally {
-            this.isLoading = false;
-        }
     },
 
     async toggleFavorite(walkId) {

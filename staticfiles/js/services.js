@@ -1,24 +1,7 @@
 class ApiService {
     constructor() {
-        // Get CSRF token from cookie instead of meta tag
-        this.csrfToken = this.getCsrfToken();
+        this.csrfToken = document.querySelector('meta[name="csrf-token"]').content;
         this.baseUrl = '/api';
-    }
-
-    getCsrfToken() {
-        const name = 'csrftoken';
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
     }
 
     async fetch(endpoint, options = {}) {
@@ -28,7 +11,7 @@ class ApiService {
                 'X-CSRFToken': this.csrfToken,
                 'Accept': 'application/json'
             },
-            credentials: 'include'  // Changed from 'same-origin' to 'include'
+            credentials: 'same-origin' // Include cookies for authentication
         };
 
         try {
@@ -62,33 +45,17 @@ class ApiService {
 
     // API endpoints with proper response handling
     async getWalks(params = {}) {
-        // Changed from direct fetch to using the class's fetch method
-        try {
-            const queryParams = new URLSearchParams();
-            if (params.search) queryParams.append('search', params.search);
-            if (params.categories?.length) {
-                queryParams.append('categories', params.categories.join(','));
-            }
-            if (params.features?.length) {
-                queryParams.append('features', params.features.join(','));
-            }
-            
-            const query = queryParams.toString();
-            console.log('Fetching walks with params:', query || 'none'); // Debug log
-
-            const data = await this.fetch(`/walks${query ? '?' + query : ''}`); // Use this.fetch
-            console.log('Raw API response:', data); // Debug log
-
-            if (!Array.isArray(data)) {
-                console.warn('API response is not an array:', data);
-                return [];
-            }
-
-            return data;
-        } catch (error) {
-            console.error('Failed to fetch walks:', error);
-            return [];
+        const queryParams = new URLSearchParams();
+        if (params.search) queryParams.append('search', params.search);
+        if (params.categories?.length) {
+            queryParams.append('categories', params.categories.join(','));
         }
+        
+        const data = await this.fetch(`/walks?${queryParams}`);
+        return {
+            walks: data.walks || [],
+            total: data.total || 0
+        };
     }
 
     async getWalk(walkId) {
@@ -103,16 +70,27 @@ class ApiService {
         return data;
     }
 
-    async getTags(type = null) {
+    async getTags() {
         const tags = await this.fetch('/tags');
-        if (type) {
-            return tags.filter(tag => tag.type === type);
-        }
-        return tags;
+        return tags.map(tag => ({
+            name: tag.name,
+            slug: tag.slug,
+            usage_count: tag.usage_count,
+            type: tag.type
+        }));
     }
 
     async getConfig() {
-        return this.fetch('/config');
+        try {
+            const data = await this.fetch('/config');
+            if (!data) {
+                throw new Error('Empty configuration received');
+            }
+            return data;
+        } catch (error) {
+            console.error('Config fetch error:', error);
+            throw error; // Let walkStore handle the fallback
+        }
     }
 
     async toggleFavorite(walkId) {
@@ -126,18 +104,25 @@ class ApiService {
         };
     }
 
-    // Update filterWalks to use GET instead of body parameters
-    async filterWalks(params = {}) {
-        return this.getWalks(params); // Reuse getWalks logic
-    }
+    async filterWalks(filters = {}) {
+        const response = await this.fetch('/walks/filter', {
+            method: 'POST',
+            body: JSON.stringify({
+                categories: filters.categories || [],
+                difficulty: filters.difficulty,
+                distance: filters.distance,
+                duration: filters.duration,
+                search: filters.search || ''
+            })
+        });
 
-    async getFeatures() {
-        return this.getTags('feature');
-    }
-
-    async getCategories() {
-        return this.getTags('category');
+        return {
+            walks: response.walks || [],
+            total: response.total || 0,
+            filters: response.applied_filters || {}
+        };
     }
 }
 
+// Export an instance of ApiService instead
 export const api = new ApiService();

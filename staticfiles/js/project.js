@@ -1,9 +1,87 @@
 import { api } from './services.js';
 import { getCategoryEmoji, getCategoryColor } from './alpine-components.js';
 
-// Utility functions
+// Default configuration fallback
+const DEFAULT_CONFIG = {
+    map: {
+        style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+        defaultCenter: [-4.85, 50.4],
+        defaultZoom: 9.5,
+        markerColors: {
+            default: '#FF0000',
+            selected: '#00FF00',
+            favorite: '#FFD700'
+        }
+    },
+    filters: {
+        categories: true,
+        features: true,
+        distance: true
+    }
+};
+
+// Check for required dependencies
+const checkDependencies = () => {
+    if (typeof window._ === 'undefined') {
+        throw new Error('Lodash is required but not loaded');
+    }
+    if (typeof window.dayjs === 'undefined') {
+        throw new Error('Day.js is required but not loaded');
+    }
+};
+
+try {
+    checkDependencies();
+} catch (error) {
+    console.error('Dependency error:', error);
+    // Add visible error message to the page
+    document.addEventListener('DOMContentLoaded', () => {
+        const error = document.createElement('div');
+        error.className = 'error-message';
+        error.textContent = 'Required libraries failed to load. Please refresh the page.';
+        document.body.prepend(error);
+    });
+}
+
+// Access libraries with fallbacks
+const _ = window._ || {
+    escape: (str) => String(str).replace(/[&<>"']/g, (m) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[m]),
+    debounce: (fn, delay) => {
+        let timeoutId;
+        return (...args) => {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => fn.apply(this, args), delay);
+        };
+    }
+};
+
+const dayjs = window.dayjs || ((date) => new Date(date).toLocaleString());
+
+// Utility functions for data formatting and manipulation
 const utils = {
     formatDistance: (distance) => `${(distance / 1000).toFixed(1)}km`,
+    formatDate: (date) => typeof dayjs === 'function' ? dayjs(date).fromNow() : new Date(date).toLocaleString(),
+    sanitizeHtml: _.escape, // Use lodash's escape function
+    debounce: _.debounce, // Use lodash's debounce
+    // Template helper for walk item rendering
+    walkItemTemplate: (walk) => `
+        <div class="walk-item" data-walk-id="${walk.id}">
+            <h3 class="walk-title">${utils.sanitizeHtml(walk.walk_name)}</h3>
+            <div class="walk-details">
+                <span class="distance">${utils.formatDistance(walk.distance)}</span>
+                ${walk.features.map(feature => 
+                    `<span class="feature">${getCategoryEmoji(feature)} ${utils.sanitizeHtml(feature.name)}</span>`
+                ).join('')}
+            </div>
+            <div class="categories">
+                ${walk.related_categories.map(cat => 
+                    `<span class="category-tag" style="background-color: ${getCategoryColor(cat)}">${utils.sanitizeHtml(cat.name)}</span>`
+                ).join('')}
+            </div>
+        </div>
+    `
 };
 
 // Define walkStore and make it globally available
@@ -61,47 +139,89 @@ const walkStore = {
     async fetchInitialData() {
         try {
             this.isLoading = true;
-            console.log('Starting data fetch...'); // Debug log
+            this.error = null;
             
-            // First get config and initialize map
-            this.config = await api.getConfig();
-            if (!this.config) throw new Error('Failed to load configuration');
+            // Get configuration
+            try {
+                const configData = await api.getConfig();
+                this.config = {
+                    ...DEFAULT_CONFIG,
+                    ...configData
+                };
+                console.log('Loaded configuration:', this.config);
+            } catch (configError) {
+                console.warn('Failed to load configuration, using defaults:', configError);
+                this.config = DEFAULT_CONFIG;
+            }
 
             const mapInit = await this.initialize(this.config);
-            if (!mapInit) throw new Error('Map initialization failed');
+            if (!mapInit) {
+                throw new Error('Map initialization failed');
+            }
 
-            console.log('Map initialized, fetching data...'); // Debug log
-
-            // Then get all data in parallel
-            const [tags, walks] = await Promise.all([
+            // Rest of data fetching
+            const [tags, walksData] = await Promise.all([
                 api.getTags(),
                 api.getWalks()
             ]);
 
-            console.log('Data fetched:', { tagsCount: tags.length, walksCount: walks.length }); // Debug log
+            console.log('Raw walks data:', walksData); // Debug log
 
-            // Split tags into features and categories
             this.features = tags.filter(tag => tag.type === 'feature');
             this.categories = tags.filter(tag => tag.type === 'category');
             
-            // Validate walks data
+            // Handle both array and object responses
+            const walks = Array.isArray(walksData) ? walksData : walksData.walks || [];
+            
             if (!Array.isArray(walks)) {
-                console.error('Walks data is not an array:', walks);
-                throw new Error('Invalid walks data format');
+                console.error('Invalid walks data format:', walks);
+                throw new Error('Invalid walks data format received');
             }
 
             this.walks = walks;
-            console.log(`Successfully loaded ${this.walks.length} walks`); // Debug log
+            console.log('Processed walks:', this.walks);
             
             if (this.walks.length > 0) {
                 await this.updateMarkers(this.walks);
                 this.renderWalkList();
-                console.log('UI updated with walk data'); // Debug log
             } else {
-                console.warn('No walks data available');
+                console.warn('No walks data received');
             }
         } catch (error) {
             console.error('Initialization error:', error);
+            this.error = error.message;
+        } finally {
+            this.isLoading = false;
+        }
+    },
+
+    async applyFilters() {
+        this.isLoading = true;
+        this.error = null;
+        try {
+            const response = await api.filterWalks({
+                search: this.filters.search,
+                categories: this.filters.categories,
+                features: this.filters.features
+            });
+
+            console.log('Filter API response:', response); // Debug log
+
+            // Handle both array and object responses
+            const walks = Array.isArray(response) ? response : response.walks || [];
+            
+            if (!Array.isArray(walks)) {
+                console.error('Invalid filtered walks format:', walks);
+                throw new Error('Invalid walks data format received');
+            }
+
+            this.walks = walks;
+            console.log('Updated walks list:', this.walks);
+            
+            await this.updateMarkers(this.walks);
+            this.renderWalkList();
+        } catch (error) {
+            console.error('Filter application failed:', error);
             this.error = error.message;
         } finally {
             this.isLoading = false;
@@ -152,22 +272,7 @@ const walkStore = {
         const walkList = document.getElementById('walk-list');
         if (!walkList) return;
 
-        walkList.innerHTML = this.walks.map(walk => `
-            <div class="walk-item" data-walk-id="${walk.id}">
-                <h3 class="walk-title">${walk.walk_name}</h3>
-                <div class="walk-details">
-                    <span class="distance">${utils.formatDistance(walk.distance)}</span>
-                    ${walk.features.map(feature => 
-                        `<span class="feature">${getCategoryEmoji(feature)} ${feature.name}</span>`
-                    ).join('')}
-                </div>
-                <div class="categories">
-                    ${walk.related_categories.map(cat => 
-                        `<span class="category-tag" style="background-color: ${getCategoryColor(cat)}">${cat.name}</span>`
-                    ).join('')}
-                </div>
-            </div>
-        `).join('');
+        walkList.innerHTML = this.walks.map(walk => utils.walkItemTemplate(walk)).join('');
 
         // Add click handlers
         walkList.querySelectorAll('.walk-item').forEach(item => {
@@ -187,12 +292,16 @@ const walkStore = {
 
         // Add new markers
         walks.forEach(walk => {
+            const markerColor = walk.is_favorite 
+                ? this.config.map.markerColors.favorite 
+                : this.config.map.markerColors.default;
+
             const marker = new maplibregl.Marker({
-                color: this.config?.map?.markerColors?.default || '#FF0000'
+                color: markerColor
             })
                 .setLngLat([walk.longitude, walk.latitude])
                 .setPopup(new maplibregl.Popup().setHTML(`
-                    <h4>${walk.walk_name}</h4>
+                    <h4>${utils.sanitizeHtml(walk.walk_name)}</h4>
                     <p>${utils.formatDistance(walk.distance)}</p>
                 `))
                 .addTo(this.map);
@@ -218,26 +327,6 @@ const walkStore = {
     async filterByFeature(features) {
         this.filters.features = features;
         await this.applyFilters();
-    },
-
-    async applyFilters() {
-        this.isLoading = true;
-        try {
-            // API returns array directly
-            const walks = await api.filterWalks({
-                search: this.filters.search,
-                categories: this.filters.categories,
-                features: this.filters.features
-            });
-            this.walks = Array.isArray(walks) ? walks : [];
-            this.updateMarkers(this.walks);
-            this.renderWalkList();
-        } catch (error) {
-            console.error('Filter application failed:', error);
-            this.error = 'Filter application failed';
-        } finally {
-            this.isLoading = false;
-        }
     },
 
     async toggleFavorite(walkId) {
@@ -369,13 +458,7 @@ function initializeUI() {
 }
 
 // Utility function for debouncing
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func.apply(this, args), wait);
-    };
-}
+const debounce = _.debounce;
 
 // Modal functionality
 function initializeModal() {
