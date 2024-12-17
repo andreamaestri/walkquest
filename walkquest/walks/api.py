@@ -8,6 +8,7 @@ from django.db.models import Exists
 from django.db.models import OuterRef
 from django.db.models import Value
 from django.http import HttpRequest
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from ninja import NinjaAPI
 from ninja import Router
@@ -111,22 +112,64 @@ def list_walks(
 @router.get("/walks/{walk_id}", response=WalkOutSchema)
 def get_walk(request: HttpRequest, walk_id: UUID):
     """Get a single walk"""
-    walk = Walk.objects.prefetch_related(
-        'features',
-        'categories',
-        'related_categories'  # Add prefetch for related_categories
-    ).annotate(
-        is_favorite=Exists(
-            Walk.favorites.through.objects.filter(
-                walk_id=OuterRef('pk'),
-                user=request.user
-            )
-        ) if request.user.is_authenticated else Value(False)
-    ).get(id=walk_id)
+    try:
+        print(f"Fetching walk with ID: {walk_id}")  # Debug log
+        walk = Walk.objects.prefetch_related(
+            'features',
+            'categories',
+            'related_categories'  # Add prefetch for related_categories
+        ).annotate(
+            is_favorite=Exists(
+                Walk.favorites.through.objects.filter(
+                    walk_id=OuterRef('pk'),
+                    user=request.user
+                )
+            ) if request.user.is_authenticated else Value(False)
+        ).get(id=walk_id)
 
-    # Serialize Walk instance using WalkOutSchema
-    serialized_walk = WalkOutSchema.from_orm(walk)
-    return serialized_walk
+        # Format pubs list correctly
+        formatted_pubs = []
+        for pub in walk.pubs_list:
+            if isinstance(pub, str):
+                formatted_pubs.append({'name': pub, 'description': ''})
+            elif isinstance(pub, dict):
+                formatted_pubs.append({
+                    'name': pub.get('name', ''),
+                    'description': pub.get('description', '')
+                })
+
+        # Manually construct WalkOutSchema
+        walk_data = WalkOutSchema(
+            id=walk.id,
+            walk_id=walk.walk_id,
+            walk_name=walk.walk_name,
+            distance=walk.distance,
+            latitude=walk.latitude,
+            longitude=walk.longitude,
+            has_pub=walk.has_pub,
+            has_cafe=walk.has_cafe,
+            is_favorite=walk.is_favorite,
+            features=[{'name': f.name, 'slug': f.slug} for f in walk.features.all()],
+            categories=[{'name': c.name, 'slug': c.slug} for c in walk.categories.all()],
+            related_categories=[{'name': rc.name, 'slug': rc.slug} for rc in walk.related_categories.all()],
+            highlights=walk.highlights,
+            points_of_interest=walk.points_of_interest,
+            os_explorer_reference=walk.os_explorer_reference,
+            steepness_level=walk.steepness_level,
+            footwear_category=walk.footwear_category,
+            recommended_footwear=walk.recommended_footwear,
+            pubs_list=formatted_pubs,  # Assign formatted pubs list
+            trail_considerations=walk.trail_considerations,
+            rewritten_trail_considerations=walk.rewritten_trail_considerations,
+            has_stiles=walk.has_stiles,
+            has_bus_access=walk.has_bus_access,
+            created_at=walk.created_at.isoformat(),
+            updated_at=walk.updated_at.isoformat()
+        )
+        return walk_data
+    except Walk.DoesNotExist:
+        print(f"Walk with ID {walk_id} does not exist.")  # Debug log
+        return JsonResponse({'error': 'Walk matching query does not exist.'}, status=404)
 
 @router.get("/walks/{walk_id}/geometry")
 def get_walk_geometry(request: HttpRequest, walk_id: UUID):
@@ -264,5 +307,6 @@ def toggle_favorite(request: HttpRequest, walk_id: UUID):
         }
     except Walk.DoesNotExist:
         return {"status": "error", "message": "Walk not found"}
+
 
 api.add_router("/", router)

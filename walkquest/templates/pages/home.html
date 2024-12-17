@@ -34,6 +34,110 @@
         }, children);
     };
 
+    const createCustomMarkerElement = (walk, isSelected = false) => {
+        const el = document.createElement('div');
+        el.className = `marker`;
+        
+        // Enhanced color palette and marker types
+        const markerTypes = {
+            coastal: {
+                condition: walk => walk.features.some(f => f.slug === 'coastal'),
+                icon: 'mdi:waves',
+                color: '#0ea5e9', // sky blue
+                shadow: '#7dd3fc'
+            },
+            woodland: {
+                condition: walk => walk.features.some(f => f.slug === 'woodland'),
+                icon: 'mdi:tree',
+                color: '#059669', // emerald
+                shadow: '#6ee7b7'
+            },
+            pub: {
+                condition: walk => walk.has_pub,
+                icon: 'mdi:beer',
+                color: '#d97706', // amber
+                shadow: '#fcd34d'
+            },
+            heritage: {
+                condition: walk => walk.features.some(f => f.slug === 'heritage'),
+                icon: 'mdi:castle',
+                color: '#7c3aed', // violet
+                shadow: '#c4b5fd'
+            },
+            familyFriendly: {
+                condition: walk => !walk.has_stiles && walk.steepness_level === 'Easy',
+                icon: 'mdi:account-group',
+                color: '#10b981', // green
+                shadow: '#6ee7b7'
+            },
+            default: {
+                icon: 'mdi:hiking',
+                color: '#3b82f6', // blue
+                shadow: '#93c5fd'
+            }
+        };
+
+        // Find the first matching marker type
+        const markerType = Object.values(markerTypes).find(type => 
+            type.condition ? type.condition(walk) : true
+        );
+
+        const color = markerType.color;
+        const shadowColor = markerType.shadow;
+        const selectedColor = '#10b981'; // green for selected state
+
+        el.innerHTML = `
+            <div class="marker-inner ${isSelected ? 'selected' : ''} ${walk.is_favorite ? 'favorite' : ''}"
+                 style="background: ${color}">
+                <div class="marker-icon">
+                    <iconify-icon icon="${markerType.icon}" 
+                                 style="color: white"
+                                 width="16" height="16">
+                    </iconify-icon>
+                </div>
+            </div>
+        `;
+
+        const style = document.createElement('style');
+        style.textContent = `
+            .marker {
+                cursor: pointer;
+                width: 30px;
+                height: 30px;
+            }
+            .marker-inner {
+                width: 100%;
+                height: 100%;
+                border-radius: 50% 50% 50% 0;
+                transform: rotate(-45deg);
+                transition: all 0.3s ease;
+            }
+            .marker-icon {
+                width: 100%;
+                height: 100%;
+                transform: rotate(45deg);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .marker-inner:hover {
+                transform: rotate(-45deg) scale(1.2);
+                box-shadow: 0 0 10px ${shadowColor};
+            }
+            .marker-inner.selected {
+                background: ${selectedColor} !important;
+                transform: rotate(-45deg) scale(1.3);
+                box-shadow: 0 0 15px ${selectedColor}80;
+            }
+            .marker-inner.favorite {
+                border: 2px solid #fcd34d;
+            }
+        `;
+        document.head.appendChild(style);
+
+        return el;
+    };
+
     const MapComponent = ({ walks, selectedWalk, onWalkSelect }) => {
         const mapContainer = useRef(null);
         const [map, setMap] = useState(null);
@@ -61,61 +165,64 @@
             walks.forEach(walk => {
                 if (!walk.latitude || !walk.longitude) return;
 
-                // Create marker HTML element
-                const markerEl = document.createElement('div');
-                markerEl.className = 'marker';
+                const isSelected = selectedWalk?.id === walk.id;
+                const markerEl = createCustomMarkerElement(walk, isSelected);
                 
                 // Create popup with walk details
                 const popupContent = `
-                    <div class="p-2">
-                        <h3 class="font-bold mb-1">${walk.walk_name}</h3>
-                        <p class="text-sm text-gray-600">${(walk.distance / 1000).toFixed(1)}km</p>
-                        <div class="flex gap-2 mt-1">
-                            ${walk.has_pub ? '<span class="text-xs px-2 py-1 bg-amber-100 rounded">Pub</span>' : ''}
-                            ${walk.has_cafe ? '<span class="text-xs px-2 py-1 bg-blue-100 rounded">Café</span>' : ''}
+                    <div class="p-3 min-w-[200px]">
+                        <h3 class="font-bold mb-2 text-gray-900">${walk.walk_name}</h3>
+                        <div class="flex items-center gap-2 mb-2">
+                            <iconify-icon icon="mdi:hiking"></iconify-icon>
+                            <span class="text-sm text-gray-600">${(walk.distance / 1000).toFixed(1)}km</span>
                         </div>
-                        ${walk.features.length > 0 ? `
-                            <div class="text-xs text-gray-500 mt-1">
-                                ${walk.features.map(f => f.name).join(' • ')}
-                            </div>
-                        ` : ''}
+                        <div class="flex flex-wrap gap-2">
+                            ${walk.has_pub ? 
+                                '<span class="text-xs px-2 py-1 bg-amber-100 text-amber-800 rounded-full">🍺 Pub</span>' 
+                                : ''}
+                            ${walk.has_cafe ? 
+                                '<span class="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">☕ Café</span>' 
+                                : ''}
+                        </div>
                     </div>
                 `;
 
-                const popup = new maplibregl.Popup({ 
-                    offset: 25,
+                const popup = new maplibregl.Popup({
+                    offset: [0, -15],
                     closeButton: false,
-                    maxWidth: '300px'
+                    maxWidth: '300px',
+                    className: 'custom-popup'
                 }).setHTML(popupContent);
 
-                // Create marker with custom options
+                // Create marker
                 const marker = new maplibregl.Marker({
-                    color: walk.has_pub ? '#f59e0b' : '#3b82f6', // Amber for pubs, blue for others
-                    scale: 0.8,
-                    draggable: false
+                    element: markerEl,
+                    anchor: 'bottom'
                 })
                     .setLngLat([walk.longitude, walk.latitude])
                     .setPopup(popup)
                     .addTo(map);
 
-                // Add click handler to marker
-                marker.getElement().addEventListener('click', () => {
+                // Add interaction handlers
+                markerEl.addEventListener('click', (e) => {
+                    e.stopPropagation();
                     onWalkSelect(walk, map);
                 });
 
-                // Show popup on hover
-                marker.getElement().addEventListener('mouseenter', () => {
+                markerEl.addEventListener('mouseenter', () => {
+                    markerEl.style.zIndex = 1;
                     if (selectedWalk?.id !== walk.id) {
                         marker.togglePopup();
                     }
                 });
 
-                marker.getElement().addEventListener('mouseleave', () => {
+                markerEl.addEventListener('mouseleave', () => {
+                    markerEl.style.zIndex = 0;
                     if (selectedWalk?.id !== walk.id) {
                         marker.togglePopup();
                     }
                 });
-                
+
                 markersRef.current.push(marker);
             });
 
@@ -399,61 +506,67 @@
                 initial: { opacity: 0, height: 0 },
                 animate: { opacity: 1, height: 'auto' },
                 exit: { opacity: 0, height: 0 },
-                className: "mt-4 pt-4 border-t space-y-6"
+                className: "mt-4 space-y-6 divide-y divide-gray-100"
             }, [
-                // Walk Info Section
-                React.createElement(DetailSection, {
-                    title: "Walk Information",
-                    icon: "mdi:information"
+                // Walk Info Section - Updated
+                React.createElement('div', {
+                    className: "space-y-4 pt-4"
                 }, [
-                    React.createElement('div', { className: "space-y-2 text-sm" }, [
-                        React.createElement('p', { className: "text-gray-600" }, walk.highlights),
-                        walk.points_of_interest && React.createElement('p', { className: "text-gray-600" }, walk.points_of_interest),
-                        walk.os_explorer_reference && React.createElement('p', { 
-                            className: "flex items-center gap-2 text-gray-500"
-                        }, [
-                            React.createElement('iconify-icon', { icon: "mdi:map" }),
-                            `OS Explorer Map: ${walk.os_explorer_reference}`
-                        ])
-                    ])
+                    React.createElement('div', {
+                        className: "flex items-center gap-2 text-blue-600 font-medium"
+                    }, [
+                        React.createElement('iconify-icon', { 
+                            icon: "mdi:map-marker-path",
+                            width: "20",
+                            height: "20"
+                        }),
+                        walk.os_explorer_reference ? `OS Explorer Map ${walk.os_explorer_reference}` : "Walk Details"
+                    ]),
+                    React.createElement('p', { 
+                        className: "text-sm leading-relaxed text-gray-700" 
+                    }, walk.highlights),
+                    walk.points_of_interest && React.createElement('p', { 
+                        className: "text-sm leading-relaxed text-gray-600 bg-blue-50 p-3 rounded-lg" 
+                    }, walk.points_of_interest)
                 ]),
 
-                // Difficulty & Requirements
-                React.createElement(DetailSection, {
-                    title: "Difficulty & Requirements",
-                    icon: "mdi:hiking"
+                // Difficulty & Requirements - Updated
+                React.createElement('div', {
+                    className: "space-y-3 pt-4"
                 }, [
-                    React.createElement('div', { className: "flex flex-wrap gap-2" }, [
-                        React.createElement(IconBadge, {
-                            icon: "mdi:elevation-rise",
-                            text: walk.steepness_level,
-                            color: "red"
-                        }),
-                        React.createElement(IconBadge, {
-                            icon: "mdi:shoe-print",
-                            text: walk.footwear_category,
-                            color: "blue"
-                        }),
-                        ...accessibilityFeatures.map((feature, index) => 
+                    React.createElement('h4', {
+                        className: "font-medium text-gray-900 flex items-center gap-2"
+                    }, [
+                        React.createElement('iconify-icon', { icon: "mdi:hiking" }),
+                        "Trail Conditions"
+                    ]),
+                    React.createElement('div', { 
+                        className: "grid gap-2"
+                    }, [
+                        // Difficulty indicators
+                        React.createElement('div', {
+                            className: "flex flex-wrap gap-2"
+                        }, [
+                            React.createElement(IconBadge, {
+                                icon: "mdi:elevation-rise",
+                                text: walk.steepness_level,
+                                color: "red"
+                            }),
+                            React.createElement(IconBadge, {
+                                icon: "mdi:shoe-print",
+                                text: walk.footwear_category,
+                                color: "blue"
+                            })
+                        ]),
+                        // Accessibility features
+                        React.createElement('div', {
+                            className: "flex flex-wrap gap-2"
+                        }, accessibilityFeatures.map((feature, index) => 
                             React.createElement(IconBadge, {
                                 key: index,
                                 ...feature
                             })
-                        )
-                    ]),
-                    React.createElement('p', { 
-                        className: "mt-2 text-sm text-gray-600" 
-                    }, walk.recommended_footwear)
-                ]),
-
-                // Trail Considerations
-                React.createElement(DetailSection, {
-                    title: "Trail Notes",
-                    icon: "mdi:note-text"
-                }, [
-                    React.createElement('div', { 
-                        className: "prose prose-sm text-gray-600" 
-                    }, [
+                        )),
                         React.createElement('p', null, walk.trail_considerations),
                         React.createElement('p', { 
                             className: "mt-2 italic text-gray-500" 
@@ -585,7 +698,7 @@
         const [error, setError] = useState(null);
         const [selectedWalk, setSelectedWalk] = useState(null);
         const [mapInstance, setMapInstance] = useState(null);
-        const markersRef = useRef([]); // Define markersRef
+        const markersRef = useRef([]);
 
         useEffect(() => {
             const fetchWalks = async () => {
@@ -617,7 +730,15 @@
             fetchWalks();
         }, []);
 
-        // Modified handleWalkSelect to accept map instance
+        const handleMapWalkSelect = (walk, map) => {
+            if (map && !mapInstance) {
+                setMapInstance(map);
+            }
+            if (walk) {
+                handleWalkSelect(walk, map);
+            }
+        };
+
         const handleWalkSelect = (walk, map = mapInstance) => {
             setSelectedWalk(walk?.id === selectedWalk?.id ? null : walk);
             
@@ -645,22 +766,30 @@
         };
 
         return React.createElement('div', { 
-            className: "flex h-full",
+            className: "flex flex-col md:flex-row h-full",
             style: { height: '100vh' }
         }, [
+            // Sidebar with responsive design
             React.createElement(motion.div, { 
                 key: 'sidebar',
-                className: "w-1/4 bg-gray-50 flex flex-col divide-y divide-gray-200",
+                className: `
+                    md:w-1/3 lg:w-1/4 bg-white/80 backdrop-blur-xl
+                    flex flex-col divide-y divide-gray-200
+                    h-[40vh] md:h-full
+                    fixed md:sticky top-0 left-0 right-0 md:relative
+                    z-20 shadow-lg md:shadow-none
+                `,
                 initial: { x: -50, opacity: 0 },
                 animate: { x: 0, opacity: 1 },
                 transition: { type: "spring", stiffness: 300, damping: 30 }
             }, [
-                // Search header
+                // Search and filters section
                 React.createElement('div', {
-                    className: "p-4 bg-white shadow-sm"
+                    className: "p-4 bg-white/90 backdrop-blur-xl border-b border-gray-200"
                 }, [
+                    // Search input
                     React.createElement('div', {
-                        className: "relative"
+                        className: "relative mb-4"
                     }, [
                         React.createElement('iconify-icon', {
                             className: "absolute left-3 top-1/2 -translate-y-1/2 text-gray-400",
@@ -670,18 +799,45 @@
                         React.createElement('input', {
                             type: "search",
                             placeholder: "Search walks...",
-                            className: "w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                            className: `
+                                w-full pl-10 pr-4 py-2 rounded-xl
+                                border border-gray-200 bg-white/50
+                                focus:border-blue-500 focus:ring-2 focus:ring-blue-200
+                                transition-all duration-200 outline-none
+                            `
                         })
+                    ]),
+                    // Filter buttons
+                    React.createElement('div', {
+                        className: "flex gap-2 overflow-x-auto pb-2 scrollbar-hide"
+                    }, [
+                        // Filter chips
+                        React.createElement(motion.button, {
+                            className: "px-3 py-1.5 rounded-full bg-blue-50 text-blue-600 text-sm whitespace-nowrap",
+                            whileHover: { scale: 1.05 },
+                            whileTap: { scale: 0.95 }
+                        }, "All Walks"),
+                        // ... more filter chips
                     ])
                 ]),
                 
-                // Walks list with improved scrolling
+                // Walks list
                 React.createElement('div', {
-                    className: "flex-1 overflow-y-auto p-4 space-y-4"
+                    className: `
+                        flex-1 overflow-y-auto p-4 space-y-4
+                        scroll-smooth scrollbar-thin scrollbar-thumb-gray-300
+                        hover:scrollbar-thumb-gray-400
+                    `
                 }, 
                     loading ? 
-                        // ... existing loading skeleton ...
-                        React.createElement('div', { className: "space-y-4" }, /* ... */)
+                        React.createElement('div', { 
+                            className: "space-y-4 animate-pulse" 
+                        }, [...Array(5)].map((_, i) => 
+                            React.createElement('div', {
+                                key: i,
+                                className: "h-32 bg-gray-100 rounded-xl"
+                            })
+                        ))
                     : 
                         React.createElement(ListContainer, null,
                             walks.map(walk => 
@@ -695,29 +851,41 @@
                         )
                 )
             ]),
+
+            // Map container with responsive design
             React.createElement('div', { 
                 key: 'map-container', 
-                className: "flex-1 relative"
+                className: "flex-1 relative md:h-full h-[60vh]"
             }, [
                 React.createElement(MapComponent, { 
-                    walks: walks,
-                    selectedWalk: selectedWalk,
-                    onWalkSelect: (walk, map) => {
-                        if (map && !mapInstance) setMapInstance(map);
-                        if (walk) handleWalkSelect(walk);
-                    }
+                    walks,
+                    selectedWalk,
+                    onWalkSelect: handleMapWalkSelect
                 }),
+                // Mobile toggle for list view
+                React.createElement(motion.button, {
+                    className: "md:hidden fixed bottom-4 right-4 z-30 bg-white rounded-full p-3 shadow-lg",
+                    whileHover: { scale: 1.1 },
+                    whileTap: { scale: 0.9 }
+                }, [
+                    React.createElement('iconify-icon', {
+                        icon: "mdi:list",
+                        width: "24"
+                    })
+                ]),
+                // Selected walk details panel
                 selectedWalk && React.createElement(motion.div, {
-                    className: "absolute bottom-4 left-4 right-4 bg-white p-4 rounded-lg shadow-lg",
+                    className: `
+                        absolute bottom-4 left-4 right-4 
+                        bg-white/90 backdrop-blur-xl p-6 
+                        rounded-xl shadow-xl
+                        max-w-2xl mx-auto
+                    `,
                     initial: { y: 50, opacity: 0 },
                     animate: { y: 0, opacity: 1 },
                     exit: { y: 50, opacity: 0 }
                 }, [
-                    // Selected walk details panel
-                    React.createElement('h2', {
-                        className: "text-xl font-bold mb-2"
-                    }, selectedWalk.walk_name),
-                    // Add more details as needed
+                    // ... existing detail panel content
                 ])
             ])
         ]);

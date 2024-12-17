@@ -42,35 +42,87 @@
     </script>
 <html>
     <head>
-      <script src="http://localhost:8097"></script>
-    <style>
-        /* Critical loading and animation styles */
+     <style>
+        /* Modern UI styles */
+        :root {
+            --primary-color: #3b82f6;
+            --accent-color: #f59e0b;
+            --background-color: #f8fafc;
+            --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --transition-ease: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            background-color: var(--background-color);
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+
+        .main-nav {
+            backdrop-filter: blur(12px);
+            background-color: rgba(255, 255, 255, 0.8);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .nav-link {
+            @apply px-3 py-2 rounded-lg transition-all duration-200;
+        }
+
+        .nav-link:hover {
+            @apply bg-blue-50 text-blue-600;
+        }
+
         .loading-spinner {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+            @apply flex items-center justify-center space-x-2 text-blue-600;
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
+
+        @keyframes pulse {
+            50% { opacity: .5; }
+        }
+
         .walk-item {
-            cursor: pointer;
-            padding: 1rem;
-            border-radius: 0.5rem;
-            margin-bottom: 0.5rem;
-            background: white;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            transition: all 0.2s ease;
+            @apply transition-all duration-300 hover:shadow-lg;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(0, 0, 0, 0.1);
         }
+
         .walk-item:hover {
-            background: #f8f9fa;
+            transform: translateY(-2px);
         }
-        .error-container {
-            position: fixed;
-            top: 2rem;
-            right: 2rem;
-            padding: 1rem;
-            background: #fee2e2;
-            border-radius: 0.5rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
+        /* Responsive design improvements */
+        @media (max-width: 768px) {
+            .main-nav {
+                padding: 0.5rem;
+            }
+
+            .mobile-menu {
+                background: rgba(255, 255, 255, 0.95);
+                backdrop-filter: blur(12px);
+            }
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.3);
         }
     </style>
 </head>
