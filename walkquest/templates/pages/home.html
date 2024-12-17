@@ -1,11 +1,10 @@
 {% extends "base.html" %}
-{% load static %}
 {% load i18n %}
 
 {% block title %}{% translate "Walks" %} - {{ block.super }}{% endblock %}
 
 {% block content %}
-<div id="walks-app" class="h-full">
+<div id="walks-app" style="height: 100vh; width: 100%;">
     <!-- React will render here -->
 </div>
 {% endblock %}
@@ -14,6 +13,47 @@
 <script type="module">
     import React, { useState, useEffect, useRef } from 'react';
     import { createRoot } from 'react-dom/client';
+    import maplibregl from 'https://esm.run/maplibre-gl';
+
+    const MapComponent = () => {
+        const mapContainer = useRef(null);
+        const [map, setMap] = useState(null);
+
+        useEffect(() => {
+            console.log('MapComponent mounted, container:', mapContainer.current);
+            
+            if (!mapContainer.current) return;
+
+            try {
+                console.log('Initializing map...');
+                const mapInstance = new maplibregl.Map({
+                    container: mapContainer.current,
+                    style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+                    center: [-4.85, 50.4],
+                    zoom: 9.5
+                });
+
+                mapInstance.on('load', () => {
+                    console.log('Map loaded successfully');
+                });
+
+                setMap(mapInstance);
+
+                return () => {
+                    console.log('Cleaning up map');
+                    mapInstance.remove();
+                };
+            } catch (error) {
+                console.error('Error initializing map:', error);
+            }
+        }, []);
+
+        return React.createElement('div', {
+            ref: mapContainer,
+            className: "w-full h-full bg-gray-200",
+            style: { minHeight: '500px' }
+        });
+    };
 
     const WalkItem = React.memo(({ walk, onSelect }) => {
         return React.createElement('div', {
@@ -31,23 +71,6 @@
         const [walks, setWalks] = useState([]);
         const [loading, setLoading] = useState(true);
         const [error, setError] = useState(null);
-        const [map, setMap] = useState(null);
-        const mapContainer = useRef(null);
-
-        useEffect(() => {
-            if (!mapContainer.current) return;
-
-            const mapInstance = new maplibregl.Map({
-                container: mapContainer.current,
-                style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
-                center: [-4.85, 50.4],
-                zoom: 9.5
-            });
-
-            setMap(mapInstance);
-
-            return () => mapInstance.remove();
-        }, [mapContainer.current]);
 
         useEffect(() => {
             const fetchWalks = async () => {
@@ -87,7 +110,10 @@
             return React.createElement('div', { className: "p-4 text-red-600" }, error);
         }
 
-        return React.createElement('div', { className: "flex h-full" }, [
+        return React.createElement('div', { 
+            className: "flex h-full",
+            style: { height: '100vh' }
+        }, [
             React.createElement('div', { 
                 key: 'sidebar', 
                 className: "w-1/4 bg-gray-100 p-4 overflow-y-auto" 
@@ -101,10 +127,11 @@
                 )
             ),
             React.createElement('div', { 
-                key: 'map', 
-                ref: mapContainer,
+                key: 'map-container', 
                 className: "flex-1"
-            })
+            },
+                React.createElement(MapComponent)
+            )
         ]);
     };
 
