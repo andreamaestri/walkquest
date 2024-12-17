@@ -374,6 +374,7 @@ MAP_ATTRIBUTION = "© OpenStreetMap contributors" + (". Maps © Thunderforest" i
 # Make map settings available to templates
 TEMPLATES[0]["OPTIONS"]["context_processors"].append("walkquest.utils.context_processors.map_settings")
 
+APPEND_SLASH = True
 
 # Your stuff...
 # ------------------------------------------------------------------------------

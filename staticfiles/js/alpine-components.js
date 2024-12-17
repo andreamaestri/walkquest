@@ -19,6 +19,11 @@ const storage = {
 };
 
 function getCategoryEmoji(category) {
+    if (!category || typeof category !== 'object') {
+        return '🚶‍♂️';
+    }
+    
+    const slug = category.slug || '';
     const emojiMap = {
         'coastal': '🏖️',
         'woodland': '🌳',
@@ -31,10 +36,15 @@ function getCategoryEmoji(category) {
         'waterfall': '💦',
         'wildlife': '🦊'
     };
-    return emojiMap[category.toLowerCase()] || '🚶‍♂️';
+    return emojiMap[slug.toLowerCase()] || '🚶‍♂️';
 }
 
 function getCategoryColor(category) {
+    if (!category || typeof category !== 'object') {
+        return '#6B7280';
+    }
+    
+    const slug = category.slug || '';
     const colorMap = {
         'coastal': '#0EA5E9',
         'woodland': '#22C55E',
@@ -47,7 +57,7 @@ function getCategoryColor(category) {
         'waterfall': '#06B6D4',
         'wildlife': '#84CC16'
     };
-    return colorMap[category.toLowerCase()] || '#6B7280';
+    return colorMap[slug.toLowerCase()] || '#6B7280';
 }
 
 // Define Alpine.js extension for auxiliary components

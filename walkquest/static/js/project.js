@@ -84,6 +84,76 @@ const utils = {
     `
 };
 
+// React Components
+const WalkItem = ({ walk, onSelect }) => {
+    const React = window.React;
+    return React.createElement('div', {
+        className: "walk-item",
+        onClick: () => onSelect(walk)
+    }, [
+        React.createElement('h3', { key: 'title', className: "walk-title" }, walk.walk_name),
+        React.createElement('div', { key: 'details', className: "walk-details" }, [
+            React.createElement('span', { key: 'distance', className: "distance" }, utils.formatDistance(walk.distance)),
+            ...(walk.features || []).map(feature => 
+                React.createElement('span', { key: feature.slug, className: "feature" }, [
+                    getCategoryEmoji(feature),
+                    ' ',
+                    feature.name
+                ])
+            )
+        ]),
+        React.createElement('div', { key: 'categories', className: "categories" }, 
+            (walk.related_categories || []).map(cat => 
+                React.createElement('span', { key: cat.slug, className: "category-tag", style: { backgroundColor: getCategoryColor(cat) } }, cat.name)
+            )
+        )
+    ]);
+};
+
+const WalksApp = () => {
+    const React = window.React;
+    const { useState, useEffect } = window.useReactHooks;
+    
+    const [walks, setWalks] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const initializeData = async () => {
+            await window.walkStore.fetchInitialData();
+            setWalks(window.walkStore.walks);
+            setLoading(false);
+        };
+        initializeData();
+    }, []);
+
+    const handleWalkSelect = (walk) => {
+        window.walkStore.selectWalk(walk.id);
+    };
+
+    if (loading) {
+        return React.createElement('div', { className: "loading-spinner" }, "Loading...");
+    }
+
+    return React.createElement('div', { className: "app-wrapper" }, [
+        React.createElement('div', { key: 'sidebar', className: "sidebar" }, [
+            React.createElement('div', { key: 'search', className: "search-box" }, 
+                React.createElement('input', {
+                    type: "text",
+                    className: "search-input",
+                    placeholder: "Search walks...",
+                    onChange: (e) => window.walkStore.search(e.target.value)
+                })
+            ),
+            React.createElement('div', { key: 'walk-list', className: "walks-list" }, 
+                walks.map(walk => 
+                    React.createElement(WalkItem, { key: walk.id, walk: walk, onSelect: handleWalkSelect })
+                )
+            )
+        ]),
+        React.createElement('div', { key: 'map', id: "map", className: "map-container" })
+    ]);
+};
+
 // Define walkStore and make it globally available
 const walkStore = {
     map: null,
@@ -229,42 +299,70 @@ const walkStore = {
 
     displayWalkGeometry(geometry) {
         if (!this.map) return;
+        
+        // Validate geometry data
+        if (!geometry || !geometry.geometry || !Array.isArray(geometry.geometry.coordinates)) {
+            console.error('Invalid geometry data:', geometry);
+            return;
+        }
 
         // Remove existing route
         if (this.currentRoute) {
-            this.map.removeLayer(this.currentRoute);
-            this.map.removeSource(this.currentRoute);
+            try {
+                if (this.map.getLayer(this.currentRoute)) {
+                    this.map.removeLayer(this.currentRoute);
+                }
+                if (this.map.getSource(this.currentRoute)) {
+                    this.map.removeSource(this.currentRoute);
+                }
+            } catch (error) {
+                console.warn('Error cleaning up previous route:', error);
+            }
         }
 
         // Add new route
-        const sourceId = `route-${geometry.properties.walk_id}`;
-        const layerId = `route-layer-${geometry.properties.walk_id}`;
+        const sourceId = `route-${geometry.properties?.walk_id || Date.now()}`;
+        const layerId = `route-layer-${geometry.properties?.walk_id || Date.now()}`;
 
-        this.map.addSource(sourceId, {
-            type: 'geojson',
-            data: geometry
-        });
+        try {
+            this.map.addSource(sourceId, {
+                type: 'geojson',
+                data: geometry
+            });
 
-        this.map.addLayer({
-            id: layerId,
-            type: 'line',
-            source: sourceId,
-            layout: {
-                'line-join': 'round',
-                'line-cap': 'round'
-            },
-            paint: {
-                'line-color': this.config.map.markerColors.selected,
-                'line-width': 4
+            this.map.addLayer({
+                id: layerId,
+                type: 'line',
+                source: sourceId,
+                layout: {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                },
+                paint: {
+                    'line-color': this.config.map.markerColors.selected,
+                    'line-width': 4
+                }
+            });
+
+            // Fit bounds to show full route
+            const bounds = new maplibregl.LngLatBounds();
+            let hasValidCoordinates = false;
+
+            geometry.geometry.coordinates.forEach(coord => {
+                if (Array.isArray(coord) && coord.length >= 2) {
+                    bounds.extend(coord);
+                    hasValidCoordinates = true;
+                }
+            });
+
+            if (hasValidCoordinates) {
+                this.map.fitBounds(bounds, { padding: 50 });
             }
-        });
 
-        // Fit bounds to show full route
-        const bounds = new maplibregl.LngLatBounds();
-        geometry.geometry.coordinates.forEach(coord => bounds.extend(coord));
-        this.map.fitBounds(bounds, { padding: 50 });
-
-        this.currentRoute = layerId;
+            this.currentRoute = layerId;
+        } catch (error) {
+            console.error('Error displaying walk geometry:', error);
+        }
     },
 
     renderWalkList() {
@@ -366,6 +464,22 @@ const walkStore = {
             }
         } else {
             this.selectedWalk = null;
+        }
+    },
+
+    async initializeReact() {
+        const container = document.getElementById('walks-app');
+        if (!container) {
+            console.error('React container not found');
+            return;
+        }
+        
+        try {
+            const { createRoot } = await import('react-dom/client');
+            const root = createRoot(container);
+            root.render(React.createElement(WalksApp));
+        } catch (error) {
+            console.error('Failed to initialize React app:', error);
         }
     }
 };
@@ -519,6 +633,7 @@ function initializeModal() {
 document.addEventListener('DOMContentLoaded', () => {
     initializeUI();
     walkStore.fetchInitialData();
+    walkStore.initializeReact();
 });
 
 export { walkStore };

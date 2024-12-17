@@ -9,36 +9,66 @@
     <meta name="csrf-token" content="{{ csrf_token }}">
     <title>{% block title %}WalkQuest{% endblock %}</title>
     
+    <!-- Critical CSS -->
+    <link href="{% static 'css/project.css' %}" rel="stylesheet">
+    
     <!-- MapLibre GL JS -->
     <link href="https://unpkg.com/maplibre-gl@3.3.1/dist/maplibre-gl.css" rel="stylesheet" />
-    <script src="https://unpkg.com/maplibre-gl@3.3.1/dist/maplibre-gl.js"></script>
     
-    <!-- Iconify -->
-    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+    <!-- Core Dependencies -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.13/plugin/relativeTime.js" defer></script>
     
-    <!-- Core Dependencies - Load these before other scripts -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.13/plugin/relativeTime.js"></script>
-
-    <!-- App CSS -->
-    <link href="{% static 'css/project.css' %}" rel="stylesheet">
-
-    <!-- Initialize libraries -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Check if libraries are loaded
-            if (typeof _ === 'undefined') {
-                console.error('Lodash failed to load');
-            }
-            if (typeof dayjs === 'undefined') {
-                console.error('Day.js failed to load');
-            } else {
-                // Initialize Day.js plugins
-                dayjs.extend(window.dayjs_plugin_relativeTime);
-            }
-        });
+    <!-- Load React and related libraries via ESM -->
+    <script type="importmap">
+    {
+        "imports": {
+            "react": "https://esm.sh/stable/react@18.2.0/es2022/react.mjs",
+            "react-dom": "https://esm.sh/stable/react-dom@18.2.0/es2022/react-dom.mjs",
+            "react-dom/client": "https://esm.sh/stable/react-dom@18.2.0/es2022/client.mjs"
+        }
+    }
     </script>
+    
+    <!-- Initialize React -->
+    <script type="module">
+        import React from 'react';
+        window.React = React;
+    </script>
+<html>
+    <head>
+      <script src="http://localhost:8097"></script>
+    <style>
+        /* Critical loading and animation styles */
+        .loading-spinner {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .walk-item {
+            cursor: pointer;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+            background: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: all 0.2s ease;
+        }
+        .walk-item:hover {
+            background: #f8f9fa;
+        }
+        .error-container {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            padding: 1rem;
+            background: #fee2e2;
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+    </style>
 </head>
 <body>
     <nav class="main-nav">
@@ -137,12 +167,24 @@
         {% block content %}{% endblock %}
     </main>
 
-    {% block javascript %}
-        <!-- App JavaScript - Load these after dependencies -->
-        <script defer src="{% static 'js/services.js' %}" type="module"></script>
-        <script defer src="{% static 'js/project.js' %}" type="module"></script>
-    {% endblock javascript %}
+    <!-- Load MapLibre after DOM is ready -->
+    <script src="https://unpkg.com/maplibre-gl@3.3.1/dist/maplibre-gl.js" defer></script>
 
-    {% block extra_javascript %}{% endblock %}
+    <!-- Initialize dayjs after it loads -->
+    <script type="module">
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.dayjs) {
+                window.dayjs.extend(window.dayjs_plugin_relativeTime);
+            }
+        });
+    </script>
+
+    {% block javascript %}
+    <!-- Default JavaScript block that can be overridden -->
+    {% endblock %}
+
+    {% block extra_javascript %}
+    <!-- Additional JavaScript block for page-specific scripts -->
+    {% endblock %}
 </body>
 </html>

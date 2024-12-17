@@ -5,59 +5,115 @@
 {% block title %}{% translate "Walks" %} - {{ block.super }}{% endblock %}
 
 {% block content %}
-<div id="walks-app" class="walks-app">
-    <!-- Error Container -->
-    <div id="error-container" class="error-container" style="display: none;"></div>
-
-    <!-- Loading indicator -->
-    <div id="loading-indicator" class="loading-indicator hidden">
-        <div class="spinner"></div>
-    </div>
-
-    <div class="app-layout">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="search-box">
-                <input type="text" 
-                       id="search-input"
-                       class="search-input" 
-                       placeholder="{% translate 'Search walks...' %}">
-            </div>
-
-            <!-- Filters -->
-            <div class="filters">
-                <h4>{% translate "Categories" %}</h4>
-                <div id="category-filters" class="filter-group"></div>
-                
-                <h4>{% translate "Features" %}</h4>
-                <div id="feature-filters" class="filter-group"></div>
-            </div>
-
-            <!-- Walk list -->
-            <div id="walk-list" class="walk-list"></div>
-        </aside>
-
-        <!-- Map container -->
-        <div id="map" class="map-container"></div>
-    </div>
-
-    <!-- Walk Detail Modal -->
-    <div id="walk-modal" class="walk-modal hidden">
-        <div class="walk-modal-content">
-            <span id="close-modal" class="close-button">&times;</span>
-            <div id="walk-details">
-                <!-- Walk details will be populated here -->
-            </div>
-        </div>
-    </div>
+<div id="walks-app" class="h-full">
+    <!-- React will render here -->
 </div>
 {% endblock %}
 
 {% block extra_javascript %}
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        if (!document.getElementById('map')) {
-            console.error('Map container not found');
+<script type="module">
+    import React, { useState, useEffect, useRef } from 'react';
+    import { createRoot } from 'react-dom/client';
+
+    const WalkItem = React.memo(({ walk, onSelect }) => {
+        return React.createElement('div', {
+            className: "walk-item p-4 border-b hover:bg-gray-100",
+            onClick: () => onSelect(walk)
+        }, [
+            React.createElement('h3', { key: 'title', className: "font-semibold" }, walk.walk_name),
+            React.createElement('div', { key: 'distance', className: "text-sm text-gray-600" }, 
+                `${(walk.distance / 1000).toFixed(1)}km`
+            )
+        ]);
+    });
+
+    const WalksApp = () => {
+        const [walks, setWalks] = useState([]);
+        const [loading, setLoading] = useState(true);
+        const [error, setError] = useState(null);
+        const [map, setMap] = useState(null);
+        const mapContainer = useRef(null);
+
+        useEffect(() => {
+            if (!mapContainer.current) return;
+
+            const mapInstance = new maplibregl.Map({
+                container: mapContainer.current,
+                style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+                center: [-4.85, 50.4],
+                zoom: 9.5
+            });
+
+            setMap(mapInstance);
+
+            return () => mapInstance.remove();
+        }, [mapContainer.current]);
+
+        useEffect(() => {
+            const fetchWalks = async () => {
+                try {
+                    const response = await fetch('/api/walks', {
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    console.log('Fetched data:', data); // Debug log
+                    setWalks(Array.isArray(data) ? data : []);
+                    setError(null);
+                } catch (error) {
+                    console.error('Error fetching walks:', error);
+                    setError('Failed to load walks');
+                    setWalks([]);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            fetchWalks();
+        }, []);
+
+        if (loading) {
+            return React.createElement('div', { className: "p-4" }, "Loading walks...");
+        }
+
+        if (error) {
+            return React.createElement('div', { className: "p-4 text-red-600" }, error);
+        }
+
+        return React.createElement('div', { className: "flex h-full" }, [
+            React.createElement('div', { 
+                key: 'sidebar', 
+                className: "w-1/4 bg-gray-100 p-4 overflow-y-auto" 
+            }, 
+                walks.map(walk => 
+                    React.createElement(WalkItem, { 
+                        key: walk.id, 
+                        walk: walk, 
+                        onSelect: () => console.log('Selected:', walk.walk_name)
+                    })
+                )
+            ),
+            React.createElement('div', { 
+                key: 'map', 
+                ref: mapContainer,
+                className: "flex-1"
+            })
+        ]);
+    };
+
+    // Initialize React app
+    document.addEventListener('DOMContentLoaded', () => {
+        const container = document.getElementById('walks-app');
+        if (container) {
+            const root = createRoot(container);
+            root.render(React.createElement(WalksApp));
         }
     });
 </script>

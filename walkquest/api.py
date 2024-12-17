@@ -5,7 +5,7 @@ from .schemas import WalkOut, TagOut, ConfigOut
 
 router = Router()
 
-@router.get("/walks", response=List[WalkOut])
+@router.get("/walks/", response=List[WalkOut])
 def list_walks(
     request: HttpRequest,
     search: Optional[str] = None,
