@@ -29,6 +29,9 @@ def list_walks(
     search: Optional[str] = None,
     categories: Optional[str] = None,  # Changed from List[str] to str
     features: Optional[str] = None,    # Changed from List[str] to str
+    difficulty: Optional[str] = None,  # Add difficulty filter
+    has_stiles: Optional[bool] = None,  # Add stiles filter
+    has_bus: Optional[bool] = None,    # Add bus access filter
 ):
     """List walks with optional filtering"""
     try:
@@ -36,35 +39,71 @@ def list_walks(
             'features',
             'categories',
             'related_categories'  # Ensure related_categories is prefetched
+        ).annotate(
+            is_favorite=Exists(
+                Walk.favorites.through.objects.filter(
+                    walk_id=OuterRef('pk'),
+                    user=request.user
+                )
+            ) if request.user.is_authenticated else Value(False)
         )
-        
+
         if search:
             walks = walks.filter(walk_name__icontains=search)
-        
         if categories:
-            category_list = [cat.strip() for cat in categories.split(',')]
-            walks = walks.filter(categories__slug__in=category_list)
-        
+            walks = walks.filter(categories__slug__in=categories.split(','))
         if features:
-            feature_list = [feat.strip() for feat in features.split(',')]
-            walks = walks.filter(features__slug__in=feature_list)
-        
-        if request.user.is_authenticated:
-            walks = walks.annotate(
-                is_favorite=Exists(
-                    Walk.favorites.through.objects.filter(
-                        walk_id=OuterRef('pk'),
-                        user=request.user
-                    )
-                )
-            )
-        else:
-            walks = walks.annotate(
-                is_favorite=Value(False)
-            )
-        
-        # Ensure we're returning a list of serialized walks
-        return [WalkOutSchema.from_orm(walk) for walk in walks]
+            walks = walks.filter(features__slug__in=features.split(','))
+        if difficulty:
+            walks = walks.filter(steepness_level=difficulty)
+        if has_stiles is not None:
+            walks = walks.filter(has_stiles=has_stiles)
+        if has_bus is not None:
+            walks = walks.filter(has_bus_access=has_bus)
+
+        walk_list = []
+        for walk in walks:
+            # Format pubs list correctly
+            formatted_pubs = []
+            for pub in walk.pubs_list:
+                if isinstance(pub, str):
+                    formatted_pubs.append({'name': pub, 'description': ''})
+                elif isinstance(pub, dict):
+                    formatted_pubs.append({
+                        'name': pub.get('name', ''),
+                        'description': pub.get('description', '')
+                    })
+
+            walk_data = {
+                'id': walk.id,
+                'walk_id': walk.walk_id,
+                'walk_name': walk.walk_name,
+                'distance': walk.distance,
+                'latitude': walk.latitude,
+                'longitude': walk.longitude,
+                'has_pub': walk.has_pub,
+                'has_cafe': walk.has_cafe,
+                'is_favorite': walk.is_favorite,
+                'features': [{'name': f.name, 'slug': f.slug} for f in walk.features.all()],
+                'categories': [{'name': c.name, 'slug': c.slug} for c in walk.categories.all()],
+                'related_categories': [{'name': rc.name, 'slug': rc.slug} for rc in walk.related_categories.all()],
+                'highlights': walk.highlights,
+                'points_of_interest': walk.points_of_interest,
+                'os_explorer_reference': walk.os_explorer_reference,
+                'steepness_level': walk.steepness_level,
+                'footwear_category': walk.footwear_category,
+                'recommended_footwear': walk.recommended_footwear,
+                'pubs_list': formatted_pubs,  # Use the formatted pubs list
+                'trail_considerations': walk.trail_considerations,
+                'rewritten_trail_considerations': walk.rewritten_trail_considerations,
+                'has_stiles': walk.has_stiles,
+                'has_bus_access': walk.has_bus_access,
+                'created_at': walk.created_at.isoformat(),
+                'updated_at': walk.updated_at.isoformat()
+            }
+            walk_list.append(walk_data)
+
+        return walk_list
     except Exception as e:
         print(f"Error in list_walks: {e}")  # Debug log
         return []
@@ -192,5 +231,38 @@ def get_config(request):
             "distance": True
         }
     }
+
+@router.get("/walks/filters")
+def get_walk_filters(request):
+    """Get available filter options"""
+    return {
+        "difficulties": [choice[0] for choice in Walk.DIFFICULTY_CHOICES],
+        "footwear": [choice[0] for choice in Walk.FOOTWEAR_CHOICES],
+        "categories": list(WalkCategoryTag.objects.values('name', 'slug')),
+        "features": list(WalkFeatureTag.objects.values('name', 'slug')),
+    }
+
+@router.post("/walks/{walk_id}/favorite")
+def toggle_favorite(request: HttpRequest, walk_id: UUID):
+    """Toggle favorite status for a walk"""
+    if not request.user.is_authenticated:
+        return {"status": "error", "message": "Authentication required"}
+    
+    try:
+        walk = Walk.objects.get(id=walk_id)
+        if walk.favorites.filter(id=request.user.id).exists():
+            walk.favorites.remove(request.user)
+            is_favorite = False
+        else:
+            walk.favorites.add(request.user)
+            is_favorite = True
+        
+        return {
+            "status": "success",
+            "walk_id": str(walk_id),
+            "is_favorite": is_favorite
+        }
+    except Walk.DoesNotExist:
+        return {"status": "error", "message": "Walk not found"}
 
 api.add_router("/", router)

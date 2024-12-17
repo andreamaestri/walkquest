@@ -231,7 +231,11 @@ class Walk(models.Model):
         blank=True,
     )
     has_pub = models.BooleanField(default=False)
-    pubs_list = models.JSONField(default=list, blank=True)
+    pubs_list = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of pubs along the walk. Each pub should have a name and optional description."
+    )
     trail_considerations = models.TextField(
         default="No trail considerations provided.",
         help_text="Considerations for the trail.",
@@ -302,6 +306,12 @@ class Walk(models.Model):
         if self.related_categories:
             self.has_pub = "pub" in self.related_categories.get_tag_list()
             self.has_cafe = "cafe" in self.related_categories.get_tag_list()
+        # Ensure pubs_list items are dictionaries
+        if isinstance(self.pubs_list, list):
+            self.pubs_list = [
+                {'name': pub} if isinstance(pub, str) else pub 
+                for pub in self.pubs_list
+            ]
         if not self.title:
             self.title = self.walk_name
         if not self.description:
