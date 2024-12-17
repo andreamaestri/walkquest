@@ -14,11 +14,86 @@
     import React, { useState, useEffect, useRef } from 'react';
     import { createRoot } from 'react-dom/client';
     import maplibregl from 'https://esm.run/maplibre-gl';
+    import { motion, AnimatePresence } from 'framer-motion';
 
-    const MapComponent = () => {
+    const MapComponent = ({ walks }) => {
         const mapContainer = useRef(null);
         const [map, setMap] = useState(null);
+        const markersRef = useRef([]);
 
+        const clearMarkers = () => {
+            markersRef.current.forEach(marker => marker.remove());
+            markersRef.current = [];
+        };
+
+        // Add markers for walks
+        useEffect(() => {
+            if (!map || !walks) return;
+
+            clearMarkers();
+
+            walks.forEach(walk => {
+                if (!walk.latitude || !walk.longitude) return;
+
+                // Create marker HTML element
+                const markerEl = document.createElement('div');
+                markerEl.className = 'marker';
+                
+                // Create popup with walk details
+                const popupContent = `
+                    <div class="p-2">
+                        <h3 class="font-bold mb-1">${walk.walk_name}</h3>
+                        <p class="text-sm text-gray-600">${(walk.distance / 1000).toFixed(1)}km</p>
+                        <div class="flex gap-2 mt-1">
+                            ${walk.has_pub ? '<span class="text-xs px-2 py-1 bg-amber-100 rounded">Pub</span>' : ''}
+                            ${walk.has_cafe ? '<span class="text-xs px-2 py-1 bg-blue-100 rounded">Café</span>' : ''}
+                        </div>
+                        ${walk.features.length > 0 ? `
+                            <div class="text-xs text-gray-500 mt-1">
+                                ${walk.features.map(f => f.name).join(' • ')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+
+                const popup = new maplibregl.Popup({ 
+                    offset: 25,
+                    closeButton: false,
+                    maxWidth: '300px'
+                }).setHTML(popupContent);
+
+                // Create marker with custom options
+                const marker = new maplibregl.Marker({
+                    color: walk.has_pub ? '#f59e0b' : '#3b82f6', // Amber for pubs, blue for others
+                    scale: 0.8,
+                    draggable: false
+                })
+                    .setLngLat([walk.longitude, walk.latitude])
+                    .setPopup(popup)
+                    .addTo(map);
+
+                // Show popup on hover
+                markerEl.addEventListener('mouseenter', () => marker.togglePopup());
+                
+                markersRef.current.push(marker);
+            });
+
+            // Fit bounds if we have markers
+            if (markersRef.current.length > 0) {
+                const bounds = new maplibregl.LngLatBounds();
+                walks.forEach(walk => {
+                    if (walk.latitude && walk.longitude) {
+                        bounds.extend([walk.longitude, walk.latitude]);
+                    }
+                });
+                map.fitBounds(bounds, { 
+                    padding: 50,
+                    maxZoom: 15 
+                });
+            }
+        }, [map, walks]);
+
+        // Initial map setup
         useEffect(() => {
             console.log('MapComponent mounted, container:', mapContainer.current);
             
@@ -55,15 +130,49 @@
         });
     };
 
-    const WalkItem = React.memo(({ walk, onSelect }) => {
-        return React.createElement('div', {
-            className: "walk-item p-4 border-b hover:bg-gray-100",
-            onClick: () => onSelect(walk)
+    const WalkItem = React.memo(({ walk, onSelect, isSelected }) => {
+        return React.createElement(motion.div, {
+            className: `walk-item p-4 rounded-lg mb-3 ${isSelected ? 'bg-blue-50 border-blue-200' : 'bg-white'}`,
+            initial: { opacity: 0, y: 20 },
+            animate: { opacity: 1, y: 0 },
+            exit: { opacity: 0, x: -100 },
+            whileHover: { scale: 1.02 },
+            whileTap: { scale: 0.98 },
+            transition: { type: "spring", stiffness: 500, damping: 30 },
+            onClick: () => onSelect(walk),
+            layout: true
         }, [
-            React.createElement('h3', { key: 'title', className: "font-semibold" }, walk.walk_name),
-            React.createElement('div', { key: 'distance', className: "text-sm text-gray-600" }, 
-                `${(walk.distance / 1000).toFixed(1)}km`
-            )
+            React.createElement('div', { 
+                key: 'header',
+                className: "flex items-center justify-between mb-2"
+            }, [
+                React.createElement('h3', { 
+                    className: "font-semibold text-lg"
+                }, walk.walk_name),
+                React.createElement('span', {
+                    className: "text-sm font-medium px-3 py-1 bg-gray-100 rounded-full"
+                }, `${(walk.distance / 1000).toFixed(1)}km`)
+            ]),
+            React.createElement('div', {
+                key: 'features',
+                className: "flex flex-wrap gap-2"
+            }, [
+                walk.has_pub && React.createElement(motion.span, {
+                    className: "text-xs px-2 py-1 bg-amber-100 rounded-full",
+                    whileHover: { scale: 1.1 }
+                }, "🍺 Pub"),
+                walk.has_cafe && React.createElement(motion.span, {
+                    className: "text-xs px-2 py-1 bg-blue-100 rounded-full",
+                    whileHover: { scale: 1.1 }
+                }, "☕ Café"),
+                ...walk.features.map(feature => 
+                    React.createElement(motion.span, {
+                        key: feature.slug,
+                        className: "text-xs px-2 py-1 bg-green-100 rounded-full",
+                        whileHover: { scale: 1.1 }
+                    }, feature.name)
+                )
+            ])
         ]);
     });
 
@@ -71,6 +180,7 @@
         const [walks, setWalks] = useState([]);
         const [loading, setLoading] = useState(true);
         const [error, setError] = useState(null);
+        const [selectedWalk, setSelectedWalk] = useState(null);
 
         useEffect(() => {
             const fetchWalks = async () => {
@@ -102,8 +212,29 @@
             fetchWalks();
         }, []);
 
+        const handleWalkSelect = (walk) => {
+            setSelectedWalk(walk);
+            // Fly to the selected walk's location
+            if (map && walk.latitude && walk.longitude) {
+                map.flyTo({
+                    center: [walk.longitude, walk.latitude],
+                    zoom: 14,
+                    duration: 2000,
+                    essential: true
+                });
+            }
+        };
+
         if (loading) {
-            return React.createElement('div', { className: "p-4" }, "Loading walks...");
+            return React.createElement(motion.div, {
+                className: "flex items-center justify-center h-full",
+                initial: { opacity: 0 },
+                animate: { opacity: 1 }
+            }, 
+                React.createElement('div', { 
+                    className: "loading-spinner"
+                }, "Loading walks...")
+            );
         }
 
         if (error) {
@@ -114,24 +245,42 @@
             className: "flex h-full",
             style: { height: '100vh' }
         }, [
-            React.createElement('div', { 
-                key: 'sidebar', 
-                className: "w-1/4 bg-gray-100 p-4 overflow-y-auto" 
+            React.createElement(motion.div, { 
+                key: 'sidebar',
+                className: "w-1/4 bg-gray-50 p-4 overflow-y-auto shadow-lg",
+                initial: { x: -50, opacity: 0 },
+                animate: { x: 0, opacity: 1 },
+                transition: { type: "spring", stiffness: 300, damping: 30 }
             }, 
-                walks.map(walk => 
-                    React.createElement(WalkItem, { 
-                        key: walk.id, 
-                        walk: walk, 
-                        onSelect: () => console.log('Selected:', walk.walk_name)
-                    })
+                React.createElement(AnimatePresence, null,
+                    walks.map(walk => 
+                        React.createElement(WalkItem, { 
+                            key: walk.id, 
+                            walk: walk,
+                            isSelected: selectedWalk?.id === walk.id,
+                            onSelect: handleWalkSelect
+                        })
+                    )
                 )
             ),
             React.createElement('div', { 
                 key: 'map-container', 
-                className: "flex-1"
-            },
-                React.createElement(MapComponent)
-            )
+                className: "flex-1 relative"
+            }, [
+                React.createElement(MapComponent, { walks: walks }),
+                selectedWalk && React.createElement(motion.div, {
+                    className: "absolute bottom-4 left-4 right-4 bg-white p-4 rounded-lg shadow-lg",
+                    initial: { y: 50, opacity: 0 },
+                    animate: { y: 0, opacity: 1 },
+                    exit: { y: 50, opacity: 0 }
+                }, [
+                    // Selected walk details panel
+                    React.createElement('h2', {
+                        className: "text-xl font-bold mb-2"
+                    }, selectedWalk.walk_name),
+                    // Add more details as needed
+                ])
+            ])
         ]);
     };
 
