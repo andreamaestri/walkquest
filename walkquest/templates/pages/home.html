@@ -15,19 +15,7 @@
 
     <!-- Main content with Alpine.js -->
     <div class="layout-container" 
-         x-data="{
-            showSidebar: true,
-            searchQuery: '',
-            isLoading: false,
-            selectedWalk: null,
-            filteredWalks: [],
-            init() {
-                this.isLoading = true;
-                const walksData = JSON.parse(document.getElementById('walks-data').textContent);
-                this.filteredWalks = walksData;
-                this.isLoading = false;
-            }
-         }"
+         x-data="walkInterface"
          x-init="init"
          x-cloak>
         <!-- Sidebar -->
