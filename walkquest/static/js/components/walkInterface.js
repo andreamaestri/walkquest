@@ -12,13 +12,18 @@ export const walkInterface = () => ({
     markers: new Map(),
     currentRoute: null,
 
+    // Initialize component
     init() {
-        // Parse initial data from Django templates
-        this.config = JSON.parse(document.getElementById('config-data')?.textContent || '{}');
-        const walksData = JSON.parse(document.getElementById('walks-data')?.textContent || '{}');
-        this.filteredWalks = walksData.walks || [];
+        const configData = document.getElementById('config-data');
+        const walksData = document.getElementById('walks-data');
+        
+        this.config = configData ? JSON.parse(configData.textContent) : {};
+        this.filteredWalks = walksData ? JSON.parse(walksData.textContent).walks || [] : [];
 
+        // Initialize map
         this.initializeMap();
+
+        // Setup event listeners
         this.setupEventListeners();
     },
 

@@ -12,27 +12,6 @@
     <!-- Critical CSS -->
     <link href="{% static 'css/project.css' %}" rel="stylesheet">
     
-    <!-- Core Dependencies -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.13/plugin/relativeTime.js"></script>
-    
-    <!-- Extend dayjs plugin -->
-    <script>
-        if (window.dayjs) {
-            dayjs.extend(dayjs_plugin_relativeTime);
-        }
-    </script>
-    
-    <!-- Load Iconify -->
-    <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
-    
-    <!-- Alpine.js Core -->
-    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    
-    <!-- Project Core (load after Alpine.js) -->
-    <script type="module" src="{% static 'js/project.js' %}" defer></script>
-    
     {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -129,5 +108,26 @@
     {% block extra_javascript %}
     <!-- Additional JavaScript block for page-specific scripts -->
     {% endblock %}
+
+    <!-- Core Dependencies -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.13/plugin/relativeTime.js"></script>
+    
+    <!-- Extend dayjs plugin -->
+    <script>
+        if (window.dayjs) {
+            dayjs.extend(dayjs_plugin_relativeTime);
+        }
+    </script>
+    
+    <!-- Load Iconify -->
+    <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
+    
+    <!-- Alpine.js Core -->
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    <!-- Project Core (load after Alpine.js) -->
+    <script type="module" src="{% static 'js/project.js' %}"></script>
 </body>
 </html>
