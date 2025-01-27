@@ -45,21 +45,27 @@ function initializeDependencies() {
 }
 
 // Initialize Alpine.js components and store
+function initializeAlpine(Alpine) {
+    // Register walkInterface component
+    Alpine.data('walkInterface', walkInterface);
+
+    // Initialize store
+    Alpine.store('app', initializeAlpineStore());
+
+    // Register custom directives
+    registerAlpineDirectives(Alpine);
+
+    console.log('Alpine.js initialization completed');
+}
+
+// Wait for Alpine to be ready
 document.addEventListener('alpine:init', async () => {
     try {
         // Initialize dependencies first
         await initializeDependencies();
 
-        // Register walkInterface component
-        Alpine.data('walkInterface', walkInterface);
-
-        // Initialize store
-        Alpine.store('app', initializeAlpineStore());
-
-        // Register custom directives
-        registerAlpineDirectives(Alpine);
-
-        console.log('Alpine.js initialization completed');
+        // Get Alpine from window and initialize
+        initializeAlpine(window.Alpine);
     } catch (error) {
         console.error('Alpine initialization error:', error);
         const errorContainer = document.getElementById('error-container');
@@ -73,8 +79,8 @@ document.addEventListener('alpine:init', async () => {
 // Handle post-initialization tasks
 document.addEventListener('alpine:initialized', () => {
     try {
-        // Initialize dayjs relative time plugin
-        if (window.dayjs) {
+        // Initialize dayjs relative time plugin if needed
+        if (window.dayjs && !window.dayjs().fromNow) {
             window.dayjs.extend(window.dayjs_plugin_relativeTime);
         }
     } catch (error) {

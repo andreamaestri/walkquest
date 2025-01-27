@@ -2,7 +2,7 @@
 {% load static %}
 {% load i18n %}
 
-<html lang="en" x-data>
+<html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -32,9 +32,6 @@
     
     <!-- Project Core (load after Alpine.js) -->
     <script type="module" src="{% static 'js/project.js' %}" defer></script>
-    
-    <!-- Application Components -->
-    <script type="module" src="{% static 'js/components/walkInterface.js' %}" defer></script>
     
     {% block extra_head %}{% endblock %}
 </head>
@@ -124,8 +121,6 @@
     <main>
         {% block content %}{% endblock %}
     </main>
-
-
 
     {% block javascript %}
     <!-- Default JavaScript block that can be overridden -->
