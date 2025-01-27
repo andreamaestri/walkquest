@@ -35,15 +35,19 @@ const checkDependencies = () => {
 document.addEventListener('alpine:init', () => {
     try {
         checkDependencies();
-        Alpine.data('walkInterface', walkInterface);
+        // Register walkInterface component
+        Alpine.data('walkInterface', () => walkInterface());
+        // Initialize store
         Alpine.store('app', initializeAlpineStore());
+        // Register custom directives
         registerAlpineDirectives(Alpine);
     } catch (error) {
         console.error('Alpine initialization error:', error);
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'error-message';
-        errorDiv.textContent = 'Application initialization failed. Please refresh the page.';
-        document.body.prepend(errorDiv);
+        const errorContainer = document.getElementById('error-container');
+        if (errorContainer) {
+            errorContainer.classList.remove('hidden');
+            errorContainer.textContent = 'Application initialization failed. Please refresh the page.';
+        }
     }
 });
 
@@ -57,5 +61,4 @@ document.addEventListener('alpine:initialized', () => {
     } catch (error) {
         console.error('Post-initialization error:', error);
     }
-}
 });

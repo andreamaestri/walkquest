@@ -21,26 +21,45 @@ const DEFAULT_CONFIG = {
     }
 };
 
-// Check for required dependencies
-const checkDependencies = () => {
-    if (typeof window._ === 'undefined') {
-        throw new Error('Lodash is required but not loaded');
-    }
-    if (typeof window.dayjs === 'undefined') {
-        throw new Error('Day.js is required but not loaded');
-    }
-};
+// Initialize core dependencies
+function initializeDependencies() {
+    return new Promise((resolve, reject) => {
+        try {
+            // Check for required dependencies
+            if (typeof window._ === 'undefined') {
+                throw new Error('Lodash is required but not loaded');
+            }
+            if (typeof window.dayjs === 'undefined') {
+                throw new Error('Day.js is required but not loaded');
+            }
+
+            // Initialize dayjs plugins
+            if (window.dayjs_plugin_relativeTime) {
+                window.dayjs.extend(window.dayjs_plugin_relativeTime);
+            }
+            resolve();
+        } catch (error) {
+            reject(error);
+        }
+    });
+}
 
 // Initialize Alpine.js components and store
-document.addEventListener('alpine:init', () => {
+document.addEventListener('alpine:init', async () => {
     try {
-        checkDependencies();
+        // Initialize dependencies first
+        await initializeDependencies();
+
         // Register walkInterface component
-        Alpine.data('walkInterface', () => walkInterface());
+        Alpine.data('walkInterface', walkInterface);
+
         // Initialize store
         Alpine.store('app', initializeAlpineStore());
+
         // Register custom directives
         registerAlpineDirectives(Alpine);
+
+        console.log('Alpine.js initialization completed');
     } catch (error) {
         console.error('Alpine initialization error:', error);
         const errorContainer = document.getElementById('error-container');

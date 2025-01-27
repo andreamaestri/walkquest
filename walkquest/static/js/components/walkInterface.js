@@ -37,8 +37,14 @@ export function walkInterface() {
 
         // Setup any necessary event listeners
         setupEventListeners() {
-            // Add any global event listeners here
-            window.addEventListener('resize', this.handleResize.bind(this));
+            // Add any global event listeners here with passive option
+            window.addEventListener('resize', this.handleResize.bind(this), { passive: true });
+            
+            // Add passive touch event listeners for map container
+            if (this.$refs.map) {
+                this.$refs.map.addEventListener('touchmove', () => {}, { passive: true });
+                this.$refs.map.addEventListener('touchstart', () => {}, { passive: true });
+            }
         },
 
         // Remove event listeners
@@ -63,19 +69,23 @@ export function walkInterface() {
         async initializeMap() {
             if (!this.$refs.map) return;
 
+            // Clear any existing content
+            this.$refs.map.innerHTML = '';
+
             try {
                 this.map = new mapboxgl.Map({
                     container: this.$refs.map,
-                    style: 'mapbox://styles/mapbox/streets-v12',
+                    style: this.config.map?.style || 'mapbox://styles/mapbox/outdoors-v12',
                     center: this.config.map?.defaultCenter || [-4.85, 50.4],
                     zoom: this.config.map?.defaultZoom || 9.5,
-                    accessToken: 'YOUR_MAPBOX_ACCESS_TOKEN'
+                    accessToken: this.config.mapboxToken
                 });
 
-                this.map.addControl(new mapboxgl.NavigationControl(), 'top-right');
-                await new Promise(resolve => this.map.on('load', resolve));
-                
-                this.updateMarkers(this.filteredWalks);
+                // Add controls after map is loaded
+                this.map.on('load', () => {
+                    this.map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+                    this.updateMarkers(this.filteredWalks);
+                });
             } catch (error) {
                 console.error('Map initialization failed:', error);
             }
@@ -220,3 +230,8 @@ export function walkInterface() {
         }
     };
 }
+
+// Register the component globally
+document.addEventListener('alpine:init', () => {
+    window.Alpine.data('walkInterface', walkInterface);
+});
