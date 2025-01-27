@@ -1,7 +1,7 @@
 class ApiService {
     constructor() {
         this.csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-        this.baseUrl = 'http://127.0.0.1:8000/api'; // Update baseUrl to include full domain
+        this.baseUrl = window.location.origin + '/api';
     }
 
     async fetch(endpoint, options = {}) {

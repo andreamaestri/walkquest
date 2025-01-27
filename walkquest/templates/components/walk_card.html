@@ -1,6 +1,5 @@
 {% load slippers %}
 
-{% #walk_card %}
 <div class="walk-item bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow duration-200"
      :class="{ 'ring-2 ring-primary-500': selectedWalk?.id === walk.id }"
      @click="selectWalk(walk.id)">
@@ -22,4 +21,3 @@
         <p class="mt-2 text-sm text-gray-600" x-text="walk.highlights"></p>
     </template>
 </div>
-{% /walk_card %}

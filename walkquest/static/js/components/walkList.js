@@ -1,36 +1,37 @@
+import { api } from '../services.js';
+
+// Register walkList Alpine component
 document.addEventListener('alpine:init', () => {
     Alpine.data('walkList', () => ({
-        walks: [],
         searchQuery: '',
         isLoading: false,
+        walks: [],
         selectedWalk: null,
 
-        async init() {
-            await this.fetchWalks();
+        init() {
+            // Get initial walks data from the template
+            const walksData = document.getElementById('walks-data');
+            if (walksData) {
+                this.walks = JSON.parse(walksData.textContent).walks || [];
+            }
         },
 
         async fetchWalks() {
             this.isLoading = true;
             try {
-                const params = new URLSearchParams();
-                if (this.searchQuery) {
-                    params.append('search', this.searchQuery);
-                }
-                
-                const response = await fetch(`/api/walks?${params}`);
-                if (!response.ok) throw new Error('Network response was not ok');
-                this.walks = await response.json();
+                const { walks } = await api.filterWalks({ search: this.searchQuery });
+                this.walks = walks;
             } catch (error) {
-                console.error('Error fetching walks:', error);
+                console.error('Failed to fetch walks:', error);
+                this.walks = [];
             } finally {
                 this.isLoading = false;
             }
         },
 
-        selectWalk(walkId) {
-            this.selectedWalk = this.walks.find(w => w.id === walkId);
-            // Emit event for map interaction
-            this.$dispatch('walk-selected', { walkId });
+        selectWalk(id) {
+            // Emit event to parent component
+            this.$dispatch('walk-selected', id);
         }
     }));
 });

@@ -19,7 +19,7 @@
     {% component "navbar" 
         allow_registration=ACCOUNT_ALLOW_REGISTRATION
         is_authenticated=request.user.is_authenticated
-        username=request.user.username 
+        username=request.user.username %}
 
     <main>
         {% block content %}{% endblock %}
@@ -45,11 +45,17 @@
     <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
     
     <!-- Alpine.js Core -->
-    <script src="{% static 'js/walkInterface.js' %}"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
-    <!-- Alpine Components -->
-    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Application Scripts -->
+    <script type="module">
+        import { api } from "{% static 'js/services.js' %}";
+        import "{% static 'js/components/walkList.js' %}";
+        import "{% static 'js/project.js' %}";
+        import "{% static 'js/walkInterface.js' %}";
+    </script>
 
+    <!-- Additional JavaScript -->
     {% block extra_javascript %}
     <!-- Additional JavaScript block for page-specific scripts -->
     {% endblock %}

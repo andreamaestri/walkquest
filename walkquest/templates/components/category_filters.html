@@ -1,13 +1,14 @@
 {% load slippers %}
 
-{% fragment "category_filter" %}
+{% var title=title|default:"Walk Categories" %}
+
 <div {% attrs class="p-4 border-b" %}>
     <div {% attrs 
         x-data="categoryCombobox({ options: categories })"
         class="w-full flex flex-col gap-1" %}>
         
         <label {% attrs class="w-fit pl-0.5 text-sm text-gray-700 flex items-center justify-between" %}>
-            {{ title|default:"Walk Categories" }}
+            {{ title }}
             {% verbatim %}
             <button {% attrs 
                 type="button"
@@ -77,4 +78,3 @@
         {% endverbatim %}
     </div>
 </div>
-{% endfragment %}
