@@ -1,12 +1,12 @@
 {% load i18n %}
 {% load slippers %}
 
-{% #navbar %}
+{% #navbar allow_registration=ACCOUNT_ALLOW_REGISTRATION is_authenticated=request.user.is_authenticated username=request.user.username %}
 <nav class="main-nav" x-data="{ isOpen: false }">
     <div class="max-w-7xl mx-auto px-4">
         <div class="flex items-center justify-between h-16">
             <!-- Logo -->
-            <a href="{% url 'home' %}" class="flex items-center space-x-2">
+            <a href="/" class="flex items-center space-x-2">
                 <iconify-icon icon="mdi:hiking" class="text-2xl text-primary-500"></iconify-icon>
                 <span class="font-semibold text-lg">WalkQuest</span>
             </a>
@@ -23,22 +23,22 @@
 
             <!-- Desktop menu -->
             <div class="hidden md:flex md:items-center md:space-x-4">
-                <a href="{% url 'home' %}" class="nav-link">
+                <a href="/" class="nav-link">
                     <iconify-icon icon="mdi:home" class="mr-1"></iconify-icon>
                     {% translate "Home" %}
                 </a>
-                {% if request.user.is_authenticated %}
-                    <a href="{% url 'users:detail' request.user.username %}" class="nav-link">
+                {% if is_authenticated %}
+                    <a href="{% url 'users:detail' username %}" class="nav-link">
                         <iconify-icon icon="mdi:account" class="mr-1"></iconify-icon>
                         {% translate "My Profile" %}
                     </a>
-                    <a href="{% url 'account_logout' %}" class="nav-link">
+                    <a href="/accounts/logout/" class="nav-link">
                         <iconify-icon icon="mdi:logout" class="mr-1"></iconify-icon>
                         {% translate "Sign Out" %}
                     </a>
                 {% else %}
-                    {% if ACCOUNT_ALLOW_REGISTRATION %}
-                        <a href="{% url 'account_signup' %}" id="sign-up-link" class="nav-link">
+                    {% if allow_registration %}
+                        <a href="/accounts/signup/" id="sign-up-link" class="nav-link">
                             <iconify-icon icon="mdi:account-plus" class="mr-1"></iconify-icon>
                             {% translate "Sign Up" %}
                         </a>
@@ -55,22 +55,22 @@
     <!-- Mobile menu -->
     <div class="md:hidden" x-show="isOpen" x-transition>
         <div class="px-2 pt-2 pb-3 space-y-1">
-            <a href="{% url 'home' %}" class="nav-link block">
+            <a href="/" class="nav-link block">
                 <iconify-icon icon="mdi:home" class="mr-1"></iconify-icon>
                 {% translate "Home" %}
             </a>
-            {% if request.user.is_authenticated %}
-                <a href="{% url 'users:detail' request.user.username %}" class="nav-link block">
+            {% if is_authenticated %}
+                <a href="{% url 'users:detail' username %}" class="nav-link block">
                     <iconify-icon icon="mdi:account" class="mr-1"></iconify-icon>
                     {% translate "My Profile" %}
                 </a>
-                <a href="{% url 'account_logout' %}" class="nav-link block">
+                <a href="/accounts/logout/" class="nav-link block">
                     <iconify-icon icon="mdi:logout" class="mr-1"></iconify-icon>
                     {% translate "Sign Out" %}
                 </a>
             {% else %}
-                {% if ACCOUNT_ALLOW_REGISTRATION %}
-                    <a href="{% url 'account_signup' %}" id="sign-up-link" class="nav-link block">
+                {% if allow_registration %}
+                    <a href="/accounts/signup/" id="sign-up-link" class="nav-link block">
                         <iconify-icon icon="mdi:account-plus" class="mr-1"></iconify-icon>
                         {% translate "Sign Up" %}
                     </a>

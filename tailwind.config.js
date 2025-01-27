@@ -7,6 +7,10 @@ module.exports = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        'fira': ['Fira Sans', 'sans-serif'],
+        'inter': ['Inter Tight', 'sans-serif'],
+      },
       colors: {
         primary: {
           50: '#f0f9ff',
