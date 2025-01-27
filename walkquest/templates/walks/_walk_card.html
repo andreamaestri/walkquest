@@ -1,6 +1,6 @@
 {% load walk_tags %}
 
-<article class="walk-card" 
+<article class="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 cursor-pointer" 
          data-walk-id="{{ walk.id }}"
          data-features="{{ walk.features|as_json }}"
          data-distance="{{ walk.distance|default:0 }}"
@@ -8,42 +8,34 @@
          role="listitem"
          tabindex="0">
     
-    <div class="walk-content">
-        <h4 class="walk-title">{{ walk.walk_name|default:"Unnamed Walk" }}</h4>
-        <p class="walk-description">{{ walk.description|default:"No description available"|truncatewords:30 }}</p>
+    <div class="space-y-3">
+        <h4 class="text-lg font-semibold text-gray-900">{{ walk.walk_name|default:"Unnamed Walk" }}</h4>
+        <p class="text-sm text-gray-600">{{ walk.description|default:"No description available"|truncatewords:30 }}</p>
         
-        <div class="walk-metadata">
+        <div class="flex flex-wrap gap-3 text-sm text-gray-600">
             {% if walk.distance %}
-                <span class="metadata-item">
-                    <iconify-icon icon="mdi:map-marker-distance"></iconify-icon>
+                <span class="inline-flex items-center gap-1">
+                    <iconify-icon icon="mdi:map-marker-distance" class="w-5 h-5"></iconify-icon>
                     {{ walk.distance|floatformat:1 }} miles
                 </span>
             {% endif %}
             
             {% if walk.duration %}
-                <span class="metadata-item">
-                    <iconify-icon icon="mdi:clock-outline"></iconify-icon>
+                <span class="inline-flex items-center gap-1">
+                    <iconify-icon icon="mdi:clock-outline" class="w-5 h-5"></iconify-icon>
                     {{ walk.duration }}
                 </span>
             {% endif %}
             
             {% if walk.steepness_level %}
-                <span class="metadata-item steepness-{{ walk.steepness_level|lower|default:'novice' }}">
-                    <iconify-icon icon="mdi:hiking"></iconify-icon>
+                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs
+                    {% if walk.steepness_level == 'EASY' %}bg-green-100 text-green-800
+                    {% elif walk.steepness_level == 'MODERATE' %}bg-yellow-100 text-yellow-800
+                    {% else %}bg-red-100 text-red-800{% endif %}">
+                    <iconify-icon icon="mdi:hiking" class="w-4 h-4"></iconify-icon>
                     {{ walk.steepness_level|default:"Novice"|title_with_spaces }}
                 </span>
             {% endif %}
-        </div>
-        
-        <div class="walk-features" aria-label="Walk features">
-            {% with features=walk.features|default_list %}
-                {% for feature in features %}
-                    <span class="feature-tag" title="{{ feature|title_with_spaces }}">
-                        <iconify-icon icon="{{ feature_icons|get_item:feature }}" aria-hidden="true"></iconify-icon>
-                        <span class="sr-only">{{ feature|title_with_spaces }}</span>
-                    </span>
-                {% endfor %}
-            {% endwith %}
         </div>
     </div>
 </article>

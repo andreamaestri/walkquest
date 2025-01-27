@@ -47,12 +47,4 @@
 {% block javascript %}
     <!-- Mapbox JS -->
     <script src='https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.js'></script>
-    
-    <!-- Initialize walkInterface -->
-    <script type="module">
-        import { walkInterface } from '{% static "js/components/walkInterface.js" %}';
-        document.addEventListener('alpine:init', () => {
-            window.Alpine.data('walkInterface', walkInterface);
-        });
-    </script>
 {% endblock %}
