@@ -1,6 +1,6 @@
 import { api } from './services.js';
 import { initializeAlpineStore, registerAlpineDirectives } from './alpine-components.js';
-import { walkInterface } from './components/walkInterface.js';
+import './components/walkInterface.js';
 
 // Default configuration fallback
 const DEFAULT_CONFIG = {
@@ -47,13 +47,10 @@ function initializeDependencies() {
 }
 
 // Initialize the application
-function initialize() {
+document.addEventListener('alpine:init', () => {
     try {
         // Initialize dependencies first
         initializeDependencies();
-
-        // Register walkInterface component
-        window.Alpine.data('walkInterface', walkInterface);
 
         // Initialize store
         window.Alpine.store('app', initializeAlpineStore());
@@ -70,7 +67,4 @@ function initialize() {
             errorContainer.textContent = 'Application initialization failed. Please refresh the page.';
         }
     }
-}
-
-// Execute initialization
-initialize();
+});

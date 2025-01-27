@@ -21,44 +21,56 @@ const DEFAULT_CONFIG = {
     }
 };
 
-// Check for required dependencies
-const checkDependencies = () => {
-    if (typeof window._ === 'undefined') {
-        throw new Error('Lodash is required but not loaded');
-    }
-    if (typeof window.dayjs === 'undefined') {
-        throw new Error('Day.js is required but not loaded');
-    }
-};
-
-// Initialize Alpine.js components and store
-document.addEventListener('alpine:init', () => {
+// Initialize core dependencies
+function initializeDependencies() {
     try {
-        checkDependencies();
-        // Register walkInterface component
-        Alpine.data('walkInterface', () => walkInterface());
-        // Initialize store
-        Alpine.store('app', initializeAlpineStore());
-        // Register custom directives
-        registerAlpineDirectives(Alpine);
+        // Check for required dependencies
+        if (typeof window._ === 'undefined') {
+            throw new Error('Lodash is required but not loaded');
+        }
+        if (typeof window.dayjs === 'undefined') {
+            throw new Error('Day.js is required but not loaded');
+        }
+
+        // Initialize dayjs plugins
+        if (window.dayjs_plugin_relativeTime) {
+            window.dayjs.extend(window.dayjs_plugin_relativeTime);
+        }
     } catch (error) {
-        console.error('Alpine initialization error:', error);
+        console.error('Dependencies initialization error:', error);
         const errorContainer = document.getElementById('error-container');
         if (errorContainer) {
             errorContainer.classList.remove('hidden');
             errorContainer.textContent = 'Application initialization failed. Please refresh the page.';
         }
     }
-});
+}
 
-// Handle post-initialization tasks
-document.addEventListener('alpine:initialized', () => {
+// Initialize the application
+function initialize() {
     try {
-        // Initialize dayjs relative time plugin
-        if (window.dayjs) {
-            window.dayjs.extend(window.dayjs_plugin_relativeTime);
-        }
+        // Initialize dependencies first
+        initializeDependencies();
+
+        // Register walkInterface component
+        window.Alpine.data('walkInterface', walkInterface);
+
+        // Initialize store
+        window.Alpine.store('app', initializeAlpineStore());
+
+        // Register custom directives
+        registerAlpineDirectives(window.Alpine);
+
+        console.log('Project initialization completed');
     } catch (error) {
-        console.error('Post-initialization error:', error);
+        console.error('Initialization error:', error);
+        const errorContainer = document.getElementById('error-container');
+        if (errorContainer) {
+            errorContainer.classList.remove('hidden');
+            errorContainer.textContent = 'Application initialization failed. Please refresh the page.';
+        }
     }
-});
+}
+
+// Execute initialization
+initialize();

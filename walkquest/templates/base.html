@@ -11,6 +11,8 @@
     
     <!-- Critical CSS -->
     <link href="{% static 'css/project.css' %}" rel="stylesheet">
+    <!-- Alpine.js Core -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     
     {% block extra_head %}{% endblock %}
 </head>
@@ -124,9 +126,7 @@
     <!-- Load Iconify -->
     <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
     
-    <!-- Alpine.js Core -->
-    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    
+   
     <!-- Project Core (load after Alpine.js) -->
     <script type="module" src="{% static 'js/project.js' %}"></script>
 </body>
