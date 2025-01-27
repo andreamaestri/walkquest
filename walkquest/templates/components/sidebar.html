@@ -1,0 +1,41 @@
+{% load slippers %}
+{% load i18n %}
+
+{% var walks=walks|default:[] %}
+<aside class="sidebar" 
+       x-show="showSidebar"
+       x-transition:enter="transition ease-out duration-300"
+       x-transition:enter-start="opacity-0 transform translate-x-full"
+       x-transition:enter-end="opacity-100 transform translate-x-0"
+       x-transition:leave="transition ease-in duration-300"
+       x-transition:leave-start="opacity-100 transform translate-x-0"
+       x-transition:leave-end="opacity-0 transform translate-x-full">
+    
+    <script id="walks-data" type="application/json">
+        {{ walks|json_script_content }}
+    </script>
+
+    <div class="flex flex-col space-y-4 p-4" 
+         x-data="walkList"
+         x-init="init">
+        <div class="relative">
+            <input type="text"
+                   x-model="searchQuery"
+                   @input.debounce.300ms="fetchWalks"
+                   placeholder="{% translate 'Search walks...' %}"
+                   class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:outline-none">
+        </div>
+
+        <div x-show="isLoading" class="flex justify-center p-4">
+            {% #loading %}Loading walks...{% /loading %}
+        </div>
+
+        <template x-if="!isLoading">
+            <div class="space-y-4">
+                <template x-for="walk in walks" :key="walk.id">
+                    {% #walk_card %}{% /walk_card %}
+                </template>
+            </div>
+        </template>
+    </div>
+</aside>

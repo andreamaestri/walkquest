@@ -1,7 +1,7 @@
 class ApiService {
     constructor() {
         this.csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-        this.baseUrl = '/api';
+        this.baseUrl = window.location.origin + '/api';
     }
 
     async fetch(endpoint, options = {}) {
@@ -57,10 +57,16 @@ class ApiService {
             queryParams.append('categories', params.categories.join(','));
         }
         
-        const data = await this.fetch(`/walks?${queryParams}`);
+        const data = await this.fetch(`/walks`); // Remove trailing slash
+        console.log('API getWalks response:', data); // Debug log
+        
+        if (!data || typeof data !== 'object') {
+            throw new Error('Invalid API response format');
+        }
+
         return {
-            walks: data.walks || [],
-            total: data.total || 0
+            walks: Array.isArray(data) ? data : (data.walks || []),
+            total: typeof data.total === 'number' ? data.total : (Array.isArray(data) ? data.length : 0)
         };
     }
 
@@ -111,7 +117,7 @@ class ApiService {
     }
 
     async filterWalks(filters = {}) {
-        const response = await this.fetch('/walks/filter', {
+        const response = await this.fetch('/walks/filter', { // Remove trailing slash
             method: 'POST',
             body: JSON.stringify({
                 categories: filters.categories || [],
@@ -122,9 +128,15 @@ class ApiService {
             })
         });
 
+        console.log('API filterWalks response:', response); // Debug log
+
+        if (!response || typeof response !== 'object') {
+            throw new Error('Invalid API response format');
+        }
+
         return {
-            walks: response.walks || [],
-            total: response.total || 0,
+            walks: Array.isArray(response) ? response : (response.walks || []),
+            total: typeof response.total === 'number' ? response.total : (Array.isArray(response) ? response.length : 0),
             filters: response.applied_filters || {}
         };
     }

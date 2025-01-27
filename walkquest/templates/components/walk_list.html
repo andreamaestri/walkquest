@@ -1,11 +1,18 @@
 {% load i18n %}
 {% load slippers %}
 
-<div class="flex flex-col space-y-4 p-4" 
-     x-data="walkList"
-     x-init="init">
+{% var walks=walks %}
+{% #navbar 
+    allow_registration=ACCOUNT_ALLOW_REGISTRATION
+    is_authenticated=request.user.is_authenticated
+    username=request.user.username 
+%}{% #/navbar %}
+
+{{ walks|json_script:"walks-data" }}
+
+<div class="flex flex-col space-y-4 p-4" x-data="walkList" x-init="init">
     <div class="relative">
-        <input type="text"
+        <input type="text" 
                x-model="searchQuery"
                @input.debounce.300ms="fetchWalks"
                placeholder="{% translate 'Search walks...' %}"
