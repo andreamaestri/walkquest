@@ -1,6 +1,8 @@
 components:
     walk_card: "walks/_walk_card.html"
-    walk_list: "partials/walk_list.html"
+    walk_list: "components/walk-list.html"
     search_icon: "components/search-icon.html"
     search_results: "partials/search_results.html"
     navbar: "components/navbar.html"
+    loading: "components/loading.html"
+    navigation: "components/navigation.html"

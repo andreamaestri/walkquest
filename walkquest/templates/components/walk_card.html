@@ -1,6 +1,6 @@
 {% load slippers %}
 
-{% component walk_card walk=walk %}
+{% #walk_card walk=walk %}
     <div class="walk-item bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow duration-200">
         <h3 class="text-lg font-semibold text-gray-900">{{ walk.walk_name }}</h3>
         <div class="mt-2 flex items-center space-x-2 text-sm text-gray-600">
@@ -19,4 +19,4 @@
         {% endif %}
         {{ slot }}
     </div>
-{% endcomponent %}
+{% /walk_card %}
