@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 {% load static %}
 {% load i18n %}
+{% load slippers %}
 
 <html lang="en">
 <head>
@@ -12,6 +13,20 @@
     <!-- Critical CSS -->
     <link href="{% static 'css/project.css' %}" rel="stylesheet">
     
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    {% component_block "navbar" %}
+    {% endcomponent_block %}
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    {% block javascript %}
+    <!-- Default JavaScript block that can be overridden -->
+    {% endblock %}
+
     <!-- Core Dependencies -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
@@ -28,107 +43,13 @@
     <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
     
     <!-- Alpine.js Core -->
-    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    
-    {% block extra_head %}{% endblock %}
-</head>
-<body>
-    <nav class="main-nav" x-data="{ isOpen: false }">
-        <div class="max-w-7xl mx-auto px-4">
-            <div class="flex items-center justify-between h-16">
-                <!-- Logo -->
-                <a href="{% url 'home' %}" class="flex items-center space-x-2">
-                    <iconify-icon icon="mdi:hiking" class="text-2xl text-primary-500"></iconify-icon>
-                    <span class="font-semibold text-lg">WalkQuest</span>
-                </a>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
-                <!-- Mobile menu button -->
-                <div class="md:hidden">
-                    <button type="button" 
-                            @click="isOpen = !isOpen"
-                            class="mobile-menu-button inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
-                            :aria-expanded="isOpen">
-                        <iconify-icon icon="mdi:menu" class="text-2xl"></iconify-icon>
-                    </button>
-                </div>
-
-                <!-- Desktop menu -->
-                <div class="hidden md:flex md:items-center md:space-x-4">
-                    <a href="{% url 'home' %}" class="nav-link">
-                        <iconify-icon icon="mdi:home" class="mr-1"></iconify-icon>
-                        {% translate "Home" %}
-                    </a>
-                    {% if request.user.is_authenticated %}
-                        <a href="{% url 'users:detail' request.user.username %}" class="nav-link">
-                            <iconify-icon icon="mdi:account" class="mr-1"></iconify-icon>
-                            {% translate "My Profile" %}
-                        </a>
-                        <a href="{% url 'account_logout' %}" class="nav-link">
-                            <iconify-icon icon="mdi:logout" class="mr-1"></iconify-icon>
-                            {% translate "Sign Out" %}
-                        </a>
-                    {% else %}
-                        {% if ACCOUNT_ALLOW_REGISTRATION %}
-                            <a href="{% url 'account_signup' %}" id="sign-up-link" class="nav-link">
-                                <iconify-icon icon="mdi:account-plus" class="mr-1"></iconify-icon>
-                                {% translate "Sign Up" %}
-                            </a>
-                        {% endif %}
-                        <a href="{% url 'account_login' %}" id="log-in-link" class="nav-link">
-                            <iconify-icon icon="mdi:login" class="mr-1"></iconify-icon>
-                            {% translate "Sign In" %}
-                        </a>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-
-        <!-- Mobile menu -->
-        <div class="md:hidden" x-show="isOpen" x-transition>
-            <div class="px-2 pt-2 pb-3 space-y-1">
-                <a href="{% url 'home' %}" class="nav-link block">
-                    <iconify-icon icon="mdi:home" class="mr-1"></iconify-icon>
-                    {% translate "Home" %}
-                </a>
-                {% if request.user.is_authenticated %}
-                    <a href="{% url 'users:detail' request.user.username %}" class="nav-link block">
-                        <iconify-icon icon="mdi:account" class="mr-1"></iconify-icon>
-                        {% translate "My Profile" %}
-                    </a>
-                    <a href="{% url 'account_logout' %}" class="nav-link block">
-                        <iconify-icon icon="mdi:logout" class="mr-1"></iconify-icon>
-                        {% translate "Sign Out" %}
-                    </a>
-                {% else %}
-                    {% if ACCOUNT_ALLOW_REGISTRATION %}
-                        <a href="{% url 'account_signup' %}" id="sign-up-link" class="nav-link block">
-                            <iconify-icon icon="mdi:account-plus" class="mr-1"></iconify-icon>
-                            {% translate "Sign Up" %}
-                        </a>
-                    {% endif %}
-                    <a href="{% url 'account_login' %}" id="log-in-link" class="nav-link block">
-                        <iconify-icon icon="mdi:login" class="mr-1"></iconify-icon>
-                        {% translate "Sign In" %}
-                    </a>
-                {% endif %}
-            </div>
-        </div>
-    </nav>
-
-    <main>
-        {% block content %}{% endblock %}
-    </main>
-
-    {% block javascript %}
-    <!-- Default JavaScript block that can be overridden -->
-    {% endblock %}
+    <!-- Alpine Components -->
+    <script src="{% static 'js/walkInterface.js' %}"></script>
 
     {% block extra_javascript %}
     <!-- Additional JavaScript block for page-specific scripts -->
     {% endblock %}
-
-    <!-- Project Core (load after Alpine.js) -->
-    <script type="module" src="{% static 'js/project.js' %}"></script>
-    <script type="module" src="{% static 'js/walkInterface.js' %}"></script>
 </body>
 </html>

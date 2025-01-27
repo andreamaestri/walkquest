@@ -1,0 +1,22 @@
+{% load i18n %}
+{% load slippers %}
+
+{% component walk_list %}
+<div class="walks-list" x-show="!isLoading">
+    <div class="search-container">
+        <input type="text"
+               x-model="searchQuery"
+               placeholder="{% translate 'Search walks...' %}"
+               class="search-input">
+    </div>
+
+    <template x-for="walk in filteredWalks" :key="walk.id">
+        <div class="walk-card"
+             :class="{ 'selected': selectedWalk?.id === walk.id }"
+             @click="selectWalk(walk.id)">
+            <h3 x-text="walk.walk_name"></h3>
+            <p x-text="formatDistance(walk.distance)"></p>
+        </div>
+    </template>
+</div>
+{% endcomponent %}

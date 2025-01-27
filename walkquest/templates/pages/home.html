@@ -1,8 +1,14 @@
 {% extends "base.html" %}
 {% load static %}
 {% load i18n %}
+{% load slippers %}
 
 {% block title %}{% translate "Walks" %} - {{ block.super }}{% endblock %}
+
+{% block extra_head %}
+    <!-- Mapbox CSS -->
+    <link href='https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.css' rel='stylesheet' />
+{% endblock %}
 
 {% block content %}
     <!-- Embed JSON data safely -->
@@ -15,43 +21,20 @@
 
     <!-- Main content with Alpine.js -->
     <div class="layout-container" 
-         x-data="walkInterface"
-         x-init="init"
+         x-data="walkInterface()"
+         x-init="$nextTick(() => init())"
          x-cloak>
         <!-- Sidebar -->
         <aside class="sidebar"
                x-show="showSidebar"
                x-transition:enter="transition ease-out duration-300"
-               x-transition:enter-start="opacity-0 transform -translate-x-full"
+               x-transition:enter-start="opacity-0 transform translate-x-full"
                x-transition:enter-end="opacity-100 transform translate-x-0"
                x-transition:leave="transition ease-in duration-300"
                x-transition:leave-start="opacity-100 transform translate-x-0"
-               x-transition:leave-end="opacity-0 transform -translate-x-full">
-            
-            <!-- Search input -->
-            <div class="search-container">
-                <input type="text"
-                       x-model="searchQuery"
-                       placeholder="{% translate 'Search walks...' %}"
-                       class="search-input">
-            </div>
-
-            <!-- Walks list -->
-            <div class="walks-list" x-show="!isLoading">
-                <template x-for="walk in filteredWalks" :key="walk.id">
-                    <div class="walk-card"
-                         :class="{ 'selected': selectedWalk?.id === walk.id }"
-                         @click="selectWalk(walk.id)">
-                        <h3 x-text="walk.walk_name"></h3>
-                        <p x-text="formatDistance(walk.distance)"></p>
-                    </div>
-                </template>
-            </div>
-
-            <!-- Loading state -->
-            <div x-show="isLoading" class="loading-spinner">
-                <span class="sr-only">Loading...</span>
-            </div>
+               x-transition:leave-end="opacity-0 transform translate-x-full">
+            {% component_block "walk_list" %}
+            {% endcomponent_block %}
         </aside>
 
         <!-- Map container -->
@@ -61,7 +44,15 @@
     </div>
 {% endblock %}
 
-{% block extra_javascript %}
+{% block javascript %}
+    <!-- Mapbox JS -->
     <script src='https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.js'></script>
-    <link href='https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.css' rel='stylesheet' />
+    
+    <!-- Initialize walkInterface -->
+    <script type="module">
+        import { walkInterface } from '{% static "js/components/walkInterface.js" %}';
+        document.addEventListener('alpine:init', () => {
+            window.Alpine.data('walkInterface', walkInterface);
+        });
+    </script>
 {% endblock %}

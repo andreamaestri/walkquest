@@ -1,8 +1,4 @@
-import { api } from './services.js';
-import { initializeAlpineStore, registerAlpineDirectives } from './alpine-components.js';
-import './components/walkInterface.js';
-
-// Default configuration fallback
+// Application defaults
 const DEFAULT_CONFIG = {
     map: {
         style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
@@ -21,8 +17,8 @@ const DEFAULT_CONFIG = {
     }
 };
 
-// Initialize core dependencies
-function initializeDependencies() {
+// Initialize application dependencies
+document.addEventListener('alpine:init', () => {
     try {
         // Check for required dependencies
         if (typeof window._ === 'undefined') {
@@ -31,32 +27,6 @@ function initializeDependencies() {
         if (typeof window.dayjs === 'undefined') {
             throw new Error('Day.js is required but not loaded');
         }
-
-        // Initialize dayjs plugins
-        if (window.dayjs_plugin_relativeTime) {
-            window.dayjs.extend(window.dayjs_plugin_relativeTime);
-        }
-    } catch (error) {
-        console.error('Dependencies initialization error:', error);
-        const errorContainer = document.getElementById('error-container');
-        if (errorContainer) {
-            errorContainer.classList.remove('hidden');
-            errorContainer.textContent = 'Application initialization failed. Please refresh the page.';
-        }
-    }
-}
-
-// Initialize the application
-document.addEventListener('alpine:init', () => {
-    try {
-        // Initialize dependencies first
-        initializeDependencies();
-
-        // Initialize store
-        window.Alpine.store('app', initializeAlpineStore());
-
-        // Register custom directives
-        registerAlpineDirectives(window.Alpine);
 
         console.log('Project initialization completed');
     } catch (error) {

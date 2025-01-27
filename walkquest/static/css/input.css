@@ -88,3 +88,10 @@
 }
 
 /* You can add more custom styles below */
+.map-container {
+    @apply fixed inset-0 w-full h-screen z-[1];
+}
+
+.map {
+    @apply w-full h-full bg-gray-50;
+}
