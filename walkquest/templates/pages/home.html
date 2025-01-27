@@ -15,8 +15,8 @@
 
     <!-- Main content with Alpine.js -->
     <div class="layout-container" 
-         x-data="walkInterface()"
-         x-init="init"
+         x-data="walkInterface"
+         x-init="$nextTick(() => init())"
          x-cloak>
         <!-- Sidebar -->
         <aside class="sidebar"
@@ -62,7 +62,7 @@
 {% endblock %}
 
 {% block extra_javascript %}
-    <script src="https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.js"></script>
-    <link href="https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src='https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.js'></script>
+    <link href='https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.css' rel='stylesheet' />
     <script type="module" src="{% static 'js/project.js' %}"></script>
 {% endblock %}

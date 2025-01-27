@@ -12,8 +12,8 @@
 
     <!-- Main content with Alpine.js -->
     <div class="layout-container" 
-         x-data="walkInterface()"
-         x-init="init"
+         x-data="walkInterface"
+         x-init="$nextTick(() => init())"
          x-cloak>
         <!-- Sidebar -->
         <aside class="sidebar"

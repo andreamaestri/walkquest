@@ -19,7 +19,38 @@ export function walkInterface() {
             this.filteredWalks = walksData.walks || [];
 
             // Initialize map after DOM is ready
-            this.$nextTick(() => this.initializeMap());
+            this.$nextTick(() => {
+                this.initializeMap();
+                this.setupEventListeners();
+            });
+        },
+
+        // Cleanup when component is destroyed
+        destroy() {
+            if (this.map) {
+                this.map.remove();
+            }
+            this.markers.forEach(marker => marker.remove());
+            // Clean up any event listeners if needed
+            this.removeEventListeners();
+        },
+
+        // Setup any necessary event listeners
+        setupEventListeners() {
+            // Add any global event listeners here
+            window.addEventListener('resize', this.handleResize.bind(this));
+        },
+
+        // Remove event listeners
+        removeEventListeners() {
+            window.removeEventListener('resize', this.handleResize.bind(this));
+        },
+
+        // Handle window resize
+        handleResize() {
+            if (this.map) {
+                this.map.resize();
+            }
         },
 
         // Use Alpine's $watch for reactive properties
@@ -33,14 +64,15 @@ export function walkInterface() {
             if (!this.$refs.map) return;
 
             try {
-                this.map = new maplibregl.Map({
+                this.map = new mapboxgl.Map({
                     container: this.$refs.map,
-                    style: this.config.map?.style || 'https://demotiles.maplibre.org/style.json',
+                    style: 'mapbox://styles/mapbox/streets-v12',
                     center: this.config.map?.defaultCenter || [-4.85, 50.4],
-                    zoom: this.config.map?.defaultZoom || 9.5
+                    zoom: this.config.map?.defaultZoom || 9.5,
+                    accessToken: 'YOUR_MAPBOX_ACCESS_TOKEN'
                 });
 
-                this.map.addControl(new maplibregl.NavigationControl(), 'top-right');
+                this.map.addControl(new mapboxgl.NavigationControl(), 'top-right');
                 await new Promise(resolve => this.map.on('load', resolve));
                 
                 this.updateMarkers(this.filteredWalks);
@@ -75,9 +107,9 @@ export function walkInterface() {
                     ? this.config.map.markerColors.favorite 
                     : this.config.map.markerColors.default;
 
-                const marker = new maplibregl.Marker({ color: markerColor })
+                const marker = new mapboxgl.Marker({ color: markerColor })
                     .setLngLat([walk.longitude, walk.latitude])
-                    .setPopup(new maplibregl.Popup().setHTML(`
+                    .setPopup(new mapboxgl.Popup().setHTML(`
                         <h4>${this.sanitizeHtml(walk.walk_name)}</h4>
                         <p>${this.formatDistance(walk.distance)}</p>
                     `))
@@ -152,7 +184,7 @@ export function walkInterface() {
                 this.currentRoute = layerId;
 
                 // Fit bounds to show full route
-                const bounds = new maplibregl.LngLatBounds();
+                const bounds = new mapboxgl.LngLatBounds();
                 geometry.geometry.coordinates.forEach(coord => {
                     if (Array.isArray(coord) && coord.length >= 2) {
                         bounds.extend(coord);
