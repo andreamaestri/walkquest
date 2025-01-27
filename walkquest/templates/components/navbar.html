@@ -1,7 +1,7 @@
 {% load i18n %}
 {% load slippers %}
 
-{% #navbar allow_registration=ACCOUNT_ALLOW_REGISTRATION is_authenticated=request.user.is_authenticated username=request.user.username %}
+{% #navbar allow_registration=allow_registration is_authenticated=is_authenticated username=username %}
 <nav class="main-nav" x-data="{ isOpen: false }">
     <div class="max-w-7xl mx-auto px-4">
         <div class="flex items-center justify-between h-16">
