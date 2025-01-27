@@ -1,7 +1,6 @@
 import { api } from '../services.js';
 import { getCategoryEmoji, getCategoryColor } from '../alpine-components.js';
 
-// Register walkInterface as a global Alpine component
 document.addEventListener('alpine:init', () => {
     Alpine.data('walkInterface', () => ({
         showSidebar: true,
@@ -13,17 +12,15 @@ document.addEventListener('alpine:init', () => {
         markers: new Map(),
         currentRoute: null,
 
+        // Initialize component
         init() {
             // Parse initial data from Django templates
             this.config = JSON.parse(document.getElementById('config-data')?.textContent || '{}');
             const walksData = JSON.parse(document.getElementById('walks-data')?.textContent || '{}');
             this.filteredWalks = walksData.walks || [];
 
-            // Initialize map after DOM is ready
-            this.$nextTick(() => {
-                this.initializeMap();
-                this.setupEventListeners();
-            });
+            this.initializeMap();
+            this.setupEventListeners();
         },
 
         // Cleanup when component is destroyed
@@ -32,16 +29,13 @@ document.addEventListener('alpine:init', () => {
                 this.map.remove();
             }
             this.markers.forEach(marker => marker.remove());
-            // Clean up any event listeners if needed
             this.removeEventListeners();
         },
 
         // Setup any necessary event listeners
         setupEventListeners() {
-            // Add any global event listeners here with passive option
             window.addEventListener('resize', this.handleResize.bind(this), { passive: true });
             
-            // Add passive touch event listeners for map container
             if (this.$refs.map) {
                 this.$refs.map.addEventListener('touchmove', () => {}, { passive: true });
                 this.$refs.map.addEventListener('touchstart', () => {}, { passive: true });
@@ -70,7 +64,6 @@ document.addEventListener('alpine:init', () => {
         async initializeMap() {
             if (!this.$refs.map) return;
 
-            // Clear any existing content
             this.$refs.map.innerHTML = '';
 
             try {
@@ -82,7 +75,6 @@ document.addEventListener('alpine:init', () => {
                     accessToken: this.config.mapboxToken
                 });
 
-                // Add controls after map is loaded
                 this.map.on('load', () => {
                     this.map.addControl(new mapboxgl.NavigationControl(), 'top-right');
                     this.updateMarkers(this.filteredWalks);
@@ -108,11 +100,9 @@ document.addEventListener('alpine:init', () => {
         updateMarkers(walks) {
             if (!this.map) return;
 
-            // Remove existing markers
             this.markers.forEach(marker => marker.remove());
             this.markers.clear();
 
-            // Add new markers
             walks.forEach(walk => {
                 const markerColor = walk.is_favorite 
                     ? this.config.map.markerColors.favorite 
@@ -154,7 +144,6 @@ document.addEventListener('alpine:init', () => {
         displayWalkGeometry(geometry) {
             if (!this.map || !geometry?.geometry?.coordinates) return;
 
-            // Remove existing route
             if (this.currentRoute) {
                 try {
                     if (this.map.getLayer(this.currentRoute)) {
@@ -168,7 +157,6 @@ document.addEventListener('alpine:init', () => {
                 }
             }
 
-            // Add new route
             const sourceId = `route-${geometry.properties?.walk_id || Date.now()}`;
             const layerId = `route-layer-${geometry.properties?.walk_id || Date.now()}`;
 
@@ -194,7 +182,6 @@ document.addEventListener('alpine:init', () => {
 
                 this.currentRoute = layerId;
 
-                // Fit bounds to show full route
                 const bounds = new mapboxgl.LngLatBounds();
                 geometry.geometry.coordinates.forEach(coord => {
                     if (Array.isArray(coord) && coord.length >= 2) {
@@ -229,5 +216,5 @@ document.addEventListener('alpine:init', () => {
                 timeout = setTimeout(() => fn.apply(this, args), wait);
             };
         }
-    }))
+    }));
 });
