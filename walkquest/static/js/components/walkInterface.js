@@ -1,8 +1,9 @@
 import { api } from '../services.js';
 import { getCategoryEmoji, getCategoryColor } from '../alpine-components.js';
 
-export function walkInterface() {
-    return {
+// Register walkInterface as a global Alpine component
+document.addEventListener('alpine:init', () => {
+    Alpine.data('walkInterface', () => ({
         showSidebar: true,
         searchQuery: '',
         selectedWalk: null,
@@ -228,10 +229,5 @@ export function walkInterface() {
                 timeout = setTimeout(() => fn.apply(this, args), wait);
             };
         }
-    };
-}
-
-// Register the component globally
-document.addEventListener('alpine:init', () => {
-    window.Alpine.data('walkInterface', walkInterface);
+    }))
 });
