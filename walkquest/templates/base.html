@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+{% load static %}
 <html lang="en">
     <head>
         <meta charset="utf-8">
@@ -12,11 +13,7 @@
         {% block extra_head %}{% endblock %}
     </head>
     <body>
-        {% #navbar 
-    allow_registration=ACCOUNT_ALLOW_REGISTRATION
-    is_authenticated=request.user.is_authenticated
-    username=request.user.username 
-%}
+        {% include "components/navbar.html" %}
 
         <main>
             {% block content %}{% endblock %}
@@ -41,16 +38,14 @@
         <!-- Load Iconify -->
         <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
         
-        <!-- Alpine.js Core -->
-        <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-
-        <!-- Application Scripts -->
-        <script type="module">
-            import { api } from "{% static 'js/services.js' %}";
-            import "{% static 'js/components/walkList.js' %}";
-            import "{% static 'js/project.js' %}";
-            import "{% static 'js/walkInterface.js' %}";
-        </script>
+        <!-- Load Application Components -->
+        <script src="{% static 'js/services.js' %}"></script>
+        <script src="{% static 'js/components/walkList.js' %}"></script>
+        <script src="{% static 'js/project.js' %}"></script>
+        <script src="{% static 'js/walkInterface.js' %}"></script>
+        
+        <!-- Alpine.js Core (load after components) -->
+        <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 
         <!-- Additional JavaScript -->
         {% block extra_javascript %}

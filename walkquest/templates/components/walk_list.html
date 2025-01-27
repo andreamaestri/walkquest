@@ -5,7 +5,7 @@
 
 {{ walks|json_script:"walks-data" }}
 
-<div class="flex flex-col space-y-4 p-4" x-data="walkList" x-init="init">
+<div class="flex flex-col space-y-4 p-4" x-data="walkList" x-init="$nextTick(() => init())">
     <div class="relative">
         <input type="text" 
                x-model="searchQuery"

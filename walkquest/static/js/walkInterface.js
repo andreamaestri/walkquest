@@ -1,6 +1,6 @@
-// Register global Alpine component
-document.addEventListener('alpine:init', () => {
-    Alpine.data('walkInterface', () => ({
+// Define component function
+function walkInterface() {
+    return {
         showSidebar: true,
         selectedWalk: null,
         isLoading: false,
@@ -200,5 +200,17 @@ document.addEventListener('alpine:init', () => {
                 "'": '&#39;'
             })[m]);
         }
-    }));
-});
+    };
+}
+
+// Register as Alpine component
+if (window.Alpine) {
+    window.Alpine.data('walkInterface', walkInterface);
+} else {
+    document.addEventListener('alpine:init', () => {
+        window.Alpine.data('walkInterface', walkInterface);
+    });
+}
+
+// Export for module usage
+window.walkInterface = walkInterface;

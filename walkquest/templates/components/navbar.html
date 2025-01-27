@@ -1,9 +1,5 @@
 {% load i18n %}
-{% load slippers %}
-
-{% var allow_registration=allow_registration|default:True %}
-{% var is_authenticated=is_authenticated|default:False %}
-{% var username=username|default:"" %}
+{% load static %}
 
 <nav class="main-nav" x-data="{ isOpen: false }">
     <div class="max-w-7xl mx-auto px-4">
@@ -30,8 +26,8 @@
                     <iconify-icon icon="mdi:home" class="mr-1"></iconify-icon>
                     {% translate "Home" %}
                 </a>
-                {% if is_authenticated %}
-                    <a href="{% url 'users:detail' username %}" class="nav-link">
+                {% if request.user.is_authenticated %}
+                    <a href="{% url 'users:detail' request.user.username %}" class="nav-link">
                         <iconify-icon icon="mdi:account" class="mr-1"></iconify-icon>
                         {% translate "My Profile" %}
                     </a>
@@ -40,7 +36,7 @@
                         {% translate "Sign Out" %}
                     </a>
                 {% else %}
-                    {% if allow_registration %}
+                    {% if ACCOUNT_ALLOW_REGISTRATION %}
                         <a href="/accounts/signup/" id="sign-up-link" class="nav-link">
                             <iconify-icon icon="mdi:account-plus" class="mr-1"></iconify-icon>
                             {% translate "Sign Up" %}
@@ -62,8 +58,8 @@
                 <iconify-icon icon="mdi:home" class="mr-1"></iconify-icon>
                 {% translate "Home" %}
             </a>
-            {% if is_authenticated %}
-                <a href="{% url 'users:detail' username %}" class="nav-link block">
+            {% if request.user.is_authenticated %}
+                <a href="{% url 'users:detail' request.user.username %}" class="nav-link block">
                     <iconify-icon icon="mdi:account" class="mr-1"></iconify-icon>
                     {% translate "My Profile" %}
                 </a>
@@ -72,7 +68,7 @@
                     {% translate "Sign Out" %}
                 </a>
             {% else %}
-                {% if allow_registration %}
+                {% if ACCOUNT_ALLOW_REGISTRATION %}
                     <a href="/accounts/signup/" id="sign-up-link" class="nav-link block">
                         <iconify-icon icon="mdi:account-plus" class="mr-1"></iconify-icon>
                         {% translate "Sign Up" %}

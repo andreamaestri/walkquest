@@ -1,11 +1,6 @@
-// Wait for Alpine.js to be available
-if (typeof Alpine === 'undefined') {
-    console.error('Alpine.js is not loaded. Please ensure Alpine.js is included before this script.');
-}
-
-// Register walkList Alpine component
-document.addEventListener('alpine:init', () => {
-    Alpine.data('walkList', () => ({
+// Define component function
+function walkList() {
+    return {
         // Data properties
         walks: [],
         searchQuery: '',
@@ -125,5 +120,17 @@ document.addEventListener('alpine:init', () => {
             this.filters[type] = value;
             this.fetchWalks();
         }
-    }));
-});
+    };
+}
+
+// Register as Alpine component
+if (window.Alpine) {
+    window.Alpine.data('walkList', walkList);
+} else {
+    document.addEventListener('alpine:init', () => {
+        window.Alpine.data('walkList', walkList);
+    });
+}
+
+// Export for module usage
+window.walkList = walkList;

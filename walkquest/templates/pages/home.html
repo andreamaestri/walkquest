@@ -16,7 +16,7 @@
     {{ initial_walks|json_script:"walks-data" }}
     
     <div class="layout-container" 
-         x-data="walkInterface()"
+         x-data="walkInterface"
          x-init="$nextTick(() => init())">
         <!-- Sidebar -->
         <aside class="sidebar"
