@@ -2,7 +2,7 @@
 {% load static %}
 {% load i18n %}
 
-<html lang="en">
+<html lang="en" x-data>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,10 +12,8 @@
     <!-- Critical CSS -->
     <link href="{% static 'css/project.css' %}" rel="stylesheet">
     
-    <!-- MapLibre GL JS -->
-    <link href="https://unpkg.com/maplibre-gl@3.3.1/dist/maplibre-gl.css" rel="stylesheet" />
-    
     <!-- Core Dependencies -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.13/plugin/relativeTime.js" defer></script>
@@ -23,111 +21,23 @@
     <!-- Load Iconify -->
     <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
     
-    <!-- Load React and related libraries via ESM -->
-    <script type="importmap">
-    {
-        "imports": {
-            "react": "https://esm.sh/stable/react@18.2.0/es2022/react.mjs",
-            "react-dom": "https://esm.sh/stable/react-dom@18.2.0/es2022/react-dom.mjs",
-            "react-dom/client": "https://esm.sh/stable/react-dom@18.2.0/es2022/client.mjs",
-            "framer-motion": "https://esm.sh/framer-motion@10.16.4"
-        }
-    }
+    <!-- Initialize Alpine Store -->
+    <script>
+      document.addEventListener('alpine:init', () => {
+          Alpine.store('app', {
+              darkMode: false,
+              toggleDarkMode() {
+                  this.darkMode = !this.darkMode;
+                  document.documentElement.classList.toggle('dark');
+              }
+          });
+      });
     </script>
     
-    <!-- Initialize React -->
-    <script type="module">
-        import React from 'react';
-        window.React = React;
-    </script>
-<html>
-    <head>
-     <style>
-        /* Modern UI styles */
-        :root {
-            --primary-color: #3b82f6;
-            --accent-color: #f59e0b;
-            --background-color: #f8fafc;
-            --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-            --transition-ease: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        body {
-            background-color: var(--background-color);
-            font-family: system-ui, -apple-system, sans-serif;
-        }
-
-        .main-nav {
-            backdrop-filter: blur(12px);
-            background-color: rgba(255, 255, 255, 0.8);
-            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-            position: sticky;
-            top: 0;
-            z-index: 50;
-        }
-
-        .nav-link {
-            @apply px-3 py-2 rounded-lg transition-all duration-200;
-        }
-
-        .nav-link:hover {
-            @apply bg-blue-50 text-blue-600;
-        }
-
-        .loading-spinner {
-            @apply flex items-center justify-center space-x-2 text-blue-600;
-            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-
-        @keyframes pulse {
-            50% { opacity: .5; }
-        }
-
-        .walk-item {
-            @apply transition-all duration-300 hover:shadow-lg;
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(0, 0, 0, 0.1);
-        }
-
-        .walk-item:hover {
-            transform: translateY(-2px);
-        }
-
-        /* Responsive design improvements */
-        @media (max-width: 768px) {
-            .main-nav {
-                padding: 0.5rem;
-            }
-
-            .mobile-menu {
-                background: rgba(255, 255, 255, 0.95);
-                backdrop-filter: blur(12px);
-            }
-        }
-
-        /* Scrollbar styling */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.05);
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: rgba(0, 0, 0, 0.3);
-        }
-    </style>
+    {% block extra_head %}{% endblock %}
 </head>
 <body>
-    <nav class="main-nav">
+    <nav class="main-nav" x-data="{ isOpen: false }">
         <div class="max-w-7xl mx-auto px-4">
             <div class="flex items-center justify-between h-16">
                 <!-- Logo -->
@@ -139,9 +49,9 @@
                 <!-- Mobile menu button -->
                 <div class="md:hidden">
                     <button type="button" 
+                            @click="isOpen = !isOpen"
                             class="mobile-menu-button inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
-                            aria-controls="mobile-menu"
-                            aria-expanded="false">
+                            :aria-expanded="isOpen">
                         <iconify-icon icon="mdi:menu" class="text-2xl"></iconify-icon>
                     </button>
                 </div>
@@ -152,11 +62,6 @@
                         <iconify-icon icon="mdi:home" class="mr-1"></iconify-icon>
                         {% translate "Home" %}
                     </a>
-                    <a href="{% url 'about' %}" class="nav-link">
-                        <iconify-icon icon="mdi:information" class="mr-1"></iconify-icon>
-                        {% translate "About" %}
-                    </a>
-                    
                     {% if request.user.is_authenticated %}
                         <a href="{% url 'users:detail' request.user.username %}" class="nav-link">
                             <iconify-icon icon="mdi:account" class="mr-1"></iconify-icon>
@@ -183,17 +88,12 @@
         </div>
 
         <!-- Mobile menu -->
-        <div class="md:hidden hidden" id="mobile-menu">
+        <div class="md:hidden" x-show="isOpen" x-transition>
             <div class="px-2 pt-2 pb-3 space-y-1">
                 <a href="{% url 'home' %}" class="nav-link block">
                     <iconify-icon icon="mdi:home" class="mr-1"></iconify-icon>
                     {% translate "Home" %}
                 </a>
-                <a href="{% url 'about' %}" class="nav-link block">
-                    <iconify-icon icon="mdi:information" class="mr-1"></iconify-icon>
-                    {% translate "About" %}
-                </a>
-                
                 {% if request.user.is_authenticated %}
                     <a href="{% url 'users:detail' request.user.username %}" class="nav-link block">
                         <iconify-icon icon="mdi:account" class="mr-1"></iconify-icon>
