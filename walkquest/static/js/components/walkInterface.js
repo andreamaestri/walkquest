@@ -20,11 +20,13 @@ export function walkInterface() {
 
             // Initialize map after DOM is ready
             this.$nextTick(() => this.initializeMap());
+        },
 
-            // Set up search debounce
-            this.$watch('searchQuery', this.debounce(function(value) {
-                this.searchWalks(value);
-            }, 500));
+        // Use Alpine's $watch for reactive properties
+        $watch: {
+            searchQuery(value) {
+                this.debounce(() => this.searchWalks(value), 500);
+            }
         },
 
         async initializeMap() {

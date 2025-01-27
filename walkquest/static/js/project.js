@@ -31,27 +31,31 @@ const checkDependencies = () => {
     }
 };
 
-// Initialize application
-document.addEventListener('DOMContentLoaded', () => {
+// Initialize Alpine.js components and store
+document.addEventListener('alpine:init', () => {
     try {
         checkDependencies();
-        
-        // Initialize Alpine.js components and store
-        window.Alpine = window.Alpine || {};
-        window.Alpine.data('walkInterface', walkInterface);
-        window.Alpine.store('app', initializeAlpineStore());
-        registerAlpineDirectives(window.Alpine);
-
-        // Initialize dayjs relative time plugin
-        if (window.dayjs) {
-            window.dayjs.extend(window.dayjs_plugin_relativeTime);
-        }
-
+        Alpine.data('walkInterface', walkInterface);
+        Alpine.store('app', initializeAlpineStore());
+        registerAlpineDirectives(Alpine);
     } catch (error) {
-        console.error('Initialization error:', error);
+        console.error('Alpine initialization error:', error);
         const errorDiv = document.createElement('div');
         errorDiv.className = 'error-message';
         errorDiv.textContent = 'Application initialization failed. Please refresh the page.';
         document.body.prepend(errorDiv);
     }
+});
+
+// Handle post-initialization tasks
+document.addEventListener('alpine:initialized', () => {
+    try {
+        // Initialize dayjs relative time plugin
+        if (window.dayjs) {
+            window.dayjs.extend(window.dayjs_plugin_relativeTime);
+        }
+    } catch (error) {
+        console.error('Post-initialization error:', error);
+    }
+}
 });

@@ -18,8 +18,13 @@
         <!-- Sidebar -->
         <aside class="sidebar"
                x-show="showSidebar"
-               x-transition>
-            {% verbatim %}
+               x-transition:enter="transition ease-out duration-300"
+               x-transition:enter-start="opacity-0 transform -translate-x-full"
+               x-transition:enter-end="opacity-100 transform translate-x-0"
+               x-transition:leave="transition ease-in duration-300"
+               x-transition:leave-start="opacity-100 transform translate-x-0"
+               x-transition:leave-end="opacity-0 transform -translate-x-full">
+            
             <!-- Toggle sidebar button -->
             <button @click="showSidebar = !showSidebar"
                     class="absolute -right-12 top-4 bg-white p-2 rounded-r shadow-md"
@@ -27,73 +32,55 @@
                 <iconify-icon :icon="showSidebar ? 'mdi:chevron-left' : 'mdi:chevron-right'"
                              class="text-xl"></iconify-icon>
             </button>
-            {% endverbatim %}
 
             <!-- Search and filters section -->
             <div class="p-4 border-b">
-                {% verbatim %}
                 <div class="relative">
                     <input type="text" 
                            x-model="searchQuery"
                            x-on:input.debounce.500ms="searchWalks"
                            class="w-full px-4 py-2 pl-10 border rounded-lg focus:ring-2 focus:ring-primary-500"
                            placeholder="Search walks...">
-                    <!-- ...existing search icon... -->
+                    <iconify-icon icon="mdi:magnify"
+                                 class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></iconify-icon>
                 </div>
-                {% endverbatim %}
             </div>
 
-            <!-- Walk list with mixed content -->
+            <!-- Walk list -->
             <div id="walk-list" 
                  class="flex-1 overflow-y-auto p-4"
                  x-ref="walkList">
-                {% verbatim %}
                 <template x-for="walk in filteredWalks" :key="walk.id">
-                    <!-- ...existing walk card template... -->
+                    <div class="walk-card mb-4 p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow cursor-pointer"
+                         @click="selectWalk(walk.id)"
+                         :class="{ 'border-2 border-primary-500': selectedWalk?.id === walk.id }">
+                        <h3 class="text-lg font-semibold mb-2" x-text="walk.walk_name"></h3>
+                        <div class="flex items-center gap-2 text-sm text-gray-600">
+                            <span x-text="formatDistance(walk.distance)"></span>
+                            <span class="text-gray-400">•</span>
+                            <span x-text="walk.location"></span>
+                        </div>
+                        <div class="mt-2 flex flex-wrap gap-2">
+                            <template x-for="category in walk.categories" :key="category.id">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100">
+                                    <span x-text="category.name"></span>
+                                </span>
+                            </template>
+                        </div>
+                    </div>
                 </template>
-                {% endverbatim %}
             </div>
         </aside>
 
         <!-- Map container -->
-        {% verbatim %}
         <div class="map-wrapper" :class="{ 'w-full': !showSidebar }">
-            <div id="map" x-ref="map"></div>
+            <div id="map" x-ref="map" class="w-full h-full"></div>
         </div>
-        {% endverbatim %}
     </div>
 {% endblock content %}
 
 {% block extra_js %}
-<script>
-    document.addEventListener('alpine:init', () => {
-        // Initialize walkInterface component with Django data
-        Alpine.data('walkInterface', () => ({
-            showSidebar: true,
-            searchQuery: '',
-            selectedWalk: null,
-            isLoading: false,
-            filteredWalks: [],
-            // Parse Django-provided JSON data
-            config: JSON.parse(document.getElementById('config-data').textContent || '{}'),
-            walks: JSON.parse(document.getElementById('walks-data').textContent || '[]'),
-            tags: JSON.parse(document.getElementById('tags-data').textContent || '[]'),
-
-            init() {
-                // Initialize with parsed data
-                this.filteredWalks = this.walks;
-                
-                this.$watch('selectedWalk', (walkId) => {
-                    if (walkId) this.centerMapOnWalk(walkId);
-                });
-
-                this.$nextTick(() => {
-                    this.initializeMap();
-                });
-            },
-
-            // ...existing component methods...
-        }));
-    });
-</script>
-{% endblock extra_js %}
+    <!-- MapLibre GL JS -->
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+{% endblock %}
