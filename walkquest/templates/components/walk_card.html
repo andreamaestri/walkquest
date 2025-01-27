@@ -1,0 +1,22 @@
+{% load slippers %}
+
+{% component walk_card walk=walk %}
+    <div class="walk-item bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow duration-200">
+        <h3 class="text-lg font-semibold text-gray-900">{{ walk.walk_name }}</h3>
+        <div class="mt-2 flex items-center space-x-2 text-sm text-gray-600">
+            <span>{{ walk.distance|floatformat:1 }}km</span>
+            {% if walk.steepness_level %}
+                <span class="px-2 py-1 rounded-full text-xs 
+                    {% if walk.steepness_level == 'EASY' %}bg-green-100 text-green-800
+                    {% elif walk.steepness_level == 'MODERATE' %}bg-yellow-100 text-yellow-800
+                    {% else %}bg-red-100 text-red-800{% endif %}">
+                    {{ walk.steepness_level }}
+                </span>
+            {% endif %}
+        </div>
+        {% if walk.highlights %}
+            <p class="mt-2 text-sm text-gray-600">{{ walk.highlights|truncatewords:20 }}</p>
+        {% endif %}
+        {{ slot }}
+    </div>
+{% endcomponent %}

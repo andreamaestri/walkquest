@@ -26,8 +26,12 @@
                 visible: {
                     opacity: 1,
                     transition: {
+                        when: "beforeChildren",
                         staggerChildren: 0.1,
-                        delayChildren: 0.3
+                        delayChildren: 0.2,
+                        type: "spring",
+                        duration: 0.6,
+                        bounce: 0.2
                     }
                 }
             }
@@ -38,53 +42,105 @@
         const el = document.createElement('div');
         el.className = `marker`;
         
-        // Enhanced color palette and marker types
+        // Enhanced marker types with priority ordering
         const markerTypes = {
-            coastal: {
-                condition: walk => walk.features.some(f => f.slug === 'coastal'),
-                icon: 'mdi:waves',
-                color: '#0ea5e9', // sky blue
-                shadow: '#7dd3fc'
-            },
-            woodland: {
-                condition: walk => walk.features.some(f => f.slug === 'woodland'),
-                icon: 'mdi:tree',
-                color: '#059669', // emerald
-                shadow: '#6ee7b7'
-            },
-            pub: {
-                condition: walk => walk.has_pub,
-                icon: 'mdi:beer',
-                color: '#d97706', // amber
-                shadow: '#fcd34d'
-            },
             heritage: {
-                condition: walk => walk.features.some(f => f.slug === 'heritage'),
+                condition: walk => {
+                    return walk.related_categories?.some(c => 
+                        ['walks-visiting-a-church', 'heritage-walks'].includes(c.slug)
+                    );
+                },
                 icon: 'mdi:castle',
                 color: '#7c3aed', // violet
-                shadow: '#c4b5fd'
+                shadow: '#c4b5fd',
+                priority: 1
+            },
+            coastal: {
+                condition: walk => {
+                    return walk.related_categories?.some(c => 
+                        ['coastal-walks', 'beach-walks'].includes(c.slug)
+                    );
+                },
+                icon: 'mdi:waves',
+                color: '#0ea5e9', // sky blue
+                shadow: '#7dd3fc',
+                priority: 2
+            },
+            riverside: {
+                condition: walk => {
+                    return walk.related_categories?.some(c => 
+                        ['riverside-walks', 'waterside-walks'].includes(c.slug)
+                    );
+                },
+                icon: 'mdi:water',
+                color: '#06b6d4', // cyan
+                shadow: '#67e8f9',
+                priority: 3
+            },
+            woodland: {
+                condition: walk => {
+                    return walk.related_categories?.some(c => 
+                        ['woodland-walks', 'forest-walks'].includes(c.slug)
+                    );
+                },
+                icon: 'mdi:tree',
+                color: '#059669', // emerald
+                shadow: '#6ee7b7',
+                priority: 4
+            },
+            pubCrawl: {
+                condition: walk => walk.has_pub && walk.pubs_list?.length > 2,
+                icon: 'mdi:beer-outline',
+                color: '#d97706', // amber
+                shadow: '#fcd34d',
+                priority: 5
             },
             familyFriendly: {
-                condition: walk => !walk.has_stiles && walk.steepness_level === 'Easy',
+                condition: walk => {
+                    return !walk.has_stiles && 
+                           walk.steepness_level?.toLowerCase().includes('novice') &&
+                           walk.related_categories?.some(c => 
+                               ['walks-without-stiles', 'family-walks'].includes(c.slug)
+                           );
+                },
                 icon: 'mdi:account-group',
                 color: '#10b981', // green
-                shadow: '#6ee7b7'
+                shadow: '#6ee7b7',
+                priority: 6
+            },
+            circular: {
+                condition: walk => {
+                    return walk.related_categories?.some(c => 
+                        c.slug === 'circular-walks'
+                    );
+                },
+                icon: 'mdi:refresh',
+                color: '#8b5cf6', // purple
+                shadow: '#c4b5fd',
+                priority: 7
             },
             default: {
                 icon: 'mdi:hiking',
                 color: '#3b82f6', // blue
-                shadow: '#93c5fd'
+                shadow: '#93c5fd',
+                priority: 999
             }
         };
 
-        // Find the first matching marker type
-        const markerType = Object.values(markerTypes).find(type => 
-            type.condition ? type.condition(walk) : true
-        );
+        // Find the highest priority matching marker type
+        const markerType = Object.values(markerTypes)
+            .filter(type => type.condition ? type.condition(walk) : true)
+            .sort((a, b) => a.priority - b.priority)[0];
 
         const color = markerType.color;
         const shadowColor = markerType.shadow;
         const selectedColor = '#10b981'; // green for selected state
+
+        // Create a second decorative icon if the walk has both pub and cafe
+        const secondaryIcon = walk.has_pub && walk.has_cafe ? 
+            '<div class="marker-secondary-icon">' +
+                '<iconify-icon icon="mdi:coffee" style="color: white" width="12" height="12"></iconify-icon>' +
+            '</div>' : '';
 
         el.innerHTML = `
             <div class="marker-inner ${isSelected ? 'selected' : ''} ${walk.is_favorite ? 'favorite' : ''}"
@@ -95,6 +151,7 @@
                                  width="16" height="16">
                     </iconify-icon>
                 </div>
+                ${secondaryIcon}
             </div>
         `;
 
@@ -111,6 +168,7 @@
                 border-radius: 50% 50% 50% 0;
                 transform: rotate(-45deg);
                 transition: all 0.3s ease;
+                position: relative;
             }
             .marker-icon {
                 width: 100%;
@@ -119,6 +177,20 @@
                 display: flex;
                 align-items: center;
                 justify-content: center;
+            }
+            .marker-secondary-icon {
+                position: absolute;
+                bottom: -5px;
+                right: -5px;
+                width: 18px;
+                height: 18px;
+                background: #d97706;
+                border-radius: 50%;
+                transform: rotate(45deg);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border: 2px solid white;
             }
             .marker-inner:hover {
                 transform: rotate(-45deg) scale(1.2);
