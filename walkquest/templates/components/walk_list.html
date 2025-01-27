@@ -1,0 +1,28 @@
+{% load i18n %}
+{% load slippers %}
+
+{% #walk_list %}
+<div class="flex flex-col space-y-4 p-4" 
+     x-data="walkList"
+     x-init="init">
+    <div class="relative">
+        <input type="text"
+               x-model="searchQuery"
+               @input.debounce.300ms="fetchWalks"
+               placeholder="{% translate 'Search walks...' %}"
+               class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:outline-none">
+    </div>
+
+    <div x-show="isLoading" class="flex justify-center p-4">
+        {% #loading %}Loading walks...{% /loading %}
+    </div>
+
+    <template x-if="!isLoading">
+        <div class="space-y-4">
+            <template x-for="walk in walks" :key="walk.id">
+                {% #walk_card %}{% /walk_card %}
+            </template>
+        </div>
+    </template>
+</div>
+{% /walk_list %}

@@ -1,7 +1,7 @@
 {% load i18n %}
 {% load slippers %}
 
-{% #navbar 
+{% component "navbar" 
     allow_registration=allow_registration 
     is_authenticated=is_authenticated 
     username=username 
@@ -87,4 +87,3 @@
         </div>
     </div>
 </nav>
-{% #/navbar %}

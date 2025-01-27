@@ -14,16 +14,10 @@
     <!-- Embed JSON data safely -->
     {{ config|json_script:"config-data" }}
     {{ initial_walks|json_script:"walks-data" }}
-    {{ tags_data|json_script:"tags-data" }}
-
-    <!-- Error container -->
-    <div id="error-container" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert"></div>
-
-    <!-- Main content with Alpine.js -->
+    
     <div class="layout-container" 
          x-data="walkInterface()"
-         x-init="$nextTick(() => init())"
-         x-cloak>
+         x-init="$nextTick(() => init())">
         <!-- Sidebar -->
         <aside class="sidebar"
                x-show="showSidebar"
@@ -33,7 +27,7 @@
                x-transition:leave="transition ease-in duration-300"
                x-transition:leave-start="opacity-100 transform translate-x-0"
                x-transition:leave-end="opacity-0 transform translate-x-full">
-            {% #walk_list %}{% /walk_list %}
+            {% #walk_list walks=initial_walks %}{% /walk_list %}
         </aside>
 
         <!-- Map container -->
