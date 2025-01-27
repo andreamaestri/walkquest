@@ -3,3 +3,4 @@ components:
     walk_list: "partials/walk_list.html"
     search_icon: "components/search-icon.html"
     search_results: "partials/search_results.html"
+    navbar: "components/navbar.html"
