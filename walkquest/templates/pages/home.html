@@ -5,51 +5,14 @@
 
 {% block title %}{% translate "Walks" %} - {{ block.super }}{% endblock %}
 
-{% block extra_head %}
-    <!-- Mapbox CSS -->
-    <link href='https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.css' rel='stylesheet' />
-{% endblock %}
-
 {% block content %}
     <!-- Embed JSON data safely -->
     {{ config|json_script:"config-data" }}
     {{ initial_walks|json_script:"walks-data" }}
     
     <!-- Main layout container with walkInterface component -->
-    <div class="layout-container" 
-         x-data="{
-             showSidebar: false,
-             selectedWalk: null,
-             map: null,
-             markers: new Map(),
-             currentRoute: null,
-             
-             init() {
-                 const configData = document.getElementById('config-data');
-                 if (configData) {
-                     this.config = JSON.parse(configData.textContent);
-                 }
-                 this.initMap();
-             },
-
-             handleWalkSelection(walkId) {
-                 if (!walkId) return;
-                 this.selectedWalk = walkId;
-                 this.showSidebar = true;
-                 this.highlightWalkOnMap(walkId);
-             },
-
-             initMap() {
-                 // Map initialization will be handled by the map component
-                 console.log('Map initialized');
-             },
-
-             highlightWalkOnMap(walkId) {
-                 // Highlight walk on map
-                 console.log('Highlighting walk:', walkId);
-             }
-         }"
-         x-init="init()"
+    <div x-data="walkInterface"
+         x-init="$nextTick(() => init())"
          @keydown.escape.window="showSidebar = false"
          @walk-selected.window="handleWalkSelection($event.detail)">
          
@@ -69,8 +32,20 @@
         </aside>
 
         <!-- Map container -->
-        <main class="map-container relative w-full h-screen">
-            <div x-ref="map" class="map absolute inset-0"></div>
+        <main class="map">
+            <div class="map-container">
+                <div x-ref="map" class="map-inner bg-gray-100"></div>
+            
+                <!-- Loading indicator -->
+                <div x-show="!map" class="map-loading">
+                    <div class="map-loading-spinner">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
             
             <!-- Toggle sidebar button -->
             <button @click="showSidebar = !showSidebar"
@@ -92,9 +67,4 @@
             </button>
         </main>
     </div>
-{% endblock %}
-
-{% block javascript %}
-    <!-- Mapbox JS -->
-    <script src='https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.js'></script>
 {% endblock %}

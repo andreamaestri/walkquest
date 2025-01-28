@@ -829,10 +829,6 @@
     --tw-translate-y: calc(calc(1/2 * 100%) * -1);
     translate: var(--tw-translate-x) var(--tw-translate-y);
   }
-  .-translate-y-4 {
-    --tw-translate-y: calc(var(--spacing) * -4);
-    translate: var(--tw-translate-x) var(--tw-translate-y);
-  }
   .translate-x-0 {
     --tw-translate-x: calc(var(--spacing) * 0);
     translate: var(--tw-translate-x) var(--tw-translate-y);
@@ -888,9 +884,6 @@
   }
   .cursor-pointer {
     cursor: pointer;
-  }
-  .resize {
-    resize: both;
   }
   .grid-cols-1 {
     grid-template-columns: repeat(1, minmax(0, 1fr));
@@ -1215,9 +1208,6 @@
   .text-green-800 {
     color: var(--color-green-800);
   }
-  .text-red-400 {
-    color: var(--color-red-400);
-  }
   .text-red-700 {
     color: var(--color-red-700);
   }
@@ -1320,10 +1310,6 @@
   .duration-300 {
     --tw-duration: 300ms;
     transition-duration: 300ms;
-  }
-  .duration-500 {
-    --tw-duration: 500ms;
-    transition-duration: 500ms;
   }
   .ease-in {
     --tw-ease: var(--ease-in);
@@ -1755,13 +1741,6 @@
     border-color: var(--color-yellow-400);
     border-top-color: transparent;
   }
-  .map-container {
-    position: fixed;
-    inset: calc(var(--spacing) * 0);
-    z-index: 1;
-    height: 100vh;
-    width: 100%;
-  }
   .sidebar {
     position: fixed;
     top: calc(var(--spacing) * 0);
@@ -1834,9 +1813,37 @@
     color: var(--color-gray-700);
   }
   .map {
-    height: 100%;
+    position: relative;
+    height: 100vh;
     width: 100%;
-    background-color: var(--color-slate-50);
+    .map-container {
+      position: relative;
+      height: 100vh;
+      width: 100%;
+    }
+    .map-inner {
+      position: absolute;
+      inset: calc(var(--spacing) * 0);
+      height: 100% !important;
+      width: 100% !important;
+    }
+    .map-loading {
+      position: absolute;
+      inset: calc(var(--spacing) * 0);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: color-mix(in oklab, var(--color-gray-100) 80%, transparent);
+      --tw-backdrop-blur: blur(var(--blur-sm));
+      -webkit-backdrop-filter: var(--tw-backdrop-blur,) var(--tw-backdrop-brightness,) var(--tw-backdrop-contrast,) var(--tw-backdrop-grayscale,) var(--tw-backdrop-hue-rotate,) var(--tw-backdrop-invert,) var(--tw-backdrop-opacity,) var(--tw-backdrop-saturate,) var(--tw-backdrop-sepia,);
+      backdrop-filter: var(--tw-backdrop-blur,) var(--tw-backdrop-brightness,) var(--tw-backdrop-contrast,) var(--tw-backdrop-grayscale,) var(--tw-backdrop-hue-rotate,) var(--tw-backdrop-invert,) var(--tw-backdrop-opacity,) var(--tw-backdrop-saturate,) var(--tw-backdrop-sepia,);
+    }
+    .map-loading-spinner {
+      height: calc(var(--spacing) * 8);
+      width: calc(var(--spacing) * 8);
+      animation: var(--animate-spin);
+      color: var(--color-blue-500);
+    }
   }
 }
 @keyframes spin {

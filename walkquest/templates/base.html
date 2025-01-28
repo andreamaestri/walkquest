@@ -26,6 +26,7 @@
         <!-- Core Dependencies -->
         <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
         <script src='https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.js'></script>
+        <link href='https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.css' rel='stylesheet' />
         
         <!-- Import Motion -->
         <script type="module">
@@ -45,11 +46,15 @@
             });
         </script>
 
-        <!-- Load services and utilities first -->
+        <!-- Load configuration first -->
+        <script src="{% static 'js/project.js' %}"></script>
+
+        <!-- Load services -->
         <script src="{% static 'js/services.js' %}"></script>
+
+        <!-- Load utilities -->
         <script defer src="{% static 'js/walk-animations.js' %}"></script>
         <script defer src="{% static 'js/walkInterface.js' %}"></script>
-        <script defer src="{% static 'js/project.js' %}"></script>
 
         <!-- Alpine Plugins -->
         <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/intersect@3.x.x/dist/cdn.min.js"></script>
@@ -57,16 +62,6 @@
 
         <!-- Alpine Core -->
         <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-
-        <!-- Initialize services -->
-        <script>
-            document.addEventListener('DOMContentLoaded', () => {
-                if (window.ApiService) {
-                    window.ApiService.init();
-                    console.log('ApiService initialized');
-                }
-            });
-        </script>
 
         <!-- Debug initialization -->
         <script>

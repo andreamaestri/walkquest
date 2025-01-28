@@ -1,32 +1,22 @@
-// Wait for dependencies to be available
-if (!window.ApiService) {
-    console.error('ApiService must be loaded before Alpine components');
-}
-
-// Ensure Alpine.js is loaded
-const initializeComponents = () => {
-    if (typeof window.Alpine === 'undefined') {
-        console.error('Alpine.js must be loaded before initializing components');
-        return;
-    }
-    console.log('Alpine.js detected, proceeding with initialization');
-};
-
-// Initialize when Alpine is ready
-document.addEventListener('alpine:init', () => {
-    initializeComponents();
-    console.log('Initializing Alpine components...');
-
+// Define WalkQuest Alpine plugin
+function walkquestPlugin(Alpine) {
     // Set up shared state
     Alpine.store('walkState', {
         pendingFavorites: new Set(),
         selectedWalk: null
     });
 
-    // Log initialization
-    console.log('Alpine.js initialization started');
+    // Register magic methods
+    Alpine.magic('walkService', () => ({
+        async toggleFavorite(walkId) {
+            return await window.ApiService.toggleFavorite(walkId);
+        },
+        async filterWalks(params) {
+            return await window.ApiService.filterWalks(params);
+        }
+    }));
 
-    // Main interface component
+    // Register components
     Alpine.data('walkInterface', () => ({
         showSidebar: false,
         selectedWalk: null,
@@ -71,9 +61,7 @@ document.addEventListener('alpine:init', () => {
         }
     }));
 
-    // Define walkList component globally first
-    window.walkList = function() {
-        return {
+    Alpine.data('walkList', () => ({
         walks: [],
         isLoading: false,
         isLoadingMore: false,
@@ -85,7 +73,6 @@ document.addEventListener('alpine:init', () => {
         
         init() {
             console.log('Initializing walkList component...');
-            // Initialize with any existing data
             const walksData = document.getElementById('walks-data');
             if (walksData) {
                 try {
@@ -96,22 +83,18 @@ document.addEventListener('alpine:init', () => {
                     console.error('Failed to parse initial walks data:', err);
                 }
             }
-            
-            // Fetch fresh data
             this.fetchWalks();
         },
 
         async fetchWalks() {
             this.isLoading = true;
             this.error = null;
-            
             try {
-                const response = await window.ApiService.filterWalks({
+                const response = await this.$walkService.filterWalks({
                     search: this.searchQuery,
                     page: 1,
                     page_size: 10
                 });
-
                 this.walks = response.walks || [];
                 this.hasMore = (response.walks || []).length >= 10;
                 this.page = 1;
@@ -125,24 +108,21 @@ document.addEventListener('alpine:init', () => {
 
         async loadMore() {
             if (this.isLoadingMore || !this.hasMore) return;
-            
             this.isLoadingMore = true;
             this.page++;
-            
             try {
-                const response = await window.ApiService.filterWalks({
+                const response = await this.$walkService.filterWalks({
                     search: this.searchQuery,
                     page: this.page,
                     page_size: 10
                 });
-
                 const newWalks = response.walks || [];
                 this.walks = [...this.walks, ...newWalks];
                 this.hasMore = newWalks.length >= 10;
             } catch (err) {
                 console.error('Failed to load more walks:', err);
                 this.error = 'Failed to load more walks. Please try again.';
-                this.page--; // Revert page increment on error
+                this.page--;
             } finally {
                 this.isLoadingMore = false;
             }
@@ -154,20 +134,36 @@ document.addEventListener('alpine:init', () => {
         },
 
         checkScroll() {
-            // Check if we're near the bottom of the page
             const scrollPosition = window.innerHeight + window.scrollY;
             const documentHeight = document.documentElement.scrollHeight;
-            const threshold = 200; // pixels from bottom
-
+            const threshold = 200;
             if (documentHeight - scrollPosition < threshold) {
                 this.loadMore();
             }
+        },
+
+        async toggleFavorite(walkId) {
+            if (this.pendingFavorites.has(walkId)) return;
+            this.pendingFavorites.add(walkId);
+            try {
+                const result = await this.$walkService.toggleFavorite(walkId);
+                const walk = this.walks.find(w => w.id === walkId);
+                if (walk) {
+                    walk.is_favorite = result.is_favorite;
+                }
+            } catch (error) {
+                console.error('Failed to toggle favorite:', error);
+            } finally {
+                this.pendingFavorites.delete(walkId);
+            }
         }
-        };
-    };
+    }));
 
-    // Then register it with Alpine
-    Alpine.data('walkList', window.walkList);
+}
 
-    console.log('Alpine components initialized successfully');
+// Register plugin with Alpine
+document.addEventListener('alpine:init', () => {
+    console.log('Registering WalkQuest Alpine plugin...');
+    Alpine.plugin(walkquestPlugin);
+    console.log('WalkQuest Alpine plugin registered successfully');
 });

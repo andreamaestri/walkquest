@@ -100,10 +100,6 @@
         @apply animate-spin h-5 w-5 border-2 border-yellow-400 rounded-full border-t-transparent;
     }
 
-    .map-container {
-        @apply fixed inset-0 w-full h-screen z-[1];
-    }
-
     .sidebar {
         @apply fixed top-0 right-0 h-full bg-white shadow-lg z-10 transition-transform duration-300 ease-in-out w-[400px] overflow-y-auto;
 
@@ -149,6 +145,34 @@
     }
 
     .map {
-        @apply w-full h-full bg-slate-50;
+        @apply relative w-full h-screen;
+        z-index: 1;
+
+        .map-container {
+            @apply relative w-full h-screen;
+            z-index: 1;
+        }
+
+        .map-inner {
+            @apply absolute inset-0;
+            height: 100% !important;
+            width: 100% !important;
+            z-index: 1;
+        }
+
+        .mapboxgl-canvas {
+            @apply absolute inset-0;
+            height: 100% !important;
+            width: 100% !important;
+        }
+
+        .map-loading {
+            @apply absolute inset-0 bg-gray-100/80 backdrop-blur-sm flex items-center justify-center;
+            z-index: 2;
+        }
+
+        .map-loading-spinner {
+            @apply animate-spin h-8 w-8 text-blue-500;
+        }
     }
-}
+} /* Close @layer components */

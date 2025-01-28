@@ -1,38 +1,41 @@
-// Application defaults
-const DEFAULT_CONFIG = {
-    map: {
-        style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
-        defaultCenter: [-4.85, 50.4],
-        defaultZoom: 9.5,
-        markerColors: {
-            default: '#FF0000',
-            selected: '#00FF00',
-            favorite: '#FFD700'
+// Initialize configuration
+function initializeConfig() {
+    try {
+        // Get config from script tag
+        const configScript = document.getElementById('config-data');
+        if (!configScript) {
+            throw new Error('Config data script tag not found');
         }
-    },
-    filters: {
-        categories: true,
-        features: true,
-        distance: true
+
+        // Parse config JSON
+        const config = JSON.parse(configScript.textContent);
+        console.log('Parsed config:', config);
+
+        // Set up global config
+        window.walkquestConfig = {
+            ...config,
+            csrfToken: document.querySelector('meta[name="csrf-token"]')?.content
+        };
+
+        console.log('Global config initialized:', window.walkquestConfig);
+    } catch (error) {
+        console.error('Failed to initialize config:', error);
     }
-};
+}
 
-document.addEventListener('alpine:init', () => {
-    // Set up global config within Alpine lifecycle
-    window.walkquestConfig = {
-        ...DEFAULT_CONFIG,
-        csrfToken: document.querySelector('meta[name="csrf-token"]')?.content
-    };
+// Initialize services and components
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize config first
+    initializeConfig();
 
-    // Initialize ApiService within Alpine lifecycle
+    // Initialize API service
     if (window.ApiService?.init) {
         window.ApiService.init();
+        console.log('ApiService initialized');
     } else {
         console.error('ApiService not found - check script loading order');
     }
-});
 
-document.addEventListener('DOMContentLoaded', () => {
     // Initialize animations
     if (window.WalkAnimations) {
         window.WalkAnimations.initializeHoverEffects();
