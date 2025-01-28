@@ -12,7 +12,6 @@
          error: null,
          searchQuery: '',
          page: 1,
-         pendingFavorites: new Set(),
          
          async init() {
              console.log('Initializing walkList component...');
@@ -22,6 +21,11 @@
                      const initialData = JSON.parse(walksData.textContent);
                      this.walks = initialData.walks || [];
                      this.hasMore = initialData.hasMore || false;
+                     
+                     // Initialize selected walk if we have walks
+                     if (this.walks.length > 0) {
+                         Alpine.store('walks').setSelectedWalk(this.walks[0]);
+                     }
                  } catch (err) {
                      console.error('Failed to parse initial walks data:', err);
                  }

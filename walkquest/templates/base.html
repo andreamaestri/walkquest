@@ -53,26 +53,52 @@
         <script src="{% static 'js/services.js' %}"></script>
 
         <!-- Load utilities -->
-        <script defer src="{% static 'js/walk-animations.js' %}"></script>
+        <script src="{% static 'js/walk-animations.js' %}"></script>
 
-        <!-- Alpine Plugins -->
-        <!-- Alpine Core - Load before plugins -->
-        <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-        
-        <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/intersect@3.x.x/dist/cdn.min.js"></script>
-        <script defer src="{% static 'js/alpine-components.js' %}"></script>
+        <!-- Alpine Plugins must be loaded before Alpine Core -->
+        <script src="https://cdn.jsdelivr.net/npm/@alpinejs/intersect@3.x.x/dist/cdn.min.js"></script>
 
-
-        <!-- Debug initialization -->
+        <!-- Alpine Core -->
         <script>
             document.addEventListener('DOMContentLoaded', () => {
-                console.log('Services and plugins loaded:', {
+                // Initialize Alpine plugins
+                if (window.AlpineIntersect) {
+                    window.Alpine.plugin(window.AlpineIntersect);
+                }
+            });
+        </script>
+        <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+        <!-- Alpine Store initialization -->
+        <script>
+            document.addEventListener('alpine:init', () => {
+                // Initialize shared state store
+                Alpine.store('walks', {
+                    selectedWalk: null,
+                    pendingFavorites: new Set(),
+                    setSelectedWalk(walk) {
+                        this.selectedWalk = walk;
+                    },
+                    togglePendingFavorite(id) {
+                        if (this.pendingFavorites.has(id)) {
+                            this.pendingFavorites.delete(id);
+                        } else {
+                            this.pendingFavorites.add(id);
+                        }
+                    }
+                });
+
+                console.log('Alpine initialized with:', {
                     ApiService: !!window.ApiService,
                     Alpine: !!window.Alpine,
                     AlpineIntersect: !!window.AlpineIntersect
                 });
             });
         </script>
+
+        <!-- Alpine Components -->
+        <script src="{% static 'js/alpine-components.js' %}"></script>
+        <script src="{% static 'js/walkInterface.js' %}"></script>
         
         <!-- Additional JavaScript -->
         {% block extra_javascript %}

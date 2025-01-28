@@ -1,23 +1,8 @@
 // Define WalkQuest Alpine plugin
 function walkquestPlugin(Alpine) {
-    // Set up shared state
-    Alpine.store('walkState', {
-        pendingFavorites: new Set(),
-        selectedWalk: null
-    });
-
-    // Register magic methods
-    Alpine.magic('walkService', () => ({
-        async toggleFavorite(walkId) {
-            return await window.ApiService.toggleFavorite(walkId);
-        },
-        async filterWalks(params) {
-            return await window.ApiService.filterWalks(params);
-        }
-    }));
-
     // Register components
     Alpine.data('walkInterface', () => ({
+        // Component state
         showSidebar: false,
         selectedWalk: null,
         config: window.walkquestConfig || {},
@@ -26,9 +11,13 @@ function walkquestPlugin(Alpine) {
         isMapLoading: true,
         pendingFavorites: new Set(),
 
+        // Initialization
         init() {
-            console.log('Initializing walkInterface component...');
-            
+            console.log('Initializing map component...');
+            this.initializeMap();
+        },
+
+        async initializeMap() {
             if (!window.ApiService?.init) {
                 console.error('ApiService not properly initialized');
                 return;
@@ -77,22 +66,6 @@ function walkquestPlugin(Alpine) {
             }
         },
 
-        handleWalkSelection(detail) {
-            if (!detail) return;
-            
-            this.selectedWalk = detail;
-            this.showSidebar = true;
-            
-            // Update map view if coordinates available
-            if (this.map && detail.longitude && detail.latitude) {
-                this.map.flyTo({
-                    center: [detail.longitude, detail.latitude],
-                    zoom: 14,
-                    essential: true
-                });
-            }
-        },
-
         // Map utility functions
         formatDistance(distance) {
             return `${(distance / 1000).toFixed(1)}km`;
@@ -135,6 +108,22 @@ function walkquestPlugin(Alpine) {
             return marker;
         },
 
+        handleWalkSelection(detail) {
+            if (!detail) return;
+            
+            this.selectedWalk = detail;
+            this.showSidebar = true;
+            
+            // Update map view if coordinates available
+            if (this.map && detail.longitude && detail.latitude) {
+                this.map.flyTo({
+                    center: [detail.longitude, detail.latitude],
+                    zoom: 14,
+                    essential: true
+                });
+            }
+        },
+
         async toggleFavorite(walkId) {
             if (this.pendingFavorites.has(walkId)) return;
 
@@ -150,7 +139,6 @@ function walkquestPlugin(Alpine) {
             }
 
             // Add favorite status
-            
             this.pendingFavorites.add(walkId);
             try {
                 const result = await window.ApiService.toggleFavorite(walkId);
@@ -166,6 +154,7 @@ function walkquestPlugin(Alpine) {
         }
     }));
 
+    // Register walkList component
     Alpine.data('walkList', () => ({
         walks: [],
         isLoading: false,
@@ -192,10 +181,15 @@ function walkquestPlugin(Alpine) {
         },
 
         async fetchWalks() {
+            if (!window.ApiService?.filterWalks) {
+                console.error('ApiService.filterWalks not available');
+                return;
+            }
+
             this.isLoading = true;
             this.error = null;
             try {
-                const response = await this.$walkService.filterWalks({
+                const response = await window.ApiService.filterWalks({
                     search: this.searchQuery,
                     page: 1,
                     page_size: 10
@@ -213,10 +207,11 @@ function walkquestPlugin(Alpine) {
 
         async loadMore() {
             if (this.isLoadingMore || !this.hasMore) return;
+            
             this.isLoadingMore = true;
             this.page++;
             try {
-                const response = await this.$walkService.filterWalks({
+                const response = await window.ApiService.filterWalks({
                     search: this.searchQuery,
                     page: this.page,
                     page_size: 10
@@ -233,11 +228,6 @@ function walkquestPlugin(Alpine) {
             }
         },
 
-        handleError(message) {
-            this.error = message;
-            console.error('Walk list error:', message);
-        },
-
         checkScroll() {
             const scrollPosition = window.innerHeight + window.scrollY;
             const documentHeight = document.documentElement.scrollHeight;
@@ -245,30 +235,13 @@ function walkquestPlugin(Alpine) {
             if (documentHeight - scrollPosition < threshold) {
                 this.loadMore();
             }
-        },
-
-        async toggleFavorite(walkId) {
-            if (this.pendingFavorites.has(walkId)) return;
-            this.pendingFavorites.add(walkId);
-            try {
-                const result = await this.$walkService.toggleFavorite(walkId);
-                const walk = this.walks.find(w => w.id === walkId);
-                if (walk) {
-                    walk.is_favorite = result.is_favorite;
-                }
-            } catch (error) {
-                console.error('Failed to toggle favorite:', error);
-            } finally {
-                this.pendingFavorites.delete(walkId);
-            }
         }
     }));
-
 }
 
 // Register plugin with Alpine
 document.addEventListener('alpine:init', () => {
-    console.log('Registering WalkQuest Alpine plugin...');
+    console.log('Initializing WalkQuest Alpine plugin...');
     Alpine.plugin(walkquestPlugin);
-    console.log('WalkQuest Alpine plugin registered successfully');
+    console.debug('Alpine data and plugins registered');
 });

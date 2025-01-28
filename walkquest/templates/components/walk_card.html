@@ -3,27 +3,31 @@
 
 <div class="walk-item cursor-pointer"
      :class="{
-        'walk-item-selected': selectedWalk?.id === walk.id,
-        'walk-item-pending': pendingFavorites.has(walk.id)
+        'walk-item-selected': $store.walks.selectedWalk?.id === walk.id,
+        'walk-item-pending': $store.walks.pendingFavorites.has(walk.id)
      }" 
      :key="walk.id"
-     x-data="{ showDetails: false }"
+     x-data="{ 
+        showDetails: false,
+        get selectedWalk() { return $store.walks.selectedWalk },
+        get pendingFavorites() { return $store.walks.pendingFavorites }
+     }"
      @click="$dispatch('walk-selected', walk)">
     
     <div class="flex justify-between items-start">
         <h3 class="text-lg font-semibold text-gray-900 truncate" x-text="walk.walk_name"></h3>
         
         <!-- Favorite Button -->
-        <button @click.stop="toggleFavorite(walk.id)"
+        <button @click.stop="$store.walks.togglePendingFavorite(walk.id)"
                 class="favorite-button"
                 :class="{
                     'favorite-button-active': walk.is_favorite,
                     'favorite-button-inactive': !walk.is_favorite,
-                    'favorite-button-pending': pendingFavorites.has(walk.id)
+                    'favorite-button-pending': $store.walks.pendingFavorites.has(walk.id)
                 }">
             <span class="sr-only" x-text="walk.is_favorite ? '{% translate "Remove from favorites" %}' : '{% translate "Add to favorites" %}'"></span>
             <!-- Loading spinner for pending state -->
-            <div x-show="pendingFavorites.has(walk.id)" class="loading-spinner"></div>
+            <div x-show="$store.walks.pendingFavorites.has(walk.id)" class="loading-spinner"></div>
             <iconify-icon icon="mdi:star" class="w-5 h-5" :class="{ 'fill-current': walk.is_favorite }"></iconify-icon>
         </button>
     </div>

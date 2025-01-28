@@ -4,8 +4,17 @@ document.addEventListener('alpine:init', () => {
         map: null,
         markers: new Map(),
         showSidebar: false,
-        selectedWalk: null,
+        isMapLoading: true,
         config: window.walkquestConfig || {},
+
+        // Computed properties
+        get selectedWalk() {
+            return Alpine.store('walks').selectedWalk;
+        },
+
+        get pendingFavorites() {
+            return Alpine.store('walks').pendingFavorites;
+        },
 
         init() {
             console.log('Initializing map interface...');
@@ -45,6 +54,7 @@ document.addEventListener('alpine:init', () => {
                         console.log('Map loaded successfully');
                         // Force a resize to ensure proper rendering
                         this.map.resize();
+                        this.isMapLoading = false;
                     });
 
                     this.map.on('error', (e) => {
@@ -68,7 +78,7 @@ document.addEventListener('alpine:init', () => {
                                         latitude: walk.latitude,
                                         is_favorite: walk.is_favorite
                                     }, {}, () => {
-                                        this.selectedWalk = walk;
+                                        Alpine.store('walks').setSelectedWalk(walk);
                                         this.showSidebar = true;
                                     });
                                 }
@@ -98,33 +108,6 @@ document.addEventListener('alpine:init', () => {
             } catch (error) {
                 console.error('Failed to parse config:', error);
             }
-        },
-
-        // Utility functions
-        formatDistance(distance) {
-            return `${(distance / 1000).toFixed(1)}km`;
-        },
-
-        sanitizeHtml(str) {
-            return String(str).replace(/[&<>"']/g, m => ({
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '"': '&quot;',
-                "'": '&#39;'
-            })[m]);
-        },
-
-        calculateBounds(geometry) {
-            if (!geometry?.coordinates?.length) return null;
-            
-            const bounds = new mapboxgl.LngLatBounds();
-            geometry.coordinates.forEach(coord => {
-                if (Array.isArray(coord) && coord.length >= 2) {
-                    bounds.extend(coord);
-                }
-            });
-            return bounds;
         },
 
         addMarker({ id, longitude, latitude, is_favorite }, config = {}, onClick) {
@@ -164,7 +147,7 @@ document.addEventListener('alpine:init', () => {
         handleWalkSelection(detail) {
             if (!detail) return;
             
-            this.selectedWalk = detail;
+            Alpine.store('walks').setSelectedWalk(detail);
             this.showSidebar = true;
             
             // Update map view and add marker if coordinates available
@@ -177,7 +160,7 @@ document.addEventListener('alpine:init', () => {
                     is_favorite: detail.is_favorite
                 }, {}, () => {
                     // Marker click handler
-                    this.selectedWalk = detail;
+                    Alpine.store('walks').setSelectedWalk(detail);
                     this.showSidebar = true;
                 });
 
