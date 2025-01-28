@@ -24,6 +24,23 @@ from .schemas import ConfigSchema
 api = NinjaAPI(title="WalkQuest API", version="1.0.0", csrf=True)
 router = Router()
 
+@api.get("/")
+def api_root(request):
+    """API root endpoint that returns available endpoints"""
+    return {
+        "version": "1.0.0",
+        "endpoints": {
+            "walks": "/walks",
+            "walks_detail": "/walks/{walk_id}",
+            "walks_geometry": "/walks/{walk_id}/geometry",
+            "walks_favorite": "/walks/{walk_id}/favorite",
+            "walks_filters": "/walks/filters",
+            "tags": "/tags",
+            "config": "/config",
+            "docs": "/docs"
+        }
+    }
+
 @router.get("/walks", response=List[WalkOutSchema])
 def list_walks(
     request: HttpRequest,

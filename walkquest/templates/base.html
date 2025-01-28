@@ -24,69 +24,58 @@
         {% endblock %}
 
         <!-- Core Dependencies -->
-        <!-- Load API Services first -->
-        <script src="{% static 'js/services.js' %}"></script>
-        
-        <!-- Load Iconify -->
         <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
+        <script src='https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.js'></script>
         
-        <!-- Alpine.js and Plugins -->
-        <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-        <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/intersect@3.x.x/dist/cdn.min.js"></script>
-
-        <!-- Initialize global config and Motion -->
+        <!-- Import Motion -->
         <script type="module">
-            // Import Motion functions
             import { 
-                animate, 
-                hover,
-                scroll,
-                inView,
-                press,
-                spring,
-                stagger,
-                delay,
-                frame,
-                mix,
-                transform 
+                animate, hover, scroll, inView, press,
+                spring, stagger, delay, frame, mix, transform 
             } from "https://cdn.jsdelivr.net/npm/motion@latest/+esm"
             
-            // Set up global config
-            window.walkquestConfig = {
-                csrfToken: document.querySelector('meta[name="csrf-token"]').content,
-                animations: {
-                    hover: {
-                        scale: 1.02,
-                        spring: {
-                            stiffness: 300,
-                            damping: 25
-                        }
-                    },
-                    entrance: {
-                        duration: 0.6,
-                        easing: [0.2, 0, 0, 1]
-                    }
-                }
-            };
-            
-            // Make Motion functions globally available
             window.Motion = { 
-                animate, 
-                hover,
-                scroll,
-                inView,
-                press,
-                spring,
-                stagger,
-                delay,
-                frame,
-                mix,
-                transform
+                animate, hover, scroll, inView, press,
+                spring, stagger, delay, frame, mix, transform
             };
 
-            // Initialize Motion
             window.addEventListener('DOMContentLoaded', () => {
                 window.dispatchEvent(new Event('motion:ready'));
+                console.log('Motion initialized');
+            });
+        </script>
+
+        <!-- Load services and utilities first -->
+        <script src="{% static 'js/services.js' %}"></script>
+        <script defer src="{% static 'js/walk-animations.js' %}"></script>
+        <script defer src="{% static 'js/walkInterface.js' %}"></script>
+        <script defer src="{% static 'js/project.js' %}"></script>
+
+        <!-- Alpine Plugins -->
+        <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/intersect@3.x.x/dist/cdn.min.js"></script>
+        <script defer src="{% static 'js/alpine-components.js' %}"></script>
+
+        <!-- Alpine Core -->
+        <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+        <!-- Initialize services -->
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                if (window.ApiService) {
+                    window.ApiService.init();
+                    console.log('ApiService initialized');
+                }
+            });
+        </script>
+
+        <!-- Debug initialization -->
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                console.log('Services and plugins loaded:', {
+                    ApiService: !!window.ApiService,
+                    Alpine: !!window.Alpine,
+                    AlpineIntersect: !!window.AlpineIntersect
+                });
             });
         </script>
         

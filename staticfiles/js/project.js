@@ -17,18 +17,21 @@ const DEFAULT_CONFIG = {
     }
 };
 
-// Make config available globally before Alpine loads
-window.walkquestConfig = {
-    ...DEFAULT_CONFIG,
-    csrfToken: document.querySelector('meta[name="csrf-token"]')?.content
-};
+document.addEventListener('alpine:init', () => {
+    // Set up global config within Alpine lifecycle
+    window.walkquestConfig = {
+        ...DEFAULT_CONFIG,
+        csrfToken: document.querySelector('meta[name="csrf-token"]')?.content
+    };
 
-// Initialize ApiService before Alpine components
-if (window.ApiService && window.ApiService.init) {
-    window.ApiService.init();
-}
+    // Initialize ApiService within Alpine lifecycle
+    if (window.ApiService?.init) {
+        window.ApiService.init();
+    } else {
+        console.error('ApiService not found - check script loading order');
+    }
+});
 
-// Wait for DOM content to be loaded
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize animations
     if (window.WalkAnimations) {

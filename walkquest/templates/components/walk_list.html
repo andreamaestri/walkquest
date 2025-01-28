@@ -1,7 +1,6 @@
 {% load i18n %}
 {% load slippers %}
 
-{% var walks=walks %}
 {{ walks|json_script:"walks-data" }}
 
 <div class="flex flex-col space-y-4 p-4"
@@ -13,19 +12,21 @@
          error: null,
          searchQuery: '',
          page: 1,
+         pendingFavorites: new Set(),
          
-         init() {
+         async init() {
+             console.log('Initializing walkList component...');
              const walksData = document.getElementById('walks-data');
              if (walksData) {
                  try {
                      const initialData = JSON.parse(walksData.textContent);
                      this.walks = initialData.walks || [];
-                     this.hasMore = this.walks.length >= 10;
+                     this.hasMore = initialData.hasMore || false;
                  } catch (err) {
                      console.error('Failed to parse initial walks data:', err);
                  }
              }
-             this.fetchWalks();
+             await this.fetchWalks();
          },
 
          async fetchWalks() {
@@ -38,11 +39,11 @@
                      page_size: 10
                  });
                  this.walks = response.walks || [];
-                 this.hasMore = this.walks.length >= 10;
+                 this.hasMore = (response.walks || []).length >= 10;
                  this.page = 1;
              } catch (err) {
                  console.error('Failed to fetch walks:', err);
-                 this.error = 'Failed to load walks';
+                 this.error = 'Failed to load walks. Please try again.';
              } finally {
                  this.isLoading = false;
              }
@@ -51,37 +52,46 @@
          async loadMore() {
              if (this.isLoadingMore || !this.hasMore) return;
              this.isLoadingMore = true;
+             this.page++;
              try {
                  const response = await window.ApiService.filterWalks({
                      search: this.searchQuery,
-                     page: this.page + 1,
+                     page: this.page,
                      page_size: 10
                  });
                  const newWalks = response.walks || [];
                  this.walks = [...this.walks, ...newWalks];
                  this.hasMore = newWalks.length >= 10;
-                 this.page++;
              } catch (err) {
                  console.error('Failed to load more walks:', err);
-                 this.error = 'Failed to load more walks';
+                 this.error = 'Failed to load more walks. Please try again.';
+                 this.page--;
              } finally {
                  this.isLoadingMore = false;
              }
          },
-         
+
          checkScroll() {
-             if (!this.isLoading && !this.isLoadingMore && this.hasMore) {
-                 if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 1000) {
-                     this.loadMore();
-                 }
+             const scrollPosition = window.innerHeight + window.scrollY;
+             const documentHeight = document.documentElement.scrollHeight;
+             const threshold = 200;
+             if (documentHeight - scrollPosition < threshold) {
+                 this.loadMore();
              }
          }
      }"
      x-init="init()"
-     @scroll.window.debounce.100ms="checkScroll()">
+     @scroll.window.debounce.100ms="checkScroll">
     
+    <!-- Debug info -->
+    <template x-if="true">
+        <div x-show="false" class="hidden">
+            <pre x-effect="console.log('Component State:', $data)"></pre>
+        </div>
+    </template>
+
     <!-- Search Bar -->
-    <div class="sticky top-0 z-50 bg-white/80 backdrop-blur-sm border-b border-gray-200 -mx-4 px-4 py-3 shadow-sm transition-all duration-300 ease-in-out"
+    <div class="sticky top-0 z-50 bg-white/80 backdrop-blur-sm border-b border-gray-200 -mx-4 px-4 py-3 shadow-sm"
          :class="{ 'shadow-md': window.scrollY > 0 }">
         <label for="search" class="block text-sm font-medium text-gray-700 mb-1">{% translate 'Find walks' %}</label>
         <div class="relative">
@@ -97,33 +107,20 @@
         </div>
     </div>
 
-    <!-- Error Message -->
-    <div x-show="error"
-         class="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
-        <div class="flex">
-            <div class="flex-shrink-0">
-                <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
-                </svg>
-            </div>
-            <div class="ml-3">
-                <p class="text-sm text-red-700" x-text="error"></p>
-            </div>
+    <!-- Error and Loading States -->
+    <template x-if="error">
+        <div class="bg-red-50 border-l-4 border-red-400 p-4">
+            <p class="text-sm text-red-700" x-text="error"></p>
         </div>
+    </template>
+
+    <!-- Loading State -->
+    <div x-show="isLoading" class="space-y-4">
+        {% include "components/loading_skeleton.html" %}
     </div>
 
-    <!-- Initial Loading State -->
-    <div x-show="isLoading">
-        {% #loading_skeleton %}{% /loading_skeleton %}
-    </div>
-
-    <!-- Walk List -->
-    <div x-show="!isLoading" 
-         class="space-y-4"
-         x-transition:enter="transition ease-out duration-300"
-         x-transition:enter-start="opacity-0 transform -translate-y-4"
-         x-transition:enter-end="opacity-100 transform translate-y-0">
-        
+    <!-- Walk List Content -->
+    <div x-show="!isLoading" x-cloak class="space-y-4">
         <template x-if="walks.length === 0">
             <div class="text-center py-8 text-gray-500">
                 <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">

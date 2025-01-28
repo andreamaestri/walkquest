@@ -1,14 +1,43 @@
+// Wait for dependencies to be available
+if (!window.ApiService) {
+    console.error('ApiService must be loaded before Alpine components');
+}
+
+// Ensure Alpine.js is loaded
+const initializeComponents = () => {
+    if (typeof window.Alpine === 'undefined') {
+        console.error('Alpine.js must be loaded before initializing components');
+        return;
+    }
+    console.log('Alpine.js detected, proceeding with initialization');
+};
+
+// Initialize when Alpine is ready
 document.addEventListener('alpine:init', () => {
+    initializeComponents();
+    console.log('Initializing Alpine components...');
+
+    // Set up shared state
+    Alpine.store('walkState', {
+        pendingFavorites: new Set(),
+        selectedWalk: null
+    });
+
+    // Log initialization
+    console.log('Alpine.js initialization started');
+
     // Main interface component
     Alpine.data('walkInterface', () => ({
         showSidebar: false,
         selectedWalk: null,
+        config: window.walkquestConfig || {},
+        pendingFavorites: new Set(),
 
         init() {
-            // Initialize map and interface
-            const configData = document.getElementById('config-data');
-            if (configData) {
-                this.config = JSON.parse(configData.textContent);
+            console.log('Initializing walkInterface component...');
+            if (!window.ApiService?.init) {
+                console.error('ApiService not properly initialized');
+                return;
             }
         },
 
@@ -22,11 +51,29 @@ document.addEventListener('alpine:init', () => {
             window.dispatchEvent(new CustomEvent('walk-selected', {
                 detail: this.selectedWalk
             }));
+        },
+
+        async toggleFavorite(walkId) {
+            if (this.pendingFavorites.has(walkId)) return;
+            
+            this.pendingFavorites.add(walkId);
+            try {
+                const result = await window.ApiService.toggleFavorite(walkId);
+                const walk = this.walks.find(w => w.id === walkId);
+                if (walk) {
+                    walk.is_favorite = result.is_favorite;
+                }
+            } catch (error) {
+                console.error('Failed to toggle favorite:', error);
+            } finally {
+                this.pendingFavorites.delete(walkId);
+            }
         }
     }));
 
-    // Walk list component
-    Alpine.data('walkList', () => ({
+    // Define walkList component globally first
+    window.walkList = function() {
+        return {
         walks: [],
         isLoading: false,
         isLoadingMore: false,
@@ -34,8 +81,10 @@ document.addEventListener('alpine:init', () => {
         error: null,
         searchQuery: '',
         page: 1,
+        pendingFavorites: new Set(),
         
         init() {
+            console.log('Initializing walkList component...');
             // Initialize with any existing data
             const walksData = document.getElementById('walks-data');
             if (walksData) {
@@ -59,7 +108,7 @@ document.addEventListener('alpine:init', () => {
             try {
                 const response = await window.ApiService.filterWalks({
                     search: this.searchQuery,
-                    page: 1, // Reset to first page
+                    page: 1,
                     page_size: 10
                 });
 
@@ -102,6 +151,23 @@ document.addEventListener('alpine:init', () => {
         handleError(message) {
             this.error = message;
             console.error('Walk list error:', message);
+        },
+
+        checkScroll() {
+            // Check if we're near the bottom of the page
+            const scrollPosition = window.innerHeight + window.scrollY;
+            const documentHeight = document.documentElement.scrollHeight;
+            const threshold = 200; // pixels from bottom
+
+            if (documentHeight - scrollPosition < threshold) {
+                this.loadMore();
+            }
         }
-    }));
+        };
+    };
+
+    // Then register it with Alpine
+    Alpine.data('walkList', window.walkList);
+
+    console.log('Alpine components initialized successfully');
 });
