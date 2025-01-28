@@ -5,7 +5,7 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta name="csrf-token" content="{{ csrf_token }}">
-        <link rel="icon" href="{% static 'images/favicons/favicon.ico' %}" type="image/x-icon">
+        <link rel="icon" type="image/x-icon" href="data:image/x-icon;,">
         <title>{% block title %}WalkQuest{% endblock %}</title>
         
         <!-- Critical CSS -->
@@ -24,21 +24,23 @@
         <!-- Default JavaScript block that can be overridden -->
         {% endblock %}
 
-        <!-- Core Dependencies -->
-        <!-- Alpine.js and Core Dependencies - Load first -->
+        <!-- Alpine.js and Plugins - Load first -->
         <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
         <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/intersect@3.x.x/dist/cdn.min.js"></script>
-        <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
         
-        <!-- Core Services and Utilities -->
+        <!-- Core Services and Utilities - Load second -->
         <script defer src="{% static 'js/services.js' %}"></script>
+        <script defer src="{% static 'js/walk-animations.js' %}"></script>
+        
+        <!-- Component Utilities - Load third -->
         <script defer src="{% static 'js/walkInterface.js' %}"></script>
         
-        <!-- Main Project JavaScript - Contains component registration -->
+        <!-- Main Project JavaScript with Component Registration - Load fourth -->
         <script defer src="{% static 'js/project.js' %}"></script>
 
-        <!-- Additional Components -->
+        <!-- Additional Components - Load last -->
         <script defer src="{% static 'js/components/walkList.js' %}"></script>
+        <script defer src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
 
         <!-- Initialize global config and Motion -->
         <script type="module">

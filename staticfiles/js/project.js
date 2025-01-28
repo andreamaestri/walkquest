@@ -168,26 +168,15 @@ document.addEventListener('alpine:init', () => {
             hasMore: true,
             searchQuery: '',
             page: 1,
+            
             init() {
                 this.walkList = [];
                 this.searchQuery = '';
                 this.error = null;
                 this.isLoading = false;
                 this.isLoadingMore = false;
-                this.hasMore = true;
                 this.fetchWalks();
             },
-
-            async searchWalks() {
-                this.page = 1;
-                this.walks = [];
-                await this.fetchWalks();
-            },
-            
-            init() {
-                this.fetchWalks();
-            },
-
             async fetchWalks() {
                 try {
                     this.isLoading = true;
@@ -213,6 +202,12 @@ document.addEventListener('alpine:init', () => {
                 } finally {
                     this.isLoading = false;
                 }
+            },
+
+            async searchWalks() {
+                this.page = 1;
+                this.walks = [];
+                await this.fetchWalks();
             },
 
             async loadMore() {
@@ -244,7 +239,7 @@ document.addEventListener('alpine:init', () => {
                 } finally {
                     this.isLoadingMore = false;
                 }
-            }
+            },
         }));
 
         console.log('Alpine components registered successfully');
