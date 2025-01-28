@@ -1,7 +1,7 @@
 {% load slippers %}
 {% load i18n %}
 
-<div class="walk-item bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-all duration-200 relative"
+<div class="walk-item bg-white rounded-lg shadow-md p-4 relative"
      :class="{
         'ring-2 ring-primary-500': selectedWalk?.id === walk.id,
         'opacity-75': pendingFavorites.has(walk.id)
@@ -9,9 +9,21 @@
      :key="walk.id"
      x-data="{ 
         showDetails: false,
-        isHovered: false
-     }"
-     @click="selectWalk(walk.id)">
+        isHovered: false,
+        init() {
+            this.$nextTick(() => {
+                if (window.Motion) {
+                    this.$el.addEventListener('mouseenter', () => {
+                        window.Motion.animate(this.$el, { scale: 1.02, y: -4 }, { duration: 0.2, easing: 'ease-out' });
+                    });
+                    this.$el.addEventListener('mouseleave', () => {
+                        window.Motion.animate(this.$el, { scale: 1, y: 0 }, { duration: 0.2, easing: 'ease-out' });
+                    });
+                }
+            });
+        }
+      }"
+      @click="selectWalk(walk.id); if (window.Motion) { window.Motion.animate(this.$el, { scale: 0.98 }, { duration: 0.1, easing: 'ease-in' }).then(() => window.Motion.animate(this.$el, { scale: 1 }, { duration: 0.2, easing: 'ease-out' })) }">
     
     <div class="flex justify-between items-start">
         <h3 class="text-lg font-semibold text-gray-900 truncate" x-text="walk.walk_name"></h3>
@@ -69,12 +81,19 @@
 
     <!-- Highlights with line clamp -->
     <div x-show="showDetails || isHovered"
-         x-transition:enter="transition-all ease-in-out duration-200"
-         x-transition:enter-start="opacity-0 max-h-0"
-         x-transition:enter-end="opacity-100 max-h-32"
-         x-transition:leave="transition-all ease-in-out duration-200"
-         x-transition:leave-start="opacity-100 max-h-32"
-         x-transition:leave-end="opacity-0 max-h-0"
+         x-effect="if (showDetails || isHovered) {
+             if (window.Motion) {
+                 window.Motion.animate(this.$el, {
+                     opacity: [0, 1],
+                     height: ['0px', 'auto']
+                 }, {
+                     duration: 0.3,
+                     easing: 'ease-out'
+                 });
+             }
+         } else {
+             if (window.Motion) { window.Motion.animate(this.$el, { opacity: 0, height: '0px' }, { duration: 0.3, easing: 'ease-in' }); }
+         }"
          class="mt-2 text-sm text-gray-600 overflow-hidden">
         <p x-text="walk.highlights" class="line-clamp-2"></p>
     </div>

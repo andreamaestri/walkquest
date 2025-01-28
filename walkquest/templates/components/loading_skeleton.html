@@ -1,9 +1,27 @@
 {% load i18n %}
 
-<div class="animate-pulse">
+<div x-data="{
+    init() {
+        this.$nextTick(() => {
+            if (window.Motion) {
+                window.Motion.animate('.loading-skeleton-card', 
+                    { opacity: [0.5, 1], scale: [0.98, 1] },
+                    { duration: 1.5, repeat: Infinity, easing: 'ease-in-out', direction: 'alternate' });
+            }
+        });
+    }
+}"
+     class="loading-skeleton animate-pulse">
+     <div class="space-y-4">
+         {% for i in "123"|make_list %}
+             <div class="loading-skeleton-card bg-white rounded-lg shadow-md p-4">
+        );
+    }
+}"
+     class="loading-skeleton">
     <div class="space-y-4">
         {% for i in "123"|make_list %}
-            <div class="bg-white rounded-lg shadow-md p-4">
+            <div class="loading-skeleton-card bg-white rounded-lg shadow-md p-4">
                 <div class="h-4 bg-gray-200 rounded w-3/4"></div>
                 <div class="mt-2 flex items-center space-x-2">
                     <div class="h-3 bg-gray-200 rounded w-16"></div>

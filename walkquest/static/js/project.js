@@ -20,13 +20,6 @@ const DEFAULT_CONFIG = {
 // Initialize application dependencies
 document.addEventListener('alpine:init', () => {
     try {
-        // Check for required dependencies
-        if (typeof window._ === 'undefined') {
-            throw new Error('Lodash is required but not loaded');
-        }
-        if (typeof window.dayjs === 'undefined') {
-            throw new Error('Day.js is required but not loaded');
-        }
 
         console.log('Project initialization completed');
     } catch (error) {

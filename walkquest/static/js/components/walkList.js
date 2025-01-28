@@ -1,4 +1,6 @@
+// Wait for both Alpine and Motion to be available
 document.addEventListener('alpine:init', () => {
+    // Register the walkList component
     Alpine.data('walkList', () => ({
         walks: [],
         searchQuery: '',
@@ -31,6 +33,23 @@ document.addEventListener('alpine:init', () => {
             window.addEventListener('walk-favorited', (e) => {
                 this.handleFavoriteUpdate(e.detail.walkId, e.detail.isFavorite);
             });
+
+            // Initialize animations after Alpine renders the component
+            this.$nextTick(() => {
+                this.initializeAnimations();
+            });
+        },
+
+        initializeAnimations() {
+            // Use window.Motion since it's globally available
+            if (window.Motion) {
+                window.Motion.animate('.walk-item',
+                    { 
+                        opacity: [0, 1],
+                        y: [20, 0]
+                    },
+                    { delay: window.Motion.stagger(0.1), duration: 0.6, easing: 'ease-out' });
+            }
         },
 
         async fetchWalks(resetList = true) {
@@ -71,8 +90,22 @@ document.addEventListener('alpine:init', () => {
 
                 if (resetList) {
                     this.walks = walks;
+                    this.$nextTick(() => {
+                        this.initializeAnimations();
+                    });
                 } else {
                     this.walks = [...this.walks, ...walks];
+                    this.$nextTick(() => {
+                        if (window.Motion) {
+                            window.Motion.animate(
+                                '.walk-item:nth-last-child(-n+10)',
+                                { 
+                                    opacity: [0, 1],
+                                    y: [20, 0]
+                                },
+                                { delay: window.Motion.stagger(0.1), duration: 0.6, easing: 'ease-out' });
+                        }
+                    });
                 }
                 
                 this.hasMore = walks.length >= 10;
