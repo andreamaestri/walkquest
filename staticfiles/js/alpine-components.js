@@ -1,29 +1,42 @@
-// Define WalkQuest Alpine plugin
-function walkquestPlugin(Alpine) {
-    // Register components
+// Initialize Alpine.js components and store
+document.addEventListener('alpine:init', () => {
+    // Global store for shared state
+    Alpine.store('walks', {
+        selectedWalk: null,
+        pendingFavorites: new Set(),
+        
+        setSelectedWalk(walk) {
+            this.selectedWalk = walk;
+        },
+        
+        togglePendingFavorite(walkId) {
+            if (this.pendingFavorites.has(walkId)) {
+                this.pendingFavorites.delete(walkId);
+            } else {
+                this.pendingFavorites.add(walkId);
+            }
+        },
+        
+        isPending(walkId) {
+            return this.pendingFavorites.has(walkId);
+        }
+    });
+
+    // Map interface component
     Alpine.data('walkInterface', () => ({
         // Component state
         showSidebar: false,
-        selectedWalk: null,
-        config: window.walkquestConfig || {},
+        isMapLoading: true,
         map: null,
         markers: new Map(),
-        isMapLoading: true,
-        pendingFavorites: new Set(),
 
         // Initialization
         init() {
-            console.log('Initializing map component...');
             this.initializeMap();
         },
 
+        // Map initialization
         async initializeMap() {
-            if (!window.ApiService?.init) {
-                console.error('ApiService not properly initialized');
-                return;
-            }
-
-            // Get config from script tag
             const configScript = document.getElementById('config-data');
             if (!configScript) {
                 console.error('Config data script tag not found');
@@ -31,20 +44,13 @@ function walkquestPlugin(Alpine) {
             }
 
             try {
-                // Parse config
                 const config = JSON.parse(configScript.textContent);
-                console.log('Parsed config:', config);
-                
                 if (!config.mapboxToken) {
-                    console.error('Mapbox token not found in config');
-                    return;
+                    throw new Error('Mapbox token not found in config');
                 }
 
-                // Initialize Mapbox
                 mapboxgl.accessToken = config.mapboxToken;
-
-                // Initialize map
-                console.log('Creating map with container:', this.$refs.map);
+                
                 this.map = new mapboxgl.Map({
                     container: this.$refs.map,
                     style: config.map?.style || 'mapbox://styles/mapbox/streets-v12',
@@ -60,126 +66,76 @@ function walkquestPlugin(Alpine) {
                 });
 
                 this.map.addControl(new mapboxgl.NavigationControl(), 'top-left');
+
+                // Handle map errors
+                this.map.on('error', (e) => {
+                    console.error('Map error:', e);
+                    this.isMapLoading = false;
+                });
             } catch (error) {
                 console.error('Failed to initialize map:', error);
                 this.isMapLoading = false;
             }
         },
 
-        // Map utility functions
-        formatDistance(distance) {
-            return `${(distance / 1000).toFixed(1)}km`;
-        },
-
-        sanitizeHtml(str) {
-            return String(str).replace(/[&<>"']/g, m => ({
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '"': '&quot;',
-                "'": '&#39;'
-            })[m]);
-        },
-
-        calculateBounds(geometry) {
-            if (!geometry?.coordinates?.length) return null;
-            
-            const bounds = new mapboxgl.LngLatBounds();
-            geometry.coordinates.forEach(coord => {
-                if (Array.isArray(coord) && coord.length >= 2) {
-                    bounds.extend(coord);
-                }
-            });
-            return bounds;
-        },
-
-        createMarker({ longitude, latitude, is_favorite }, config = {}, onClick) {
-            const markerColor = is_favorite 
-                ? (this.config.map?.markerColors?.favorite || '#FFD700')
-                : (this.config.map?.markerColors?.default || '#FF0000');
-
-            const marker = new mapboxgl.Marker({ color: markerColor })
-                .setLngLat([longitude, latitude]);
-
-            if (onClick) {
-                marker.getElement().addEventListener('click', onClick);
-            }
-
-            return marker;
-        },
-
+        // Event handlers
         handleWalkSelection(detail) {
             if (!detail) return;
             
-            this.selectedWalk = detail;
-            this.showSidebar = true;
-            
-            // Update map view if coordinates available
-            if (this.map && detail.longitude && detail.latitude) {
-                this.map.flyTo({
-                    center: [detail.longitude, detail.latitude],
-                    zoom: 14,
-                    essential: true
-                });
-            }
-        },
-
-        async toggleFavorite(walkId) {
-            if (this.pendingFavorites.has(walkId)) return;
-
-            if (!this.map) {
-                console.error('Map not initialized');
-                return;
-            }
-
-            const marker = this.markers.get(walkId);
-            if (!marker) {
-                console.error('Marker not found:', walkId);
-                return;
-            }
-
-            // Add favorite status
-            this.pendingFavorites.add(walkId);
-            try {
-                const result = await window.ApiService.toggleFavorite(walkId);
-                const walk = this.walks.find(w => w.id === walkId);
-                if (walk) {
-                    walk.is_favorite = result.is_favorite;
+            // Update store and UI
+            this.$store.walks.setSelectedWalk(detail);
+            this.$nextTick(() => {
+                this.showSidebar = true;
+                
+                // Update map view if coordinates available
+                if (this.map && detail.longitude && detail.latitude) {
+                    this.map.flyTo({
+                        center: [detail.longitude, detail.latitude],
+                        zoom: 14,
+                        essential: true
+                    });
                 }
-            } catch (error) {
-                console.error('Failed to toggle favorite:', error);
-            } finally {
-                this.pendingFavorites.delete(walkId);
-            }
+            });
         }
     }));
 
-    // Register walkList component
+    // Walk list component
     Alpine.data('walkList', () => ({
+        // Component state
         walks: [],
+        searchQuery: '',
+        error: null,
         isLoading: false,
         isLoadingMore: false,
-        hasMore: false,
-        error: null,
-        searchQuery: '',
+        hasMore: true,
         page: 1,
-        pendingFavorites: new Set(),
-        
+
+        // Initialization
         init() {
-            console.log('Initializing walkList component...');
-            const walksData = document.getElementById('walks-data');
-            if (walksData) {
-                try {
-                    const initialData = JSON.parse(walksData.textContent);
-                    this.walks = initialData.walks || [];
-                    this.hasMore = initialData.hasMore || false;
-                } catch (err) {
-                    console.error('Failed to parse initial walks data:', err);
-                }
-            }
+            this.loadInitialData();
             this.fetchWalks();
         },
 
+        // Data loading
+        loadInitialData() {
+            const walksData = document.getElementById('walks-data');
+            if (!walksData) return;
+
+            try {
+                const initialData = JSON.parse(walksData.textContent);
+                this.walks = initialData.walks || [];
+                this.hasMore = initialData.hasMore || false;
+                
+                // Set initial selected walk
+                if (this.walks.length > 0) {
+                    this.$store.walks.setSelectedWalk(this.walks[0]);
+                }
+            } catch (err) {
+                console.error('Failed to parse initial walks data:', err);
+            }
+        },
+
+        // API interactions
         async fetchWalks() {
             if (!window.ApiService?.filterWalks) {
                 console.error('ApiService.filterWalks not available');
@@ -188,12 +144,14 @@ function walkquestPlugin(Alpine) {
 
             this.isLoading = true;
             this.error = null;
+
             try {
                 const response = await window.ApiService.filterWalks({
                     search: this.searchQuery,
                     page: 1,
                     page_size: 10
                 });
+                
                 this.walks = response.walks || [];
                 this.hasMore = (response.walks || []).length >= 10;
                 this.page = 1;
@@ -209,39 +167,55 @@ function walkquestPlugin(Alpine) {
             if (this.isLoadingMore || !this.hasMore) return;
             
             this.isLoadingMore = true;
-            this.page++;
+            const nextPage = this.page + 1;
+
             try {
                 const response = await window.ApiService.filterWalks({
                     search: this.searchQuery,
-                    page: this.page,
+                    page: nextPage,
                     page_size: 10
                 });
+                
                 const newWalks = response.walks || [];
                 this.walks = [...this.walks, ...newWalks];
                 this.hasMore = newWalks.length >= 10;
+                this.page = nextPage;
             } catch (err) {
                 console.error('Failed to load more walks:', err);
                 this.error = 'Failed to load more walks. Please try again.';
-                this.page--;
             } finally {
                 this.isLoadingMore = false;
             }
         },
 
+        // Scroll handling
         checkScroll() {
             const scrollPosition = window.innerHeight + window.scrollY;
             const documentHeight = document.documentElement.scrollHeight;
             const threshold = 200;
+            
             if (documentHeight - scrollPosition < threshold) {
                 this.loadMore();
             }
+        },
+
+        // Favorite handling
+        async toggleFavorite(walkId) {
+            if (this.$store.walks.isPending(walkId)) return;
+            
+            this.$store.walks.togglePendingFavorite(walkId);
+            
+            try {
+                const result = await window.ApiService.toggleFavorite(walkId);
+                const walk = this.walks.find(w => w.id === walkId);
+                if (walk) {
+                    walk.is_favorite = result.is_favorite;
+                }
+            } catch (error) {
+                console.error('Failed to toggle favorite:', error);
+            } finally {
+                this.$store.walks.togglePendingFavorite(walkId);
+            }
         }
     }));
-}
-
-// Register plugin with Alpine
-document.addEventListener('alpine:init', () => {
-    console.log('Initializing WalkQuest Alpine plugin...');
-    Alpine.plugin(walkquestPlugin);
-    console.debug('Alpine data and plugins registered');
 });

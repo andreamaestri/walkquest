@@ -23,12 +23,12 @@
         <!-- Default JavaScript block that can be overridden -->
         {% endblock %}
 
-        <!-- Core Dependencies -->
+        <!-- Third-party Dependencies -->
         <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
         <script src='https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.js'></script>
         <link href='https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.css' rel='stylesheet' />
         
-        <!-- Import Motion -->
+        <!-- Import Motion (with type="module") -->
         <script type="module">
             import { 
                 animate, hover, scroll, inView, press,
@@ -46,59 +46,30 @@
             });
         </script>
 
-        <!-- Load configuration first -->
+        <!-- Core Application Code -->
         <script src="{% static 'js/project.js' %}"></script>
-
-        <!-- Load services -->
         <script src="{% static 'js/services.js' %}"></script>
 
-        <!-- Load utilities -->
-        <script src="{% static 'js/walk-animations.js' %}"></script>
-
-        <!-- Alpine Plugins must be loaded before Alpine Core -->
-        <script src="https://cdn.jsdelivr.net/npm/@alpinejs/intersect@3.x.x/dist/cdn.min.js"></script>
-
-        <!-- Alpine Core -->
-        <script>
-            document.addEventListener('DOMContentLoaded', () => {
-                // Initialize Alpine plugins
-                if (window.AlpineIntersect) {
-                    window.Alpine.plugin(window.AlpineIntersect);
-                }
-            });
-        </script>
+        <!-- Alpine.js Core (must be first) -->
         <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
-        <!-- Alpine Store initialization -->
+        <!-- Alpine.js Plugins -->
+        <script src="https://cdn.jsdelivr.net/npm/@alpinejs/intersect@3.x.x/dist/cdn.min.js"></script>
+        
+        <!-- Alpine Components (after Alpine.js and plugins) -->
+        <script src="{% static 'js/walk-animations.js' %}"></script>
+        <script src="{% static 'js/alpine-components.js' %}"></script>
+
+        <!-- Debug Initialization -->
         <script>
             document.addEventListener('alpine:init', () => {
-                // Initialize shared state store
-                Alpine.store('walks', {
-                    selectedWalk: null,
-                    pendingFavorites: new Set(),
-                    setSelectedWalk(walk) {
-                        this.selectedWalk = walk;
-                    },
-                    togglePendingFavorite(id) {
-                        if (this.pendingFavorites.has(id)) {
-                            this.pendingFavorites.delete(id);
-                        } else {
-                            this.pendingFavorites.add(id);
-                        }
-                    }
-                });
-
-                console.log('Alpine initialized with:', {
+                console.log('Alpine.js initialized with:', {
                     ApiService: !!window.ApiService,
                     Alpine: !!window.Alpine,
                     AlpineIntersect: !!window.AlpineIntersect
                 });
             });
         </script>
-
-        <!-- Alpine Components -->
-        <script src="{% static 'js/alpine-components.js' %}"></script>
-        <script src="{% static 'js/walkInterface.js' %}"></script>
         
         <!-- Additional JavaScript -->
         {% block extra_javascript %}

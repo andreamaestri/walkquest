@@ -12,14 +12,18 @@
     
     <!-- Main layout container with walkInterface component -->
     <div x-data="walkInterface"
-         x-init="$nextTick(() => init())"
+         x-init="init"
+         x-effect="$store.walks.selectedWalk && (showSidebar = true)"
          @keydown.escape.window="showSidebar = false"
-         @walk-selected.window="handleWalkSelection($event.detail)">
-         
+         @click.outside="showSidebar = false"
+         @walk-selected.window="handleWalkSelection($event.detail)"
+         class="relative">
+          
         <!-- Sidebar with walk list -->
         <aside class="sidebar fixed right-0 top-0 h-full w-96 bg-white shadow-lg transform transition-transform duration-300 ease-in-out"
                x-show="showSidebar"
                x-cloak
+               @click.outside="showSidebar = false"
                x-transition:enter="transition ease-out duration-300"
                x-transition:enter-start="opacity-0 transform translate-x-full"
                x-transition:enter-end="opacity-100 transform translate-x-0"
@@ -37,21 +41,28 @@
                 <div x-ref="map" class="map-inner bg-gray-100"></div>
             
                 <!-- Loading indicator -->
-                <div x-show="isMapLoading" x-cloak class="map-loading">
+                <div x-show="isMapLoading" 
+                     x-cloak 
+                     x-transition 
+                     class="map-loading absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center">
                     <div class="map-loading-spinner">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <svg class="animate-spin h-8 w-8 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
+                        <span class="sr-only">Loading map...</span>
                     </div>
                 </div>
             </div>
             
             <!-- Toggle sidebar button -->
-            <button @click="showSidebar = !showSidebar"
-                    class="absolute top-4 right-4 z-10 bg-white p-2 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200"
-                    :class="{ 'right-[24rem]': showSidebar }"
-                    :aria-label="showSidebar ? '{% translate "Hide walks" %}' : '{% translate "Show walks" %}'">
+            <button @click.stop="showSidebar = !showSidebar"
+                    class="absolute top-4 right-4 z-10 bg-white p-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+                    :class="{
+                        'right-[24rem]': showSidebar,
+                        'shadow-lg': showSidebar
+                    }"
+                    :aria-label="$store.walks.selectedWalk ? '{% translate 'Hide details' %}' : '{% translate 'Show walks' %}'">
                 <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path x-show="!showSidebar" 
                           stroke-linecap="round" 
@@ -67,11 +78,4 @@
             </button>
         </main>
     </div>
-
-    <!-- Debug info -->
-    <script>
-        document.addEventListener('alpine:init', () => {
-            console.log('Alpine initialized with store:', Alpine.store('walks'));
-        });
-    </script>
 {% endblock %}
