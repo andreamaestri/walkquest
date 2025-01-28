@@ -3,9 +3,7 @@
 
 {{ walks|json_script:"walks-data" }}
 
-<div x-data="walkList()"
-     x-init="init"
-     @scroll.window.debounce.100ms="checkScroll"
+<div 
      class="flex flex-col space-y-4 p-4">
     
     <!-- Debug info -->

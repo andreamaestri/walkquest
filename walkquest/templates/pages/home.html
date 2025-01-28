@@ -12,28 +12,17 @@
     
     <!-- Main layout container with walkInterface component -->
     <div x-data="walkInterface()"
-         x-init="init"
+         x-init="init(); initializeData(); fetchWalks()"
          x-effect="$store.walks.selectedWalk && (showSidebar = true)"
          @keydown.escape.window="showSidebar = false"
          @click.outside="showSidebar = false"
          @walk-selected.window="handleWalkSelection($event.detail)"
-         class="relative h-screen">
+         @scroll.window="if (!showSidebar) return;
+                        if ((window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 200) loadMore()"
+         class="relative h-screen flex">
           
         <!-- Sidebar with walk list -->
-        <aside class="sidebar fixed right-0 top-0 h-full w-96 bg-white shadow-lg transform transition-transform duration-300 ease-in-out"
-            x-show="showSidebar"
-            x-cloak
-            @click.outside="showSidebar = false"
-            x-transition:enter="transition ease-out duration-300"
-            x-transition:enter-start="opacity-0 transform translate-x-full"
-            x-transition:enter-end="opacity-100 transform translate-x-0"
-            x-transition:leave="transition ease-in duration-300"
-            x-transition:leave-start="opacity-100 transform translate-x-0"
-            x-transition:leave-end="opacity-0 transform translate-x-full">
-            
-            <!-- Walk list component -->
-            {% #walk_list walks=initial_walks %}{% /walk_list %}
-        </aside>
+        {% include "components/sidebar.html" %}
 
         <!-- Map container -->
         <main class="map h-full">
@@ -65,7 +54,7 @@
             
             <!-- Toggle sidebar button -->
             <button @click.stop="showSidebar = !showSidebar"
-                    class="absolute top-4 right-4 z-10 bg-white p-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+                    class="fixed top-4 right-4 z-10 bg-white p-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
                     :class="{
                         'right-[24rem]': showSidebar,
                         'shadow-lg': showSidebar

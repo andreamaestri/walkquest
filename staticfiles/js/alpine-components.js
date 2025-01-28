@@ -22,13 +22,27 @@ function loading() {
 function walkInterface() {
     return {
         // Component state
+        walks: [],
+        searchQuery: '',
         showSidebar: false,
         isMapLoading: true,
+        isLoading: false,
+        isLoadingMore: false,
+        hasMore: true,
+        page: 1,
         map: null,
         markers: new Map(),
         error: null,
 
-        // Initialization
+        // Initialize all data
+        initializeData() {
+            const walksData = document.getElementById('walks-data');
+            if (!walksData) return;
+            const initialData = JSON.parse(walksData.textContent);
+            this.walks = initialData.walks || [];
+            this.hasMore = initialData.hasMore || false;
+        },
+
         init() {
             console.log('Initializing walkInterface component...');
             this.initializeMap();
@@ -81,67 +95,7 @@ function walkInterface() {
             }
         },
 
-        // Event handlers
-        handleWalkSelection(detail) {
-            if (!detail) return;
-            
-            // Update store and UI
-            this.$store.walks.setSelectedWalk(detail);
-            this.$nextTick(() => {
-                this.showSidebar = true;
-                
-                // Update map view if coordinates available
-                if (this.map && detail.longitude && detail.latitude) {
-                    this.map.flyTo({
-                        center: [detail.longitude, detail.latitude],
-                        zoom: 14,
-                        essential: true
-                    });
-                }
-            });
-        }
-    };
-}
-
-function walkList() {
-    return {
-        // Component state
-        walks: [],
-        searchQuery: '',
-        error: null,
-        isLoading: false,
-        isLoadingMore: false,
-        hasMore: true,
-        page: 1,
-
-        // Initialization
-        init() {
-            console.log('Initializing walkList component...');
-            this.loadInitialData();
-            this.fetchWalks();
-        },
-
-        // Data loading
-        loadInitialData() {
-            const walksData = document.getElementById('walks-data');
-            if (!walksData) return;
-
-            try {
-                const initialData = JSON.parse(walksData.textContent);
-                this.walks = initialData.walks || [];
-                this.hasMore = initialData.hasMore || false;
-                
-                // Set initial selected walk
-                if (this.walks.length > 0) {
-                    this.$store.walks.setSelectedWalk(this.walks[0]);
-                }
-            } catch (err) {
-                console.error('Failed to parse initial walks data:', err);
-                this.error = 'Failed to load initial data';
-            }
-        },
-
-        // API interactions
+        // Walks data management
         async fetchWalks() {
             if (!window.ApiService?.filterWalks) {
                 console.error('ApiService.filterWalks not available');
@@ -162,6 +116,7 @@ function walkList() {
                 this.walks = response.walks || [];
                 this.hasMore = (response.walks || []).length >= 10;
                 this.page = 1;
+                this.error = null;
             } catch (err) {
                 console.error('Failed to fetch walks:', err);
                 this.error = 'Failed to load walks. Please try again.';
@@ -188,6 +143,7 @@ function walkList() {
                 this.walks = [...this.walks, ...newWalks];
                 this.hasMore = newWalks.length >= 10;
                 this.page = nextPage;
+                this.error = null;
             } catch (err) {
                 console.error('Failed to load more walks:', err);
                 this.error = 'Failed to load more walks. Please try again.';
@@ -196,37 +152,36 @@ function walkList() {
             }
         },
 
-        // Scroll handling
-        checkScroll() {
-            if (!this.hasMore || this.isLoadingMore) return;
-            
-            const scrollPosition = window.innerHeight + window.scrollY;
-            const documentHeight = document.documentElement.scrollHeight;
-            const threshold = 200;
-            
-            if (documentHeight - scrollPosition < threshold) {
-                this.loadMore();
-            }
-        },
-
         // Favorite handling
         async toggleFavorite(walkId) {
-            if (this.$store.walks.isPending(walkId)) return;
-            
-            this.$store.walks.togglePendingFavorite(walkId);
-            
             try {
                 const result = await window.ApiService.toggleFavorite(walkId);
                 const walk = this.walks.find(w => w.id === walkId);
-                if (walk) {
-                    walk.is_favorite = result.is_favorite;
-                }
+                if (walk) walk.is_favorite = result.is_favorite;
             } catch (error) {
                 console.error('Failed to toggle favorite:', error);
                 this.error = 'Failed to update favorite status';
-            } finally {
-                this.$store.walks.togglePendingFavorite(walkId);
             }
+        },
+
+        // Event handlers
+        handleWalkSelection(detail) {
+            if (!detail) return;
+            
+            // Update store and UI
+            this.$store.walks.setSelectedWalk(detail);
+            this.$nextTick(() => {
+                this.showSidebar = true;
+                
+                // Update map view if coordinates available
+                if (this.map && detail.longitude && detail.latitude) {
+                    this.map.flyTo({
+                        center: [detail.longitude, detail.latitude],
+                        zoom: 14,
+                        essential: true
+                    });
+                }
+            });
         }
     };
 }
@@ -262,7 +217,6 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('mobileMenu', mobileMenu);
     Alpine.data('loading', loading);
     Alpine.data('walkInterface', walkInterface);
-    Alpine.data('walkList', walkList);
 
     console.log('Alpine.js components initialized');
 });

@@ -18,7 +18,7 @@
         <h3 class="text-lg font-semibold text-gray-900 truncate" x-text="walk.walk_name"></h3>
         
         <!-- Favorite Button -->
-        <button @click.stop="$store.walks.togglePendingFavorite(walk.id)"
+        <button @click.stop="toggleFavorite(walk.id)"
                 class="favorite-button"
                 :class="{
                     'favorite-button-active': walk.is_favorite,

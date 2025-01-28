@@ -25,16 +25,14 @@
     </div>
 
     <!-- Sidebar Content -->
-    <div class="flex flex-col h-full" 
-         x-data="walkList()"
-         x-init="init()">
+    <div class="flex flex-col h-full overflow-y-auto">
         
         <!-- Search Bar -->
         <div class="sticky top-0 z-10 bg-white/80 backdrop-blur-sm p-4 border-b">
             <div class="relative">
                 <input type="text"
                        x-model="searchQuery"
-                       @input.debounce.300ms="fetchWalks()"
+                       @input.debounce.300ms="page = 1; fetchWalks()"
                        placeholder="{% translate 'Search walks...' %}"
                        class="w-full px-4 py-2 border rounded-lg bg-white/90 text-gray-900 placeholder-gray-500
                               focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:outline-none
@@ -42,13 +40,6 @@
                 <div class="text-xs text-gray-500 mt-1">{% translate 'Search by name, location, or description' %}</div>
             </div>
         </div>
-
-        <!-- Loading State -->
-        <template x-if="isLoading">
-            <div class="flex-1 flex items-center justify-center">
-                {% #loading %}Loading walks...{% /loading %}
-            </div>
-        </template>
 
         <!-- Error State -->
         <template x-if="error">
@@ -60,6 +51,13 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </template>
+
+        <!-- Loading State -->
+        <template x-if="isLoading">
+            <div class="flex-1 flex items-center justify-center">
+                {% #loading %}Loading walks...{% /loading %}
             </div>
         </template>
 
@@ -78,34 +76,33 @@
                     </template>
 
                     <template x-for="walk in walks" :key="walk.id">
-                        <div x-data="{ walk: walk }"
-                             x-intersect:enter.once="$el.classList.add('revealed')"
-                             class="opacity-0 transform translate-y-4 transition-all duration-300 ease-out revealed:opacity-100 revealed:translate-y-0">
+                        <div class="walk-item transition-all duration-300 ease-out"
+                             :class="{ 'opacity-75': !$store.walks.selectedWalk || $store.walks.selectedWalk.id !== walk.id }">
                             {% #walk_card %}{% /walk_card %}
                         </div>
                     </template>
+
+                    <!-- Load More -->
+                    <template x-if="hasMore && !isLoadingMore">
+                        <button @click="loadMore" 
+                                class="w-full mt-4 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors duration-200">
+                            {% translate 'Load more' %}
+                        </button>
+                    </template>
+
+                    <template x-if="isLoadingMore">
+                        <div class="p-4 text-center">
+                            {% #loading %}Loading more walks...{% /loading %}
+                        </div>
+                    </template>
+
+                    <template x-if="!hasMore && walks.length > 0">
+                        <div class="p-4 text-center text-gray-500">
+                            {% translate 'No more walks to load' %}
+                        </div>
+                    </template>
                 </div>
-
-                <!-- Load More -->
-                <template x-if="isLoadingMore">
-                    <div class="p-4 text-center">
-                        {% #loading %}Loading more walks...{% /loading %}
-                    </div>
-                </template>
-
-                <template x-if="!hasMore && walks.length > 0">
-                    <div class="p-4 text-center text-gray-500">
-                        {% translate 'No more walks to load' %}
-                    </div>
-                </template>
             </div>
         </template>
     </div>
 </aside>
-
-<style>
-    .revealed {
-        opacity: 1;
-        transform: translateY(0);
-    }
-</style>
