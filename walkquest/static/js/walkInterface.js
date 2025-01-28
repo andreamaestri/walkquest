@@ -53,6 +53,44 @@ document.addEventListener('alpine:init', () => {
 
                     // Add navigation control
                     this.map.addControl(new mapboxgl.NavigationControl(), 'top-left');
+
+                    // Add markers for initial walks if available
+                    const walksData = document.getElementById('walks-data');
+                    if (walksData) {
+                        try {
+                            const initialData = JSON.parse(walksData.textContent);
+                            const walks = initialData.walks || [];
+                            walks.forEach(walk => {
+                                if (walk.longitude && walk.latitude) {
+                                    this.addMarker({
+                                        id: walk.id,
+                                        longitude: walk.longitude,
+                                        latitude: walk.latitude,
+                                        is_favorite: walk.is_favorite
+                                    }, {}, () => {
+                                        this.selectedWalk = walk;
+                                        this.showSidebar = true;
+                                    });
+                                }
+                            });
+
+                            // If we have walks with coordinates, fit the map to show all markers
+                            const bounds = new mapboxgl.LngLatBounds();
+                            walks.forEach(walk => {
+                                if (walk.longitude && walk.latitude) {
+                                    bounds.extend([walk.longitude, walk.latitude]);
+                                }
+                            });
+                            if (!bounds.isEmpty()) {
+                                this.map.fitBounds(bounds, {
+                                    padding: 50,
+                                    maxZoom: 14
+                                });
+                            }
+                        } catch (err) {
+                            console.error('Failed to process initial walks:', err);
+                        }
+                    }
                 } catch (error) {
                     console.error('Failed to initialize map:', error);
                 }
@@ -89,19 +127,38 @@ document.addEventListener('alpine:init', () => {
             return bounds;
         },
 
-        createMarker({ longitude, latitude, is_favorite }, config = {}, onClick) {
+        addMarker({ id, longitude, latitude, is_favorite }, config = {}, onClick) {
+            // Remove existing marker if present
+            this.removeMarker(id);
+            
             const markerColor = is_favorite 
                 ? (this.config.map?.markerColors?.favorite || '#FFD700')
                 : (this.config.map?.markerColors?.default || '#FF0000');
 
             const marker = new mapboxgl.Marker({ color: markerColor })
-                .setLngLat([longitude, latitude]);
+                .setLngLat([longitude, latitude])
+                .addTo(this.map);
 
             if (onClick) {
                 marker.getElement().addEventListener('click', onClick);
             }
 
+            // Store marker reference
+            this.markers.set(id, marker);
             return marker;
+        },
+
+        removeMarker(id) {
+            const marker = this.markers.get(id);
+            if (marker) {
+                marker.remove();
+                this.markers.delete(id);
+            }
+        },
+
+        removeAllMarkers() {
+            this.markers.forEach(marker => marker.remove());
+            this.markers.clear();
         },
 
         handleWalkSelection(detail) {
@@ -110,8 +167,20 @@ document.addEventListener('alpine:init', () => {
             this.selectedWalk = detail;
             this.showSidebar = true;
             
-            // Update map view if coordinates available
+            // Update map view and add marker if coordinates available
             if (detail.longitude && detail.latitude) {
+                // Add or update marker for selected walk
+                this.addMarker({
+                    id: detail.id,
+                    longitude: detail.longitude,
+                    latitude: detail.latitude,
+                    is_favorite: detail.is_favorite
+                }, {}, () => {
+                    // Marker click handler
+                    this.selectedWalk = detail;
+                    this.showSidebar = true;
+                });
+
                 this.map.flyTo({
                     center: [detail.longitude, detail.latitude],
                     zoom: 14,

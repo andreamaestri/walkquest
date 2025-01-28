@@ -1,13 +1,14 @@
 {% load slippers %}
 {% load i18n %}
 
-<div class="walk-item"
+<div class="walk-item cursor-pointer"
      :class="{
         'walk-item-selected': selectedWalk?.id === walk.id,
         'walk-item-pending': pendingFavorites.has(walk.id)
      }" 
      :key="walk.id"
-     x-data="{ showDetails: false }">
+     x-data="{ showDetails: false }"
+     @click="$dispatch('walk-selected', walk)">
     
     <div class="flex justify-between items-start">
         <h3 class="text-lg font-semibold text-gray-900 truncate" x-text="walk.walk_name"></h3>
