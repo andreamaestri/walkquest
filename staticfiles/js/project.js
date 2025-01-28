@@ -17,41 +17,41 @@ const DEFAULT_CONFIG = {
     }
 };
 
-// Initialize card hover animations
-const initializeCardHover = () => {
+// Initialize hover animations
+const initializeHoverEffects = () => {
     if (!window.Motion) return;
 
     window.Motion.hover('.walk-item', (element) => {
-        // Start hover animation
+        // Start animations for card and child elements
         const animations = [
-            // Card elevation and scale
+            // Main card animation
             window.Motion.animate(element, 
                 { 
+                    y: -8,
                     scale: 1.02,
-                    y: -4,
                     boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
                 },
                 { 
-                    duration: 0.3,
-                    easing: [0.2, 0, 0, 1] // Custom ease-out cubic-bezier
+                    duration: 0.2,
+                    easing: [0.2, 0, 0, 1]
                 }
             ),
-            
+
             // Animate categories
             window.Motion.animate(
                 element.querySelectorAll('.category-tag'),
                 { 
                     scale: 1.05,
-                    backgroundColor: '#E0E7FF', // Indigo-100
-                    color: '#4338CA' // Indigo-700
+                    backgroundColor: '#E0E7FF',
+                    color: '#4338CA'
                 },
                 { 
                     duration: 0.2,
-                    delay: window.Motion.stagger(0.03)
+                    delay: window.Motion.stagger(0.05)
                 }
             ),
 
-            // Highlights section
+            // Animate highlights section
             window.Motion.animate(
                 element.querySelector('.highlights'),
                 {
@@ -59,17 +59,22 @@ const initializeCardHover = () => {
                     y: [10, 0]
                 },
                 {
-                    duration: 0.2,
-                    delay: 0.1
+                    duration: 0.2
                 }
             )
         ];
 
-        // Return cleanup function
+        // Return cleanup function for hover end
         return () => {
-            // Reverse all animations on hover end
             animations.forEach(animation => {
-                animation.reverse();
+                const reverseConfig = {
+                    duration: 0.15,
+                    easing: [0.4, 0, 0.2, 1]
+                };
+                
+                // Reverse all animations smoothly
+                animation.complete();
+                animation.reverse(reverseConfig);
             });
         };
     });
@@ -82,11 +87,11 @@ document.addEventListener('DOMContentLoaded', () => {
         window.ApiService.init();
     }
 
-    // Initialize hover animations
-    initializeCardHover();
+    // Setup hover animations
+    initializeHoverEffects();
 });
 
-// Initialize Alpine.js components and stores
+// Re-initialize hover effects when content changes
 document.addEventListener('alpine:init', () => {
     try {
         // Register the walkList component
@@ -122,7 +127,6 @@ document.addEventListener('alpine:init', () => {
                     // Initialize animations after Alpine renders the component
                     this.$nextTick(() => {
                         this.initializeAnimations();
-                        initializeCardHover(); // Re-initialize hover effects after new cards are added
                     });
                 } catch (error) {
                     console.error('Error initializing walks:', error);
@@ -133,6 +137,7 @@ document.addEventListener('alpine:init', () => {
             initializeAnimations() {
                 if (!window.Motion) return;
 
+                // Initial entrance animations
                 window.Motion.animate('.walk-item',
                     {
                         opacity: [0, 1],
@@ -140,11 +145,14 @@ document.addEventListener('alpine:init', () => {
                         scale: [0.95, 1]
                     },
                     {
-                        delay: window.Motion.stagger(0.15),
-                        duration: 0.8,
-                        easing: [0.33, 1, 0.68, 1]
+                        delay: window.Motion.stagger(0.1),
+                        duration: 0.6,
+                        easing: [0.2, 0, 0, 1]
                     }
-                );
+                ).then(() => {
+                    // Re-initialize hover effects after entrance animation
+                    initializeHoverEffects();
+                });
             },
 
             async fetchWalks(resetList = true) {
@@ -172,7 +180,6 @@ document.addEventListener('alpine:init', () => {
                         this.walks = walks;
                         this.$nextTick(() => {
                             this.initializeAnimations();
-                            initializeCardHover(); // Re-initialize hover effects
                         });
                     } else {
                         this.walks = [...this.walks, ...walks];
@@ -186,13 +193,14 @@ document.addEventListener('alpine:init', () => {
                                         scale: [0.95, 1]
                                     },
                                     {
-                                        delay: window.Motion.stagger(0.15),
-                                        duration: 0.8,
-                                        easing: [0.33, 1, 0.68, 1]
+                                        delay: window.Motion.stagger(0.1),
+                                        duration: 0.6,
+                                        easing: [0.2, 0, 0, 1]
                                     }
-                                );
+                                ).then(() => {
+                                    initializeHoverEffects();
+                                });
                             }
-                            initializeCardHover(); // Re-initialize hover effects for new cards
                         });
                     }
 
