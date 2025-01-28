@@ -1,26 +1,31 @@
-// Enhanced walk list component with reactive features
-function walkList() {
-    return {
+document.addEventListener('alpine:init', () => {
+    Alpine.data('walkList', () => ({
         walks: [],
-        isLoading: true,
-        isLoadingMore: false,
         searchQuery: '',
-        currentPage: 1,
+        error: null,
+        isLoading: false,
+        isLoadingMore: false,
         hasMore: true,
+        currentPage: 1,
         selectedCategories: [],
         selectedFeatures: [],
-        error: null,
-        pendingFavorites: new Set(), // Track optimistic updates
+        pendingFavorites: new Set(),
 
         init() {
-            // Initialize from existing walks data if available
-            const walksData = document.getElementById('walks-data');
-            if (walksData) {
-                const data = JSON.parse(walksData.textContent);
-                this.walks = data.walks || [];
-                this.hasMore = data.walks?.length >= 10; // Assume pagination of 10
+            try {
+                // Initialize from existing walks data
+                const walksData = document.getElementById('walks-data');
+                if (walksData) {
+                    const initialWalks = JSON.parse(walksData.textContent);
+                    if (Array.isArray(initialWalks)) {
+                        this.walks = initialWalks;
+                        this.hasMore = initialWalks.length >= 10;
+                    }
+                }
+            } catch (error) {
+                console.error('Error initializing walks:', error);
+                this.error = 'Failed to load initial walks data';
             }
-            this.isLoading = false;
 
             // Listen for favorite updates from other components
             window.addEventListener('walk-favorited', (e) => {
@@ -28,7 +33,6 @@ function walkList() {
             });
         },
 
-        // Fetch walks with search and filters
         async fetchWalks(resetList = true) {
             if (resetList) {
                 this.isLoading = true;
@@ -40,23 +44,38 @@ function walkList() {
             }
 
             try {
-                const params = new URLSearchParams({
-                    search: this.searchQuery,
-                    page: this.currentPage,
-                    categories: this.selectedCategories.join(','),
-                    features: this.selectedFeatures.join(',')
-                });
+                const params = new URLSearchParams();
+                
+                if (this.searchQuery) {
+                    params.append('search', this.searchQuery);
+                }
+                if (this.currentPage) {
+                    params.append('page', this.currentPage);
+                    params.append('page_size', 10);
+                }
+                if (this.selectedCategories.length) {
+                    params.append('categories', this.selectedCategories.join(','));
+                }
+                if (this.selectedFeatures.length) {
+                    params.append('features', this.selectedFeatures.join(','));
+                }
 
                 const response = await fetch(`/api/walks?${params}`);
                 const data = await response.json();
-
-                if (resetList) {
-                    this.walks = data;
-                } else {
-                    this.walks = [...this.walks, ...data];
+                
+                const walks = Array.isArray(data) ? data : (data.walks || []);
+                
+                if (!Array.isArray(walks)) {
+                    throw new Error('Invalid walks data format');
                 }
 
-                this.hasMore = data.length >= 10; // Assume pagination of 10
+                if (resetList) {
+                    this.walks = walks;
+                } else {
+                    this.walks = [...this.walks, ...walks];
+                }
+                
+                this.hasMore = walks.length >= 10;
             } catch (error) {
                 console.error('Error fetching walks:', error);
                 this.error = 'Failed to load walks. Please try again.';
@@ -66,16 +85,13 @@ function walkList() {
             }
         },
 
-        // Optimistic favorite toggle
         async toggleFavorite(walkId) {
-            // Prevent double-clicking
-            if (this.pendingFavorites.has(walkId)) return;
+            if (!walkId || this.pendingFavorites.has(walkId)) return;
 
-            this.pendingFavorites.add(walkId);
             const walk = this.walks.find(w => w.id === walkId);
             if (!walk) return;
 
-            // Optimistically update UI
+            this.pendingFavorites.add(walkId);
             const newValue = !walk.is_favorite;
             walk.is_favorite = newValue;
 
@@ -90,40 +106,36 @@ function walkList() {
 
                 const data = await response.json();
                 if (data.status !== 'success') {
-                    // Revert on failure
                     walk.is_favorite = !newValue;
                     throw new Error(data.message || 'Failed to update favorite status');
                 }
 
-                // Dispatch event for other components
                 window.dispatchEvent(new CustomEvent('walk-favorited', {
                     detail: { walkId, isFavorite: newValue }
                 }));
             } catch (error) {
                 console.error('Error toggling favorite:', error);
-                // Show error toast/notification here if needed
+                this.error = 'Failed to update favorite status';
             } finally {
                 this.pendingFavorites.delete(walkId);
             }
         },
 
-        // Handle infinite scroll
         async loadMore() {
-            if (this.isLoadingMore || !this.hasMore) return;
+            if (this.isLoading || this.isLoadingMore || !this.hasMore) return;
             this.currentPage++;
             await this.fetchWalks(false);
         },
 
-        // Update walk in list
         updateWalk(walkId, newData) {
             const index = this.walks.findIndex(w => w.id === walkId);
-            if (index !== -1) {
-                // Preserve reactive references while updating
-                Object.assign(this.walks[index], newData);
+            if (index === -1) {
+                console.warn('Walk not found:', walkId);
+                return;
             }
+            Object.assign(this.walks[index], newData);
         },
 
-        // Handle favorite updates from other components
         handleFavoriteUpdate(walkId, isFavorite) {
             const walk = this.walks.find(w => w.id === walkId);
             if (walk && walk.is_favorite !== isFavorite) {
@@ -131,7 +143,6 @@ function walkList() {
             }
         },
 
-        // Filter methods
         setCategories(categories) {
             this.selectedCategories = categories;
             this.fetchWalks();
@@ -142,23 +153,11 @@ function walkList() {
             this.fetchWalks();
         },
 
-        // Reset all filters
         resetFilters() {
             this.selectedCategories = [];
             this.selectedFeatures = [];
             this.searchQuery = '';
             this.fetchWalks();
         }
-    };
-}
-
-// Register as Alpine component
-if (window.Alpine) {
-    window.Alpine.data('walkList', walkList);
-} else {
-    document.addEventListener('alpine:init', () => {
-        window.Alpine.data('walkList', walkList);
-    });
-}
-
-export default walkList;
+    }));
+});

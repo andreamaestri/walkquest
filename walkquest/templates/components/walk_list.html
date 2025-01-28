@@ -6,7 +6,7 @@
 
 <div class="flex flex-col space-y-4 p-4" 
      x-data="walkList" 
-     x-init="$nextTick(() => init())"
+     x-init="init()"
      @scroll.window.debounce.100ms="
         if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 1000) loadMore()
      ">
@@ -48,6 +48,16 @@
         {% #loading_skeleton %}{% /loading_skeleton %}
     </div>
 
+    <!-- Error State -->
+    <div x-show="error" x-cloak
+         class="bg-red-50 border-l-4 border-red-400 p-4">
+        <div class="flex">
+            <div class="ml-3">
+                <p class="text-sm text-red-700" x-text="error"></p>
+            </div>
+        </div>
+    </div>
+
     <!-- Walk List -->
     <div x-show="!isLoading" 
          class="space-y-4"
@@ -65,12 +75,14 @@
             </div>
         </template>
 
-        <template x-for="walk in walks" :key="walk.id">
-            <div x-intersect:enter.once="$el.classList.add('revealed')"
-                 class="opacity-0 transform translate-y-4 transition-all duration-300 ease-out revealed:opacity-100 revealed:translate-y-0">
-                {% #walk_card %}{% /walk_card %}
+        <div class="space-y-4">
+            <template x-for="walk in walks" :key="walk.id">
+                <div x-intersect:enter.once="$el.classList.add('revealed')"
+                     class="opacity-0 transform translate-y-4 transition-all duration-300 ease-out revealed:opacity-100 revealed:translate-y-0">
+                    {% #walk_card %}{% /walk_card %}
+                </div>
+            </template>
             </div>
-        </template>
 
         <!-- Load More Indicator -->
         <div x-show="isLoadingMore" x-cloak class="py-4">
