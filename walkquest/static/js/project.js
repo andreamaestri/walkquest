@@ -22,16 +22,63 @@ const initializeHoverEffects = () => {
     if (!window.Motion) return;
 
     window.Motion.hover('.walk-item', (element) => {
-        // Start animations for card and child elements
+        const expandableContent = element.querySelector('.expandable-content');
+        if (!expandableContent) return;
+
+        // Get natural height by temporarily removing constraints
+        expandableContent.style.height = 'auto';
+        expandableContent.style.opacity = '0';
+        const targetHeight = expandableContent.offsetHeight;
+        expandableContent.style.height = '0px';
+
+        // Start animations
         const animations = [
             // Main card animation
-            window.Motion.animate(element, 
+            window.Motion.animate(
+                element, 
                 { 
                     y: -8,
                     scale: 1.02,
                     boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
                 },
                 { 
+                    type: "spring",
+                    stiffness: 300,
+                    damping: 25
+                }
+            ),
+
+            // Expand content
+            window.Motion.animate(
+                expandableContent,
+                { height: [0, targetHeight] },
+                {
+                    type: "spring",
+                    stiffness: 150,
+                    damping: 15
+                }
+            ),
+
+            // Fade in content
+            window.Motion.animate(
+                expandableContent,
+                {
+                    opacity: [0, 1]
+                },
+                {
+                    delay: window.Motion.stagger(0.1),
+                    duration: 0.4,
+                    at: "<",  // Start at the same time as height animation
+                    easing: [0.2, 0, 0, 1]
+                }
+            ),
+
+            // Animate margin
+            window.Motion.animate(
+                expandableContent,
+                { marginTop: [0, 16] },
+                {
+                    delay: 0.1,  // Slight delay for visual polish
                     duration: 0.2,
                     easing: [0.2, 0, 0, 1]
                 }
@@ -46,36 +93,51 @@ const initializeHoverEffects = () => {
                     color: '#4338CA'
                 },
                 { 
-                    duration: 0.2,
+                    type: "spring",
+                    stiffness: 400,
+                    damping: 20,
                     delay: window.Motion.stagger(0.05)
-                }
-            ),
-
-            // Animate highlights section
-            window.Motion.animate(
-                element.querySelector('.highlights'),
-                {
-                    opacity: [0, 1],
-                    y: [10, 0]
-                },
-                {
-                    duration: 0.2
                 }
             )
         ];
 
         // Return cleanup function for hover end
         return () => {
-            animations.forEach(animation => {
-                const reverseConfig = {
-                    duration: 0.15,
-                    easing: [0.4, 0, 0.2, 1]
-                };
-                
-                // Reverse all animations smoothly
-                animation.complete();
-                animation.reverse(reverseConfig);
-            });
+            // Reverse all animations with custom timing
+            // Create new animations for reversal
+            window.Motion.animate(element, 
+                { 
+                    y: 0,
+                    scale: 1,
+                    boxShadow: 'none'
+                },
+                { 
+                    type: "spring",
+                    stiffness: 400
+                }
+            );
+
+            window.Motion.animate(
+                expandableContent,
+                {
+                    height: 0,
+                    opacity: 0,
+                    marginTop: 0
+                },
+                { duration: 0.2, easing: [0.4, 0, 0.2, 1] }
+            );
+
+            window.Motion.animate(
+                element.querySelectorAll('.category-tag'),
+                {
+                    scale: 1,
+                    backgroundColor: '#EEF2FF',
+                    color: '#4F46E5'
+                },
+                {
+                    type: "spring",
+                    stiffness: 400
+                }
         };
     });
 };
@@ -87,8 +149,12 @@ document.addEventListener('DOMContentLoaded', () => {
         window.ApiService.init();
     }
 
-    // Setup hover animations
-    initializeHoverEffects();
+    // Setup hover animations when Motion is ready
+    if (window.Motion) {
+        initializeHoverEffects();
+    } else {
+        window.addEventListener('motion:ready', initializeHoverEffects);
+    }
 });
 
 // Re-initialize hover effects when content changes

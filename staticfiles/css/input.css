@@ -46,7 +46,7 @@
 
     /* Walk Card Components */
     .walk-item {
-        @apply bg-white rounded-lg shadow-md p-4 relative transition-shadow duration-300;
+        @apply bg-white rounded-lg shadow-md p-4 relative transition-all duration-300;
         transform-origin: center center;
         backface-visibility: hidden;
         will-change: transform, box-shadow;
@@ -60,18 +60,23 @@
         @apply opacity-75;
     }
 
+    .expandable-content {
+        height: 0;
+        opacity: 0;
+        margin-top: 0;
+        will-change: height, opacity, margin-top;
+    }
+
     .category-tag {
-        @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-300 bg-indigo-50 text-indigo-700 ring-1 ring-indigo-700/10;
+        @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium 
+               bg-indigo-50 text-indigo-700 ring-1 ring-indigo-700/10
+               transition-all duration-300;
         transform-origin: center center;
         will-change: transform, background-color, color;
     }
 
-    .category-tag-hover {
-        @apply bg-indigo-100 text-indigo-800 ring-indigo-800/20 scale-105;
-    }
-
     .highlights {
-        @apply mt-2 text-sm text-gray-600 transition-all duration-300 ease-out;
+        @apply text-sm text-gray-600 transition-all duration-300;
         will-change: transform, opacity;
     }
 

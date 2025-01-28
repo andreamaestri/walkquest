@@ -7,8 +7,7 @@
         'walk-item-pending': pendingFavorites.has(walk.id)
      }" 
      :key="walk.id"
-     x-data="{ showDetails: false }"
-     @click="selectWalk(walk.id)">
+     x-data="{ showDetails: false }">
     
     <div class="flex justify-between items-start">
         <h3 class="text-lg font-semibold text-gray-900 truncate" x-text="walk.walk_name"></h3>
@@ -42,18 +41,42 @@
         </template>
     </div>
 
-    <!-- Categories -->
+    <!-- Primary Categories -->
     <div class="mt-2 flex flex-wrap gap-2">
-        <template x-for="category in walk.categories" :key="category.slug">
+        <template x-for="category in walk.categories.slice(0, 3)" :key="category.slug">
             <span class="category-tag">
                 <span x-text="category.name"></span>
             </span>
         </template>
     </div>
 
-    <!-- Highlights -->
-    <div class="highlights">
-        <p x-text="walk.highlights" class="line-clamp-2"></p>
+    <!-- Expandable Content -->
+    <div class="expandable-content overflow-hidden">
+        <!-- Additional Categories -->
+        <div class="mt-2 flex flex-wrap gap-2">
+            <template x-for="category in walk.categories.slice(3)" :key="category.slug">
+                <span class="category-tag">
+                    <span x-text="category.name"></span>
+                </span>
+            </template>
+        </div>
+
+        <!-- Full Description -->
+        <div class="highlights mt-4 text-sm text-gray-600">
+            <p x-text="walk.description || walk.highlights"></p>
+        </div>
+
+        <!-- Additional Details -->
+        <div class="mt-4 grid grid-cols-2 gap-4 text-sm text-gray-600">
+            <div>
+                <span class="font-medium">{% translate "Duration" %}:</span>
+                <span x-text="walk.duration"></span>
+            </div>
+            <div>
+                <span class="font-medium">{% translate "Elevation" %}:</span>
+                <span x-text="`${walk.elevation_gain}m`"></span>
+            </div>
+        </div>
     </div>
 
     <!-- Features -->
@@ -68,6 +91,12 @@
             <span class="inline-flex items-center text-xs text-gray-500">
                 <iconify-icon icon="mdi:coffee" class="w-4 h-4 mr-1"></iconify-icon>
                 {% translate "Café Stop" %}
+            </span>
+        </template>
+        <template x-if="walk.has_parking">
+            <span class="inline-flex items-center text-xs text-gray-500">
+                <iconify-icon icon="mdi:parking" class="w-4 h-4 mr-1"></iconify-icon>
+                {% translate "Parking Available" %}
             </span>
         </template>
     </div>

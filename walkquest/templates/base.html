@@ -33,14 +33,44 @@
         <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
         <!-- Initialize global config -->
-        <script>
+        <script type="module">
+            // Import Motion functions
+            import { 
+                animate, 
+                hover,
+                scroll,
+                inView,
+                press,
+                spring,
+                stagger,
+                delay,
+                frame,
+                mix,
+                transform 
+            } from "https://cdn.jsdelivr.net/npm/motion@latest/+esm"
+            
+            // Set up global config
             window.walkquestConfig = {
                 csrfToken: document.querySelector('meta[name="csrf-token"]').content
             };
-            // Make Motion globally available
-            import('https://cdn.jsdelivr.net/npm/motion@latest/+esm')
-                .then(motion => window.Motion = motion);
+            
+            // Make Motion functions globally available
+            window.Motion = { 
+                animate, 
+                hover,
+                scroll,
+                inView,
+                press,
+                spring,
+                stagger,
+                delay,
+                frame,
+                mix,
+                transform
+            };
+            window.dispatchEvent(new Event('motion:ready'));
         </script>
+
 
         <!-- Application Components - Load after Alpine.js -->
         <script src="{% static 'js/project.js' %}"></script>

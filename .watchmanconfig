@@ -1,0 +1,9 @@
+{
+  "ignore_dirs": [
+    "node_modules",
+    "staticfiles",
+    ".git",
+    "__pycache__",
+    "*.egg-info"
+  ]
+}
