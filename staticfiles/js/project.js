@@ -104,37 +104,51 @@ const initializeHoverEffects = () => {
         // Return cleanup function for hover end
         return () => {
             // Reverse all animations with custom timing
-            animations.forEach(animation => {
-                animation.complete();
-                animation.reverse({
+            window.Motion.animate(element, 
+                { 
+                    y: 0,
+                    scale: 1,
+                    boxShadow: 'none'
+                },
+                { 
                     type: "spring",
-                    stiffness: 400,
-                    easing: [0.4, 0, 0.2, 1]
+                    stiffness: 400
+                }
+            );
+
+            window.Motion.animate(
+                expandableContent,
+                {
+                    height: 0,
+                    opacity: 0,
+                    marginTop: 0
+                },
+                { duration: 0.2, easing: [0.4, 0, 0.2, 1] }
+            );
+
+            window.Motion.animate(
+                element.querySelectorAll('.category-tag'),
+                {
+                    scale: 1,
+                    backgroundColor: '#EEF2FF',
+                    color: '#4F46E5'
+                },
+                {
+                    type: "spring",
+                    stiffness: 400
                 });
-            });
-        };
+        }
     });
 };
 
-// Initialize application dependencies
-document.addEventListener('DOMContentLoaded', () => {
-    // Initialize ApiService before Alpine
-    if (window.ApiService) {
-        window.ApiService.init();
-    }
+// Initialize ApiService before Alpine components
+if (window.ApiService && window.ApiService.init) {
+    window.ApiService.init();
+}
 
-    // Setup hover animations when Motion is ready
-    if (window.Motion) {
-        initializeHoverEffects();
-    } else {
-        window.addEventListener('motion:ready', initializeHoverEffects);
-    }
-});
-
-// Re-initialize hover effects when content changes
+// Register Alpine components
 document.addEventListener('alpine:init', () => {
     try {
-        // Register the walkList component
         Alpine.data('walkList', () => ({
             walks: [],
             searchQuery: '',
@@ -330,5 +344,15 @@ document.addEventListener('alpine:init', () => {
             errorContainer.classList.remove('hidden');
             errorContainer.textContent = 'Application initialization failed. Please refresh the page.';
         }
+    }
+});
+
+// Initialize remaining features after DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    // Setup hover animations when Motion is ready
+    if (window.Motion) {
+        initializeHoverEffects();
+    } else {
+        window.addEventListener('motion:ready', initializeHoverEffects);
     }
 });

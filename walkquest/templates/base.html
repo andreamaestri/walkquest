@@ -28,11 +28,21 @@
         <!-- Load Iconify -->
         <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
         
-        <!-- Alpine.js and Plugins - Must be loaded before components -->
-        <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/intersect@3.x.x/dist/cdn.min.js"></script>
-        <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+        <!-- Core Services - Load early to define services -->
+        <script src="{% static 'js/services.js' %}"></script>
+        
+        <!-- Alpine.js and Plugins -->
+        <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/@alpinejs/intersect@3.x.x/dist/cdn.min.js"></script>
 
-        <!-- Initialize global config -->
+        <!-- Main Project JavaScript - Must be loaded after Alpine.js but before components -->
+        <script src="{% static 'js/project.js' %}"></script>
+        
+        <!-- Application Components -->
+        <script src="{% static 'js/components/walkList.js' %}"></script>
+        <script src="{% static 'js/walkInterface.js' %}"></script>
+
+        <!-- Initialize global config and Motion -->
         <script type="module">
             // Import Motion functions
             import { 
@@ -51,7 +61,20 @@
             
             // Set up global config
             window.walkquestConfig = {
-                csrfToken: document.querySelector('meta[name="csrf-token"]').content
+                csrfToken: document.querySelector('meta[name="csrf-token"]').content,
+                animations: {
+                    hover: {
+                        scale: 1.02,
+                        spring: {
+                            stiffness: 300,
+                            damping: 25
+                        }
+                    },
+                    entrance: {
+                        duration: 0.6,
+                        easing: [0.2, 0, 0, 1]
+                    }
+                }
             };
             
             // Make Motion functions globally available
@@ -68,15 +91,15 @@
                 mix,
                 transform
             };
-            window.dispatchEvent(new Event('motion:ready'));
+
+            // Initialize Motion
+            window.addEventListener('DOMContentLoaded', () => {
+                window.dispatchEvent(new Event('motion:ready'));
+            });
         </script>
-
-
-        <!-- Application Components - Load after Alpine.js -->
-        <script src="{% static 'js/project.js' %}"></script>
-        <script src="{% static 'js/services.js' %}"></script>
-        <script src="{% static 'js/walkInterface.js' %}"></script>
-        <script type="module" src="{% static 'js/components/walkList.js' %}"></script>
+        
+        <!-- Animation System -->
+        <script src="{% static 'js/walk-animations.js' %}"></script>
 
         <!-- Additional JavaScript -->
         {% block extra_javascript %}
