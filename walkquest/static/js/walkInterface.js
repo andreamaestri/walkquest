@@ -21,8 +21,10 @@ function walkInterface() {
 
             // Listen for walk selection from walk list
             this.$el.addEventListener('walk-selected', (e) => {
-                const walkId = e.detail;
-                this.selectWalk(walkId);
+                const walk = this.filteredWalks.find(w => w.id === e.detail);
+                if (walk) {
+                    this.selectWalk(walk);
+                }
             });
         },
 
@@ -103,28 +105,29 @@ function walkInterface() {
                     .addTo(this.map);
 
                 marker.getElement().addEventListener('click', () => {
-                    this.selectWalk(walk.id);
+                    this.selectWalk(walk);
                 });
 
                 this.markers.set(walk.id, marker);
             });
         },
 
-        async selectWalk(id) {
-            if (id === this.selectedWalk?.id) return;
+        async selectWalk(walk) {
+            if (!walk || walk.id === this.selectedWalk?.id) return;
 
             try {
+                const walkId = walk.id;
                 const [walkResponse, geometryResponse] = await Promise.all([
-                    fetch(`/api/walks/${id}`),
-                    fetch(`/api/walks/${id}/geometry`)
+                    fetch(`/api/walks/${walkId}`),
+                    fetch(`/api/walks/${walkId}/geometry`)
                 ]);
 
-                const [walk, geometry] = await Promise.all([
+                const [walkData, geometry] = await Promise.all([
                     walkResponse.json(),
                     geometryResponse.json()
                 ]);
 
-                this.selectedWalk = walk;
+                this.selectedWalk = walkData;
                 this.displayWalkGeometry(geometry);
             } catch (error) {
                 const errorMsg = error.message || 'Failed to load walk details';
