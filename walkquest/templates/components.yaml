@@ -6,3 +6,4 @@ components:
   loading: "components/loading.html"
   navigation: "components/navigation.html"
   category_filters: "components/category_filters.html"
+  loading_skeleton: "components/loading_skeleton.html"

@@ -1,0 +1,19 @@
+{% load i18n %}
+
+<div class="animate-pulse">
+    <div class="space-y-4">
+        {% for i in "123"|make_list %}
+            <div class="bg-white rounded-lg shadow-md p-4">
+                <div class="h-4 bg-gray-200 rounded w-3/4"></div>
+                <div class="mt-2 flex items-center space-x-2">
+                    <div class="h-3 bg-gray-200 rounded w-16"></div>
+                    <div class="h-3 bg-gray-200 rounded w-20"></div>
+                </div>
+                <div class="mt-2">
+                    <div class="h-3 bg-gray-200 rounded w-full"></div>
+                    <div class="mt-1 h-3 bg-gray-200 rounded w-4/5"></div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>

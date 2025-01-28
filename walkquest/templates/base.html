@@ -38,15 +38,20 @@
         <!-- Load Iconify -->
         <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
         
+        <!-- Alpine.js Plugins -->
+        <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/intersect@3.x.x/dist/cdn.min.js"></script>
+        <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/morph@3.x.x/dist/cdn.min.js"></script>
+        
+        <!-- Alpine.js Core (load before components) -->
+        <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+        
         <!-- Load Application Components -->
         <script src="{% static 'js/services.js' %}"></script>
         <script src="{% static 'js/components/walkList.js' %}"></script>
         <script src="{% static 'js/project.js' %}"></script>
         <script src="{% static 'js/walkInterface.js' %}"></script>
+        <script src="{% static 'js/alpine-components.js' %}"></script>
         
-        <!-- Alpine.js Core (load after components) -->
-        <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-
         <!-- Additional JavaScript -->
         {% block extra_javascript %}
         <!-- Additional JavaScript block for page-specific scripts -->

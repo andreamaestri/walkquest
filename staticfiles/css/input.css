@@ -1,35 +1,29 @@
+@reference "./project.css";
+
 /* /static/css/input.css */
 @import url('https://fonts.googleapis.com/css2?family=Fira+Sans:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Inter+Tight:ital,wght@0,100..900;1,100..900&display=swap');
 
-/* Tailwind base styles */
-@tailwind base;
-
-/* Tailwind component styles */
-@tailwind components;
-
-/* Tailwind utility styles */
-@tailwind utilities;
+/* Import Tailwind */
+@import "tailwindcss";
 
 /* Custom Styles */
 @layer base {
     body {
-        @apply bg-gray-50;
+        @apply bg-slate-50 dark:bg-gray-900;
     }
 
-    :root {
-        --primary-50: #f0f9ff;
-        --primary-100: #e0f2fe;
-        --primary-500: #1D4ED8;
-        --primary-600: #0284c7;
-        --primary-700: #0369a1;
-        --secondary-500: #9333EA;
-        --secondary-600: #7e22ce;
+    /* Using Tailwind's built-in colors */
+}
+
+@utility scrollbar-hidden {
+    &::-webkit-scrollbar {
+        display: none;
     }
 }
 
 @layer components {
     .nav-link {
-        @apply text-gray-600 hover:text-primary-500 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200;
+        @apply text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200;
     }
 
     .message {
@@ -58,26 +52,26 @@
 
     .sidebar {
         @apply fixed top-0 right-0 h-full bg-white shadow-lg z-10 transition-transform duration-300 ease-in-out w-[400px] overflow-y-auto;
-    }
 
-    .sidebar::-webkit-scrollbar {
-        @apply w-2;
-    }
+        &::-webkit-scrollbar {
+            @apply w-2;
+        }
 
-    .sidebar::-webkit-scrollbar-track {
-        @apply bg-gray-100;
-    }
+        &::-webkit-scrollbar-track {
+            @apply bg-gray-100;
+        }
 
-    .sidebar::-webkit-scrollbar-thumb {
-        @apply bg-gray-300 rounded-full;
-    }
+        &::-webkit-scrollbar-thumb {
+            @apply bg-gray-300 rounded-full;
 
-    .sidebar::-webkit-scrollbar-thumb:hover {
-        @apply bg-gray-400;
-    }
+            &:hover {
+                @apply bg-gray-400;
+            }
+        }
 
-    .sidebar.hidden {
-        @apply translate-x-full;
+        &.hidden {
+            @apply translate-x-full;
+        }
     }
 
     .sidebar-toggle {
@@ -90,10 +84,10 @@
 
     .mapboxgl-marker {
         @apply cursor-pointer transition-all duration-200;
-    }
 
-    .marker-selected {
-        @apply scale-125;
+        &.marker-selected {
+            @apply scale-125;
+        }
     }
 
     .iconify-icon {
@@ -101,6 +95,6 @@
     }
 
     .map {
-        @apply w-full h-full bg-gray-50;
+        @apply w-full h-full bg-slate-50;
     }
 }
