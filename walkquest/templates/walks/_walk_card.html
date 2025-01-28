@@ -1,6 +1,12 @@
 {% load walk_tags %}
 
-<article class="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 cursor-pointer" 
+<article class="bg-white rounded-lg shadow-sm hover:shadow-md p-4 cursor-pointer transform transition-all duration-300 ease-in-out" 
+         x-data="{ isVisible: false, isHovered: false }"
+         x-intersect:enter.margin.200px="isVisible = true"
+         x-intersect:leave="isVisible = false"
+         @mouseenter="isHovered = true; $dispatch('walk-hover', '{{ walk.id }}')"
+         @mouseleave="isHovered = false; $dispatch('walk-hover', null)"
+         :class="{ 'scale-105': isVisible && isHovered, 'scale-100': !isHovered || !isVisible }"
          data-walk-id="{{ walk.id }}"
          data-features="{{ walk.features|as_json }}"
          data-distance="{{ walk.distance|default:0 }}"

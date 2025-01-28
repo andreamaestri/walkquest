@@ -57,7 +57,23 @@
     }
 
     .sidebar {
-        @apply fixed top-0 right-0 h-full bg-white shadow-lg z-10 transition-transform duration-300 ease-in-out w-[400px];
+        @apply fixed top-0 right-0 h-full bg-white shadow-lg z-10 transition-transform duration-300 ease-in-out w-[400px] overflow-y-auto;
+    }
+
+    .sidebar::-webkit-scrollbar {
+        @apply w-2;
+    }
+
+    .sidebar::-webkit-scrollbar-track {
+        @apply bg-gray-100;
+    }
+
+    .sidebar::-webkit-scrollbar-thumb {
+        @apply bg-gray-300 rounded-full;
+    }
+
+    .sidebar::-webkit-scrollbar-thumb:hover {
+        @apply bg-gray-400;
     }
 
     .sidebar.hidden {

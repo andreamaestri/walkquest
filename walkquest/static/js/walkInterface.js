@@ -26,6 +26,16 @@ function walkInterface() {
                     this.selectWalk(walk);
                 }
             });
+
+            // Listen for walk hover events
+            document.addEventListener('walk-hover', async (e) => {
+                const walkId = e.detail;
+                if (walkId) {
+                    await this.previewWalkPath(walkId);
+                } else {
+                    this.clearPathPreview();
+                }
+            });
         },
 
         destroy() {
@@ -116,7 +126,15 @@ function walkInterface() {
             if (!walk || walk.id === this.selectedWalk?.id) return;
 
             try {
+                this.isLoading = true;
                 const walkId = walk.id;
+                
+                // Highlight the selected marker
+                this.markers.forEach((marker, id) => {
+                    const element = marker.getElement();
+                    element.classList.toggle('marker-selected', id === walkId);
+                });
+
                 const [walkResponse, geometryResponse] = await Promise.all([
                     fetch(`/api/walks/${walkId}`),
                     fetch(`/api/walks/${walkId}/geometry`)
@@ -128,38 +146,50 @@ function walkInterface() {
                 ]);
 
                 this.selectedWalk = walkData;
-                this.displayWalkGeometry(geometry);
+                
+                // Add smooth transition to map movement
+                if (geometry?.geometry?.coordinates) {
+                    const bounds = new mapboxgl.LngLatBounds();
+                    geometry.geometry.coordinates.forEach(coord => {
+                        if (Array.isArray(coord) && coord.length >= 2) {
+                            bounds.extend(coord);
+                        }
+                    });
+                    
+                    // Smooth zoom and pan to the route
+                    this.map.fitBounds(bounds, {
+                        padding: { top: 50, bottom: 50, left: 50, right: this.showSidebar ? 450 : 50 },
+                        duration: 1000,
+                        essential: true
+                    });
+                }
+
+                await this.displayWalkGeometry(geometry);
             } catch (error) {
-                const errorMsg = error.message || 'Failed to load walk details';
-                console.error(errorMsg, error);
-                this.$el.querySelector('.sidebar').innerHTML = `<div class="error-message">${errorMsg}</div>`;
-                this.selectedWalk = null;
+                console.error('Failed to load walk details:', error);
+            } finally {
+                this.isLoading = false;
             }
         },
 
-        displayWalkGeometry(geometry) {
+        async displayWalkGeometry(geometry, isPreview = false) {
             if (!this.map || !geometry?.geometry?.coordinates) return;
 
-            if (this.currentRoute) {
-                try {
-                    if (this.map.getLayer(this.currentRoute)) {
-                        this.map.removeLayer(this.currentRoute);
-                    }
-                    if (this.map.getSource(this.currentRoute)) {
-                        this.map.removeSource(this.currentRoute);
-                    }
-                } catch (error) {
-                    console.warn('Error cleaning up previous route:', error);
-                }
+            // Clean up existing route
+            if (this.currentRoute && !isPreview) {
+                this.clearPathPreview();
             }
 
-            const sourceId = `route-${geometry.properties?.walk_id || Date.now()}`;
-            const layerId = `route-layer-${geometry.properties?.walk_id || Date.now()}`;
+            const prefix = isPreview ? 'preview-' : '';
+            const sourceId = `${prefix}route-${geometry.properties?.walk_id || Date.now()}`;
+            const layerId = `${prefix}route-layer-${geometry.properties?.walk_id || Date.now()}`;
 
             try {
+                // Add the route with animation
                 this.map.addSource(sourceId, {
                     type: 'geojson',
-                    data: geometry
+                    data: geometry,
+                    lineMetrics: true
                 });
 
                 this.map.addLayer({
@@ -171,22 +201,51 @@ function walkInterface() {
                         'line-cap': 'round'
                     },
                     paint: {
-                        'line-color': this.config.map.markerColors.selected,
-                        'line-width': 4
+                        'line-color': isPreview ? 'rgba(33, 148, 243, 0.5)' : this.config.map.markerColors.selected,
+                        'line-width': isPreview ? 3 : 4,
+                        'line-gradient': [
+                            'interpolate',
+                            ['linear'],
+                            ['line-progress'],
+                            0, 'rgba(33, 148, 243, 0)',
+                            1, this.config.map.markerColors.selected
+                        ]
                     }
                 });
 
                 this.currentRoute = layerId;
-
-                const bounds = new mapboxgl.LngLatBounds();
-                geometry.geometry.coordinates.forEach(coord => {
-                    if (Array.isArray(coord) && coord.length >= 2) {
-                        bounds.extend(coord);
-                    }
-                });
-                this.map.fitBounds(bounds, { padding: 50 });
             } catch (error) {
                 console.error('Error displaying walk geometry:', error);
+            }
+        },
+
+        async previewWalkPath(walkId) {
+            try {
+                const response = await fetch(`/api/walks/${walkId}/geometry`);
+                const geometry = await response.json();
+                await this.displayWalkGeometry(geometry, true);
+            } catch (error) {
+                console.error('Error loading walk geometry preview:', error);
+            }
+        },
+
+        clearPathPreview() {
+            if (this.map) {
+                try {
+                    const previewLayerId = this.map.getStyle().layers
+                        .find(layer => layer.id.startsWith('preview-route-layer-'))?.id;
+                    const previewSourceId = this.map.getStyle().sources
+                        .find(source => source.id.startsWith('preview-route-'))?.id;
+
+                    if (previewLayerId) {
+                        this.map.removeLayer(previewLayerId);
+                    }
+                    if (previewSourceId) {
+                        this.map.removeSource(previewSourceId);
+                    }
+                } catch (error) {
+                    console.warn('Error cleaning up preview route:', error);
+                }
             }
         },
 
