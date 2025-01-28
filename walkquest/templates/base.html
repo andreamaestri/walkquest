@@ -24,22 +24,25 @@
         <!-- Default JavaScript block that can be overridden -->
         {% endblock %}
 
-        <!-- Alpine.js and Plugins - Load first -->
+        <!-- Dependencies - Load in order -->
+        
+        <!-- 1. Alpine.js Core and Plugins -->
         <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
         <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/intersect@3.x.x/dist/cdn.min.js"></script>
         
-        <!-- Core Services and Utilities - Load second -->
+        <!-- 2. Alpine Components and Utilities -->
+        <script defer src="{% static 'js/alpine-components.js' %}"></script>
         <script defer src="{% static 'js/services.js' %}"></script>
         <script defer src="{% static 'js/walk-animations.js' %}"></script>
-        
-        <!-- Component Utilities - Load third -->
-        <script defer src="{% static 'js/walkInterface.js' %}"></script>
-        
-        <!-- Main Project JavaScript with Component Registration - Load fourth -->
-        <script defer src="{% static 'js/project.js' %}"></script>
 
-        <!-- Additional Components - Load last -->
+        <!-- 3. Base Components -->
+        <script defer src="{% static 'js/walkInterface.js' %}"></script>
         <script defer src="{% static 'js/components/walkList.js' %}"></script>
+        
+        <!-- 4. Project Initialization -->
+        <script defer src="{% static 'js/project.js' %}"></script>
+        
+        <!-- 5. Third-party Dependencies -->
         <script defer src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
 
         <!-- Initialize global config and Motion -->
@@ -97,9 +100,6 @@
                 window.dispatchEvent(new Event('motion:ready'));
             });
         </script>
-        
-        <!-- Animation System -->
-        <script defer src="{% static 'js/walk-animations.js' %}"></script>
 
         <!-- Additional JavaScript -->
         {% block extra_javascript %}

@@ -1,8 +1,7 @@
-// Optimize hover animations with motion best practices
+// Single definition of hover effect initialization
 const initializeHoverEffects = () => {
     if (!window.Motion) return;
 
-    // Use Motion's hover API with configuration options
     window.Motion.hover('.walk-item', {
         // Set hover scale threshold
         scale: 1.02,
@@ -72,5 +71,5 @@ const initializeHoverEffects = () => {
     });
 };
 
-// Export animation utilities
+// Export animation utilities to window
 window.WalkAnimations = { initializeHoverEffects };

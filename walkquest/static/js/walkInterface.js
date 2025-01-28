@@ -1,6 +1,7 @@
-// Define component function
-window.walkInterface = function() {
-    return {
+// Initialize walk interface component
+document.addEventListener('alpine:init', () => {
+    Alpine.data('walkInterface', () => ({
+        // Required properties
         showSidebar: true,
         selectedWalk: null,
         isLoading: false,
@@ -19,7 +20,7 @@ window.walkInterface = function() {
             this.initializeMap();
             this.setupEventListeners();
 
-            // Listen for walk selection from walk list
+            // Listen for walk selection
             this.$el.addEventListener('walk-selected', (e) => {
                 const walk = this.filteredWalks.find(w => w.id === e.detail);
                 if (walk) {
@@ -262,5 +263,5 @@ window.walkInterface = function() {
                 "'": '&#39;'
             })[m]);
         }
-    };
-};
+    }));
+});

@@ -17,125 +17,12 @@ const DEFAULT_CONFIG = {
     }
 };
 
-// Initialize hover animations
-const initializeHoverEffects = () => {
-    if (!window.Motion) return;
-
-    window.Motion.hover('.walk-item', (element) => {
-        const expandableContent = element.querySelector('.expandable-content');
-        if (!expandableContent) return;
-
-        expandableContent.style.height = 'auto';
-        expandableContent.style.opacity = '0';
-        const targetHeight = expandableContent.offsetHeight;
-        expandableContent.style.height = '0px';
-
-        const animations = [
-            window.Motion.animate(
-                element, 
-                { 
-                    y: -8,
-                    scale: 1.02,
-                    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
-                },
-                { 
-                    type: "spring",
-                    stiffness: 300,
-                    damping: 25
-                }
-            ),
-            window.Motion.animate(
-                expandableContent,
-                { height: [0, targetHeight] },
-                {
-                    type: "spring",
-                    stiffness: 150,
-                    damping: 15
-                }
-            ),
-            window.Motion.animate(
-                expandableContent,
-                { opacity: [0, 1] },
-                {
-                    delay: window.Motion.stagger(0.1),
-                    duration: 0.4,
-                    at: "<",
-                    easing: [0.2, 0, 0, 1]
-                }
-            ),
-            window.Motion.animate(
-                expandableContent,
-                { marginTop: [0, 16] },
-                {
-                    delay: 0.1,
-                    duration: 0.2,
-                    easing: [0.2, 0, 0, 1]
-                }
-            ),
-            window.Motion.animate(
-                element.querySelectorAll('.category-tag'),
-                { 
-                    scale: 1.05,
-                    backgroundColor: '#E0E7FF',
-                    color: '#4338CA'
-                },
-                { 
-                    type: "spring",
-                    stiffness: 400,
-                    damping: 20,
-                    delay: window.Motion.stagger(0.05)
-                }
-            )
-        ];
-
-        return () => {
-            window.Motion.animate(element, 
-                { 
-                    y: 0,
-                    scale: 1,
-                    boxShadow: 'none'
-                },
-                { 
-                    type: "spring",
-                    stiffness: 400
-                }
-            );
-
-            window.Motion.animate(
-                expandableContent,
-                {
-                    height: 0,
-                    opacity: 0,
-                    marginTop: 0
-                },
-                { duration: 0.2, easing: [0.4, 0, 0.2, 1] }
-            );
-
-            window.Motion.animate(
-                element.querySelectorAll('.category-tag'),
-                {
-                    scale: 1,
-                    backgroundColor: '#EEF2FF',
-                    color: '#4F46E5'
-                },
-                {
-                    type: "spring",
-                    stiffness: 400
-                });
-        }
-    });
-};
-
-// Initialize ApiService before Alpine components
-if (window.ApiService && window.ApiService.init) {
-    window.ApiService.init();
-}
-
 // Register Alpine components
 document.addEventListener('alpine:init', () => {
     try {
         // Register walkInterface component
         Alpine.data('walkInterface', () => ({
+            // Required properties
             showSidebar: true,
             selectedWalk: null,
             isLoading: false,
@@ -143,71 +30,142 @@ document.addEventListener('alpine:init', () => {
             map: null,
             markers: new Map(),
             currentRoute: null,
-            
+
             init() {
                 const configData = document.getElementById('config-data');
                 const walksData = document.getElementById('walks-data');
                 
                 this.config = configData ? JSON.parse(configData.textContent) : {};
                 this.filteredWalks = walksData ? JSON.parse(walksData.textContent).walks || [] : [];
-                
+
                 this.initializeMap();
                 this.setupEventListeners();
+
+                // Listen for walk selection
+                this.$el.addEventListener('walk-selected', (e) => {
+                    const walk = this.filteredWalks.find(w => w.id === e.detail);
+                    if (walk) {
+                        this.selectWalk(walk);
+                    }
+                });
             },
-            
+
             // Import methods from walkInterface.js
             ...window.walkInterface()
         }));
 
-        // Register walkList component
+        // Register walkList component with enhanced functionality
         Alpine.data('walkList', () => ({
+            // Required properties
             walks: [],
+            searchQuery: '',
+            error: null,
             isLoading: false,
             isLoadingMore: false,
-            error: null,
             hasMore: true,
-            searchQuery: '',
             page: 1,
+            selectedCategories: [],
+            selectedFeatures: [],
+            pendingFavorites: new Set(),
             
-            init() {
-                this.walkList = [];
-                this.searchQuery = '';
-                this.error = null;
-                this.isLoading = false;
-                this.isLoadingMore = false;
-                this.fetchWalks();
+            // Intersection observer handlers
+            ['@intersect.once']() {
+                this.initializeAnimations();
             },
-            async fetchWalks() {
-                try {
-                    this.isLoading = true;
-                    this.error = null;
-                    this.page = 1;
-                    
-                    const response = await window.ApiService.filterWalks({
-                        search: this.searchQuery,
-                        page: this.page,
-                        page_size: 10
-                    });
 
-                    this.walks = response.walks || [];
-                    this.hasMore = this.walks.length >= 10;
-                    this.$nextTick(() => {
-                        if (window.Motion) {
-                            initializeHoverEffects();
+            ['@intersect.margin.200px']() {
+                if (this.hasMore && !this.isLoading) {
+                    this.loadMore();
+                }
+            },
+
+            init() {
+                try {
+                    // Initialize data from DOM
+                    const walksData = document.getElementById('walks-data');
+                    if (walksData) {
+                        const initialWalks = JSON.parse(walksData.textContent);
+                        if (Array.isArray(initialWalks.walks)) {
+                            this.walks = initialWalks.walks;
+                            this.hasMore = this.walks.length >= 10;
                         }
-                    });
-                } catch (err) {
-                    console.error('Error fetching walks:', err);
-                    this.error = 'Failed to load walks';
-                } finally {
-                    this.isLoading = false;
+                    }
+
+                    // Setup animations
+                    if ('IntersectionObserver' in window) {
+                        this.$nextTick(() => {
+                            if (window.Motion) {
+                                window.Motion.inView('.walk-item', {
+                                    amount: 0.3,
+                                    once: true
+                                }).then((element) => {
+                                    window.Motion.animate(element, {
+                                        opacity: [0, 1],
+                                        y: [50, 0],
+                                        scale: [0.95, 1]
+                                    }, {
+                                        delay: window.Motion.stagger(0.1),
+                                        duration: 0.6,
+                                        easing: [0.2, 0, 0, 1]
+                                    });
+                                });
+                            }
+                        });
+                    } else {
+                        this.initializeAnimations();
+                    }
+
+                    // Event listeners
+                    window.addEventListener('walk-favorited', this.handleFavoriteUpdate.bind(this));
+                } catch (error) {
+                    console.error('Error initializing walks:', error);
+                    this.error = 'Failed to load initial walks data';
+                }
+            },
+
+            // Initialize animations
+            initializeAnimations() {
+                this.$nextTick(() => {
+                    if (window.WalkAnimations) {
+                        window.WalkAnimations.initializeHoverEffects();
+                    }
+                });
+            },
+
+            // Handle favorite updates
+            handleFavoriteUpdate(event) {
+                const { walkId, isFavorite } = event.detail;
+                const walk = this.walks.find(w => w.id === walkId);
+                if (walk) {
+                    walk.is_favorite = isFavorite;
+                    this.pendingFavorites.delete(walkId);
                 }
             },
 
             async searchWalks() {
                 this.page = 1;
                 this.walks = [];
-                await this.fetchWalks();
+                this.isLoading = true;
+                
+                try {
+                    const response = await window.ApiService.filterWalks({
+                        search: this.searchQuery,
+                        page: 1,
+                        page_size: 10
+                    });
+
+                    this.walks = response.walks || [];
+                    this.hasMore = this.walks.length >= 10;
+
+                    this.$nextTick(() => {
+                        this.initializeAnimations();
+                    });
+                } catch (error) {
+                    console.error('Error searching walks:', error);
+                    this.error = 'Failed to search walks';
+                } finally {
+                    this.isLoading = false;
+                }
             },
 
             async loadMore() {
@@ -215,31 +173,29 @@ document.addEventListener('alpine:init', () => {
                 
                 try {
                     this.isLoadingMore = true;
-                    this.page++;
+                    const nextPage = this.page + 1;
                     
                     const response = await window.ApiService.filterWalks({
                         search: this.searchQuery,
-                        page: this.page,
+                        page: nextPage,
                         page_size: 10
                     });
 
                     const newWalks = response.walks || [];
                     this.walks = [...this.walks, ...newWalks];
                     this.hasMore = newWalks.length >= 10;
+                    this.page = nextPage;
                     
                     this.$nextTick(() => {
-                        if (window.Motion) {
-                            initializeHoverEffects();
-                        }
+                        this.initializeAnimations();
                     });
-                } catch (err) {
-                    console.error('Error loading more walks:', err);
+                } catch (error) {
+                    console.error('Error loading more walks:', error);
                     this.error = 'Failed to load more walks';
-                    this.page--; // Revert page increment on error
                 } finally {
                     this.isLoadingMore = false;
                 }
-            },
+            }
         }));
 
         console.log('Alpine components registered successfully');
@@ -253,11 +209,15 @@ document.addEventListener('alpine:init', () => {
     }
 });
 
-// Initialize remaining features after DOM is ready
+// Initialize features after DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    if (window.Motion) {
-        initializeHoverEffects();
+    if (window.WalkAnimations) {
+        window.WalkAnimations.initializeHoverEffects();
     } else {
-        window.addEventListener('motion:ready', initializeHoverEffects);
+        window.addEventListener('motion:ready', () => {
+            if (window.WalkAnimations) {
+                window.WalkAnimations.initializeHoverEffects();
+            }
+        });
     }
 });

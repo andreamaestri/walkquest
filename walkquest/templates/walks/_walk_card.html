@@ -1,13 +1,19 @@
 {% load walk_tags %}
 
 <article class="bg-white rounded-lg shadow-sm hover:shadow-md p-4 cursor-pointer transform transition-all duration-300 ease-in-out" 
-         x-data="{ isVisible: false, isHovered: false }"
+         x-data="{ 
+            isVisible: false, 
+            isHovered: false,
+            walk: walk
+         }"
+         x-init="walk = JSON.parse($el.getAttribute('data-walk'))"
          x-intersect:enter.margin.200px="isVisible = true"
          x-intersect:leave="isVisible = false"
-         @mouseenter="isHovered = true; $dispatch('walk-hover', '{{ walk.id }}')"
+         @mouseenter="isHovered = true; $dispatch('walk-hover', walk.id)"
          @mouseleave="isHovered = false; $dispatch('walk-hover', null)"
          :class="{ 'scale-105': isVisible && isHovered, 'scale-100': !isHovered || !isVisible }"
          data-walk-id="{{ walk.id }}"
+         data-walk="{{ walk|json_script_attr }}"
          data-features="{{ walk.features|as_json }}"
          data-distance="{{ walk.distance|default:0 }}"
          data-steepness="{{ walk.steepness_level|default:'NOVICE WANDERER' }}"
@@ -15,33 +21,35 @@
          tabindex="0">
     
     <div class="space-y-3">
-        <h4 class="text-lg font-semibold text-gray-900">{{ walk.walk_name|default:"Unnamed Walk" }}</h4>
-        <p class="text-sm text-gray-600">{{ walk.description|default:"No description available"|truncatewords:30 }}</p>
+        <h4 class="text-lg font-semibold text-gray-900" x-text="walk.walk_name || 'Unnamed Walk'"></h4>
+        <p class="text-sm text-gray-600" x-text="walk.description ? (walk.description.length > 150 ? walk.description.substring(0, 150) + '...' : walk.description) : 'No description available'"></p>
         
         <div class="flex flex-wrap gap-3 text-sm text-gray-600">
-            {% if walk.distance %}
+            <template x-if="walk.distance">
                 <span class="inline-flex items-center gap-1">
                     <iconify-icon icon="mdi:map-marker-distance" class="w-5 h-5"></iconify-icon>
-                    {{ walk.distance|floatformat:1 }} miles
+                    <span x-text="`${(walk.distance).toFixed(1)} miles`"></span>
                 </span>
-            {% endif %}
+            </template>
             
-            {% if walk.duration %}
+            <template x-if="walk.duration">
                 <span class="inline-flex items-center gap-1">
                     <iconify-icon icon="mdi:clock-outline" class="w-5 h-5"></iconify-icon>
-                    {{ walk.duration }}
+                    <span x-text="walk.duration"></span>
                 </span>
-            {% endif %}
+            </template>
             
-            {% if walk.steepness_level %}
-                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs
-                    {% if walk.steepness_level == 'EASY' %}bg-green-100 text-green-800
-                    {% elif walk.steepness_level == 'MODERATE' %}bg-yellow-100 text-yellow-800
-                    {% else %}bg-red-100 text-red-800{% endif %}">
+            <template x-if="walk.steepness_level">
+                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs"
+                      :class="{
+                          'bg-green-100 text-green-800': walk.steepness_level === 'EASY',
+                          'bg-yellow-100 text-yellow-800': walk.steepness_level === 'MODERATE',
+                          'bg-red-100 text-red-800': walk.steepness_level === 'CHALLENGING'
+                      }">
                     <iconify-icon icon="mdi:hiking" class="w-4 h-4"></iconify-icon>
-                    {{ walk.steepness_level|default:"Novice"|title_with_spaces }}
+                    <span x-text="walk.steepness_level?.toLowerCase().replace(/_/g, ' ') || 'Novice'"></span>
                 </span>
-            {% endif %}
+            </template>
         </div>
     </div>
 </article>
