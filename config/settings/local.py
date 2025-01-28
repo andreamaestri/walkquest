@@ -19,15 +19,9 @@ ALLOWED_HOSTS = ["localhost", "0.0.0.0", "127.0.0.1"]  # noqa: S104
 # DATABASES
 # ------------------------------------------------------------------------------
 DATABASES = {
-    "default": {
-        "ENGINE": "django.contrib.gis.db.backends.postgis",
-        "NAME": env("POSTGRES_DB"),
-        "USER": env("POSTGRES_USER"),
-        "PASSWORD": env("POSTGRES_PASSWORD"),
-        "HOST": env("POSTGRES_HOST"),
-        "PORT": env("POSTGRES_PORT"),
-    },
+    "default": env.db("DATABASE_URL"),
 }
+DATABASES["default"]["ENGINE"] = "django.contrib.gis.db.backends.postgis"
 
 # CACHES
 # ------------------------------------------------------------------------------

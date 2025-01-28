@@ -13,15 +13,15 @@ module.exports = {
       },
       colors: {
         primary: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          500: '#1D4ED8',
-          600: '#0284c7',
-          700: '#0369a1',
+          50: 'var(--primary-50)',
+          100: 'var(--primary-100)',
+          500: 'var(--primary-500)',
+          600: 'var(--primary-600)',
+          700: 'var(--primary-700)',
         },
         secondary: {
-          500: '#9333EA',
-          600: '#7e22ce',
+          500: 'var(--secondary-500)',
+          600: 'var(--secondary-600)',
         }
       },
       spacing: {

@@ -364,17 +364,6 @@ ESM_IMPORTMAP = {
 
 # Maps
 MAPBOX_TOKEN = env("MAPBOX_TOKEN", default=None)
-THUNDERFOREST_API_KEY = env("THUNDERFOREST_API_KEY", default=None)
-THUNDERFOREST_TILE_URL = "https://tile.thunderforest.com/outdoors/{z}/{x}/{y}.png"
-# Fallback to OSM tiles if Thunderforest API key is not available
-OSM_TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-
-# Use Thunderforest only if API key is available
-MAP_TILE_URL = f"{THUNDERFOREST_TILE_URL}?apikey={THUNDERFOREST_API_KEY}" if THUNDERFOREST_API_KEY else OSM_TILE_URL
-MAP_ATTRIBUTION = "© OpenStreetMap contributors" + (". Maps © Thunderforest" if THUNDERFOREST_API_KEY else "")
-
-# Make map settings available to templates
-TEMPLATES[0]["OPTIONS"]["context_processors"].append("walkquest.utils.context_processors.map_settings")
 
 APPEND_SLASH = True
 
