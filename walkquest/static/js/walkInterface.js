@@ -265,14 +265,4 @@ function walkInterface() {
     };
 }
 
-// Register as Alpine component
-if (window.Alpine) {
-    window.Alpine.data('walkInterface', walkInterface);
-} else {
-    document.addEventListener('alpine:init', () => {
-        window.Alpine.data('walkInterface', walkInterface);
-    });
-}
-
-// Export for module usage
-window.walkInterface = walkInterface;
+export default walkInterface;

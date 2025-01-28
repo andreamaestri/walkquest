@@ -24,23 +24,22 @@
         {% endblock %}
 
         <!-- Core Dependencies -->
+        <!-- Alpine.js and Plugins - Load first -->
+        <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+        <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/intersect@3.x.x/dist/cdn.min.js"></script>
         
         <!-- Load Iconify -->
         <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
         
-        <!-- Core Services - Load early to define services -->
-        <script src="{% static 'js/services.js' %}"></script>
+        <!-- Core Services - Load after Alpine but before components -->
+        <script defer src="{% static 'js/services.js' %}"></script>
         
-        <!-- Alpine.js and Plugins -->
-        <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/@alpinejs/intersect@3.x.x/dist/cdn.min.js"></script>
+        <!-- Main Project JavaScript - Contains component registration -->
+        <script defer src="{% static 'js/project.js' %}"></script>
 
-        <!-- Main Project JavaScript - Must be loaded after Alpine.js but before components -->
-        <script src="{% static 'js/project.js' %}"></script>
-        
-        <!-- Application Components -->
-        <script src="{% static 'js/components/walkList.js' %}"></script>
-        <script src="{% static 'js/walkInterface.js' %}"></script>
+        <!-- Component utilities - Load last -->
+        <script defer src="{% static 'js/components/walkList.js' %}"></script>
+        <script defer src="{% static 'js/walkInterface.js' %}"></script>
 
         <!-- Initialize global config and Motion -->
         <script type="module">
@@ -99,7 +98,7 @@
         </script>
         
         <!-- Animation System -->
-        <script src="{% static 'js/walk-animations.js' %}"></script>
+        <script defer src="{% static 'js/walk-animations.js' %}"></script>
 
         <!-- Additional JavaScript -->
         {% block extra_javascript %}

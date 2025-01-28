@@ -25,15 +25,12 @@ const initializeHoverEffects = () => {
         const expandableContent = element.querySelector('.expandable-content');
         if (!expandableContent) return;
 
-        // Get natural height by temporarily removing constraints
         expandableContent.style.height = 'auto';
         expandableContent.style.opacity = '0';
         const targetHeight = expandableContent.offsetHeight;
         expandableContent.style.height = '0px';
 
-        // Start animations
         const animations = [
-            // Main card animation
             window.Motion.animate(
                 element, 
                 { 
@@ -47,8 +44,6 @@ const initializeHoverEffects = () => {
                     damping: 25
                 }
             ),
-
-            // Expand content
             window.Motion.animate(
                 expandableContent,
                 { height: [0, targetHeight] },
@@ -58,33 +53,25 @@ const initializeHoverEffects = () => {
                     damping: 15
                 }
             ),
-
-            // Fade in content
             window.Motion.animate(
                 expandableContent,
-                {
-                    opacity: [0, 1]
-                },
+                { opacity: [0, 1] },
                 {
                     delay: window.Motion.stagger(0.1),
                     duration: 0.4,
-                    at: "<",  // Start at the same time as height animation
+                    at: "<",
                     easing: [0.2, 0, 0, 1]
                 }
             ),
-
-            // Animate margin
             window.Motion.animate(
                 expandableContent,
                 { marginTop: [0, 16] },
                 {
-                    delay: 0.1,  // Slight delay for visual polish
+                    delay: 0.1,
                     duration: 0.2,
                     easing: [0.2, 0, 0, 1]
                 }
             ),
-
-            // Animate categories
             window.Motion.animate(
                 element.querySelectorAll('.category-tag'),
                 { 
@@ -101,9 +88,7 @@ const initializeHoverEffects = () => {
             )
         ];
 
-        // Return cleanup function for hover end
         return () => {
-            // Reverse all animations with custom timing
             window.Motion.animate(element, 
                 { 
                     y: 0,
@@ -149,21 +134,79 @@ if (window.ApiService && window.ApiService.init) {
 // Register Alpine components
 document.addEventListener('alpine:init', () => {
     try {
-        Alpine.data('walkList', () => ({
-            // Essential properties
-            walks: [],
-            error: null,
-            searchQuery: '',
-            isLoadingMore: false,
-            hasMore: true,
-            page: 1,
+        // Register walkInterface component
+        Alpine.data('walkInterface', () => ({
+            showSidebar: true,
+            selectedWalk: null,
+            isLoading: false,
+            filteredWalks: [],
+            map: null,
+            markers: new Map(),
+            currentRoute: null,
+            
+            init() {
+                const configData = document.getElementById('config-data');
+                const walksData = document.getElementById('walks-data');
+                
+                this.config = configData ? JSON.parse(configData.textContent) : {};
+                this.filteredWalks = walksData ? JSON.parse(walksData.textContent).walks || [] : [];
+                
+                this.initializeMap();
+                this.setupEventListeners();
+            },
+            
+            // Import methods from walkInterface.js
+            ...window.walkInterface()
+        }));
 
+        // Register walkList component
+        Alpine.data('walkList', () => ({
+            walks: [],
+            isLoading: false,
+            isLoadingMore: false,
+            error: null,
+            hasMore: true,
+            searchQuery: '',
+            page: 1,
+            
             init() {
                 this.fetchWalks();
             },
 
             async fetchWalks() {
                 try {
+                    this.isLoading = true;
+                    this.error = null;
+                    this.page = 1;
+                    
+                    const response = await window.ApiService.filterWalks({
+                        search: this.searchQuery,
+                        page: this.page,
+                        page_size: 10
+                    });
+
+                    this.walks = response.walks || [];
+                    this.hasMore = this.walks.length >= 10;
+                    this.$nextTick(() => {
+                        if (window.Motion) {
+                            initializeHoverEffects();
+                        }
+                    });
+                } catch (err) {
+                    console.error('Error fetching walks:', err);
+                    this.error = 'Failed to load walks';
+                } finally {
+                    this.isLoading = false;
+                }
+            },
+
+            async loadMore() {
+                if (this.isLoadingMore || !this.hasMore) return;
+                
+                try {
+                    this.isLoadingMore = true;
+                    this.page++;
+                    
                     const response = await window.ApiService.filterWalks({
                         search: this.searchQuery,
                         page: this.page,
@@ -171,43 +214,37 @@ document.addEventListener('alpine:init', () => {
                     });
 
                     const newWalks = response.walks || [];
-
-                    if (this.page === 1) {
-                        this.walks = newWalks;
-                    } else {
-                        this.walks = [...this.walks, ...newWalks];
-                    }
-
+                    this.walks = [...this.walks, ...newWalks];
                     this.hasMore = newWalks.length >= 10;
-                    this.error = null;
-                } catch (error) {
-                    this.error = 'Failed to load walks';
+                    
+                    this.$nextTick(() => {
+                        if (window.Motion) {
+                            initializeHoverEffects();
+                        }
+                    });
+                } catch (err) {
+                    console.error('Error loading more walks:', err);
+                    this.error = 'Failed to load more walks';
+                    this.page--; // Revert page increment on error
+                } finally {
+                    this.isLoadingMore = false;
                 }
-            },
-
-            async loadMore() {
-                if (this.isLoadingMore || !this.hasMore) return;
-                this.isLoadingMore = true;
-                this.page++;
-                await this.fetchWalks();
-                this.isLoadingMore = false;
             }
         }));
 
-        console.log('Project initialization completed');
+        console.log('Alpine components registered successfully');
     } catch (error) {
-        console.error('Initialization error:', error);
+        console.error('Error registering Alpine components:', error);
         const errorContainer = document.getElementById('error-container');
         if (errorContainer) {
             errorContainer.classList.remove('hidden');
-            errorContainer.textContent = 'Application initialization failed. Please refresh the page.';
+            errorContainer.textContent = 'Failed to initialize components. Please refresh the page.';
         }
     }
 });
 
 // Initialize remaining features after DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    // Setup hover animations when Motion is ready
     if (window.Motion) {
         initializeHoverEffects();
     } else {
