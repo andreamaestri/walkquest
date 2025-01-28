@@ -1,9 +1,10 @@
 {% load slippers %}
 {% load i18n %}
 
-{% var walks=walks|default:[] %}
-<aside class="sidebar" 
+<aside class="sidebar fixed right-0 top-0 h-full w-96 bg-white shadow-lg transform transition-transform duration-300 ease-in-out"
        x-show="showSidebar"
+       x-cloak
+       @keydown.escape.window="showSidebar = false"
        x-transition:enter="transition ease-out duration-300"
        x-transition:enter-start="opacity-0 transform translate-x-full"
        x-transition:enter-end="opacity-100 transform translate-x-0"
@@ -11,31 +12,100 @@
        x-transition:leave-start="opacity-100 transform translate-x-0"
        x-transition:leave-end="opacity-0 transform translate-x-full">
     
-    <script id="walks-data" type="application/json">
-        {{ walks|json_script_content }}
-    </script>
+    <!-- Sidebar Header -->
+    <div class="flex items-center justify-between p-4 border-b">
+        <h2 class="text-xl font-semibold text-gray-900">{% translate "Walks" %}</h2>
+        <button @click="showSidebar = false" 
+                class="text-gray-500 hover:text-gray-700 focus:outline-none">
+            <span class="sr-only">{% translate "Close sidebar" %}</span>
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+    </div>
 
-    <div class="flex flex-col space-y-4 p-4" 
-         x-data="walkList"
-         x-init="init">
-        <div class="relative">
-            <input type="text"
-                   x-model="searchQuery"
-                   @input.debounce.300ms="fetchWalks"
-                   placeholder="{% translate 'Search walks...' %}"
-                   class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:outline-none">
+    <!-- Sidebar Content -->
+    <div class="flex flex-col h-full" 
+         x-data="walkList()"
+         x-init="init()">
+        
+        <!-- Search Bar -->
+        <div class="sticky top-0 z-10 bg-white/80 backdrop-blur-sm p-4 border-b">
+            <div class="relative">
+                <input type="text"
+                       x-model="searchQuery"
+                       @input.debounce.300ms="fetchWalks()"
+                       placeholder="{% translate 'Search walks...' %}"
+                       class="w-full px-4 py-2 border rounded-lg bg-white/90 text-gray-900 placeholder-gray-500
+                              focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:outline-none
+                              transition-all duration-200 shadow-sm hover:shadow-md">
+                <div class="text-xs text-gray-500 mt-1">{% translate 'Search by name, location, or description' %}</div>
+            </div>
         </div>
 
-        <div x-show="isLoading" class="flex justify-center p-4">
-            {% #loading %}Loading walks...{% /loading %}
-        </div>
+        <!-- Loading State -->
+        <template x-if="isLoading">
+            <div class="flex-1 flex items-center justify-center">
+                {% #loading %}Loading walks...{% /loading %}
+            </div>
+        </template>
 
-        <template x-if="!isLoading">
-            <div class="space-y-4">
-                <template x-for="walk in walks" :key="walk.id">
-                    {% #walk_card %}{% /walk_card %}
+        <!-- Error State -->
+        <template x-if="error">
+            <div class="p-4">
+                <div class="bg-red-50 border-l-4 border-red-400 p-4">
+                    <div class="flex">
+                        <div class="ml-3">
+                            <p class="text-sm text-red-700" x-text="error"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <!-- Walk List -->
+        <template x-if="!isLoading && !error">
+            <div class="flex-1 overflow-y-auto">
+                <div class="space-y-4 p-4">
+                    <template x-if="walks.length === 0">
+                        <div class="text-center py-8 text-gray-500">
+                            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+                            </svg>
+                            <h3 class="mt-2 text-sm font-medium text-gray-900">{% translate 'No walks found' %}</h3>
+                            <p class="mt-1 text-sm text-gray-500">{% translate 'Try adjusting your search or filters.' %}</p>
+                        </div>
+                    </template>
+
+                    <template x-for="walk in walks" :key="walk.id">
+                        <div x-data="{ walk: walk }"
+                             x-intersect:enter.once="$el.classList.add('revealed')"
+                             class="opacity-0 transform translate-y-4 transition-all duration-300 ease-out revealed:opacity-100 revealed:translate-y-0">
+                            {% #walk_card %}{% /walk_card %}
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Load More -->
+                <template x-if="isLoadingMore">
+                    <div class="p-4 text-center">
+                        {% #loading %}Loading more walks...{% /loading %}
+                    </div>
+                </template>
+
+                <template x-if="!hasMore && walks.length > 0">
+                    <div class="p-4 text-center text-gray-500">
+                        {% translate 'No more walks to load' %}
+                    </div>
                 </template>
             </div>
         </template>
     </div>
 </aside>
+
+<style>
+    .revealed {
+        opacity: 1;
+        transform: translateY(0);
+    }
+</style>

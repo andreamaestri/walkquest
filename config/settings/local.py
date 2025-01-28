@@ -46,12 +46,17 @@ EMAIL_BACKEND = env(
 INSTALLED_APPS = ["whitenoise.runserver_nostatic", *INSTALLED_APPS]
 
 
+# django-browser-reload
+# ------------------------------------------------------------------------------
+INSTALLED_APPS = ["django_browser_reload", *INSTALLED_APPS]
+MIDDLEWARE.append("django_browser_reload.middleware.BrowserReloadMiddleware")
+
 # django-debug-toolbar
 # ------------------------------------------------------------------------------
 # https://django-debug-toolbar.readthedocs.io/en/latest/installation.html#prerequisites
-INSTALLED_APPS += ["debug_toolbar", "django_browser_reload"]
+INSTALLED_APPS += ["debug_toolbar"]
 # https://django-debug-toolbar.readthedocs.io/en/latest/installation.html#middleware
-MIDDLEWARE += ["debug_toolbar.middleware.DebugToolbarMiddleware", "django_browser_reload.middleware.BrowserReloadMiddleware"]
+MIDDLEWARE += ["debug_toolbar.middleware.DebugToolbarMiddleware"]
 # https://django-debug-toolbar.readthedocs.io/en/latest/configuration.html#debug-toolbar-config
 DEBUG_TOOLBAR_CONFIG = {
     "DISABLE_PANELS": [

@@ -17,6 +17,12 @@ const DEFAULT_CONFIG = {
     }
 };
 
+// Make config available globally before Alpine loads
+window.walkquestConfig = {
+    ...DEFAULT_CONFIG,
+    csrfToken: document.querySelector('meta[name="csrf-token"]')?.content
+};
+
 // Initialize ApiService before Alpine components
 if (window.ApiService && window.ApiService.init) {
     window.ApiService.init();

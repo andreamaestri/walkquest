@@ -1,7 +1,7 @@
 // Initialize walk interface component
 document.addEventListener('alpine:init', () => {
     Alpine.data('walkInterface', () => ({
-        // Required properties
+        // Required state
         showSidebar: true,
         selectedWalk: null,
         isLoading: false,
@@ -9,13 +9,18 @@ document.addEventListener('alpine:init', () => {
         map: null,
         markers: new Map(),
         currentRoute: null,
+        config: {},
 
+        // Initialize
         init() {
-            const configData = document.getElementById('config-data');
-            const walksData = document.getElementById('walks-data');
-            
-            this.config = configData ? JSON.parse(configData.textContent) : {};
-            this.filteredWalks = walksData ? JSON.parse(walksData.textContent).walks || [] : [];
+            try {
+                const configData = document.getElementById('config-data');
+                const walksData = document.getElementById('walks-data');
+                const tagsData = document.getElementById('tags-data');
+                
+                this.config = configData ? JSON.parse(configData.textContent) : window.walkquestConfig || {};
+                this.filteredWalks = walksData ? JSON.parse(walksData.textContent) || [] : [];
+                this.tags = tagsData ? JSON.parse(tagsData.textContent) : {};
 
             this.initializeMap();
             this.setupEventListeners();

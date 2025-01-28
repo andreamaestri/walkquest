@@ -1,11 +1,31 @@
 // ApiService class definition
 const ApiService = {
+    baseUrl: window.location.origin + '/api',
+    csrfToken: null,
+
     init() {
-        this.csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-        this.baseUrl = window.location.origin + '/api';
+        // Get CSRF token from meta tag
+        const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+        if (!csrfTokenMeta) {
+            console.error('CSRF token meta tag not found');
+            return;
+        }
+        this.csrfToken = csrfTokenMeta.content;
+
+        // Ensure baseUrl is set
+        if (!this.baseUrl) {
+            this.baseUrl = window.location.origin + '/api';
+        }
+
+        console.log('ApiService initialized with baseUrl:', this.baseUrl);
     },
 
     async fetch(endpoint, options = {}) {
+        // Ensure we're initialized
+        if (!this.csrfToken) {
+            this.init();
+        }
+
         // Conditionally set headers based on the request method
         const defaultHeaders = {
             'Accept': 'application/json'
@@ -27,6 +47,8 @@ const ApiService = {
 
         try {
             const url = `${this.baseUrl}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
+            console.log('Making API request to:', url);
+            
             const response = await fetch(url, {
                 ...defaultOptions,
                 ...options
@@ -43,7 +65,7 @@ const ApiService = {
 
             return await response.json();
         } catch (error) {
-            console.error('API request failed:', error);
+            console.error('API request failed:', error, 'to endpoint:', endpoint);
             throw new Error(`API request failed: ${error.message}`);
         }
     },
@@ -54,9 +76,13 @@ const ApiService = {
         if (params.categories?.length) {
             queryParams.append('categories', params.categories.join(','));
         }
+        if (params.page) queryParams.append('page', params.page);
+        if (params.page_size) queryParams.append('page_size', params.page_size);
         
-        const data = await this.fetch(`/walks`);
-        console.log('API getWalks response:', data);
+        const url = `/walks${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+        console.log('Fetching walks with URL:', url);
+        
+        const data = await this.fetch(url);
         
         if (!data || typeof data !== 'object') {
             throw new Error('Invalid API response format');
@@ -115,30 +141,53 @@ const ApiService = {
     },
 
     async filterWalks(filters = {}) {
-        const response = await this.fetch('/walks/filter', {
-            method: 'POST',
-            body: JSON.stringify({
-                categories: filters.categories || [],
-                difficulty: filters.difficulty,
-                distance: filters.distance,
-                duration: filters.duration,
-                search: filters.search || ''
-            })
-        });
+        try {
+            console.log('Filtering walks with:', filters);
+            
+            // Build query parameters
+            const queryParams = new URLSearchParams({
+                page: filters.page || '1',
+                page_size: filters.page_size || '10'
+            });
+            
+            if (filters.search) {
+                queryParams.append('search', filters.search);
+            }
+            if (filters.categories?.length) {
+                queryParams.append('categories', filters.categories.join(','));
+            }
+            if (filters.features?.length) {
+                queryParams.append('features', filters.features.join(','));
+            }
 
-        console.log('API filterWalks response:', response);
+            const url = `/walks?${queryParams.toString()}`;
+            console.log('Fetching filtered walks with URL:', url);
+            
+            const response = await this.fetch(url);
+            console.log('API filterWalks response:', response);
 
-        if (!response || typeof response !== 'object') {
-            throw new Error('Invalid API response format');
+            if (!response || typeof response !== 'object') {
+                throw new Error('Invalid API response format');
+            }
+
+            return {
+                walks: Array.isArray(response) ? response : [],
+                total: Array.isArray(response) ? response.length : 0,
+                hasMore: Array.isArray(response) && response.length >= (filters.page_size || 10)
+            };
+        } catch (error) {
+            console.error('Filter walks error:', error);
+            throw error;
         }
-
-        return {
-            walks: Array.isArray(response) ? response : (response.walks || []),
-            total: typeof response.total === 'number' ? response.total : (Array.isArray(response) ? response.length : 0),
-            filters: response.applied_filters || {}
-        };
     }
 };
 
 // Make ApiService globally available
 window.ApiService = ApiService;
+
+// Initialize immediately when loaded
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => ApiService.init());
+} else {
+    ApiService.init();
+}

@@ -15,24 +15,81 @@
     {{ config|json_script:"config-data" }}
     {{ initial_walks|json_script:"walks-data" }}
     
+    <!-- Main layout container with walkInterface component -->
     <div class="layout-container" 
-         x-data="walkInterface"
-         x-init="$nextTick(() => init())">
-        <!-- Sidebar -->
-        <aside class="sidebar"
+         x-data="{
+             showSidebar: false,
+             selectedWalk: null,
+             map: null,
+             markers: new Map(),
+             currentRoute: null,
+             
+             init() {
+                 const configData = document.getElementById('config-data');
+                 if (configData) {
+                     this.config = JSON.parse(configData.textContent);
+                 }
+                 this.initMap();
+             },
+
+             handleWalkSelection(walkId) {
+                 if (!walkId) return;
+                 this.selectedWalk = walkId;
+                 this.showSidebar = true;
+                 this.highlightWalkOnMap(walkId);
+             },
+
+             initMap() {
+                 // Map initialization will be handled by the map component
+                 console.log('Map initialized');
+             },
+
+             highlightWalkOnMap(walkId) {
+                 // Highlight walk on map
+                 console.log('Highlighting walk:', walkId);
+             }
+         }"
+         x-init="init()"
+         @keydown.escape.window="showSidebar = false"
+         @walk-selected.window="handleWalkSelection($event.detail)">
+         
+        <!-- Sidebar with walk list -->
+        <aside class="sidebar fixed right-0 top-0 h-full w-96 bg-white shadow-lg transform transition-transform duration-300 ease-in-out"
                x-show="showSidebar"
+               x-cloak
                x-transition:enter="transition ease-out duration-300"
                x-transition:enter-start="opacity-0 transform translate-x-full"
                x-transition:enter-end="opacity-100 transform translate-x-0"
                x-transition:leave="transition ease-in duration-300"
                x-transition:leave-start="opacity-100 transform translate-x-0"
                x-transition:leave-end="opacity-0 transform translate-x-full">
+            
+            <!-- Walk list component -->
             {% #walk_list walks=initial_walks %}{% /walk_list %}
         </aside>
 
         <!-- Map container -->
-        <main class="map-container">
-            <div x-ref="map" class="map"></div>
+        <main class="map-container relative w-full h-screen">
+            <div x-ref="map" class="map absolute inset-0"></div>
+            
+            <!-- Toggle sidebar button -->
+            <button @click="showSidebar = !showSidebar"
+                    class="absolute top-4 right-4 z-10 bg-white p-2 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200"
+                    :class="{ 'right-[24rem]': showSidebar }"
+                    :aria-label="showSidebar ? '{% translate "Hide walks" %}' : '{% translate "Show walks" %}'">
+                <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path x-show="!showSidebar" 
+                          stroke-linecap="round" 
+                          stroke-linejoin="round" 
+                          stroke-width="2" 
+                          d="M4 6h16M4 12h16m-7 6h7"></path>
+                    <path x-show="showSidebar" 
+                          stroke-linecap="round" 
+                          stroke-linejoin="round" 
+                          stroke-width="2" 
+                          d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
         </main>
     </div>
 {% endblock %}

@@ -4,12 +4,81 @@
 {% var walks=walks %}
 {{ walks|json_script:"walks-data" }}
 
-<div class="flex flex-col space-y-4 p-4" 
-     x-data="walkList" 
+<div class="flex flex-col space-y-4 p-4"
+     x-data="{
+         walks: [],
+         isLoading: false,
+         isLoadingMore: false,
+         hasMore: false,
+         error: null,
+         searchQuery: '',
+         page: 1,
+         
+         init() {
+             const walksData = document.getElementById('walks-data');
+             if (walksData) {
+                 try {
+                     const initialData = JSON.parse(walksData.textContent);
+                     this.walks = initialData.walks || [];
+                     this.hasMore = this.walks.length >= 10;
+                 } catch (err) {
+                     console.error('Failed to parse initial walks data:', err);
+                 }
+             }
+             this.fetchWalks();
+         },
+
+         async fetchWalks() {
+             this.isLoading = true;
+             this.error = null;
+             try {
+                 const response = await window.ApiService.filterWalks({
+                     search: this.searchQuery,
+                     page: 1,
+                     page_size: 10
+                 });
+                 this.walks = response.walks || [];
+                 this.hasMore = this.walks.length >= 10;
+                 this.page = 1;
+             } catch (err) {
+                 console.error('Failed to fetch walks:', err);
+                 this.error = 'Failed to load walks';
+             } finally {
+                 this.isLoading = false;
+             }
+         },
+
+         async loadMore() {
+             if (this.isLoadingMore || !this.hasMore) return;
+             this.isLoadingMore = true;
+             try {
+                 const response = await window.ApiService.filterWalks({
+                     search: this.searchQuery,
+                     page: this.page + 1,
+                     page_size: 10
+                 });
+                 const newWalks = response.walks || [];
+                 this.walks = [...this.walks, ...newWalks];
+                 this.hasMore = newWalks.length >= 10;
+                 this.page++;
+             } catch (err) {
+                 console.error('Failed to load more walks:', err);
+                 this.error = 'Failed to load more walks';
+             } finally {
+                 this.isLoadingMore = false;
+             }
+         },
+         
+         checkScroll() {
+             if (!this.isLoading && !this.isLoadingMore && this.hasMore) {
+                 if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 1000) {
+                     this.loadMore();
+                 }
+             }
+         }
+     }"
      x-init="init()"
-     @scroll.window.debounce.100ms="
-        if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 1000) loadMore()
-     ">
+     @scroll.window.debounce.100ms="checkScroll()">
     
     <!-- Search Bar -->
     <div class="sticky top-0 z-50 bg-white/80 backdrop-blur-sm border-b border-gray-200 -mx-4 px-4 py-3 shadow-sm transition-all duration-300 ease-in-out"
@@ -29,70 +98,62 @@
     </div>
 
     <!-- Error Message -->
-    <template x-if="error">
-        <div class="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
-            <div class="flex">
-                <div class="flex-shrink-0">
-                    <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
-                    </svg>
-                </div>
-                <div class="ml-3">
-                    <p class="text-sm text-red-700" x-text="error"></p>
-                </div>
+    <div x-show="error"
+         class="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                </svg>
+            </div>
+            <div class="ml-3">
+                <p class="text-sm text-red-700" x-text="error"></p>
             </div>
         </div>
-    </template>
+    </div>
 
     <!-- Initial Loading State -->
-    <template x-if="isLoading">
-        <div>
-            {% #loading_skeleton %}{% /loading_skeleton %}
-        </div>
-    </template>
+    <div x-show="isLoading">
+        {% #loading_skeleton %}{% /loading_skeleton %}
+    </div>
 
     <!-- Walk List -->
-    <template x-if="!isLoading">
-        <div class="space-y-4"
-             x-transition:enter="transition ease-out duration-300"
-             x-transition:enter-start="opacity-0 transform -translate-y-4"
-             x-transition:enter-end="opacity-100 transform translate-y-0">
-            
-            <template x-if="walks.length === 0">
-                <div class="text-center py-8 text-gray-500">
-                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-                    </svg>
-                    <h3 class="mt-2 text-sm font-medium text-gray-900">{% translate 'No walks found' %}</h3>
-                    <p class="mt-1 text-sm text-gray-500">{% translate 'Try adjusting your search or filters.' %}</p>
-                </div>
-            </template>
-
-            <div class="space-y-4">
-                <template x-for="walk in walks" :key="walk.id">
-                    <div x-data="{ walk: walk }"
-                         x-intersect:enter.once="$el.classList.add('revealed')"
-                         class="opacity-0 transform translate-y-4 transition-all duration-300 ease-out revealed:opacity-100 revealed:translate-y-0">
-                        {% #walk_card %}{% /walk_card %}
-                    </div>
-                </template>
+    <div x-show="!isLoading" 
+         class="space-y-4"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 transform -translate-y-4"
+         x-transition:enter-end="opacity-100 transform translate-y-0">
+        
+        <template x-if="walks.length === 0">
+            <div class="text-center py-8 text-gray-500">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-gray-900">{% translate 'No walks found' %}</h3>
+                <p class="mt-1 text-sm text-gray-500">{% translate 'Try adjusting your search or filters.' %}</p>
             </div>
+        </template>
 
-            <!-- Load More Indicator -->
-            <template x-if="isLoadingMore">
-                <div class="py-4">
-                    {% #loading %}Loading more walks...{% /loading %}
-                </div>
-            </template>
-
-            <!-- End of List Indicator -->
-            <template x-if="!hasMore && walks.length > 0">
-                <div class="text-center py-4 text-gray-500">
-                    {% translate 'No more walks to load' %}
+        <div class="space-y-4">
+            <template x-for="walk in walks" :key="walk.id">
+                <div x-data="{ walk: walk }"
+                     x-intersect:enter.once="$el.classList.add('revealed')"
+                     class="opacity-0 transform translate-y-4 transition-all duration-300 ease-out revealed:opacity-100 revealed:translate-y-0">
+                    {% #walk_card %}{% /walk_card %}
                 </div>
             </template>
         </div>
-    </template>
+
+        <!-- Load More Indicator -->
+        <div x-show="isLoadingMore" class="py-4">
+            {% #loading %}Loading more walks...{% /loading %}
+        </div>
+
+        <!-- End of List Indicator -->
+        <div x-show="!hasMore && walks.length > 0" class="text-center py-4 text-gray-500">
+            {% translate 'No more walks to load' %}
+        </div>
+    </div>
 </div>
 
 <style>

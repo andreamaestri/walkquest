@@ -5,7 +5,6 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta name="csrf-token" content="{{ csrf_token }}">
-        <link rel="icon" type="image/x-icon" href="data:image/x-icon;,">
         <title>{% block title %}WalkQuest{% endblock %}</title>
         
         <!-- Critical CSS -->
@@ -24,26 +23,16 @@
         <!-- Default JavaScript block that can be overridden -->
         {% endblock %}
 
-        <!-- Dependencies - Load in order -->
+        <!-- Core Dependencies -->
+        <!-- Load API Services first -->
+        <script src="{% static 'js/services.js' %}"></script>
         
-        <!-- 1. Alpine.js Core and Plugins -->
+        <!-- Load Iconify -->
+        <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
+        
+        <!-- Alpine.js and Plugins -->
         <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
         <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/intersect@3.x.x/dist/cdn.min.js"></script>
-        
-        <!-- 2. Alpine Components and Utilities -->
-        <script defer src="{% static 'js/alpine-components.js' %}"></script>
-        <script defer src="{% static 'js/services.js' %}"></script>
-        <script defer src="{% static 'js/walk-animations.js' %}"></script>
-
-        <!-- 3. Base Components -->
-        <script defer src="{% static 'js/walkInterface.js' %}"></script>
-        <script defer src="{% static 'js/components/walkList.js' %}"></script>
-        
-        <!-- 4. Project Initialization -->
-        <script defer src="{% static 'js/project.js' %}"></script>
-        
-        <!-- 5. Third-party Dependencies -->
-        <script defer src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
 
         <!-- Initialize global config and Motion -->
         <script type="module">
@@ -100,7 +89,7 @@
                 window.dispatchEvent(new Event('motion:ready'));
             });
         </script>
-
+        
         <!-- Additional JavaScript -->
         {% block extra_javascript %}
         <!-- Additional JavaScript block for page-specific scripts -->
