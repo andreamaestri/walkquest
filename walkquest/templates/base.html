@@ -5,6 +5,7 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta name="csrf-token" content="{{ csrf_token }}">
+        <link rel="icon" href="{% static 'images/favicons/favicon.ico' %}" type="image/x-icon">
         <title>{% block title %}WalkQuest{% endblock %}</title>
         
         <!-- Critical CSS -->
@@ -24,22 +25,20 @@
         {% endblock %}
 
         <!-- Core Dependencies -->
-        <!-- Alpine.js and Plugins - Load first -->
+        <!-- Alpine.js and Core Dependencies - Load first -->
         <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
         <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/intersect@3.x.x/dist/cdn.min.js"></script>
-        
-        <!-- Load Iconify -->
         <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
         
-        <!-- Core Services - Load after Alpine but before components -->
+        <!-- Core Services and Utilities -->
         <script defer src="{% static 'js/services.js' %}"></script>
+        <script defer src="{% static 'js/walkInterface.js' %}"></script>
         
         <!-- Main Project JavaScript - Contains component registration -->
         <script defer src="{% static 'js/project.js' %}"></script>
 
-        <!-- Component utilities - Load last -->
+        <!-- Additional Components -->
         <script defer src="{% static 'js/components/walkList.js' %}"></script>
-        <script defer src="{% static 'js/walkInterface.js' %}"></script>
 
         <!-- Initialize global config and Motion -->
         <script type="module">

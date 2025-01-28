@@ -1,5 +1,5 @@
 // Define component function
-function walkInterface() {
+window.walkInterface = function() {
     return {
         showSidebar: true,
         selectedWalk: null,
@@ -263,6 +263,4 @@ function walkInterface() {
             })[m]);
         }
     };
-}
-
-export default walkInterface;
+};
