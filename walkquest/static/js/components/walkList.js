@@ -44,11 +44,19 @@ document.addEventListener('alpine:init', () => {
             // Use window.Motion since it's globally available
             if (window.Motion) {
                 window.Motion.animate('.walk-item',
-                    { 
-                        opacity: [0, 1],
-                        y: [20, 0]
+                    {
+                        opacity: [0, 1], 
+                        y: [50, 0],
+                        scale: [0.95, 1]
                     },
-                    { delay: window.Motion.stagger(0.1), duration: 0.6, easing: 'ease-out' });
+                    {
+                        delay: window.Motion.stagger(0.15, { 
+                            from: "end"  // Animate from bottom to top
+                        }),
+                        duration: 0.8,
+                        easing: [0.33, 1, 0.68, 1],  // Custom cubic-bezier for refined motion
+                        timing: "ease-out"
+                    });
             }
         },
 
@@ -101,9 +109,16 @@ document.addEventListener('alpine:init', () => {
                                 '.walk-item:nth-last-child(-n+10)',
                                 { 
                                     opacity: [0, 1],
-                                    y: [20, 0]
+                                    y: [50, 0],
+                                    scale: [0.95, 1]
                                 },
-                                { delay: window.Motion.stagger(0.1), duration: 0.6, easing: 'ease-out' });
+                                { 
+                                    delay: window.Motion.stagger(0.15, { 
+                                        from: "end" 
+                                    }), 
+                                    duration: 0.8,
+                                    easing: [0.33, 1, 0.68, 1]
+                                });
                         }
                     });
                 }

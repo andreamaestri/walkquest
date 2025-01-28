@@ -14,16 +14,32 @@
             this.$nextTick(() => {
                 if (window.Motion) {
                     this.$el.addEventListener('mouseenter', () => {
-                        window.Motion.animate(this.$el, { scale: 1.02, y: -4 }, { duration: 0.2, easing: 'ease-out' });
+                        window.Motion.animate(this.$el, 
+                            { 
+                                scale: 1.02, 
+                                y: -4,
+                                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
+                            }, 
+                            { 
+                                duration: 0.4, 
+                                easing: [0.33, 1, 0.68, 1]
+                            }
+                        );
                     });
                     this.$el.addEventListener('mouseleave', () => {
-                        window.Motion.animate(this.$el, { scale: 1, y: 0 }, { duration: 0.2, easing: 'ease-out' });
+                        window.Motion.animate(this.$el, 
+                            { 
+                                scale: 1, 
+                                y: 0,
+                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                            }, 
+                            { duration: 0.4, easing: [0.33, 1, 0.68, 1] });
                     });
                 }
             });
         }
       }"
-      @click="selectWalk(walk.id); if (window.Motion) { window.Motion.animate(this.$el, { scale: 0.98 }, { duration: 0.1, easing: 'ease-in' }).then(() => window.Motion.animate(this.$el, { scale: 1 }, { duration: 0.2, easing: 'ease-out' })) }">
+      @click="selectWalk(walk.id); if (window.Motion) { window.Motion.animate(this.$el, { scale: 0.97 }, { duration: 0.15, easing: [0.33, 1, 0.68, 1] }).then(() => window.Motion.animate(this.$el, { scale: 1 }, { duration: 0.3, easing: [0.33, 1, 0.68, 1] })) }">
     
     <div class="flex justify-between items-start">
         <h3 class="text-lg font-semibold text-gray-900 truncate" x-text="walk.walk_name"></h3>
@@ -85,14 +101,14 @@
              if (window.Motion) {
                  window.Motion.animate(this.$el, {
                      opacity: [0, 1],
-                     height: ['0px', 'auto']
+                     height: ['0px', 'auto'],
+                     scale: [0.98, 1]
                  }, {
-                     duration: 0.3,
-                     easing: 'ease-out'
+                     duration: 0.4,
+                     easing: [0.33, 1, 0.68, 1]
                  });
              }
-         } else {
-             if (window.Motion) { window.Motion.animate(this.$el, { opacity: 0, height: '0px' }, { duration: 0.3, easing: 'ease-in' }); }
+         } else if (window.Motion) { window.Motion.animate(this.$el, { opacity: 0, height: '0px', scale: 0.98 }, { duration: 0.3, easing: [0.33, 1, 0.68, 1] });
          }"
          class="mt-2 text-sm text-gray-600 overflow-hidden">
         <p x-text="walk.highlights" class="line-clamp-2"></p>

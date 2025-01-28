@@ -4,14 +4,31 @@
     init() {
         this.$nextTick(() => {
             if (window.Motion) {
-                window.Motion.animate('.loading-skeleton-card', 
-                    { opacity: [0.5, 1], scale: [0.98, 1] },
-                    { duration: 1.5, repeat: Infinity, easing: 'ease-in-out', direction: 'alternate' });
+                // Initial entrance animation
+                window.Motion.animate('.loading-skeleton-card',
+                    {
+                        opacity: [0, 1],
+                        y: [30, 0],
+                        scale: [0.97, 1]
+                    },
+                    {
+                        delay: window.Motion.stagger(0.15, { from: "end" }),
+                        duration: 0.8,
+                        easing: [0.33, 1, 0.68, 1]
+                    }
+                ).then(() => {
+                    // Subtle breathing animation after entrance
+                    window.Motion.animate('.loading-skeleton-card',
+                        { opacity: [0.7, 1], scale: [0.99, 1] },
+                        { duration: 2, repeat: Infinity, easing: [0.33, 1, 0.68, 1], direction: 'alternate' }
+                    );
+                });
             }
+            
         });
     }
 }"
-     class="loading-skeleton animate-pulse">
+     class="loading-skeleton">
      <div class="space-y-4">
          {% for i in "123"|make_list %}
              <div class="loading-skeleton-card bg-white rounded-lg shadow-md p-4">
