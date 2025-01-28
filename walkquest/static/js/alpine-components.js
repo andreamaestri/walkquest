@@ -1,37 +1,36 @@
-// Initialize Alpine.js components and store
-document.addEventListener('alpine:init', () => {
-    // Global store for shared state
-    Alpine.store('walks', {
-        selectedWalk: null,
-        pendingFavorites: new Set(),
-        
-        setSelectedWalk(walk) {
-            this.selectedWalk = walk;
-        },
-        
-        togglePendingFavorite(walkId) {
-            if (this.pendingFavorites.has(walkId)) {
-                this.pendingFavorites.delete(walkId);
-            } else {
-                this.pendingFavorites.add(walkId);
-            }
-        },
-        
-        isPending(walkId) {
-            return this.pendingFavorites.has(walkId);
+// Component function definitions
+function mobileMenu() {
+    return {
+        isOpen: false,
+        toggleMenu() {
+            this.isOpen = !this.isOpen;
         }
-    });
+    };
+}
 
-    // Map interface component
-    Alpine.data('walkInterface', () => ({
+function loading() {
+    return {
+        show: false,
+        init() {
+            // Watch for loading events
+            window.addEventListener('loading:show', () => this.show = true);
+            window.addEventListener('loading:hide', () => this.show = false);
+        }
+    };
+}
+
+function walkInterface() {
+    return {
         // Component state
         showSidebar: false,
         isMapLoading: true,
         map: null,
         markers: new Map(),
+        error: null,
 
         // Initialization
         init() {
+            console.log('Initializing walkInterface component...');
             this.initializeMap();
         },
 
@@ -40,6 +39,8 @@ document.addEventListener('alpine:init', () => {
             const configScript = document.getElementById('config-data');
             if (!configScript) {
                 console.error('Config data script tag not found');
+                this.error = 'Configuration not found';
+                this.isMapLoading = false;
                 return;
             }
 
@@ -70,10 +71,12 @@ document.addEventListener('alpine:init', () => {
                 // Handle map errors
                 this.map.on('error', (e) => {
                     console.error('Map error:', e);
+                    this.error = 'Map failed to load';
                     this.isMapLoading = false;
                 });
             } catch (error) {
                 console.error('Failed to initialize map:', error);
+                this.error = error.message;
                 this.isMapLoading = false;
             }
         },
@@ -97,10 +100,11 @@ document.addEventListener('alpine:init', () => {
                 }
             });
         }
-    }));
+    };
+}
 
-    // Walk list component
-    Alpine.data('walkList', () => ({
+function walkList() {
+    return {
         // Component state
         walks: [],
         searchQuery: '',
@@ -112,6 +116,7 @@ document.addEventListener('alpine:init', () => {
 
         // Initialization
         init() {
+            console.log('Initializing walkList component...');
             this.loadInitialData();
             this.fetchWalks();
         },
@@ -132,6 +137,7 @@ document.addEventListener('alpine:init', () => {
                 }
             } catch (err) {
                 console.error('Failed to parse initial walks data:', err);
+                this.error = 'Failed to load initial data';
             }
         },
 
@@ -139,11 +145,12 @@ document.addEventListener('alpine:init', () => {
         async fetchWalks() {
             if (!window.ApiService?.filterWalks) {
                 console.error('ApiService.filterWalks not available');
+                this.error = 'API service not available';
                 return;
             }
 
             this.isLoading = true;
-            this.error = null;
+            window.dispatchEvent(new Event('loading:show'));
 
             try {
                 const response = await window.ApiService.filterWalks({
@@ -160,6 +167,7 @@ document.addEventListener('alpine:init', () => {
                 this.error = 'Failed to load walks. Please try again.';
             } finally {
                 this.isLoading = false;
+                window.dispatchEvent(new Event('loading:hide'));
             }
         },
 
@@ -190,6 +198,8 @@ document.addEventListener('alpine:init', () => {
 
         // Scroll handling
         checkScroll() {
+            if (!this.hasMore || this.isLoadingMore) return;
+            
             const scrollPosition = window.innerHeight + window.scrollY;
             const documentHeight = document.documentElement.scrollHeight;
             const threshold = 200;
@@ -213,9 +223,57 @@ document.addEventListener('alpine:init', () => {
                 }
             } catch (error) {
                 console.error('Failed to toggle favorite:', error);
+                this.error = 'Failed to update favorite status';
             } finally {
                 this.$store.walks.togglePendingFavorite(walkId);
             }
         }
-    }));
+    };
+}
+
+// Initialize Alpine.js components and store
+document.addEventListener('alpine:init', () => {
+    console.log('Initializing Alpine.js components...');
+
+    // Initialize store first
+    Alpine.store('walks', {
+        selectedWalk: null,
+        pendingFavorites: new Set(),
+        
+        setSelectedWalk(walk) {
+            this.selectedWalk = walk;
+            console.log('Selected walk updated:', walk?.walk_name);
+        },
+        
+        togglePendingFavorite(walkId) {
+            if (this.pendingFavorites.has(walkId)) {
+                this.pendingFavorites.delete(walkId);
+            } else {
+                this.pendingFavorites.add(walkId);
+            }
+        },
+        
+        isPending(walkId) {
+            return this.pendingFavorites.has(walkId);
+        }
+    });
+
+    // Register components
+    Alpine.data('mobileMenu', mobileMenu);
+    Alpine.data('loading', loading);
+    Alpine.data('walkInterface', walkInterface);
+    Alpine.data('walkList', walkList);
+
+    console.log('Alpine.js components initialized');
+});
+
+// Debug initialization
+window.addEventListener('alpine:initialized', () => {
+    console.log('Alpine.js ready:', {
+        store: Alpine.store('walks'),
+        walkInterface: Alpine.data('walkInterface'),
+        walkList: Alpine.data('walkList'),
+        mobileMenu: Alpine.data('mobileMenu'),
+        loading: Alpine.data('loading')
+    });
 });

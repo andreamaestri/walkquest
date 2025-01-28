@@ -11,34 +11,35 @@
     {{ initial_walks|json_script:"walks-data" }}
     
     <!-- Main layout container with walkInterface component -->
-    <div x-data="walkInterface"
+    <div x-data="walkInterface()"
          x-init="init"
          x-effect="$store.walks.selectedWalk && (showSidebar = true)"
          @keydown.escape.window="showSidebar = false"
          @click.outside="showSidebar = false"
          @walk-selected.window="handleWalkSelection($event.detail)"
-         class="relative">
+         class="relative h-screen">
           
         <!-- Sidebar with walk list -->
         <aside class="sidebar fixed right-0 top-0 h-full w-96 bg-white shadow-lg transform transition-transform duration-300 ease-in-out"
-               x-show="showSidebar"
-               x-cloak
-               @click.outside="showSidebar = false"
-               x-transition:enter="transition ease-out duration-300"
-               x-transition:enter-start="opacity-0 transform translate-x-full"
-               x-transition:enter-end="opacity-100 transform translate-x-0"
-               x-transition:leave="transition ease-in duration-300"
-               x-transition:leave-start="opacity-100 transform translate-x-0"
-               x-transition:leave-end="opacity-0 transform translate-x-full">
+            x-show="showSidebar"
+            x-cloak
+            @click.outside="showSidebar = false"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 transform translate-x-full"
+            x-transition:enter-end="opacity-100 transform translate-x-0"
+            x-transition:leave="transition ease-in duration-300"
+            x-transition:leave-start="opacity-100 transform translate-x-0"
+            x-transition:leave-end="opacity-0 transform translate-x-full">
             
             <!-- Walk list component -->
             {% #walk_list walks=initial_walks %}{% /walk_list %}
         </aside>
 
         <!-- Map container -->
-        <main class="map">
-            <div class="map-container">
-                <div x-ref="map" class="map-inner bg-gray-100"></div>
+        <main class="map h-full">
+            <div class="map-container h-full relative">
+                <!-- Map element -->
+                <div x-ref="map" class="map-inner h-full bg-gray-100"></div>
             
                 <!-- Loading indicator -->
                 <div x-show="isMapLoading" 
@@ -52,6 +53,13 @@
                         </svg>
                         <span class="sr-only">Loading map...</span>
                     </div>
+                </div>
+
+                <!-- Error message -->
+                <div x-show="error" 
+                     x-cloak
+                     class="absolute bottom-4 left-4 right-4 bg-red-50 border-l-4 border-red-400 p-4 rounded shadow-lg">
+                    <p class="text-sm text-red-700" x-text="error"></p>
                 </div>
             </div>
             

@@ -3,12 +3,15 @@
 
 {{ walks|json_script:"walks-data" }}
 
-<div x-data="walkList"
-     @scroll.window.debounce.100ms="checkScroll">
+<div x-data="walkList()"
+     x-init="init"
+     @scroll.window.debounce.100ms="checkScroll"
+     class="flex flex-col space-y-4 p-4">
+    
     <!-- Debug info -->
     <template x-if="true">
         <div x-show="false" class="hidden">
-            <pre x-effect="console.log('Component State:', $data)"></pre>
+            <pre x-text="JSON.stringify({ walks, isLoading, hasMore }, null, 2)"></pre>
         </div>
     </template>
 
@@ -29,7 +32,7 @@
         </div>
     </div>
 
-    <!-- Error and Loading States -->
+    <!-- Error Messages -->
     <template x-if="error">
         <div class="bg-red-50 border-l-4 border-red-400 p-4">
             <p class="text-sm text-red-700" x-text="error"></p>
@@ -37,7 +40,7 @@
     </template>
 
     <!-- Loading State -->
-    <div x-show="isLoading" class="space-y-4">
+    <div x-show="isLoading" x-cloak class="space-y-4">
         {% include "components/loading_skeleton.html" %}
     </div>
 
@@ -46,7 +49,8 @@
         <template x-if="walks.length === 0">
             <div class="text-center py-8 text-gray-500">
                 <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                          d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
                 </svg>
                 <h3 class="mt-2 text-sm font-medium text-gray-900">{% translate 'No walks found' %}</h3>
                 <p class="mt-1 text-sm text-gray-500">{% translate 'Try adjusting your search or filters.' %}</p>
@@ -55,21 +59,22 @@
 
         <div class="space-y-4">
             <template x-for="walk in walks" :key="walk.id">
-                <div x-data="{ walk: walk }"
+                <div class="opacity-0 transform translate-y-4 transition-all duration-300 ease-out"
+                     x-data="{ walk }"
                      x-intersect:enter.once="$el.classList.add('revealed')"
-                     class="opacity-0 transform translate-y-4 transition-all duration-300 ease-out revealed:opacity-100 revealed:translate-y-0">
+                     :class="{ 'revealed': true }">
                     {% #walk_card %}{% /walk_card %}
                 </div>
             </template>
         </div>
 
         <!-- Load More Indicator -->
-        <div x-show="isLoadingMore" class="py-4">
+        <div x-show="isLoadingMore" x-cloak class="py-4">
             {% #loading %}Loading more walks...{% /loading %}
         </div>
 
         <!-- End of List Indicator -->
-        <div x-show="!hasMore && walks.length > 0" class="text-center py-4 text-gray-500">
+        <div x-show="!hasMore && walks.length > 0" x-cloak class="text-center py-4 text-gray-500">
             {% translate 'No more walks to load' %}
         </div>
     </div>

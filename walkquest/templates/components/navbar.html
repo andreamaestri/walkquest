@@ -1,84 +1,63 @@
 {% load i18n %}
 {% load static %}
 
-<nav class="main-nav" x-data="{ isOpen: false }">
-    <div class="max-w-7xl mx-auto px-4">
-        <div class="flex items-center justify-between h-16">
-            <!-- Logo -->
-            <a href="/" class="flex items-center space-x-2">
-                <iconify-icon icon="mdi:hiking" class="text-2xl text-primary-500"></iconify-icon>
-                <span class="font-semibold text-lg">WalkQuest</span>
-            </a>
-
-            <!-- Mobile menu button -->
-            <div class="md:hidden">
-                <button type="button" 
-                        @click="isOpen = !isOpen"
-                        class="mobile-menu-button inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
-                        :aria-expanded="isOpen">
-                    <iconify-icon icon="mdi:menu" class="text-2xl"></iconify-icon>
-                </button>
+<nav x-data="mobileMenu()" class="bg-white shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16">
+            <!-- Logo and Primary Nav -->
+            <div class="flex">
+                <div class="flex-shrink-0 flex items-center">
+                    <a href="{% url 'home' %}" class="text-xl font-bold text-primary-600">
+                        WalkQuest
+                    </a>
+                </div>
+                <!-- Desktop Navigation -->
+                <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+                    <a href="{% url 'home' %}" 
+                       class="inline-flex items-center px-1 pt-1 border-b-2 border-primary-500 text-sm font-medium text-gray-900">
+                        {% translate "Walks" %}
+                    </a>
+                </div>
             </div>
 
-            <!-- Desktop menu -->
-            <div class="hidden md:flex md:items-center md:space-x-4">
-                <a href="/" class="nav-link">
-                    <iconify-icon icon="mdi:home" class="mr-1"></iconify-icon>
-                    {% translate "Home" %}
-                </a>
-                {% if request.user.is_authenticated %}
-                    <a href="{% url 'users:detail' request.user.username %}" class="nav-link">
-                        <iconify-icon icon="mdi:account" class="mr-1"></iconify-icon>
-                        {% translate "My Profile" %}
-                    </a>
-                    <a href="/accounts/logout/" class="nav-link">
-                        <iconify-icon icon="mdi:logout" class="mr-1"></iconify-icon>
-                        {% translate "Sign Out" %}
-                    </a>
-                {% else %}
-                    {% if ACCOUNT_ALLOW_REGISTRATION %}
-                        <a href="/accounts/signup/" id="sign-up-link" class="nav-link">
-                            <iconify-icon icon="mdi:account-plus" class="mr-1"></iconify-icon>
-                            {% translate "Sign Up" %}
-                        </a>
-                    {% endif %}
-                    <a href="{% url 'account_login' %}" id="log-in-link" class="nav-link">
-                        <iconify-icon icon="mdi:login" class="mr-1"></iconify-icon>
-                        {% translate "Sign In" %}
-                    </a>
-                {% endif %}
+            <!-- Mobile menu button -->
+            <div class="flex items-center sm:hidden">
+                <button @click="toggleMenu"
+                        type="button"
+                        class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
+                        :aria-expanded="isOpen"
+                        aria-controls="mobile-menu">
+                    <span class="sr-only">{% translate "Open main menu" %}</span>
+                    <!-- Icon when menu is closed -->
+                    <svg x-show="!isOpen" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                    <!-- Icon when menu is open -->
+                    <svg x-show="isOpen" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
             </div>
         </div>
     </div>
 
     <!-- Mobile menu -->
-    <div class="md:hidden" x-show="isOpen" x-transition>
-        <div class="px-2 pt-2 pb-3 space-y-1">
-            <a href="/" class="nav-link block">
-                <iconify-icon icon="mdi:home" class="mr-1"></iconify-icon>
-                {% translate "Home" %}
+    <div x-show="isOpen" 
+         x-cloak
+         @click.away="isOpen = false"
+         class="sm:hidden" 
+         id="mobile-menu"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 transform -translate-y-2"
+         x-transition:enter-end="opacity-100 transform translate-y-0"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100 transform translate-y-0"
+         x-transition:leave-end="opacity-0 transform -translate-y-2">
+        <div class="pt-2 pb-3 space-y-1">
+            <a href="{% url 'home' %}" 
+               class="bg-primary-50 border-l-4 border-primary-500 text-primary-700 block pl-3 pr-4 py-2 text-base font-medium">
+                {% translate "Walks" %}
             </a>
-            {% if request.user.is_authenticated %}
-                <a href="{% url 'users:detail' request.user.username %}" class="nav-link block">
-                    <iconify-icon icon="mdi:account" class="mr-1"></iconify-icon>
-                    {% translate "My Profile" %}
-                </a>
-                <a href="/accounts/logout/" class="nav-link block">
-                    <iconify-icon icon="mdi:logout" class="mr-1"></iconify-icon>
-                    {% translate "Sign Out" %}
-                </a>
-            {% else %}
-                {% if ACCOUNT_ALLOW_REGISTRATION %}
-                    <a href="/accounts/signup/" id="sign-up-link" class="nav-link block">
-                        <iconify-icon icon="mdi:account-plus" class="mr-1"></iconify-icon>
-                        {% translate "Sign Up" %}
-                    </a>
-                {% endif %}
-                <a href="{% url 'account_login' %}" id="log-in-link" class="nav-link block">
-                    <iconify-icon icon="mdi:login" class="mr-1"></iconify-icon>
-                    {% translate "Sign In" %}
-                </a>
-            {% endif %}
         </div>
     </div>
 </nav>

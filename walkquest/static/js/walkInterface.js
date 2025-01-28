@@ -1,10 +1,15 @@
 // Initialize Alpine component for map interface
 document.addEventListener('alpine:init', () => {
     Alpine.data('walkInterface', () => ({
+        // Component state
+        showSidebar: false,
+        isLoading: false,
+        isLoadingMore: false,
+        isMapLoading: false,
+        error: null,
+        searchQuery: '',
         map: null,
         markers: new Map(),
-        showSidebar: false,
-        isMapLoading: true,
         config: window.walkquestConfig || {},
 
         // Computed properties
@@ -44,7 +49,7 @@ document.addEventListener('alpine:init', () => {
                     console.log('Creating map with container:', this.$refs.map);
                     this.map = new mapboxgl.Map({
                         container: this.$refs.map,
-                        style: config.map?.style || 'mapbox://styles/mapbox/streets-v12',
+                        style: config.map?.style || 'mapbox://styles/mapbox/outdoors-v12',
                         center: config.map?.defaultCenter || [-4.85, 50.4],
                         zoom: config.map?.defaultZoom || 9.5,
                         preserveDrawingBuffer: true
