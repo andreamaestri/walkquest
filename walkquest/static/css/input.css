@@ -11,8 +11,6 @@
     body {
         @apply bg-slate-50 dark:bg-gray-900;
     }
-
-    /* Using Tailwind's built-in colors */
 }
 
 @utility scrollbar-hidden {
@@ -44,6 +42,57 @@
 
     .message-warning {
         @apply bg-yellow-100 text-yellow-800 border-l-4 border-yellow-500;
+    }
+
+    /* Walk Card Components */
+    .walk-item {
+        @apply bg-white rounded-lg shadow-md p-4 relative transition-shadow duration-300;
+        transform-origin: center center;
+        backface-visibility: hidden;
+        will-change: transform, box-shadow;
+    }
+
+    .walk-item-selected {
+        @apply ring-2 ring-blue-500;
+    }
+
+    .walk-item-pending {
+        @apply opacity-75;
+    }
+
+    .category-tag {
+        @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-300 bg-indigo-50 text-indigo-700 ring-1 ring-indigo-700/10;
+        transform-origin: center center;
+        will-change: transform, background-color, color;
+    }
+
+    .category-tag-hover {
+        @apply bg-indigo-100 text-indigo-800 ring-indigo-800/20 scale-105;
+    }
+
+    .highlights {
+        @apply mt-2 text-sm text-gray-600 transition-all duration-300 ease-out;
+        will-change: transform, opacity;
+    }
+
+    .favorite-button {
+        @apply p-1.5 rounded-full transition-all duration-200 transform;
+    }
+
+    .favorite-button-active {
+        @apply text-yellow-400 hover:text-yellow-500 hover:scale-110;
+    }
+
+    .favorite-button-inactive {
+        @apply text-gray-400 hover:text-gray-500 hover:scale-110;
+    }
+
+    .favorite-button-pending {
+        @apply hover:cursor-not-allowed;
+    }
+
+    .loading-spinner {
+        @apply animate-spin h-5 w-5 border-2 border-yellow-400 rounded-full border-t-transparent;
     }
 
     .map-container {

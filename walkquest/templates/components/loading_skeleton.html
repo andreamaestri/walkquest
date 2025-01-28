@@ -1,54 +1,43 @@
 {% load i18n %}
 
-<div x-data="{
-    init() {
-        this.$nextTick(() => {
-            if (window.Motion) {
-                // Initial entrance animation
-                window.Motion.animate('.loading-skeleton-card',
-                    {
-                        opacity: [0, 1],
-                        y: [30, 0],
-                        scale: [0.97, 1]
-                    },
-                    {
-                        delay: window.Motion.stagger(0.15, { from: "end" }),
-                        duration: 0.8,
-                        easing: [0.33, 1, 0.68, 1]
-                    }
-                ).then(() => {
-                    // Subtle breathing animation after entrance
-                    window.Motion.animate('.loading-skeleton-card',
-                        { opacity: [0.7, 1], scale: [0.99, 1] },
-                        { duration: 2, repeat: Infinity, easing: [0.33, 1, 0.68, 1], direction: 'alternate' }
-                    );
-                });
-            }
-            
-        });
-    }
-}"
-     class="loading-skeleton">
-     <div class="space-y-4">
-         {% for i in "123"|make_list %}
-             <div class="loading-skeleton-card bg-white rounded-lg shadow-md p-4">
-        );
-    }
-}"
+<div x-data="{ show: false }" 
+     x-init="() => { show = true }"
      class="loading-skeleton">
     <div class="space-y-4">
         {% for i in "123"|make_list %}
-            <div class="loading-skeleton-card bg-white rounded-lg shadow-md p-4">
-                <div class="h-4 bg-gray-200 rounded w-3/4"></div>
+            <div class="loading-skeleton-card bg-white rounded-lg shadow-md p-4"
+                 x-show="show"
+                 x-transition:enter="transition ease-out duration-500"
+                 x-transition:enter-start="opacity-0 transform translate-y-4 scale-95"
+                 x-transition:enter-end="opacity-100 transform translate-y-0 scale-100"
+                 x-transition:leave="transition ease-in duration-300"
+                 x-transition:leave-start="opacity-100 transform translate-y-0 scale-100"
+                 x-transition:leave-end="opacity-0 transform translate-y-4 scale-95">
+                <div class="h-4 bg-gray-200 rounded w-3/4 animate-pulse"></div>
                 <div class="mt-2 flex items-center space-x-2">
-                    <div class="h-3 bg-gray-200 rounded w-16"></div>
-                    <div class="h-3 bg-gray-200 rounded w-20"></div>
+                    <div class="h-3 bg-gray-200 rounded w-16 animate-pulse"></div>
+                    <div class="h-3 bg-gray-200 rounded w-20 animate-pulse"></div>
                 </div>
                 <div class="mt-2">
-                    <div class="h-3 bg-gray-200 rounded w-full"></div>
-                    <div class="mt-1 h-3 bg-gray-200 rounded w-4/5"></div>
+                    <div class="h-3 bg-gray-200 rounded w-full animate-pulse"></div>
+                    <div class="mt-1 h-3 bg-gray-200 rounded w-4/5 animate-pulse"></div>
                 </div>
             </div>
         {% endfor %}
     </div>
 </div>
+
+<style>
+    @keyframes pulse {
+        0%, 100% {
+            opacity: 1;
+        }
+        50% {
+            opacity: .5;
+        }
+    }
+    
+    .animate-pulse {
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+</style>

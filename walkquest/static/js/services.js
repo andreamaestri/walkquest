@@ -1,8 +1,9 @@
-class ApiService {
-    constructor() {
+// ApiService class definition
+const ApiService = {
+    init() {
         this.csrfToken = document.querySelector('meta[name="csrf-token"]').content;
         this.baseUrl = window.location.origin + '/api';
-    }
+    },
 
     async fetch(endpoint, options = {}) {
         // Conditionally set headers based on the request method
@@ -40,16 +41,13 @@ class ApiService {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            const data = await response.json();
-            return data;
-
+            return await response.json();
         } catch (error) {
             console.error('API request failed:', error);
             throw new Error(`API request failed: ${error.message}`);
         }
-    }
+    },
 
-    // API endpoints with proper response handling
     async getWalks(params = {}) {
         const queryParams = new URLSearchParams();
         if (params.search) queryParams.append('search', params.search);
@@ -57,8 +55,8 @@ class ApiService {
             queryParams.append('categories', params.categories.join(','));
         }
         
-        const data = await this.fetch(`/walks`); // Remove trailing slash
-        console.log('API getWalks response:', data); // Debug log
+        const data = await this.fetch(`/walks`);
+        console.log('API getWalks response:', data);
         
         if (!data || typeof data !== 'object') {
             throw new Error('Invalid API response format');
@@ -68,11 +66,11 @@ class ApiService {
             walks: Array.isArray(data) ? data : (data.walks || []),
             total: typeof data.total === 'number' ? data.total : (Array.isArray(data) ? data.length : 0)
         };
-    }
+    },
 
     async getWalk(walkId) {
         return this.fetch(`/walks/${walkId}`);
-    }
+    },
 
     async getWalkGeometry(walkId) {
         const data = await this.fetch(`/walks/${walkId}/geometry`);
@@ -80,7 +78,7 @@ class ApiService {
             throw new Error('Invalid geometry data');
         }
         return data;
-    }
+    },
 
     async getTags() {
         const tags = await this.fetch('/tags');
@@ -90,7 +88,7 @@ class ApiService {
             usage_count: tag.usage_count,
             type: tag.type
         }));
-    }
+    },
 
     async getConfig() {
         try {
@@ -101,9 +99,9 @@ class ApiService {
             return data;
         } catch (error) {
             console.error('Config fetch error:', error);
-            throw error; // Let walkStore handle the fallback
+            throw error;
         }
-    }
+    },
 
     async toggleFavorite(walkId) {
         const result = await this.fetch(`/walks/${walkId}/favorite`, {
@@ -114,10 +112,10 @@ class ApiService {
             is_favorite: result.is_favorite,
             walk_id: result.walk_id
         };
-    }
+    },
 
     async filterWalks(filters = {}) {
-        const response = await this.fetch('/walks/filter', { // Remove trailing slash
+        const response = await this.fetch('/walks/filter', {
             method: 'POST',
             body: JSON.stringify({
                 categories: filters.categories || [],
@@ -128,7 +126,7 @@ class ApiService {
             })
         });
 
-        console.log('API filterWalks response:', response); // Debug log
+        console.log('API filterWalks response:', response);
 
         if (!response || typeof response !== 'object') {
             throw new Error('Invalid API response format');
@@ -140,7 +138,7 @@ class ApiService {
             filters: response.applied_filters || {}
         };
     }
-}
+};
 
-// Export an instance of ApiService instead
-export const api = new ApiService();
+// Make ApiService globally available
+window.ApiService = ApiService;
