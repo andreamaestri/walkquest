@@ -217,18 +217,28 @@ document.addEventListener('alpine:init', () => {
 
         async morphPath(walk) {
             try {
-                console.log('Morphing path for walk:', walk);
+                console.group('Path Morphing');
+                console.log('Walk data for morphing:', walk);
                 
-                if (!walk?.path) {
-                    console.warn('No path data available for walk:', walk?.id);
+                // Extract coordinates from GeoJSON structure
+                let coordinates = null;
+                if (walk.path?.type === 'Feature') {
+                    if (walk.path.geometry?.type === 'LineString') {
+                        coordinates = walk.path.geometry.coordinates;
+                    } else {
+                        console.warn('Unexpected geometry type:', walk.path.geometry?.type);
+                    }
+                } else {
+                    console.warn('Invalid GeoJSON Feature:', walk.path);
+                    console.groupEnd();
                     return;
                 }
 
-                const pathData = walk.path.coordinates || walk.path;
-                console.log('Path data:', pathData);
+                console.log('Processed coordinates:', coordinates);
 
-                if (!Array.isArray(pathData) || pathData.length === 0) {
-                    console.warn('Invalid path data format:', pathData);
+                if (!Array.isArray(coordinates) || coordinates.length === 0) {
+                    console.warn('Invalid coordinates format:', coordinates);
+                    console.groupEnd();
                     return;
                 }
 
@@ -248,10 +258,11 @@ document.addEventListener('alpine:init', () => {
                     },
                     geometry: {
                         type: 'LineString',
-                        coordinates: pathData
+                        coordinates: coordinates
                     }
                 };
 
+                console.log('Setting new path data:', newData);
                 this.map.getSource('walk-path').setData(newData);
 
                 // Update style based on difficulty
@@ -262,13 +273,17 @@ document.addEventListener('alpine:init', () => {
                 }[walk.difficulty] || '#4338CA';
 
                 this.map.setPaintProperty('walk-path', 'line-color', color);
-                this.currentPath = pathData;
+                console.log('Updated path color to:', color);
+                this.currentPath = coordinates;
 
                 // Fit bounds to show the entire path
-                this.fitPathBounds(pathData);
+                this.fitPathBounds(coordinates);
+                console.log('Path morphing complete');
 
             } catch (error) {
                 console.error('Error morphing path:', error);
+            } finally {
+                console.groupEnd();
             }
         },
 
@@ -304,10 +319,11 @@ document.addEventListener('alpine:init', () => {
             this.markers.clear();
         },
 
-        handleWalkSelection(detail) {
+        async handleWalkSelection(detail) {
             if (!detail) return;
             
-            console.log('Handling walk selection:', detail);
+            console.group('Walk Selection');
+            console.log('Walk detail:', detail);
             Alpine.store('walks').setSelectedWalk(detail);
             this.showSidebar = true;
             
@@ -331,9 +347,24 @@ document.addEventListener('alpine:init', () => {
                     padding: { right: detail.path ? 384 : 0 }
                 });
 
-                if (detail.path && detail.path.length > 0) {
-                    this.morphPath(detail);
+                try {
+                    console.log('Fetching geometry for walk:', detail.id);
+                    const geometryData = await window.ApiService.getWalkGeometry(detail.id);
+                    console.log('Raw geometry data:', geometryData);
+
+                    if (geometryData.geometry) {
+                        this.morphPath({
+                            ...detail,
+                            path: geometryData
+                        });
+                    } else {
+                        console.error('Invalid geometry data structure:', geometryData);
+                        console.warn('No geometry data received for walk:', detail.id);
+                    }
+                } catch (error) {
+                    console.error('Failed to fetch walk geometry:', error);
                 }
+                console.groupEnd();
             }
         },
 
