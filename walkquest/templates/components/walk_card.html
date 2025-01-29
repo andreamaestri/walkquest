@@ -15,7 +15,7 @@
         get selectedWalk() { return $store.walks.selectedWalk },
         get pendingFavorites() { return $store.walks.pendingFavorites }
      }"
-     @click="$store.walks.selectWalk(walk)">
+     @click="$store.walks.setSelectedWalk(walk)">
     
     <div class="flex justify-between items-start">
         <h3 class="text-lg font-semibold text-gray-900 truncate" x-text="walk.walk_name"></h3>
