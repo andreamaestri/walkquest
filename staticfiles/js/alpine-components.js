@@ -1,63 +1,52 @@
-// Initialize Alpine.js when ready
-if (window.Alpine) {
-    initializeComponents();
-} else {
-    document.addEventListener('alpine:init', initializeComponents);
-}
+// Define the loading component outside alpine:init to ensure it's available immediately
+window.loading = () => ({
+    show: false,
+    init() {
+        window.addEventListener('loading:show', () => {
+            this.show = true;
+        });
+        window.addEventListener('loading:hide', () => {
+            this.show = false;
+        });
+    }
+});
 
-function initializeComponents() {
+// Wait for Alpine.js to be ready
+document.addEventListener('alpine:init', () => {
     console.log('Initializing Alpine.js components...');
+
+    // Register loading component with Alpine
+    Alpine.data('loading', window.loading);
 
     // Initialize store first
     Alpine.store('walks', {
         selectedWalk: null,
         pendingFavorites: new Set(),
+        
         setSelectedWalk(walk) {
             this.selectedWalk = walk;
             console.log('Selected walk updated:', walk?.walk_name);
         },
-        
         togglePendingFavorite(walkId) {
-            if (this.pendingFavorites.has(walkId)) {
-                this.pendingFavorites.delete(walkId);
-            } else {
-                this.pendingFavorites.add(walkId);
-            }
+            this.pendingFavorites.has(walkId) 
+                ? this.pendingFavorites.delete(walkId)
+                : this.pendingFavorites.add(walkId);
         },
-        
         isPending(walkId) {
             return this.pendingFavorites.has(walkId);
         }
     });
 
-    // Register components
-    Alpine.data('mobileMenu', mobileMenu);
-    Alpine.data('loading', loading);
-    Alpine.data('walkInterface', walkInterface);
-}
-
-function mobileMenu() {
-    return {
+    // Define mobile menu component
+    Alpine.data('mobileMenu', () => ({
         isOpen: false,
         toggleMenu() {
             this.isOpen = !this.isOpen;
         }
-    };
-}
+    }));
 
-function loading() {
-    return {
-        show: false,
-        init() {
-            // Watch for loading events
-            window.addEventListener('loading:show', () => this.show = true);
-            window.addEventListener('loading:hide', () => this.show = false);
-        }
-    };
-}
-
-function walkInterface() {
-    return {
+    // Define walk interface component
+    Alpine.data('walkInterface', () => ({
         // Component state
         walks: [],
         searchQuery: "",
@@ -71,22 +60,45 @@ function walkInterface() {
         markers: new Map(),
         error: null,
 
-        // Initialize all data
-        initializeData() {
-            const walksData = document.getElementById('walks-data');
-            if (!walksData) return;
-            const initialData = JSON.parse(walksData.textContent);
-            this.walks = initialData.walks || [];
-            this.hasMore = initialData.hasMore || false;
-        },
-
         init() {
-            console.log('Initializing walkInterface...');
-            this.initializeData();
-            this.initializeMap();
+            return new Promise(async (resolve) => {
+                console.group('WalkInterface Initialization');
+                console.log('Starting initialization...');
+                
+                try {
+                    await this.initializeData();
+                    await this.initializeMap();
+                    await this.fetchWalks();
+                    console.log('Initialization complete');
+                } catch (error) {
+                    console.error('Initialization failed:', error);
+                    this.error = 'Failed to initialize interface';
+                } finally {
+                    console.groupEnd();
+                    resolve();
+                }
+            });
         },
 
-        // Map initialization
+        async initializeData() {
+            console.log('Initializing data...');
+            const walksData = document.getElementById('walks-data');
+            if (!walksData) {
+                console.warn('No initial walks data found');
+                return;
+            }
+
+            try {
+                const initialData = JSON.parse(walksData.textContent);
+                this.walks = initialData.walks || [];
+                this.hasMore = initialData.hasMore || false;
+                console.log('Data initialized with', this.walks.length, 'walks');
+            } catch (error) {
+                console.error('Failed to parse initial data:', error);
+                throw error;
+            }
+        },
+
         async initializeMap() {
             const configScript = document.getElementById('config-data');
             if (!configScript) {
@@ -103,7 +115,6 @@ function walkInterface() {
                 }
 
                 mapboxgl.accessToken = config.mapboxToken;
-                
                 this.map = new mapboxgl.Map({
                     container: this.$refs.map,
                     style: config.map?.style || 'mapbox://styles/mapbox/streets-v12',
@@ -119,13 +130,6 @@ function walkInterface() {
                 });
 
                 this.map.addControl(new mapboxgl.NavigationControl(), 'top-left');
-
-                // Handle map errors
-                this.map.on('error', (e) => {
-                    console.error('Map error:', e);
-                    this.error = 'Map failed to load';
-                    this.isMapLoading = false;
-                });
             } catch (error) {
                 console.error('Failed to initialize map:', error);
                 this.error = error.message;
@@ -133,14 +137,8 @@ function walkInterface() {
             }
         },
 
-        // Walks data management
         async fetchWalks() {
-            if (!window.ApiService?.filterWalks) {
-                console.error('ApiService.filterWalks not available');
-                this.error = 'API service not available';
-                return;
-            }
-
+            if (this.isLoading) return;
             this.isLoading = true;
             window.dispatchEvent(new Event('loading:show'));
 
@@ -155,8 +153,8 @@ function walkInterface() {
                 this.hasMore = (response.walks || []).length >= 10;
                 this.page = 1;
                 this.error = null;
-            } catch (err) {
-                console.error('Failed to fetch walks:', err);
+            } catch (error) {
+                console.error('Failed to fetch walks:', error);
                 this.error = 'Failed to load walks. Please try again.';
             } finally {
                 this.isLoading = false;
@@ -166,43 +164,28 @@ function walkInterface() {
 
         async loadMore() {
             if (this.isLoadingMore || !this.hasMore) return;
-            
             this.isLoadingMore = true;
-            const nextPage = this.page + 1;
 
             try {
                 const response = await window.ApiService.filterWalks({
                     search: this.searchQuery,
-                    page: nextPage,
+                    page: this.page + 1,
                     page_size: 10
                 });
                 
                 const newWalks = response.walks || [];
                 this.walks = [...this.walks, ...newWalks];
                 this.hasMore = newWalks.length >= 10;
-                this.page = nextPage;
+                this.page++;
                 this.error = null;
-            } catch (err) {
-                console.error('Failed to load more walks:', err);
+            } catch (error) {
+                console.error('Failed to load more walks:', error);
                 this.error = 'Failed to load more walks. Please try again.';
             } finally {
                 this.isLoadingMore = false;
             }
         },
 
-        // Favorite handling
-        async toggleFavorite(walkId) {
-            try {
-                const result = await window.ApiService.toggleFavorite(walkId);
-                const walk = this.walks.find(w => w.id === walkId);
-                if (walk) walk.is_favorite = result.is_favorite;
-            } catch (error) {
-                console.error('Failed to toggle favorite:', error);
-                this.error = 'Failed to update favorite status';
-            }
-        },
-
-        // Event handlers
         handleWalkSelection(detail) {
             if (!detail) return;
             
@@ -223,22 +206,10 @@ function walkInterface() {
                 }
             });
         }
-    };
-}
-
-// Add debug initialization event listener
-window.addEventListener('alpine:initialized', () => {
-    console.log('Alpine.js ready:', {
-        store: Alpine.store('walks'),
-        walkInterface: Alpine.data('walkInterface'),
-        walkList: Alpine.data('walkList'),
-        mobileMenu: Alpine.data('mobileMenu'),
-        loading: Alpine.data('loading')
-    });
+    }));
 });
 
-
-// Debug initialization
+// Single debug initialization event listener
 window.addEventListener('alpine:initialized', () => {
     console.log('Alpine.js ready:', {
         store: Alpine.store('walks'),
