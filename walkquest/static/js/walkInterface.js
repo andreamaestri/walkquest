@@ -350,13 +350,24 @@ document.addEventListener('alpine:init', () => {
                 try {
                     console.log('Fetching geometry for walk:', detail.id);
                     const geometryData = await window.ApiService.getWalkGeometry(detail.id);
-                    console.log('Raw geometry data:', geometryData);
+                    console.log('Raw geometry data:', JSON.stringify(geometryData, null, 2));
 
-                    if (geometryData.geometry) {
-                        this.morphPath({
-                            ...detail,
-                            path: geometryData
-                        });
+                    if (geometryData.status === 'error') {
+                        console.error('API Error:', geometryData.message);
+                        return;
+                    }
+                    
+                    if (geometryData.geometry?.type === 'LineString' && Array.isArray(geometryData.geometry.coordinates)) {
+                        const walkWithPath = {
+                            ...detail,  // Keep all existing walk details
+                            path: {
+                                type: 'Feature',
+                                geometry: geometryData.geometry, // Already parsed GeoJSON
+                                properties: geometryData.properties
+                            }
+                        };
+                        console.log('Prepared walk with path:', walkWithPath);
+                        this.morphPath(walkWithPath);
                     } else {
                         console.error('Invalid geometry data structure:', geometryData);
                         console.warn('No geometry data received for walk:', detail.id);

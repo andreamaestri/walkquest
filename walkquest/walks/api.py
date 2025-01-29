@@ -10,6 +10,7 @@ from django.db.models import Value
 from django.http import HttpRequest
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
+import json
 from ninja import NinjaAPI
 from ninja import Router
 from ninja import Schema
@@ -199,6 +200,8 @@ def get_walk_geometry(request: HttpRequest, walk_id: UUID):
     """Get geometry data for a specific walk"""
     walk = get_object_or_404(Walk, id=walk_id)
 
+    print(f"Getting geometry for walk {walk_id}")  # Debug log
+    
     if not walk.route_geometry:
         return {
             "status": "error",
@@ -207,19 +210,30 @@ def get_walk_geometry(request: HttpRequest, walk_id: UUID):
         }
 
     try:
+        # Parse the GeoJSON string into a Python dict
+        geojson_data = json.loads(walk.route_geometry.geojson)
+        print(f"Parsed GeoJSON data: {geojson_data}")  # Debug log
+
+        if "coordinates" not in geojson_data:
+            raise ValueError("No coordinates found in GeoJSON data")
+
         return {
             "type": "Feature",
-            "geometry": walk.route_geometry.geojson,
+            "geometry": {
+                "type": "LineString",
+                "coordinates": geojson_data["coordinates"]
+            },
             "properties": {
                 "walk_id": str(walk.id),
                 "walk_name": walk.walk_name,
                 "status": "success"
             }
         }
-    except AttributeError:
+    except (AttributeError, json.JSONDecodeError, ValueError) as e:
+        print(f"Error processing geometry data: {str(e)}")  # Debug log
         return {
             "status": "error",
-            "message": "Invalid geometry data format",
+            "message": f"Error processing geometry data: {str(e)}",
             "walk_id": str(walk_id)
         }
 
