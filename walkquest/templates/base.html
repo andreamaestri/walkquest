@@ -9,6 +9,11 @@
         
         <!-- Critical CSS -->
         <link href="{% static 'css/project.css' %}" rel="stylesheet">
+        <!-- Add x-cloak styles -->
+        <style>
+            [x-cloak] { display: none !important; }
+        </style>
+        
         <link href='https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.css' rel='stylesheet' />
         
         {% block extra_head %}{% endblock %}
@@ -24,6 +29,10 @@
         <!-- Default JavaScript block that can be overridden -->
         {% endblock %}
 
+        <!-- Alpine.js Core and Plugins (must load first) -->
+        <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+        <script src="https://cdn.jsdelivr.net/npm/@alpinejs/intersect@3.x.x/dist/cdn.min.js" defer></script>
+
         <!-- Third-party Dependencies -->
         <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
         <script src='https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.js'></script>
@@ -31,12 +40,6 @@
         <!-- Core Application Code -->
         <script src="{% static 'js/project.js' %}"></script>
         <script src="{% static 'js/services.js' %}"></script>
-
-        <!-- Alpine.js Core (must be first) -->
-        <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-
-        <!-- Alpine.js Plugins -->
-        <script src="https://cdn.jsdelivr.net/npm/@alpinejs/intersect@3.x.x/dist/cdn.min.js"></script>
         
         <!-- Alpine Components (after Alpine.js and plugins) -->
         <script src="{% static 'js/walk-animations.js' %}"></script>

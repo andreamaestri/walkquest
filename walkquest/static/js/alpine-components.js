@@ -1,4 +1,41 @@
-// Component function definitions
+// Initialize Alpine.js when ready
+if (window.Alpine) {
+    initializeComponents();
+} else {
+    document.addEventListener('alpine:init', initializeComponents);
+}
+
+function initializeComponents() {
+    console.log('Initializing Alpine.js components...');
+
+    // Initialize store first
+    Alpine.store('walks', {
+        selectedWalk: null,
+        pendingFavorites: new Set(),
+        setSelectedWalk(walk) {
+            this.selectedWalk = walk;
+            console.log('Selected walk updated:', walk?.walk_name);
+        },
+        
+        togglePendingFavorite(walkId) {
+            if (this.pendingFavorites.has(walkId)) {
+                this.pendingFavorites.delete(walkId);
+            } else {
+                this.pendingFavorites.add(walkId);
+            }
+        },
+        
+        isPending(walkId) {
+            return this.pendingFavorites.has(walkId);
+        }
+    });
+
+    // Register components
+    Alpine.data('mobileMenu', mobileMenu);
+    Alpine.data('loading', loading);
+    Alpine.data('walkInterface', walkInterface);
+}
+
 function mobileMenu() {
     return {
         isOpen: false,
@@ -23,8 +60,8 @@ function walkInterface() {
     return {
         // Component state
         walks: [],
-        searchQuery: '',
-        showSidebar: false,
+        searchQuery: "",
+        showSidebar: window.localStorage.getItem('sidebar') === 'true',
         isMapLoading: true,
         isLoading: false,
         isLoadingMore: false,
@@ -44,7 +81,8 @@ function walkInterface() {
         },
 
         init() {
-            console.log('Initializing walkInterface component...');
+            console.log('Initializing walkInterface...');
+            this.initializeData();
             this.initializeMap();
         },
 
@@ -172,13 +210,15 @@ function walkInterface() {
             this.$store.walks.setSelectedWalk(detail);
             this.$nextTick(() => {
                 this.showSidebar = true;
+                window.localStorage.setItem('sidebar', 'true');
                 
                 // Update map view if coordinates available
                 if (this.map && detail.longitude && detail.latitude) {
                     this.map.flyTo({
                         center: [detail.longitude, detail.latitude],
                         zoom: 14,
-                        essential: true
+                        essential: true,
+                        padding: { right: 384 } // Account for sidebar width
                     });
                 }
             });
@@ -186,40 +226,17 @@ function walkInterface() {
     };
 }
 
-// Initialize Alpine.js components and store
-document.addEventListener('alpine:init', () => {
-    console.log('Initializing Alpine.js components...');
-
-    // Initialize store first
-    Alpine.store('walks', {
-        selectedWalk: null,
-        pendingFavorites: new Set(),
-        
-        setSelectedWalk(walk) {
-            this.selectedWalk = walk;
-            console.log('Selected walk updated:', walk?.walk_name);
-        },
-        
-        togglePendingFavorite(walkId) {
-            if (this.pendingFavorites.has(walkId)) {
-                this.pendingFavorites.delete(walkId);
-            } else {
-                this.pendingFavorites.add(walkId);
-            }
-        },
-        
-        isPending(walkId) {
-            return this.pendingFavorites.has(walkId);
-        }
+// Add debug initialization event listener
+window.addEventListener('alpine:initialized', () => {
+    console.log('Alpine.js ready:', {
+        store: Alpine.store('walks'),
+        walkInterface: Alpine.data('walkInterface'),
+        walkList: Alpine.data('walkList'),
+        mobileMenu: Alpine.data('mobileMenu'),
+        loading: Alpine.data('loading')
     });
-
-    // Register components
-    Alpine.data('mobileMenu', mobileMenu);
-    Alpine.data('loading', loading);
-    Alpine.data('walkInterface', walkInterface);
-
-    console.log('Alpine.js components initialized');
 });
+
 
 // Debug initialization
 window.addEventListener('alpine:initialized', () => {
