@@ -80,92 +80,121 @@ const initializeHoverEffects = () => {
 // Initialize press animations for walk cards
 const initializePressHandlers = () => {
     if (!window.Motion) return;
-    console.log('Initializing press handlers');
-
-    // Handle click animations for all cards
-    document.addEventListener('click', (event) => {
-        const walkItem = event.target.closest('.walk-item');
-        if (!walkItem || event.target.closest('button')) return;
-
-        const expandableContent = walkItem.querySelector('.expandable-content');
-        if (!expandableContent) return;
-
-        // Let Alpine handle the state change
-        const expanded = walkItem.classList.contains('expanded');
-        console.log('Card clicked, current expanded state:', expanded);
-
-        // Animation will be handled by the mutation observer
-        walkItem.classList.toggle('expanded');
-    });
-
-    // Watch for class changes that indicate expansion state
+    
     const observer = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
-            if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+            if (mutation.type === 'attributes' && 
+                mutation.attributeName === 'class' && 
+                mutation.target.classList.contains('walk-item')) {
+                
                 const element = mutation.target;
                 const expanded = element.classList.contains('expanded');
                 const expandableContent = element.querySelector('.expandable-content');
+                
                 if (!expandableContent) return;
 
-                console.log('Card expansion state changed:', expanded);
-
                 if (expanded) {
-                    // Get natural height
                     expandableContent.style.height = 'auto';
                     const targetHeight = expandableContent.offsetHeight;
                     expandableContent.style.height = '0px';
 
-                    // Expand animation
+                    // Smoother expansion animation
                     window.Motion.animate(element, {
-                        scale: 1.02,
-                        y: -8,
+                        scale: [1, 1.01],
+                        y: [0, -4],
                         boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
                     }, { 
                         duration: 0.3,
-                        easing: [0.2, 0, 0, 1]
+                        easing: [0.2, 0.8, 0.2, 1] // Custom spring-like easing
                     });
 
-                    // Animate content expansion
+                    // Content expansion with improved flow
                     window.Motion.animate(
                         expandableContent,
-                        { height: targetHeight, opacity: 1 },
-                        { duration: 0.3 }
+                        { 
+                            height: targetHeight,
+                            opacity: 1,
+                            marginTop: 12
+                        },
+                        { 
+                            duration: 0.45,
+                            easing: [0.2, 0.8, 0.2, 1]
+                        }
+                    );
+
+                    // Staggered child animations
+                    window.Motion.animate(
+                        expandableContent.children,
+                        { 
+                            y: [8, 0],
+                            opacity: [0, 1]
+                        },
+                        { 
+                            duration: 0.25,
+                            delay: window.Motion.stagger(0.03, { start: 0.1 }),
+                            easing: [0.2, 0.8, 0.2, 1]
+                        }
                     );
                 } else {
-                    // Collapse animation
+                    // Quicker, smoother collapse
                     window.Motion.animate(element, {
                         scale: 1,
                         y: 0,
                         boxShadow: 'none'
-                    }, { duration: 0.2 });
+                    }, { 
+                        duration: 0.2,
+                        easing: [0.3, 0, 0.2, 1]
+                    });
 
                     window.Motion.animate(
                         expandableContent,
-                        { height: 0, opacity: 0 },
-                        { duration: 0.2 }
+                        { 
+                            height: 0,
+                            opacity: 0,
+                            marginTop: 0
+                        },
+                        { 
+                            duration: 0.2,
+                            easing: [0.3, 0, 0.2, 1]
+                        }
+                    );
+
+                    window.Motion.animate(
+                        expandableContent.children,
+                        { opacity: 0 },
+                        { 
+                            duration: 0.15,
+                            easing: [0.3, 0, 0.2, 1]
+                        }
                     );
                 }
             }
         });
     });
 
-    // Observe all current and future walk items
-    document.querySelectorAll('.walk-item').forEach(walkItem => {
-        observer.observe(walkItem, {
-            attributes: true,
-            attributeFilter: ['class']
-        });
-    });
+    // Set up observers for existing and future cards
+    const setupCardObserver = (element) => {
+        if (element.classList.contains('walk-item')) {
+            observer.observe(element, {
+                attributes: true,
+                attributeFilter: ['class']
+            });
+        }
+    };
 
-    // Set up mutation observer to watch for new cards
+    // Initialize existing cards
+    document.querySelectorAll('.walk-item').forEach(setupCardObserver);
+
+    // Watch for new cards
     const listObserver = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
             mutation.addedNodes.forEach((node) => {
-                if (node.classList?.contains('walk-item')) {
-                    observer.observe(node, {
-                        attributes: true,
-                        attributeFilter: ['class']
-                    });
+                if (node.nodeType === 1) { // Element node
+                    if (node.classList?.contains('walk-item')) {
+                        setupCardObserver(node);
+                    }
+                    // Also check child nodes
+                    node.querySelectorAll?.('.walk-item')?.forEach(setupCardObserver);
                 }
             });
         });
