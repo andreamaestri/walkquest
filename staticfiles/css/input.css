@@ -56,14 +56,21 @@
 
     /* Walk Card Components */
     .walk-item {
-        @apply bg-white rounded-lg shadow-md p-4 relative transition-all duration-300;
+        @apply bg-white/5 backdrop-blur-md rounded-xl p-4 
+               transition-all duration-300 ease-out cursor-pointer 
+               border border-white/20 hover:border-blue-200/50 
+               hover:bg-white/10 relative;
         transform-origin: center center;
         backface-visibility: hidden;
         will-change: transform, box-shadow;
     }
 
     .walk-item-selected {
-        @apply ring-2 ring-blue-500;
+        @apply border-blue-500/50 bg-white/15 shadow-lg;
+    }
+
+    .walk-item:hover {
+        @apply shadow-lg transform scale-[1.02];
     }
 
     .walk-item-pending {

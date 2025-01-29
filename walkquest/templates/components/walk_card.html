@@ -11,14 +11,17 @@
      }" 
      :key="walk.id"
      x-data="{ 
-        showDetails: false,
+        expanded: false,
+        walk: walk,
         get selectedWalk() { return $store.walks.selectedWalk },
         get pendingFavorites() { return $store.walks.pendingFavorites }
-     }"
-     @click="$store.walks.setSelectedWalk(walk)">
+     }">
     
-    <div class="flex justify-between items-start">
-        <h3 class="text-lg font-semibold text-gray-900 truncate" x-text="walk.walk_name"></h3>
+    <div class="flex justify-between items-start"
+         :class="{ 'mb-4': expanded }">
+        <h3 class="text-lg font-semibold text-gray-900"
+            :class="{ 'truncate': !expanded }"
+            x-text="walk.walk_name"></h3>
         
         <!-- Favorite Button -->
         <button @click.stop="toggleFavorite(walk.id)"
@@ -59,7 +62,7 @@
     </div>
 
     <!-- Expandable Content -->
-    <div class="expandable-content overflow-hidden">
+    <div class="expandable-content overflow-hidden" style="height: 0; opacity: 0">
         <!-- Additional Categories -->
         <div class="mt-2 flex flex-wrap gap-2">
             <template x-for="category in walk.categories.slice(3)" :key="category.slug">
