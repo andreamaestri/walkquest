@@ -45,17 +45,6 @@ function mobileMenu() {
     };
 }
 
-function loading() {
-    return {
-        show: false,
-        init() {
-            // Watch for loading events
-            window.addEventListener('loading:show', () => this.show = true);
-            window.addEventListener('loading:hide', () => this.show = false);
-        }
-    };
-}
-
 function walkInterface() {
     return {
         // Component state
@@ -236,6 +225,22 @@ window.addEventListener('alpine:initialized', () => {
         loading: Alpine.data('loading')
     });
 });
+
+// Re-implement loading component with proper Alpine.js data binding
+Alpine.data('loading', () => ({
+    show: false,
+    
+    init() {
+        // Watch for loading events
+        window.addEventListener('loading:show', () => {
+            this.show = true;
+        });
+        
+        window.addEventListener('loading:hide', () => {
+            this.show = false;
+        });
+    }
+}));
 
 
 // Debug initialization

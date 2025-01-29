@@ -11,6 +11,7 @@
          x-intersect:leave="isVisible = false"
          @mouseenter="isHovered = true; $dispatch('walk-hover', walk.id)"
          @mouseleave="isHovered = false; $dispatch('walk-hover', null)"
+         @click="$dispatch('walk-selected', walk)"
          :class="{ 'scale-105': isVisible && isHovered, 'scale-100': !isHovered || !isVisible }"
          data-walk-id="{{ walk.id }}"
          data-walk="{{ walk|json_script_attr }}"
