@@ -211,18 +211,17 @@ def get_walk_geometry(request: HttpRequest, walk_id: UUID):
 
     try:
         # Parse the GeoJSON string into a Python dict
+        # The geojson property already contains a GeoJSON string
         geojson_data = json.loads(walk.route_geometry.geojson)
         print(f"Parsed GeoJSON data: {geojson_data}")  # Debug log
 
-        if "coordinates" not in geojson_data:
+        # GeoJSON from GeoDjango has coordinates nested under 'coordinates'
+        if not geojson_data or "coordinates" not in geojson_data:
             raise ValueError("No coordinates found in GeoJSON data")
 
         return {
             "type": "Feature",
-            "geometry": {
-                "type": "LineString",
-                "coordinates": geojson_data["coordinates"]
-            },
+            "geometry": geojson_data,  # Use the full GeoJSON geometry object
             "properties": {
                 "walk_id": str(walk.id),
                 "walk_name": walk.walk_name,
@@ -296,7 +295,7 @@ def get_config(request):
     return {
         "mapboxToken": settings.MAPBOX_TOKEN,
         "map": {
-            "style": "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json",
+            "style": "mapbox://styles/mapbox/outdoors-v12",
             "defaultCenter": [-4.85, 50.4],  # Cornwall's approximate center
             "defaultZoom": 9.5,
             "markerColors": {

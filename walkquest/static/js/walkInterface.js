@@ -63,16 +63,28 @@ document.addEventListener('alpine:init', () => {
                 });
 
                 // Setup map event handlers
-                this.map.on('load', () => {
-                    console.log('Map loaded, initializing layers');
+                this.map.on('style.load', () => {
+                    console.log('Map style loaded, initializing layers');
                     this.initializeLayers();
                     this.isMapLoading = false;
 
                     // Process initial walks if available
                     const walksData = document.getElementById('walks-data');
                     if (walksData) {
-                        const initialData = JSON.parse(walksData.textContent);
-                        this.processInitialWalks(initialData.walks || []);
+                        try {
+                            const initialData = JSON.parse(walksData.textContent);
+                            console.log('Initial walks data:', initialData);
+                            const walks = initialData;
+                            if (walks && walks.length > 0) {
+                                console.log('Processing walks:', walks.length);
+                                this.processInitialWalks(walks);
+                            } else {
+                                console.warn('No initial walks data found');
+                            }
+                        } catch (error) {
+                            console.error('Failed to process initial walks:', error);
+                            this.error = 'Failed to load walks';
+                        }
                     }
                 });
 
@@ -161,12 +173,20 @@ document.addEventListener('alpine:init', () => {
         processInitialWalks(walks) {
             if (!this.map) return;
 
+            // Wait for map to be loaded before adding markers
+            if (!this.map.loaded()) {
+                this.map.once('load', () => this.processInitialWalks(walks));
+                return;
+            }
+
+            console.log('Processing walks:', walks.length);
             const bounds = new mapboxgl.LngLatBounds();
             let hasValidCoordinates = false;
 
             walks.forEach(walk => {
                 if (walk.longitude && walk.latitude) {
                     hasValidCoordinates = true;
+                    console.log('Adding marker for walk:', walk.id, walk.longitude, walk.latitude);
                     this.addMarker({
                         id: walk.id,
                         longitude: walk.longitude,
@@ -193,23 +213,27 @@ document.addEventListener('alpine:init', () => {
             
             this.removeMarker(id);
             
-            const markerColor = is_favorite 
-                ? (this.config?.map?.markerColors?.favorite || '#FFD700')
-                : (this.config?.map?.markerColors?.default || '#FF0000');
+            try {
+                console.log('Creating marker:', { id, longitude, latitude, is_favorite });
+                const marker = new mapboxgl.Marker({
+                    color: is_favorite ? '#FFD700' : '#FF0000',
+                    draggable: false,
+                    anchor: 'bottom'
+                })
+                .setLngLat([parseFloat(longitude), parseFloat(latitude)])
+                .addTo(this.map);
 
-            const marker = new mapboxgl.Marker({ 
-                color: markerColor,
-                anchor: 'bottom'
-            })
-            .setLngLat([longitude, latitude])
-            .addTo(this.map);
+                if (onClick) {
+                    marker.getElement().addEventListener('click', onClick);
+                }
 
-            if (onClick) {
-                marker.getElement().addEventListener('click', onClick);
+                this.markers.set(id, marker);
+                console.log('Marker added successfully');
+                return marker;
+            } catch (error) {
+                console.error('Failed to add marker:', error);
+                return null;
             }
-
-            this.markers.set(id, marker);
-            return marker;
         },
 
         removeMarker(id) {
@@ -262,8 +286,7 @@ document.addEventListener('alpine:init', () => {
                     // Update the GeoJSON source with new data
                     const source = this.map.getSource('walk-path');
                     if (source) {
-                        // Use Alpine.js morph for smooth transition
-                        Alpine.morph(source._data, {
+                        source.setData({
                             type: 'Feature',
                             properties: {
                                 difficulty: detail.difficulty || 'medium'

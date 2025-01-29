@@ -163,7 +163,7 @@ class HomePageView(ListView):
                 ],
                 "categories": [
                     {"name": tag.name, "slug": tag.slug}
-                    for tag in walk.related_categories.all()
+                    for tag in walk.categories.all()
                 ],
                 "related_categories": [
                     {"name": tag.name, "slug": tag.slug}
@@ -181,19 +181,12 @@ class HomePageView(ListView):
 
     def get_initial_walks(self) -> list[dict[str, Any]]:
         """Get all walks for page load."""
-        cache_key = "initial_walks"
-        walks_data = cache.get(cache_key)
-
-        if not walks_data:
-            try:
-                queryset = self.get_queryset()
-                walks_data = [self.serialize_walk(walk) for walk in queryset]
-                cache.set(cache_key, walks_data, self.cache_timeout)
-            except Exception:
-                logger.exception("Error retrieving initial walks")
-                walks_data = []
-
-        return walks_data
+        try:
+            queryset = self.get_queryset()
+            return [self.serialize_walk(walk) for walk in queryset]
+        except Exception:
+            logger.exception("Error retrieving initial walks")
+            return []
 
     def get_context_data(self, **kwargs) -> dict[str, Any]:
         """Prepare context data with clean Python structures for JSON serialization."""
@@ -479,5 +472,3 @@ class WalkGeometryView(View):
                 content_type=self.CONTENT_TYPE,
                 status=500,
             )
-
-
