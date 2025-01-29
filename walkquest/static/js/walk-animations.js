@@ -1,5 +1,5 @@
 // Initialize all walk card animations
-const initializeWalkCardAnimations = () => {
+const initializeHoverEffects = () => {
     if (!window.Motion) return;
 
     // Use Motion's hover API as documented
@@ -80,90 +80,102 @@ const initializeWalkCardAnimations = () => {
 // Initialize press animations for walk cards
 const initializePressHandlers = () => {
     if (!window.Motion) return;
+    console.log('Initializing press handlers');
 
-    // Track currently expanded card
-    let currentlyExpanded = null;
+    // Handle click animations for all cards
+    document.addEventListener('click', (event) => {
+        const walkItem = event.target.closest('.walk-item');
+        if (!walkItem || event.target.closest('button')) return;
 
-    window.Motion.press('.walk-item', (element) => {
-        const expandableContent = element.querySelector('.expandable-content');
+        const expandableContent = walkItem.querySelector('.expandable-content');
         if (!expandableContent) return;
 
-        // Get Alpine component scope
-        const scope = Alpine.getScope(element);
-        
-        // If there's a currently expanded card and it's not this one, collapse it
-        if (currentlyExpanded && currentlyExpanded !== element) {
-            const prevScope = Alpine.getScope(currentlyExpanded);
-            prevScope.expanded = false;
-            
-            window.Motion.animate(currentlyExpanded, {
-                scale: 1,
-                y: 0
-            }, { 
-                duration: 0.2,
-                easing: [0.4, 0, 0.2, 1]
+        // Let Alpine handle the state change
+        const expanded = walkItem.classList.contains('expanded');
+        console.log('Card clicked, current expanded state:', expanded);
+
+        // Animation will be handled by the mutation observer
+        walkItem.classList.toggle('expanded');
+    });
+
+    // Watch for class changes that indicate expansion state
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                const element = mutation.target;
+                const expanded = element.classList.contains('expanded');
+                const expandableContent = element.querySelector('.expandable-content');
+                if (!expandableContent) return;
+
+                console.log('Card expansion state changed:', expanded);
+
+                if (expanded) {
+                    // Get natural height
+                    expandableContent.style.height = 'auto';
+                    const targetHeight = expandableContent.offsetHeight;
+                    expandableContent.style.height = '0px';
+
+                    // Expand animation
+                    window.Motion.animate(element, {
+                        scale: 1.02,
+                        y: -8,
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+                    }, { 
+                        duration: 0.3,
+                        easing: [0.2, 0, 0, 1]
+                    });
+
+                    // Animate content expansion
+                    window.Motion.animate(
+                        expandableContent,
+                        { height: targetHeight, opacity: 1 },
+                        { duration: 0.3 }
+                    );
+                } else {
+                    // Collapse animation
+                    window.Motion.animate(element, {
+                        scale: 1,
+                        y: 0,
+                        boxShadow: 'none'
+                    }, { duration: 0.2 });
+
+                    window.Motion.animate(
+                        expandableContent,
+                        { height: 0, opacity: 0 },
+                        { duration: 0.2 }
+                    );
+                }
+            }
+        });
+    });
+
+    // Observe all current and future walk items
+    document.querySelectorAll('.walk-item').forEach(walkItem => {
+        observer.observe(walkItem, {
+            attributes: true,
+            attributeFilter: ['class']
+        });
+    });
+
+    // Set up mutation observer to watch for new cards
+    const listObserver = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            mutation.addedNodes.forEach((node) => {
+                if (node.classList?.contains('walk-item')) {
+                    observer.observe(node, {
+                        attributes: true,
+                        attributeFilter: ['class']
+                    });
+                }
             });
+        });
+    });
 
-            window.Motion.animate(
-                currentlyExpanded.querySelector('.expandable-content'),
-                { height: 0, opacity: 0 },
-                { duration: 0.2 }
-            );
-        }
-
-        // Toggle current card
-        scope.expanded = !scope.expanded;
-        
-        if (scope.expanded) {
-            currentlyExpanded = element;
-            
-            // Expand animation
-            window.Motion.animate(element, {
-                scale: 1.02,
-                y: -8
-            }, { 
-                duration: 0.3,
-                easing: [0.2, 0, 0, 1]
-            });
-
-            // Get natural height
-            expandableContent.style.height = 'auto';
-            const targetHeight = expandableContent.offsetHeight;
-            expandableContent.style.height = '0px';
-
-            // Animate content expansion
-            window.Motion.animate(
-                expandableContent,
-                { height: targetHeight, opacity: 1 },
-                { duration: 0.3 }
-            );
-
-            // Update store for map interaction
-            const walkData = Alpine.raw(scope.$data.walk);
-            scope.$store.walks.setSelectedWalk(walkData);
-        } else {
-            currentlyExpanded = null;
-            
-            // Collapse animation
-            window.Motion.animate(element, {
-                scale: 1,
-                y: 0
-            }, { 
-                duration: 0.2,
-                easing: [0.4, 0, 0.2, 1]
-            });
-
-            window.Motion.animate(
-                expandableContent,
-                { height: 0, opacity: 0 },
-                { duration: 0.2 }
-            );
-        }
-
-        // Return cleanup function
-        return () => {
-            window.Motion.animate(element, { scale: 1 });
-        };
+    // Start observing the container for new cards
+    const container = document.querySelector('.walk-list') || document.body;
+    listObserver.observe(container, {
+        childList: true,
+        subtree: true
     });
 };
 
@@ -175,6 +187,8 @@ window.WalkAnimations = {
 
 // Initialize all animations when Motion is ready
 window.addEventListener('motion:ready', () => {
+    console.log('Initializing walk card animations');
     initializeHoverEffects();
     initializePressHandlers();
+    console.log('Walk card animations initialized');
 });

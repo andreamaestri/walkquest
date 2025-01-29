@@ -4,10 +4,14 @@
 <div class="walk-item p-4 backdrop-blur-md rounded-xl shadow-sm hover:shadow-md 
            transition-all duration-300 ease-out cursor-pointer 
            border border-white/20 hover:border-primary-200/50 
-           bg-white/5 hover:bg-white/10 group"
+           bg-white/5 hover:bg-white/10 group" 
+     :class="{
+         'expanded': expanded
+     }"
      :class="{
         'border-primary-500/50 bg-white/15': $store.walks.selectedWalk?.id === walk.id,
-        'walk-item-pending': $store.walks.pendingFavorites.has(walk.id)
+        'walk-item-pending': $store.walks.pendingFavorites.has(walk.id),
+         'expanded': expanded
      }" 
      :key="walk.id"
      x-data="{ 
@@ -15,6 +19,13 @@
         walk: walk,
         get selectedWalk() { return $store.walks.selectedWalk },
         get pendingFavorites() { return $store.walks.pendingFavorites }
+      }"
+      @click="if ($event.target.closest('.walk-item') && !$event.target.closest('button')) {
+          console.log('Card clicked, toggling expanded state');
+          expanded = !expanded;
+          if (expanded && $store.walks) {
+              $store.walks.setSelectedWalk(walk);
+          }
      }">
     
     <div class="flex justify-between items-start"
