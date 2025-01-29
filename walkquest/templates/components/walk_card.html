@@ -1,9 +1,12 @@
 {% load slippers %}
 {% load i18n %}
 
-<div class="walk-item cursor-pointer"
+<div class="walk-item p-4 backdrop-blur-md rounded-xl shadow-sm hover:shadow-md 
+           transition-all duration-300 ease-out cursor-pointer 
+           border border-white/20 hover:border-primary-200/50 
+           bg-white/5 hover:bg-white/10 group"
      :class="{
-        'walk-item-selected': $store.walks.selectedWalk?.id === walk.id,
+        'border-primary-500/50 bg-white/15': $store.walks.selectedWalk?.id === walk.id,
         'walk-item-pending': $store.walks.pendingFavorites.has(walk.id)
      }" 
      :key="walk.id"
@@ -12,7 +15,7 @@
         get selectedWalk() { return $store.walks.selectedWalk },
         get pendingFavorites() { return $store.walks.pendingFavorites }
      }"
-     @click="$dispatch('walk-selected', walk)">
+     @click="$store.walks.selectWalk(walk)">
     
     <div class="flex justify-between items-start">
         <h3 class="text-lg font-semibold text-gray-900 truncate" x-text="walk.walk_name"></h3>

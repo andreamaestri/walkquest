@@ -25,13 +25,7 @@
                x-transition:leave-start="opacity-100 transform translate-x-0"
                x-transition:leave-end="opacity-0 transform -translate-x-full">
             
-            <!-- Toggle sidebar button -->
-            <button @click="showSidebar = !showSidebar"
-                    class="absolute -right-12 top-4 bg-white p-2 rounded-r shadow-md"
-                    :aria-label="showSidebar ? 'Hide sidebar' : 'Show sidebar'">
-                <iconify-icon :icon="showSidebar ? 'mdi:chevron-left' : 'mdi:chevron-right'"
-                             class="text-xl"></iconify-icon>
-            </button>
+
 
             <!-- Search and filters section -->
             <div class="p-4 border-b">

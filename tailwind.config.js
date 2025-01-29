@@ -1,15 +1,17 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
-    './walkquest/templates/**/*.html',  // All HTML templates in any subdirectory
-    './walkquest/static/js/**/*.js',    // All JavaScript files
-    './walkquest/**/templates/**/*.html' // Templates in app subdirectories
+    './walkquest/templates/**/*.html',     // All HTML templates in main templates
+    './walkquest/**/templates/**/*.html',  // Templates in app subdirectories
+    './walkquest/static/js/**/*.js',      // JavaScript files
+    './walkquest/static/src/**/*.js',     // Source JavaScript files if any
+    './walkquest/components/**/*.{html,js}', // Component files
+    './walkquest/**/static/**/*.{js,jsx}',  // Static files in app subdirectories
   ],
   theme: {
     extend: {
       fontFamily: {
-        'fira': ['Fira Sans', 'sans-serif'],
-        'inter': ['Inter Tight', 'sans-serif'],
+        'fira': ['Fira Sans', ...fontFamily.sans],
       },
       colors: {
         primary: {

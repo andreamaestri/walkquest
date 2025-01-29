@@ -1,62 +1,65 @@
 {% load i18n %}
 {% load static %}
 
-<nav x-data="mobileMenu()" x-cloak class="bg-white shadow-sm">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-16">
-            <!-- Logo and Primary Nav -->
-            <div class="flex">
-                <div class="flex-shrink-0 flex items-center">
-                    <a href="{% url 'home' %}" class="text-xl font-bold text-primary-600">
-                        WalkQuest
-                    </a>
+<nav x-data="mobileMenu()" x-cloak class="fixed w-full max-w-7xl left-1/2 transform -translate-x-1/2 top-4 px-3 z-50">
+    <div class="flex items-center justify-between gap-4">
+        <!-- Left pill - Main navigation -->
+        <div class="relative backdrop-blur-xl bg-white/15 rounded-full border border-white/25 transition-all duration-300 hover:bg-white/20">
+            <div class="px-2">
+                <div class="flex items-center h-12">
+                    <div class="flex items-center space-x-3">
+                        <a href="{% url 'home' %}" 
+                           class="flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary-500/10 border border-white/20 hover:bg-primary-500/15 hover:border-primary-500/30 transition-all duration-300 group">
+                            <iconify-icon icon="mdi:hiking" class="text-xl text-primary-600 transform transition-all duration-300 group-hover:scale-110 group-hover:rotate-6"></iconify-icon>
+                            <span class="text-base font-bold text-primary-600">WalkQuest</span>
+                        </a>
+                        <!-- Desktop Navigation -->
+                        <div class="hidden sm:flex sm:items-center sm:space-x-2">
+                            <a href="{% url 'home' %}" 
+                               class="nav-link {% if request.resolver_match.namespace == 'walks' %}bg-white/20{% else %}bg-white/10{% endif %}">
+                                {% translate "Walks" %}
+                            </a>
+                        </div>
+                    </div>
                 </div>
-                <!-- Desktop Navigation -->
-                <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
-                    <a href="{% url 'home' %}" 
-                       class="inline-flex items-center px-1 pt-1 border-b-2 border-primary-500 text-sm font-medium text-gray-900">
-                        {% translate "Walks" %}
-                    </a>
-                </div>
-            </div>
-
-            <!-- Mobile menu button -->
-            <div class="flex items-center sm:hidden">
-                <button @click="toggleMenu"
-                        type="button"
-                        class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
-                        :aria-expanded="isOpen"
-                        aria-controls="mobile-menu">
-                    <span class="sr-only">{% translate "Open main menu" %}</span>
-                    <!-- Icon when menu is closed -->
-                    <svg x-show="!isOpen" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                    <!-- Icon when menu is open -->
-                    <svg x-show="isOpen" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
             </div>
         </div>
-    </div>
 
-    <!-- Mobile menu -->
-    <div x-show="isOpen"
-         @click.away="isOpen = false"
-         class="sm:hidden" 
-         id="mobile-menu"
-         x-transition:enter="transition ease-out duration-200"
-         x-transition:enter-start="opacity-0 transform -translate-y-2"
-         x-transition:enter-end="opacity-100 transform translate-y-0"
-         x-transition:leave="transition ease-in duration-150"
-         x-transition:leave-start="opacity-100 transform translate-y-0"
-         x-transition:leave-end="opacity-0 transform -translate-y-2">
-        <div class="pt-2 pb-3 space-y-1">
-            <a href="{% url 'home' %}" 
-               class="bg-primary-50 border-l-4 border-primary-500 text-primary-700 block pl-3 pr-4 py-2 text-base font-medium">
-                {% translate "Walks" %}
-            </a>
+        <!-- Mobile menu button -->
+        <div class="sm:hidden">
+            <button @click="toggleMenu"
+                    class="inline-flex items-center justify-center p-2 rounded-full text-primary-600 hover:bg-white/20 transition-all duration-300">
+                <span class="sr-only">{% translate "Open main menu" %}</span>
+                <svg x-show="!isOpen" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+                <svg x-show="isOpen" class="h-5 w-5" fill="none" viewBox="0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
         </div>
     </div>
 </nav>
+
+<style>
+    .nav-link {
+        @apply inline-flex items-center px-5 py-2 rounded-full text-sm font-medium
+               transition-all duration-300 hover:bg-white/20 hover:shadow-md text-gray-700
+               border border-white/20 hover:border-primary-500/30;
+    }
+    .user-nav-link {
+        @apply inline-flex items-center px-4 py-2 rounded-full text-sm font-medium
+               transition-all duration-300 hover:bg-white/20 text-gray-700
+               border border-white/20 hover:border-primary-500/30;
+    }
+    .auth-nav-link {
+        @apply inline-flex items-center px-5 py-2 rounded-full text-sm font-medium
+               transition-all duration-300 border border-white/20 
+               hover:border-primary-500/30 hover:shadow-md;
+    }
+    .mobile-nav-link {
+        @apply block px-5 py-3.5 rounded-xl hover:bg-white/15 transition-all duration-300
+               text-base font-medium hover:shadow-sm hover:border-primary-500/30
+               border border-white/20;
+    }
+</style>

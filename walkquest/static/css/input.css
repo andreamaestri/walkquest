@@ -9,7 +9,10 @@
 /* Custom Styles */
 @layer base {
     body {
-        @apply bg-slate-50 dark:bg-gray-900;
+        @apply bg-slate-50 dark:bg-gray-900 font-['Fira_Sans'];
+    }
+    * {
+        font-family: 'Fira Sans', system-ui, sans-serif;
     }
 }
 
@@ -20,6 +23,13 @@
 }
 
 @layer components {
+    .navbar {
+        @apply fixed w-full bg-white/10 backdrop-blur-lg shadow-sm transition-all duration-300 
+               border-b border-white/30;
+        z-index: 50;  /* Top layer */
+        height: 4rem;
+    }
+
     .nav-link {
         @apply text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200;
     }
@@ -46,14 +56,21 @@
 
     /* Walk Card Components */
     .walk-item {
-        @apply bg-white rounded-lg shadow-md p-4 relative transition-all duration-300;
+        @apply bg-white/5 backdrop-blur-md rounded-xl p-4 
+               transition-all duration-300 ease-out cursor-pointer 
+               border border-white/20 hover:border-primary-200/50 
+               hover:bg-white/10 relative;
         transform-origin: center center;
         backface-visibility: hidden;
         will-change: transform, box-shadow;
     }
 
     .walk-item-selected {
-        @apply ring-2 ring-blue-500;
+        @apply border-primary-500/50 bg-white/15 shadow-lg;
+    }
+
+    .walk-item:hover {
+        @apply shadow-lg transform scale-[1.02];
     }
 
     .walk-item-pending {
@@ -100,79 +117,60 @@
         @apply animate-spin h-5 w-5 border-2 border-yellow-400 rounded-full border-t-transparent;
     }
 
-    .sidebar {
-        @apply fixed top-0 right-0 h-full bg-white shadow-lg z-10 transition-transform duration-300 ease-in-out w-[400px] overflow-y-auto;
-
-        &::-webkit-scrollbar {
-            @apply w-2;
-        }
-
-        &::-webkit-scrollbar-track {
-            @apply bg-gray-100;
-        }
-
-        &::-webkit-scrollbar-thumb {
-            @apply bg-gray-300 rounded-full;
-
-            &:hover {
-                @apply bg-gray-400;
-            }
-        }
-
-        &.hidden {
-            @apply translate-x-full;
-        }
-    }
-
-    .sidebar-toggle {
-        @apply fixed top-4 right-4 z-20 bg-white rounded-full p-2 shadow-lg;
-    }
-
-    .mapboxgl-map {
-        @apply w-full h-full absolute;
-    }
-
-    .mapboxgl-marker {
-        @apply cursor-pointer transition-all duration-200;
-
-        &.marker-selected {
-            @apply scale-125;
-        }
-    }
-
-    .iconify-icon {
-        @apply w-6 h-6 text-gray-700;
+    .map-wrapper {
+        @apply fixed inset-0 overflow-hidden;
+        z-index: 0;  /* Base layer */
     }
 
     .map {
-        @apply relative w-full h-screen;
+        @apply fixed inset-0 w-full h-screen;
         z-index: 1;
-
+    
         .map-container {
-            @apply relative w-full h-screen;
+            @apply fixed inset-0 w-full h-full;
             z-index: 1;
         }
-
+    
         .map-inner {
             @apply absolute inset-0;
             height: 100% !important;
             width: 100% !important;
             z-index: 1;
         }
-
+    
         .mapboxgl-canvas {
             @apply absolute inset-0;
             height: 100% !important;
             width: 100% !important;
         }
-
+    
         .map-loading {
             @apply absolute inset-0 bg-gray-100/80 backdrop-blur-sm flex items-center justify-center;
             z-index: 2;
         }
-
+    
         .map-loading-spinner {
             @apply animate-spin h-8 w-8 text-blue-500;
+        }
+    }
+    .sidebar {
+        @apply fixed right-0 h-screen top-0 w-full md:w-[30rem] lg:w-[35rem] bg-white/15 backdrop-blur-lg shadow-lg
+               transform transition-transform duration-300 ease-in-out border-l border-white/30;
+        z-index: 40;  /* Middle layer */
+    }
+
+    .sidebar-toggle {
+        @apply fixed top-4 right-4 z-50 p-2 rounded-full
+               bg-white/80 backdrop-blur-sm shadow-md
+               hover:shadow-lg hover:bg-white/90
+               transition-all duration-200 ease-in-out;
+
+        &[aria-expanded="true"] {
+            @apply right-[24rem];
+        }
+
+        .icon {
+            @apply w-6 h-6 text-gray-600;
         }
     }
 } /* Close @layer components */

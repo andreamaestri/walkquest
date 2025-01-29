@@ -65,8 +65,11 @@ document.addEventListener('alpine:init', () => {
                 // Setup map event handlers
                 this.map.on('style.load', () => {
                     console.log('Map style loaded, initializing layers');
+                    console.group('Map Initialization');
+                    console.log('Map center:', this.map.getCenter());
+                    console.log('Map zoom:', this.map.getZoom());
                     this.initializeLayers();
-                    this.isMapLoading = false;
+                    console.groupEnd();
 
                     // Process initial walks if available
                     const walksData = document.getElementById('walks-data');
@@ -85,6 +88,7 @@ document.addEventListener('alpine:init', () => {
                             console.error('Failed to process initial walks:', error);
                             this.error = 'Failed to load walks';
                         }
+                        this.isMapLoading = false;
                     }
                 });
 
@@ -173,20 +177,44 @@ document.addEventListener('alpine:init', () => {
         processInitialWalks(walks) {
             if (!this.map) return;
 
-            // Wait for map to be loaded before adding markers
-            if (!this.map.loaded()) {
-                this.map.once('load', () => this.processInitialWalks(walks));
-                return;
-            }
+            console.group('Processing Initial Walks');
+            console.log('Total walks to process:', walks.length);
+            
+            // Validate walk data before processing
+            walks = walks.filter(walk => {
+                const isValid = this.validateWalkCoordinates(walk);
+                if (!isValid) {
+                    console.warn('Invalid coordinates for walk:', walk.id);
+                }
+                return isValid;
+            });
 
-            console.log('Processing walks:', walks.length);
+            console.log('Valid walks after filtering:', walks.length);
+
             const bounds = new mapboxgl.LngLatBounds();
             let hasValidCoordinates = false;
 
+            // Wait for map to be loaded before adding markers
+            const addMarkers = () => {
+                if (!this.map.loaded()) {
+                    console.log('Map not yet loaded, waiting...');
+                    requestAnimationFrame(addMarkers);
+                    return;
+                }
+
+                this.addWalkMarkers(walks, bounds);
+                console.log('All markers added successfully');
+                console.groupEnd();
+            };
+
+            addMarkers();
+        },
+
+        addWalkMarkers(walks, bounds) {
             walks.forEach(walk => {
                 if (walk.longitude && walk.latitude) {
-                    hasValidCoordinates = true;
-                    console.log('Adding marker for walk:', walk.id, walk.longitude, walk.latitude);
+                    console.log('Adding marker for walk:', walk.id, 'at:', walk.longitude, walk.latitude);
+                    
                     this.addMarker({
                         id: walk.id,
                         longitude: walk.longitude,
@@ -196,16 +224,34 @@ document.addEventListener('alpine:init', () => {
                         Alpine.store('walks').setSelectedWalk(walk);
                         this.showSidebar = true;
                     });
+                    
                     bounds.extend([walk.longitude, walk.latitude]);
                 }
             });
-            
-            if (hasValidCoordinates) {
+
+            if (!bounds.isEmpty()) {
+                console.log('Fitting to bounds:', bounds.toString());
                 this.map.fitBounds(bounds, {
                     padding: 50,
                     maxZoom: 14
                 });
+            } else {
+                console.warn('No valid bounds to fit to');
             }
+        },
+
+        validateWalkCoordinates(walk) {
+            if (!walk) return false;
+            
+            const lng = parseFloat(walk.longitude);
+            const lat = parseFloat(walk.latitude);
+            
+            if (isNaN(lng) || isNaN(lat)) {
+                console.warn('Invalid coordinates for walk:', walk.id, { lng, lat });
+                return false;
+            }
+            
+            return lng >= -180 && lng <= 180 && lat >= -90 && lat <= 90;
         },
 
         addMarker({ id, longitude, latitude, is_favorite }, config = {}, onClick) {
@@ -214,14 +260,24 @@ document.addEventListener('alpine:init', () => {
             this.removeMarker(id);
             
             try {
-                console.log('Creating marker:', { id, longitude, latitude, is_favorite });
-                const marker = new mapboxgl.Marker({
+                const lng = parseFloat(longitude);
+                const lat = parseFloat(latitude);
+                
+                if (isNaN(lng) || isNaN(lat)) {
+                    throw new Error('Invalid coordinates');
+                }
+
+                const markerOptions = {
                     color: is_favorite ? '#FFD700' : '#FF0000',
                     draggable: false,
                     anchor: 'bottom'
-                })
-                .setLngLat([parseFloat(longitude), parseFloat(latitude)])
-                .addTo(this.map);
+                };
+
+                console.log('Creating marker:', { id, lng, lat, is_favorite, options: markerOptions });
+                
+                const marker = new mapboxgl.Marker(markerOptions)
+                    .setLngLat([lng, lat])
+                    .addTo(this.map);
 
                 if (onClick) {
                     marker.getElement().addEventListener('click', onClick);
