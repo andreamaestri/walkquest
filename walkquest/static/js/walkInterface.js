@@ -43,11 +43,12 @@ document.addEventListener('alpine:init', () => {
                 mapboxgl.accessToken = this.config.mapboxToken;
 
                 // Get container and ensure it's empty
-                const mapContainer = this.$refs.map;
+                const mapContainer = document.getElementById('map');
                 if (!mapContainer) {
                     throw new Error('Map container not found');
                 }
 
+                // Clear previous content
                 while (mapContainer.firstChild) {
                     mapContainer.removeChild(mapContainer.firstChild);
                 }
@@ -76,25 +77,6 @@ document.addEventListener('alpine:init', () => {
                 // Add navigation control
                 this.map.addControl(new mapboxgl.NavigationControl(), 'top-left');
 
-                // Add touch handlers
-                const mapCanvas = this.map.getCanvas();
-                const touchOptions = { passive: true };
-                
-                mapCanvas.addEventListener('touchstart', (e) => {
-                    if (e.cancelable) e.preventDefault();
-                    this.map.dragPan.enable();
-                }, touchOptions);
-                
-                mapCanvas.addEventListener('touchmove', (e) => {
-                    if (e.touches.length > 1) {
-                        this.map.dragPan.disable();
-                    }
-                }, touchOptions);
-                
-                mapCanvas.addEventListener('touchend', () => {
-                    this.map.dragPan.enable();
-                }, touchOptions);
-
                 // Handle container resize
                 new ResizeObserver(() => {
                     if (this.map) this.map.resize();
@@ -115,76 +97,76 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-       loadInitialWalks() {
-           const walksData = document.getElementById('walks-data');
-           if (!walksData?.textContent) {
-               console.error('No initial walks data found');
-               return;
-           }
+        loadInitialWalks() {
+            const walksData = document.getElementById('walks-data');
+            if (!walksData?.textContent) {
+                console.error('No initial walks data found');
+                return;
+            }
 
-           try {
-               console.log('Loading initial walks...');
-               const walks = JSON.parse(walksData.textContent);
-               
-               // Wait for map to be ready
-               if (!this.map) {
-                   console.error('Map not initialized');
-                   return;
-               }
+            try {
+                console.log('Loading initial walks...');
+                const walks = JSON.parse(walksData.textContent);
+                
+                // Wait for map to be ready
+                if (!this.map) {
+                    console.error('Map not initialized');
+                    return;
+                }
 
-               // Initialize layers
-               this.initializeLayers();
+                // Initialize layers
+                this.initializeLayers();
 
-               // Clear existing markers
-               this.removeAllMarkers();
+                // Clear existing markers
+                this.removeAllMarkers();
 
-               // Process walks
-               if (Array.isArray(walks) && walks.length > 0) {
-                   console.log(`Processing ${walks.length} walks`);
-                   this.processInitialWalks(walks);
-               } else {
-                   console.warn('No walks found in data');
-               }
-           } catch (err) {
-               console.error('Failed to parse walks data:', err);
-               this.error = 'Failed to load walks data';
-           }
-       },
+                // Process walks
+                if (Array.isArray(walks) && walks.length > 0) {
+                    console.log(`Processing ${walks.length} walks`);
+                    this.processInitialWalks(walks);
+                } else {
+                    console.warn('No walks found in data');
+                }
+            } catch (err) {
+                console.error('Failed to parse walks data:', err);
+                this.error = 'Failed to load walks data';
+            }
+        },
 
-       initializeLayers() {
-           if (!this.map.getSource('walk-path')) {
-               // Add the GeoJSON source for the walk path
-               this.map.addSource('walk-path', {
-                   type: 'geojson',
-                   data: {
-                       type: 'Feature',
-                       properties: {},
-                       geometry: {
-                           type: 'LineString',
-                           coordinates: []
-                       }
-                   }
-               });
+        initializeLayers() {
+            if (!this.map.getSource('walk-path')) {
+                // Add the GeoJSON source for the walk path
+                this.map.addSource('walk-path', {
+                    type: 'geojson',
+                    data: {
+                        type: 'Feature',
+                        properties: {},
+                        geometry: {
+                            type: 'LineString',
+                            coordinates: []
+                        }
+                    }
+                });
 
-               // Add the line layer
-               this.map.addLayer({
-                   id: 'walk-path',
-                   type: 'line',
-                   source: 'walk-path',
-                   layout: {
-                       'line-join': 'round',
-                       'line-cap': 'round'
-                   },
-                   paint: {
-                       'line-color': '#4338CA',
-                       'line-width': 4,
-                       'line-opacity': 0.8
-                   }
-               });
+                // Add the line layer
+                this.map.addLayer({
+                    id: 'walk-path',
+                    type: 'line',
+                    source: 'walk-path',
+                    layout: {
+                        'line-join': 'round',
+                        'line-cap': 'round'
+                    },
+                    paint: {
+                        'line-color': '#4338CA',
+                        'line-width': 4,
+                        'line-opacity': 0.8
+                    }
+                });
 
-               console.log('Path layers initialized');
-           }
-       },
+                console.log('Path layers initialized');
+            }
+        },
 
         processInitialWalks(walks) {
             if (!this.map) return;
@@ -268,10 +250,10 @@ document.addEventListener('alpine:init', () => {
 
             this.removeMarker(walk.id);
 
-                // Create marker with default style
-                const marker = new mapboxgl.Marker({
-                    color: walk.is_favorite ? '#FFD700' : '#4338CA'
-                })
+            // Create marker with default style
+            const marker = new mapboxgl.Marker({
+                color: walk.is_favorite ? '#FFD700' : '#4338CA'
+            })
             .setLngLat([walk.longitude, walk.latitude])
             .setPopup(
                 new mapboxgl.Popup({
