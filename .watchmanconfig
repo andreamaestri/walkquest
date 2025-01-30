@@ -3,6 +3,15 @@
     "node_modules",
     ".git",
     "__pycache__",
-    "*.egg-info"
-  ]
+    "*.egg-info",
+    "staticfiles",
+    ".venv",
+    "*.pyc"
+  ],
+  "root_files": [
+    "manage.py",
+    "pyproject.toml"
+  ],
+  "case_sensitive": true,
+  "settle": 2000
 }

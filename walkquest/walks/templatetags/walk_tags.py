@@ -13,8 +13,9 @@ def fix_svg_viewbox(text):
     # Find viewBox attributes
     viewbox_pattern = r'viewBox="([^"]*)"'
     def replace_viewbox(match):
-        numbers = match.group(1).split()
-        if len(numbers) != 4:
+        value = match.group(1).strip()
+        # Only fix if completely empty or invalid
+        if not value or not re.match(r'^[-\d\s.]+$', value):
             return 'viewBox="0 0 24 24"'
         return match.group(0)
     
@@ -36,7 +37,6 @@ def svg_safe_json(value):
                     for k, v in value.items()}
         
         # Then encode to JSON
-        return mark_safe(json.dumps(value, cls=SVGSafeJSONEncoder))
     except Exception as e:
         print(f"Error encoding JSON: {e}")
         return '{}'
