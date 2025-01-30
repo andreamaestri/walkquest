@@ -140,7 +140,34 @@ document.addEventListener('alpine:init', () => {
                     this.isMapLoading = false;
                     this.map.resize();
                     
-                    // Initialize markers once map is ready
+                    // Initialize map source and layer
+                    if (!this.map.getSource('walk-path')) {
+                        this.map.addSource('walk-path', {
+                            type: 'geojson',
+                            data: {
+                                type: 'Feature',
+                                properties: {},
+                                geometry: { type: 'LineString', coordinates: [] }
+                            }
+                        });
+
+                        this.map.addLayer({
+                            id: 'walk-path',
+                            type: 'line',
+                            source: 'walk-path',
+                            layout: {
+                                'line-join': 'round',
+                                'line-cap': 'round'
+                            },
+                            paint: {
+                                'line-color': '#4338CA',
+                                'line-width': 4,
+                                'line-opacity': 0.8
+                            }
+                        });
+                    }
+                    
+                    // Initialize markers
                     if (this.walks.length > 0) {
                         this.updateMarkers(this.walks);
                     }
@@ -210,24 +237,130 @@ document.addEventListener('alpine:init', () => {
         },
 
         handleWalkSelection(detail) {
-            if (!detail) return;
+            if (!detail || !window.htmx) {
+                console.error('Invalid walk detail or HTMX not loaded');
+                return;
+            }
             
-            // Update store and UI
+            console.group('Walk Selection');
+            console.log('Processing walk:', detail);
+            
             this.$store.walks.setSelectedWalk(detail);
+            
             this.$nextTick(() => {
                 this.showSidebar = true;
                 window.localStorage.setItem('sidebar', 'true');
                 
-                // Update map view if coordinates available
+                // Configure path loading
+                const mapPathLayer = document.getElementById('map-path-layer');
+                if (mapPathLayer) {
+                    // Clear existing path while loading
+                    const source = this.map.getSource('walk-path');
+                    if (source) {
+                        source.setData({
+                            type: 'Feature',
+                            properties: {},
+                            geometry: { type: 'LineString', coordinates: [] }
+                        });
+                    }
+
+                    // Setup HTMX request
+                    console.log('Setting up HTMX request for geometry:', `/api/walks/${detail.id}/geometry`);
+                    mapPathLayer.setAttribute('hx-get', `/api/walks/${detail.id}/geometry`);
+                    
+                    // Debug listeners
+                    const beforeRequest = (evt) => {
+                        if (evt.detail.target.id === 'map-path-layer') {
+                            console.log('HTMX Request starting:', evt.detail.requestConfig);
+                            this.setLoadingState('path', true);
+                        }
+                    };
+
+                    const afterRequest = (evt) => {
+                        if (evt.detail.target.id === 'map-path-layer') {
+                            console.log('HTMX Response received:', evt.detail.xhr.responseText);
+                            this.setLoadingState('path', false);
+                        }
+                    };
+
+                    // Add debug event listeners
+                    document.body.addEventListener('htmx:beforeRequest', beforeRequest);
+                    document.body.addEventListener('htmx:afterRequest', afterRequest);
+
+                    // Handle geometry data loading
+                    const handleGeometryLoad = (evt) => {
+                        if (evt.detail.target.id === 'map-path-layer') {
+                            try {
+                                const pathElement = document.getElementById('path-data');
+                                if (!pathElement || !pathElement.textContent) {
+                                    throw new Error('No path data received');
+                                }
+
+                                const pathData = JSON.parse(pathElement.textContent);
+                                console.log('Processing geometry data:', pathData);
+
+                                if (!pathData.geometry?.coordinates) {
+                                    throw new Error('Invalid geometry data structure');
+                                }
+
+                                // Update map with path data
+                                const source = this.map.getSource('walk-path');
+                                if (source) {
+                                    source.setData({
+                                        type: 'Feature',
+                                        properties: {
+                                            walk_id: detail.id,
+                                            difficulty: detail.steepness_level || 'medium'
+                                        },
+                                        geometry: pathData.geometry
+                                    });
+
+                                    // Update path styling
+                                    const color = {
+                                        easy: '#10B981',
+                                        medium: '#4338CA',
+                                        hard: '#DC2626'
+                                    }[detail.steepness_level] || '#4338CA';
+
+                                    this.map.setPaintProperty('walk-path', 'line-color', color);
+                                }
+                            } catch (error) {
+                                console.error('Failed to process geometry:', error);
+                                this.error = `Failed to load walk path: ${error.message}`;
+                            }
+
+                            // Cleanup listeners
+                            document.body.removeEventListener('htmx:afterSettle', handleGeometryLoad);
+                            document.body.removeEventListener('htmx:beforeRequest', beforeRequest);
+                            document.body.removeEventListener('htmx:afterRequest', afterRequest);
+                        }
+                    };
+
+                    // Add main event listener and trigger request
+                    document.body.addEventListener('htmx:afterSettle', handleGeometryLoad);
+                    mapPathLayer.classList.remove('hidden');
+                }
+
+                // Update map view
                 if (this.map && detail.longitude && detail.latitude) {
                     this.map.flyTo({
                         center: [detail.longitude, detail.latitude],
                         zoom: 14,
                         essential: true,
-                        padding: { right: 384 } // Account for sidebar width
+                        padding: { right: 384 }
                     });
                 }
             });
+
+            console.groupEnd();
+        },
+
+        // Add helper method for loading states
+        setLoadingState(type, isLoading) {
+            if (!this.loadingStates) {
+                this.loadingStates = {};
+            }
+            this.loadingStates[type] = isLoading;
         },
 
         updateMarkers(walks) {
