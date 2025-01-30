@@ -63,7 +63,7 @@ document.addEventListener('alpine:init', () => {
                 // Create map instance
                 this.map = new mapboxgl.Map({
                     container: mapContainer,
-                    style: this.config.map?.style || 'mapbox://styles/mapbox/standard',
+                    style: this.config.map?.style || 'mapbox://styles/mapbox/outdoors-v12',
                     center: [-5.051, 50.261], // Centered on Truro
                     zoom: 12,
                     preserveDrawingBuffer: true,
@@ -228,8 +228,7 @@ document.addEventListener('alpine:init', () => {
 
                 // Add click handler
                 marker.getElement().addEventListener('click', () => {
-                    Alpine.store('walks').setSelectedWalk(walk);
-                    this.showSidebar = true;
+                    this.handleWalkSelection(walk);
                 });
 
                 bounds.extend([walk.longitude, walk.latitude]);
@@ -294,8 +293,7 @@ document.addEventListener('alpine:init', () => {
 
             // Add click handler
             marker.getElement().addEventListener('click', () => {
-                Alpine.store('walks').setSelectedWalk(walk);
-                this.showSidebar = true;
+                this.handleWalkSelection(walk);
             });
 
             console.log('Marker added successfully:', walk.id);
