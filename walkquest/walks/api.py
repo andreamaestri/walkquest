@@ -199,42 +199,7 @@ def get_walk(request: HttpRequest, walk_id: UUID):
 def get_walk_geometry(request: HttpRequest, walk_id: UUID):
     """Get geometry data for a specific walk"""
     walk = get_object_or_404(Walk, id=walk_id)
-
-    print(f"Getting geometry for walk {walk_id}")  # Debug log
-    
-    if not walk.route_geometry:
-        return {
-            "status": "error",
-            "message": "No route geometry available for this walk",
-            "walk_id": str(walk_id)
-        }
-
-    try:
-        # Parse the GeoJSON string into a Python dict
-        # The geojson property already contains a GeoJSON string
-        geojson_data = json.loads(walk.route_geometry.geojson)
-        print(f"Parsed GeoJSON data: {geojson_data}")  # Debug log
-
-        # GeoJSON from GeoDjango has coordinates nested under 'coordinates'
-        if not geojson_data or "coordinates" not in geojson_data:
-            raise ValueError("No coordinates found in GeoJSON data")
-
-        return {
-            "type": "Feature",
-            "geometry": geojson_data,  # Use the full GeoJSON geometry object
-            "properties": {
-                "walk_id": str(walk.id),
-                "walk_name": walk.walk_name,
-                "status": "success"
-            }
-        }
-    except (AttributeError, json.JSONDecodeError, ValueError) as e:
-        print(f"Error processing geometry data: {str(e)}")  # Debug log
-        return {
-            "status": "error",
-            "message": f"Error processing geometry data: {str(e)}",
-            "walk_id": str(walk_id)
-        }
+    return json.loads(walk.route_geometry.geojson)
 
 class TagResponseSchema(Schema):
     name: str

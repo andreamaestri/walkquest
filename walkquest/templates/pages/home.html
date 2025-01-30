@@ -38,7 +38,7 @@
                      hx-trigger="load"
                      hx-target="this">
                     <div class="htmx-indicator">Loading path...</div>
-                    <script type="application/json" id="path-data"></script>
+                    <script type="application/json" id="path-data">{{ geometry_json|safe }}</script>
                 </div>
             
                 <!-- Add loading indicator for path data -->
