@@ -123,30 +123,31 @@ document.addEventListener('alpine:init', () => {
            }
 
            try {
-               // Add debug logging
-               console.log('Raw walks data:', walksData.textContent);
+               console.log('Loading initial walks...');
                const walks = JSON.parse(walksData.textContent);
-               console.log('Parsed walks:', walks);
                
-               // Log specific walk with SVG issue
-               const marazionWalk = walks.find(w => w.walk_name === "Marazion to Perranuthnoe");
-               if (marazionWalk) {
-                   console.log('Marazion walk data:', marazionWalk);
+               // Wait for map to be ready
+               if (!this.map) {
+                   console.error('Map not initialized');
+                   return;
                }
-               
-               this.processInitialWalks(walks);
+
+               // Initialize layers
+               this.initializeLayers();
+
+               // Clear existing markers
+               this.removeAllMarkers();
+
+               // Process walks
+               if (Array.isArray(walks) && walks.length > 0) {
+                   console.log(`Processing ${walks.length} walks`);
+                   this.processInitialWalks(walks);
+               } else {
+                   console.warn('No walks found in data');
+               }
            } catch (err) {
                console.error('Failed to parse walks data:', err);
-               // Log the specific position where parsing failed
-               console.error('Parse error position:', err.message);
-               // Try to identify the problematic section
-               const errorPos = parseInt(err.message.match(/\d+/)?.[0] || 0);
-               if (errorPos) {
-                   console.error('Context around error:',
-                       walksData.textContent.substring(Math.max(0, errorPos - 50),
-                       Math.min(walksData.textContent.length, errorPos + 50))
-                   );
-               }
+               this.error = 'Failed to load walks data';
            }
        },
 
@@ -201,15 +202,29 @@ document.addEventListener('alpine:init', () => {
 
                 console.log('Adding marker for walk:', walk.id, 'at:', walk.longitude, walk.latitude);
                 
+                // Create marker with default style
                 const marker = new mapboxgl.Marker({
-                    color: walk.is_favorite ? '#FFD700' : '#2b2b2b',
-                    draggable: false,
-                    scale: 1.2
+                    color: walk.is_favorite ? '#FFD700' : '#4338CA'
                 })
                 .setLngLat([walk.longitude, walk.latitude])
-                .setPopup(new mapboxgl.Popup().setHTML(
-                    `<h3>${walk.walk_name}</h3>`
-                ));
+                .setPopup(
+                    new mapboxgl.Popup({
+                        closeButton: true,
+                        closeOnClick: true,
+                        anchor: 'top',
+                        offset: [0, -10]
+                    })
+                    .setHTML(`<h3>${walk.walk_name}</h3>`)
+                );
+
+                // Add hover events
+                marker.getElement().addEventListener('mouseenter', () => {
+                    marker.togglePopup();
+                });
+
+                marker.getElement().addEventListener('mouseleave', () => {
+                    marker.togglePopup();
+                });
 
                 marker.addTo(this.map);
                 this.markers.set(walk.id, marker);
@@ -259,15 +274,29 @@ document.addEventListener('alpine:init', () => {
 
             this.removeMarker(walk.id);
 
-            const marker = new mapboxgl.Marker({
-                color: walk.is_favorite ? '#FFD700' : '#2b2b2b',
-                draggable: false,
-                scale: 1.2
-            })
+                // Create marker with default style
+                const marker = new mapboxgl.Marker({
+                    color: walk.is_favorite ? '#FFD700' : '#4338CA'
+                })
             .setLngLat([walk.longitude, walk.latitude])
-            .setPopup(new mapboxgl.Popup().setHTML(
-                `<h3>${walk.walk_name}</h3>`
-            ));
+            .setPopup(
+                new mapboxgl.Popup({
+                    closeButton: true,
+                    closeOnClick: true,
+                    anchor: 'top',
+                    offset: [0, -10]
+                })
+                .setHTML(`<h3>${walk.walk_name}</h3>`)
+            );
+
+            // Add hover events
+            marker.getElement().addEventListener('mouseenter', () => {
+                marker.togglePopup();
+            });
+
+            marker.getElement().addEventListener('mouseleave', () => {
+                marker.togglePopup();
+            });
 
             marker.addTo(this.map);
             this.markers.set(walk.id, marker);
@@ -291,6 +320,17 @@ document.addEventListener('alpine:init', () => {
         removeMarker(id) {
             const marker = this.markers.get(id);
             if (marker) {
+                // Remove popup first
+                const popup = marker.getPopup();
+                if (popup) popup.remove();
+                
+                // Remove event listeners from marker element
+                const element = marker.getElement();
+                if (element) {
+                    element.replaceWith(element.cloneNode(true)); // Removes all event listeners
+                }
+                
+                // Remove the marker
                 marker.remove();
                 this.markers.delete(id);
             }
