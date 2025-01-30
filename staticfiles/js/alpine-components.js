@@ -93,6 +93,13 @@ document.addEventListener('alpine:init', () => {
                 this.walks = initialData.walks || [];
                 this.hasMore = initialData.hasMore || false;
                 console.log('Data initialized with', this.walks.length, 'walks');
+                
+                // Initialize markers for initial walks once map is loaded
+                this.$nextTick(() => {
+                    if (this.map) {
+                        this.updateMarkers(this.walks);
+                    }
+                });
             } catch (error) {
                 console.error('Failed to parse initial data:', error);
                 throw error;
@@ -115,8 +122,13 @@ document.addEventListener('alpine:init', () => {
                 }
 
                 mapboxgl.accessToken = config.mapboxToken;
+                const mapContainer = document.getElementById('map');
+                if (!mapContainer) {
+                    throw new Error('Map container element not found');
+                }
+                
                 this.map = new mapboxgl.Map({
-                    container: this.$refs.map,
+                    container: mapContainer,
                     style: config.map?.style || 'mapbox://styles/mapbox/streets-v12',
                     center: config.map?.defaultCenter || [-4.85, 50.4],
                     zoom: config.map?.defaultZoom || 9.5,
@@ -127,6 +139,11 @@ document.addEventListener('alpine:init', () => {
                     console.log('Map loaded successfully');
                     this.isMapLoading = false;
                     this.map.resize();
+                    
+                    // Initialize markers once map is ready
+                    if (this.walks.length > 0) {
+                        this.updateMarkers(this.walks);
+                    }
                 });
 
                 this.map.addControl(new mapboxgl.NavigationControl(), 'top-left');
@@ -153,6 +170,9 @@ document.addEventListener('alpine:init', () => {
                 this.hasMore = (response.walks || []).length >= 10;
                 this.page = 1;
                 this.error = null;
+                
+                // Update markers for new walks
+                this.updateMarkers(this.walks);
             } catch (error) {
                 console.error('Failed to fetch walks:', error);
                 this.error = 'Failed to load walks. Please try again.';
@@ -178,6 +198,9 @@ document.addEventListener('alpine:init', () => {
                 this.hasMore = newWalks.length >= 10;
                 this.page++;
                 this.error = null;
+
+                // Update markers with complete list of walks
+                this.updateMarkers(this.walks);
             } catch (error) {
                 console.error('Failed to load more walks:', error);
                 this.error = 'Failed to load more walks. Please try again.';
@@ -205,6 +228,44 @@ document.addEventListener('alpine:init', () => {
                     });
                 }
             });
+        },
+
+        updateMarkers(walks) {
+            if (!this.map) return;
+
+            // Remove existing markers
+            for (const marker of this.markers.values()) {
+                marker.remove();
+            }
+            this.markers.clear();
+
+            // Add new markers
+            for (const walk of walks) {
+                if (!walk.latitude || !walk.longitude) continue;
+
+                // Create marker element
+                const el = document.createElement('div');
+                el.className = 'map-marker';
+                el.innerHTML = `
+                    <div class="w-8 h-8 transform -translate-x-1/2 -translate-y-1/2 cursor-pointer">
+                        <svg viewBox="0 0 24 24" class="w-full h-full text-primary-600 drop-shadow-lg">
+                            <path fill="currentColor" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                        </svg>
+                    </div>
+                `;
+
+                // Create and store marker
+                const marker = new mapboxgl.Marker(el)
+                    .setLngLat([walk.longitude, walk.latitude])
+                    .addTo(this.map);
+
+                // Add click handler
+                el.addEventListener('click', () => {
+                    this.handleWalkSelection(walk);
+                });
+
+                this.markers.set(walk.id, marker);
+            }
         }
     }));
 });

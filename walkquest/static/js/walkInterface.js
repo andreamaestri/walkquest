@@ -63,7 +63,7 @@ document.addEventListener('alpine:init', () => {
                 // Create map instance
                 this.map = new mapboxgl.Map({
                     container: mapContainer,
-                    style: this.config.map?.style || 'mapbox://styles/mapbox/outdoors-v12',
+                    style: this.config.map?.style || 'mapbox://styles/mapbox/standard',
                     center: [-5.051, 50.261], // Centered on Truro
                     zoom: 12,
                     preserveDrawingBuffer: true,

@@ -15,23 +15,6 @@ from ninja import NinjaAPI
 from ninja import Router
 from ninja import Schema
 
-class SVGSafeJSONEncoder(DjangoJSONEncoder):
-    """Custom JSON encoder that safely handles SVG viewBox attributes"""
-    def encode(self, obj):
-        if isinstance(obj, str):
-            # Escape SVG viewBox attributes and ensure proper format
-            if 'viewBox="' in obj:
-                obj = obj.replace('viewBox="', 'viewBox=\\"').replace('">', '\\">')
-                # Ensure viewBox has 4 numbers
-                import re
-                viewbox_matches = re.findall(r'viewBox=\\"([^"]*)\\"', obj)
-                for match in viewbox_matches:
-                    numbers = match.split()
-                    if len(numbers) != 4:
-                        # Fix incomplete viewBox
-                        obj = obj.replace(f'viewBox=\\"{match}\\"', 'viewBox=\\"0 0 24 24\\"')
-        return super().encode(obj)
-
 from .models import Walk
 from .models import WalkCategoryTag
 from .models import WalkFeatureTag
@@ -69,8 +52,7 @@ def list_walks(
     page_size: Optional[int] = 10,
     difficulty: Optional[str] = None,  # Add difficulty filter
     has_stiles: Optional[bool] = None,  # Add stiles filter
-    has_bus: Optional[bool] = None,    # Add bus access filter
-    encoder_class=SVGSafeJSONEncoder  # Use custom encoder for SVG safety
+    has_bus: Optional[bool] = None    # Add bus access filter
 ):
     """List walks with optional filtering"""
     try:
@@ -313,7 +295,7 @@ def get_config(request):
     return {
         "mapboxToken": settings.MAPBOX_TOKEN,
         "map": {
-            "style": "mapbox://styles/mapbox/outdoors-v12",
+            "style": "mapbox://styles/mapbox/standard",
             "defaultCenter": [-4.85, 50.4],  # Cornwall's approximate center
             "defaultZoom": 9.5,
             "markerColors": {
