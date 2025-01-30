@@ -13,6 +13,7 @@ document.addEventListener('alpine:init', () => {
         currentPath: null,
         pathSource: null,
         config: null,
+        pathCache: new Map(), // Cache for storing loaded paths
 
         // Computed properties
         get selectedWalk() {
