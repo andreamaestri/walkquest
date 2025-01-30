@@ -1,59 +1,51 @@
-import json
-
 from django import template
+from django.utils.safestring import mark_safe
+import json
+import re
 
 register = template.Library()
 
-@register.filter
-def get_item(dictionary, key):
-    """
-    Template filter to get an item from a dictionary using a key.
-    Returns empty string if key not found or dictionary is None.
-    """
-    if dictionary is None:
-        return ""
-    return dictionary.get(key, "")
+def fix_svg_viewbox(text):
+    """Fix incomplete SVG viewBox attributes"""
+    if not isinstance(text, str):
+        return text
+    
+    # Find viewBox attributes
+    viewbox_pattern = r'viewBox="([^"]*)"'
+    def replace_viewbox(match):
+        numbers = match.group(1).split()
+        if len(numbers) != 4:
+            return 'viewBox="0 0 24 24"'
+        return match.group(0)
+    
+    return re.sub(viewbox_pattern, replace_viewbox, text)
 
-@register.filter
-def replace(value, arg):
-    """
-    Replace all instances of arg in value with spaces
-    """
-    return value.replace(arg, " ") if value else ""
+class SVGSafeJSONEncoder(json.JSONEncoder):
+    def encode(self, obj):
+        if isinstance(obj, str):
+            obj = fix_svg_viewbox(obj)
+        return super().encode(obj)
 
-@register.filter
-def title_with_spaces(value):
-    """
-    Convert string to title case and replace underscores with spaces
-    """
-    if not value:
-        return ""
-    return value.replace("_", " ").title()
+@register.filter(name='svg_safe_json')
+def svg_safe_json(value):
+    """Convert a value to SVG-safe JSON string"""
+    try:
+        # First fix any SVG viewBox issues
+        if isinstance(value, dict):
+            value = {k: fix_svg_viewbox(v) if isinstance(v, str) else v 
+                    for k, v in value.items()}
+        
+        # Then encode to JSON
+        return mark_safe(json.dumps(value, cls=SVGSafeJSONEncoder))
+    except Exception as e:
+        print(f"Error encoding JSON: {e}")
+        return '{}'
 
-@register.filter
-def default_if_none(value, default=""):
-    """Return default value if value is None"""
-    return value if value is not None else default
-
-@register.simple_tag
-def get_feature_icon(feature_icons, feature):
-    """Get icon for a specific feature"""
-    return feature_icons.get(feature, "") if feature_icons else ""
-
-@register.filter
-def default_list(value, default=None):
-    """
-    Return default list if value is None or empty
-    """
-    if value is None or value == "":
-        return default or []
-    return value
-
-@register.filter(is_safe=True)
+@register.filter(name='as_json')
 def as_json(value):
-    """
-    Safely convert value to JSON string
-    """
-    if value is None:
-        return "[]"
-    return json.dumps(value)
+    """Convert a value to JSON string"""
+    try:
+        return json.dumps(value)
+    except Exception as e:
+        print(f"Error encoding JSON: {e}")
+        return '{}'

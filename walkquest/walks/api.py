@@ -2,7 +2,7 @@ from typing import List
 from typing import Optional
 from uuid import UUID
 from django.conf import settings
-
+from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models import Count
 from django.db.models import Exists
 from django.db.models import OuterRef
@@ -14,6 +14,23 @@ import json
 from ninja import NinjaAPI
 from ninja import Router
 from ninja import Schema
+
+class SVGSafeJSONEncoder(DjangoJSONEncoder):
+    """Custom JSON encoder that safely handles SVG viewBox attributes"""
+    def encode(self, obj):
+        if isinstance(obj, str):
+            # Escape SVG viewBox attributes and ensure proper format
+            if 'viewBox="' in obj:
+                obj = obj.replace('viewBox="', 'viewBox=\\"').replace('">', '\\">')
+                # Ensure viewBox has 4 numbers
+                import re
+                viewbox_matches = re.findall(r'viewBox=\\"([^"]*)\\"', obj)
+                for match in viewbox_matches:
+                    numbers = match.split()
+                    if len(numbers) != 4:
+                        # Fix incomplete viewBox
+                        obj = obj.replace(f'viewBox=\\"{match}\\"', 'viewBox=\\"0 0 24 24\\"')
+        return super().encode(obj)
 
 from .models import Walk
 from .models import WalkCategoryTag
@@ -53,6 +70,7 @@ def list_walks(
     difficulty: Optional[str] = None,  # Add difficulty filter
     has_stiles: Optional[bool] = None,  # Add stiles filter
     has_bus: Optional[bool] = None,    # Add bus access filter
+    encoder_class=SVGSafeJSONEncoder  # Use custom encoder for SVG safety
 ):
     """List walks with optional filtering"""
     try:

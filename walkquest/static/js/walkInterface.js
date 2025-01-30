@@ -56,40 +56,16 @@ document.addEventListener('alpine:init', () => {
                 this.map = new mapboxgl.Map({
                     container: mapContainer,
                     style: this.config.map?.style || 'mapbox://styles/mapbox/outdoors-v12',
-                    center: this.config.map?.defaultCenter || [-4.85, 50.4],
-                    zoom: this.config.map?.defaultZoom || 9.5,
+                    center: [-5.051, 50.261], // Centered on Truro
+                    zoom: 12,
                     preserveDrawingBuffer: true,
                     cooperativeGestures: true
                 });
 
                 // Setup map event handlers
-                this.map.on('style.load', () => {
-                    console.log('Map style loaded, initializing layers');
-                    console.group('Map Initialization');
-                    console.log('Map center:', this.map.getCenter());
-                    console.log('Map zoom:', this.map.getZoom());
-                    this.initializeLayers();
-                    console.groupEnd();
-
-                    // Process initial walks if available
-                    const walksData = document.getElementById('walks-data');
-                    if (walksData) {
-                        try {
-                            const initialData = JSON.parse(walksData.textContent);
-                            console.log('Initial walks data:', initialData);
-                            const walks = initialData;
-                            if (walks && walks.length > 0) {
-                                console.log('Processing walks:', walks.length);
-                                this.processInitialWalks(walks);
-                            } else {
-                                console.warn('No initial walks data found');
-                            }
-                        } catch (error) {
-                            console.error('Failed to process initial walks:', error);
-                            this.error = 'Failed to load walks';
-                        }
-                        this.isMapLoading = false;
-                    }
+                this.map.on('load', () => {
+                    console.log('Map loaded, loading initial walks');
+                    this.loadInitialWalks();
                 });
 
                 this.map.on('error', (e) => {
@@ -139,40 +115,75 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        initializeLayers() {
-            if (!this.map.getSource('walk-path')) {
-                // Add the GeoJSON source for the walk path
-                this.map.addSource('walk-path', {
-                    type: 'geojson',
-                    data: {
-                        type: 'Feature',
-                        properties: {},
-                        geometry: {
-                            type: 'LineString',
-                            coordinates: []
-                        }
-                    }
-                });
+       loadInitialWalks() {
+           const walksData = document.getElementById('walks-data');
+           if (!walksData?.textContent) {
+               console.error('No initial walks data found');
+               return;
+           }
 
-                // Add the line layer
-                this.map.addLayer({
-                    id: 'walk-path',
-                    type: 'line',
-                    source: 'walk-path',
-                    layout: {
-                        'line-join': 'round',
-                        'line-cap': 'round'
-                    },
-                    paint: {
-                        'line-color': '#4338CA',
-                        'line-width': 4,
-                        'line-opacity': 0.8
-                    }
-                });
+           try {
+               // Add debug logging
+               console.log('Raw walks data:', walksData.textContent);
+               const walks = JSON.parse(walksData.textContent);
+               console.log('Parsed walks:', walks);
+               
+               // Log specific walk with SVG issue
+               const marazionWalk = walks.find(w => w.walk_name === "Marazion to Perranuthnoe");
+               if (marazionWalk) {
+                   console.log('Marazion walk data:', marazionWalk);
+               }
+               
+               this.processInitialWalks(walks);
+           } catch (err) {
+               console.error('Failed to parse walks data:', err);
+               // Log the specific position where parsing failed
+               console.error('Parse error position:', err.message);
+               // Try to identify the problematic section
+               const errorPos = parseInt(err.message.match(/\d+/)?.[0] || 0);
+               if (errorPos) {
+                   console.error('Context around error:',
+                       walksData.textContent.substring(Math.max(0, errorPos - 50),
+                       Math.min(walksData.textContent.length, errorPos + 50))
+                   );
+               }
+           }
+       },
 
-                console.log('Path layers initialized');
-            }
-        },
+       initializeLayers() {
+           if (!this.map.getSource('walk-path')) {
+               // Add the GeoJSON source for the walk path
+               this.map.addSource('walk-path', {
+                   type: 'geojson',
+                   data: {
+                       type: 'Feature',
+                       properties: {},
+                       geometry: {
+                           type: 'LineString',
+                           coordinates: []
+                       }
+                   }
+               });
+
+               // Add the line layer
+               this.map.addLayer({
+                   id: 'walk-path',
+                   type: 'line',
+                   source: 'walk-path',
+                   layout: {
+                       'line-join': 'round',
+                       'line-cap': 'round'
+                   },
+                   paint: {
+                       'line-color': '#4338CA',
+                       'line-width': 4,
+                       'line-opacity': 0.8
+                   }
+               });
+
+               console.log('Path layers initialized');
+           }
+       },
 
         processInitialWalks(walks) {
             if (!this.map) return;
@@ -180,53 +191,42 @@ document.addEventListener('alpine:init', () => {
             console.group('Processing Initial Walks');
             console.log('Total walks to process:', walks.length);
             
-            // Validate walk data before processing
-            walks = walks.filter(walk => {
-                const isValid = this.validateWalkCoordinates(walk);
-                if (!isValid) {
-                    console.warn('Invalid coordinates for walk:', walk.id);
-                }
-                return isValid;
-            });
-
-            console.log('Valid walks after filtering:', walks.length);
-
             const bounds = new mapboxgl.LngLatBounds();
-            let hasValidCoordinates = false;
 
-            // Wait for map to be loaded before adding markers
-            const addMarkers = () => {
-                if (!this.map.loaded()) {
-                    console.log('Map not yet loaded, waiting...');
-                    requestAnimationFrame(addMarkers);
+            walks.forEach(walk => {
+                if (!this.isValidCoordinates(walk.latitude, walk.longitude)) {
+                    console.warn(`Invalid coordinates for walk ${walk.id}`);
                     return;
                 }
 
-                this.addWalkMarkers(walks, bounds);
-                console.log('All markers added successfully');
-                console.groupEnd();
-            };
+                console.log('Adding marker for walk:', walk.id, 'at:', walk.longitude, walk.latitude);
+                
+                const marker = new mapboxgl.Marker({
+                    color: walk.is_favorite ? '#FFD700' : '#2b2b2b',
+                    draggable: false,
+                    scale: 1.2
+                })
+                .setLngLat([walk.longitude, walk.latitude])
+                .setPopup(new mapboxgl.Popup().setHTML(
+                    `<h3>${walk.walk_name}</h3>`
+                ));
 
-            addMarkers();
-        },
+                marker.addTo(this.map);
+                this.markers.set(walk.id, marker);
 
-        addWalkMarkers(walks, bounds) {
-            walks.forEach(walk => {
-                if (walk.longitude && walk.latitude) {
-                    console.log('Adding marker for walk:', walk.id, 'at:', walk.longitude, walk.latitude);
-                    
-                    this.addMarker({
-                        id: walk.id,
-                        longitude: walk.longitude,
-                        latitude: walk.latitude,
-                        is_favorite: walk.is_favorite
-                    }, {}, () => {
-                        Alpine.store('walks').setSelectedWalk(walk);
-                        this.showSidebar = true;
-                    });
-                    
-                    bounds.extend([walk.longitude, walk.latitude]);
-                }
+                // Add click handler
+                marker.getElement().addEventListener('click', () => {
+                    Alpine.store('walks').setSelectedWalk(walk);
+                    this.showSidebar = true;
+                });
+
+                // Add debug popup
+                new mapboxgl.Popup({ closeButton: false })
+                    .setLngLat([walk.longitude, walk.latitude])
+                    .setHTML(`Marker ID: ${walk.id}<br>Coords: ${walk.longitude}, ${walk.latitude}`)
+                    .addTo(this.map);
+
+                bounds.extend([walk.longitude, walk.latitude]);
             });
 
             if (!bounds.isEmpty()) {
@@ -235,61 +235,57 @@ document.addEventListener('alpine:init', () => {
                     padding: 50,
                     maxZoom: 14
                 });
-            } else {
-                console.warn('No valid bounds to fit to');
             }
+
+            console.log('All markers added successfully');
+            console.groupEnd();
+            this.isMapLoading = false;
         },
 
-        validateWalkCoordinates(walk) {
-            if (!walk) return false;
-            
-            const lng = parseFloat(walk.longitude);
-            const lat = parseFloat(walk.latitude);
-            
-            if (isNaN(lng) || isNaN(lat)) {
-                console.warn('Invalid coordinates for walk:', walk.id, { lng, lat });
-                return false;
-            }
-            
-            return lng >= -180 && lng <= 180 && lat >= -90 && lat <= 90;
+        isValidCoordinates(lat, lng) {
+            return lat && lng &&
+                   !isNaN(lat) && !isNaN(lng) &&
+                   lat >= -90 && lat <= 90 &&
+                   lng >= -180 && lng <= 180;
         },
 
-        addMarker({ id, longitude, latitude, is_favorite }, config = {}, onClick) {
-            if (!this.map) return null;
+        addMarker(walk) {
+            if (!this.map || !walk) return null;
             
-            this.removeMarker(id);
-            
-            try {
-                const lng = parseFloat(longitude);
-                const lat = parseFloat(latitude);
-                
-                if (isNaN(lng) || isNaN(lat)) {
-                    throw new Error('Invalid coordinates');
-                }
-
-                const markerOptions = {
-                    color: is_favorite ? '#FFD700' : '#FF0000',
-                    draggable: false,
-                    anchor: 'bottom'
-                };
-
-                console.log('Creating marker:', { id, lng, lat, is_favorite, options: markerOptions });
-                
-                const marker = new mapboxgl.Marker(markerOptions)
-                    .setLngLat([lng, lat])
-                    .addTo(this.map);
-
-                if (onClick) {
-                    marker.getElement().addEventListener('click', onClick);
-                }
-
-                this.markers.set(id, marker);
-                console.log('Marker added successfully');
-                return marker;
-            } catch (error) {
-                console.error('Failed to add marker:', error);
+            if (!this.isValidCoordinates(walk.latitude, walk.longitude)) {
+                console.warn(`Invalid coordinates for walk ${walk.id}`);
                 return null;
             }
+
+            this.removeMarker(walk.id);
+
+            const marker = new mapboxgl.Marker({
+                color: walk.is_favorite ? '#FFD700' : '#2b2b2b',
+                draggable: false,
+                scale: 1.2
+            })
+            .setLngLat([walk.longitude, walk.latitude])
+            .setPopup(new mapboxgl.Popup().setHTML(
+                `<h3>${walk.walk_name}</h3>`
+            ));
+
+            marker.addTo(this.map);
+            this.markers.set(walk.id, marker);
+
+            // Add debug popup
+            new mapboxgl.Popup({ closeButton: false })
+                .setLngLat([walk.longitude, walk.latitude])
+                .setHTML(`Marker ID: ${walk.id}<br>Coords: ${walk.longitude}, ${walk.latitude}`)
+                .addTo(this.map);
+
+            // Add click handler
+            marker.getElement().addEventListener('click', () => {
+                Alpine.store('walks').setSelectedWalk(walk);
+                this.showSidebar = true;
+            });
+
+            console.log('Marker added successfully:', walk.id);
+            return marker;
         },
 
         removeMarker(id) {
@@ -316,12 +312,7 @@ document.addEventListener('alpine:init', () => {
             
             if (detail.longitude && detail.latitude) {
                 // Add or update marker
-                this.addMarker({
-                    id: detail.id,
-                    longitude: detail.longitude,
-                    latitude: detail.latitude,
-                    is_favorite: detail.is_favorite
-                });
+                this.addMarker(detail);
 
                 // Center map on selected walk
                 this.map.easeTo({

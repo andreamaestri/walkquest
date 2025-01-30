@@ -130,6 +130,22 @@
             @apply fixed inset-0 w-full h-full;
             z-index: 1;
         }
+
+         /* Ensure markers are visible */
+        /* Ensure markers are above other map elements */
+        .mapboxgl-marker {
+            z-index: 1000 !important;
+        }
+
+        /* Ensure popups are above markers */
+        .mapboxgl-popup {
+            z-index: 1001 !important;
+        }
+
+        /* Ensure controls are above markers */
+        .mapboxgl-control-container {
+            z-index: 1002 !important;
+        }
     
         .map-inner {
             @apply absolute inset-0;

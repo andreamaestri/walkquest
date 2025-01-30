@@ -2151,6 +2151,15 @@
       width: 100%;
       z-index: 1;
     }
+    .mapboxgl-marker {
+      z-index: 1000 !important;
+    }
+    .mapboxgl-popup {
+      z-index: 1001 !important;
+    }
+    .mapboxgl-control-container {
+      z-index: 1002 !important;
+    }
     .map-inner {
       position: absolute;
       inset: calc(var(--spacing) * 0);
