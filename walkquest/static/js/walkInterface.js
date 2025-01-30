@@ -53,6 +53,12 @@ document.addEventListener('alpine:init', () => {
                     mapContainer.removeChild(mapContainer.firstChild);
                 }
 
+                // Check for WebGL support
+                const supported = mapboxgl.supported();
+                if (!supported) {
+                    throw new Error('WebGL is not supported in this browser');
+                }
+
                 // Create map instance
                 this.map = new mapboxgl.Map({
                     container: mapContainer,

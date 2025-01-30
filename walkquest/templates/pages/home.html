@@ -29,8 +29,8 @@
         <!-- Map container -->
         <main class="map h-full">
             <div class="map-container h-full relative">
-                <!-- Map element -->
-                <div x-ref="map" class="map-inner h-full bg-gray-100"></div>
+                <!-- Map element - ensure this is completely empty before initialization -->
+                <div id="map" class="map-inner h-full"></div>
             
                 <!-- Loading indicator -->
                 <div x-show="isMapLoading" 
