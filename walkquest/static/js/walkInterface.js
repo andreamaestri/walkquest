@@ -80,8 +80,16 @@ document.addEventListener('alpine:init', () => {
                     this.error = 'Failed to load map';
                 });
 
-                // Add navigation control
-                this.map.addControl(new mapboxgl.NavigationControl(), 'top-left');
+                // Add navigation control with passive touchmove listener
+                const navControl = new mapboxgl.NavigationControl();
+                this.map.addControl(navControl, 'top-left');
+                
+                // Fix touchmove listener
+                const touchmoveHandler = (e) => {
+                    e.preventDefault();
+                };
+                touchmoveHandler.passive = true;
+                mapContainer.addEventListener('touchmove', touchmoveHandler, { passive: true });
 
                 // Handle container resize
                 new ResizeObserver(() => {
