@@ -42,13 +42,13 @@ document.addEventListener('alpine:init', () => {
                 // Initialize Mapbox
                 mapboxgl.accessToken = this.config.mapboxToken;
 
-                // Get container and ensure it's empty
+                // Get container and ensure it's completely empty
                 const mapContainer = document.getElementById('map');
                 if (!mapContainer) {
                     throw new Error('Map container not found');
                 }
 
-                // Clear previous content
+                // Clear all previous content
                 while (mapContainer.firstChild) {
                     mapContainer.removeChild(mapContainer.firstChild);
                 }
