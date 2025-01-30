@@ -235,12 +235,6 @@ document.addEventListener('alpine:init', () => {
                     this.showSidebar = true;
                 });
 
-                // Add debug popup
-                new mapboxgl.Popup({ closeButton: false })
-                    .setLngLat([walk.longitude, walk.latitude])
-                    .setHTML(`Marker ID: ${walk.id}<br>Coords: ${walk.longitude}, ${walk.latitude}`)
-                    .addTo(this.map);
-
                 bounds.extend([walk.longitude, walk.latitude]);
             });
 
@@ -300,12 +294,6 @@ document.addEventListener('alpine:init', () => {
 
             marker.addTo(this.map);
             this.markers.set(walk.id, marker);
-
-            // Add debug popup
-            new mapboxgl.Popup({ closeButton: false })
-                .setLngLat([walk.longitude, walk.latitude])
-                .setHTML(`Marker ID: ${walk.id}<br>Coords: ${walk.longitude}, ${walk.latitude}`)
-                .addTo(this.map);
 
             // Add click handler
             marker.getElement().addEventListener('click', () => {
