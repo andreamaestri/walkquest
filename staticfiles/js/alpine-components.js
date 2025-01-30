@@ -243,24 +243,13 @@ document.addEventListener('alpine:init', () => {
             for (const walk of walks) {
                 if (!walk.latitude || !walk.longitude) continue;
 
-                // Create marker element
-                const el = document.createElement('div');
-                el.className = 'map-marker';
-                el.innerHTML = `
-                    <div class="w-8 h-8 transform -translate-x-1/2 -translate-y-1/2 cursor-pointer">
-                        <svg viewBox="0 0 24 24" class="w-full h-full text-primary-600 drop-shadow-lg">
-                            <path fill="currentColor" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-                        </svg>
-                    </div>
-                `;
-
-                // Create and store marker
-                const marker = new mapboxgl.Marker(el)
+                // Create marker using Mapbox default marker
+                const marker = new mapboxgl.Marker()
                     .setLngLat([walk.longitude, walk.latitude])
                     .addTo(this.map);
 
                 // Add click handler
-                el.addEventListener('click', () => {
+                marker.getElement().addEventListener('click', () => {
                     this.handleWalkSelection(walk);
                 });
 

@@ -67,7 +67,10 @@ document.addEventListener('alpine:init', () => {
                     center: [-5.051, 50.261], // Centered on Truro
                     zoom: 12,
                     preserveDrawingBuffer: true,
-                    cooperativeGestures: true
+                    cooperativeGestures: true,
+                    maxPitch: 60, // Limit pitch to avoid terrain cutoff issues
+                    minZoom: 5,   // Prevent zooming out too far
+                    maxZoom: 18   // Limit maximum zoom level
                 });
 
                 // Setup map event handlers
@@ -264,9 +267,22 @@ document.addEventListener('alpine:init', () => {
 
             this.removeMarker(walk.id);
 
-            // Create marker with default style
+            // Create unique HTML element for marker
+            const el = document.createElement('div');
+            el.className = 'walk-marker';
+            el.setAttribute('data-walk-id', walk.id);
+            el.style.backgroundColor = walk.is_favorite ? '#FFD700' : '#4338CA';
+            el.style.width = '24px';
+            el.style.height = '24px';
+            el.style.borderRadius = '50%';
+            el.style.cursor = 'pointer';
+            el.style.border = '2px solid #ffffff';
+            el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+
+            // Create and configure marker
             const marker = new mapboxgl.Marker({
-                color: walk.is_favorite ? '#FFD700' : '#4338CA'
+                element: el,
+                anchor: 'center'
             })
             .setLngLat([walk.longitude, walk.latitude])
             .setPopup(
@@ -274,26 +290,32 @@ document.addEventListener('alpine:init', () => {
                     closeButton: true,
                     closeOnClick: true,
                     anchor: 'top',
-                    offset: [0, -10]
+                    offset: [0, -10],
+                    className: 'walk-popup'
                 })
-                .setHTML(`<h3>${walk.walk_name}</h3>`)
+                .setHTML(`<h3 class="walk-title">${walk.walk_name}</h3>`)
             );
 
-            // Add hover events
-            marker.getElement().addEventListener('mouseenter', () => {
-                marker.togglePopup();
-            });
+            // Use event delegation for better performance
+            const handleMarkerEvents = (event) => {
+                if (event.type === 'mouseenter') {
+                    marker.togglePopup();
+                } else if (event.type === 'mouseleave') {
+                    marker.togglePopup();
+                } else if (event.type === 'click') {
+                    this.handleWalkSelection(walk);
+                }
+            };
 
-            marker.getElement().addEventListener('mouseleave', () => {
-                marker.togglePopup();
-            });
+            el.addEventListener('mouseenter', handleMarkerEvents);
+            el.addEventListener('mouseleave', handleMarkerEvents);
+            el.addEventListener('click', handleMarkerEvents);
 
             marker.addTo(this.map);
-            this.markers.set(walk.id, marker);
-
-            // Add click handler
-            marker.getElement().addEventListener('click', () => {
-                this.handleWalkSelection(walk);
+            this.markers.set(walk.id, {
+                marker,
+                element: el,
+                handlers: handleMarkerEvents
             });
 
             console.log('Marker added successfully:', walk.id);
@@ -301,26 +323,43 @@ document.addEventListener('alpine:init', () => {
         },
 
         removeMarker(id) {
-            const marker = this.markers.get(id);
-            if (marker) {
-                // Remove popup first
+            const markerData = this.markers.get(id);
+            if (markerData) {
+                const { marker, element, handlers } = markerData;
+                
+                // Remove popup if it exists
                 const popup = marker.getPopup();
                 if (popup) popup.remove();
                 
-                // Remove event listeners from marker element
-                const element = marker.getElement();
+                // Remove event listeners
                 if (element) {
-                    element.replaceWith(element.cloneNode(true)); // Removes all event listeners
+                    element.removeEventListener('mouseenter', handlers);
+                    element.removeEventListener('mouseleave', handlers);
+                    element.removeEventListener('click', handlers);
                 }
                 
-                // Remove the marker
+                // Remove the marker from the map
                 marker.remove();
+                
+                // Clean up references
                 this.markers.delete(id);
             }
         },
 
         removeAllMarkers() {
-            this.markers.forEach(marker => marker.remove());
+            this.markers.forEach(({ marker, element, handlers }) => {
+                // Remove popup if it exists
+                const popup = marker.getPopup();
+                if (popup) popup.remove();
+                
+                // Remove event listeners
+                if (element) {
+                    element.removeEventListener('mouseenter', handlers);
+                    element.removeEventListener('mouseleave', handlers);
+                    element.removeEventListener('click', handlers);
+                }
+                marker.remove();
+            });
             this.markers.clear();
         },
 
@@ -356,12 +395,45 @@ document.addEventListener('alpine:init', () => {
                     // Update the GeoJSON source with new data
                     const source = this.map.getSource('walk-path');
                     if (source) {
+                        // Validate and process geometry data
+                        const geometry = geometryData.geometry;
+                        if (!geometry || !geometry.coordinates || !Array.isArray(geometry.coordinates)) {
+                            throw new Error('Invalid geometry data received');
+                        }
+
+                        // Filter out any invalid coordinates and ensure minimum length property
+                        const validCoordinates = geometry.coordinates.filter(coord =>
+                            Array.isArray(coord) &&
+                            coord.length >= 2 &&
+                            !isNaN(coord[0]) &&
+                            !isNaN(coord[1])
+                        );
+
+                        if (validCoordinates.length < 2) {
+                            throw new Error('Not enough valid coordinates for path');
+                        }
+
+                        // Calculate path length for geometry-type point calculations
+                        const pathLength = validCoordinates.reduce((total, coord, i) => {
+                            if (i === 0) return 0;
+                            const prev = validCoordinates[i - 1];
+                            const dist = Math.sqrt(
+                                Math.pow(coord[0] - prev[0], 2) +
+                                Math.pow(coord[1] - prev[1], 2)
+                            ) * 111319.9; // Convert to meters
+                            return total + dist;
+                        }, 0);
+
                         source.setData({
                             type: 'Feature',
                             properties: {
-                                difficulty: detail.difficulty || 'medium'
+                                difficulty: detail.difficulty || 'medium',
+                                len: pathLength
                             },
-                            geometry: geometryData.geometry
+                            geometry: {
+                                type: 'LineString',
+                                coordinates: validCoordinates
+                            }
                         });
 
                         // Update the path's appearance based on difficulty
