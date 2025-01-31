@@ -17,7 +17,7 @@ const initializeHoverEffects = () => {
         const enterAnimation = window.Motion.animate([
             [element, {
                 y: 0, // Start at initial position for smoother transition
-                scale: 0.98, // Subtle scale-up
+                scale: 0.95, // Subtle scale-up
                 opacity: 0, // Fade in
                 boxShadow: '0 8px 16px rgba(0, 0, 0, 0.08)' // Softer shadow
             }, {
@@ -26,6 +26,9 @@ const initializeHoverEffects = () => {
             }],
             [element, { // Second animation on the element for the final state
                 scale: 1,
+                willChange: 'transform',
+                backfaceVisibility: 'hidden',
+                transform: 'translateZ(0)',
             }, {
                 duration: 0.2,
                 easing: [0.4, 0, 0.2, 1]
@@ -39,7 +42,7 @@ const initializeHoverEffects = () => {
                 easing: [0.2, 0.4, 0.2, 1] // Consistent easing
             }],
             [element.querySelectorAll('.category-tag'), {
-                scale: 1.02, // Smaller scale
+                scale: 1.05, // Smaller scale
                 backgroundColor: '#E0E7FF',
                 color: '#4338CA'
             }, {
@@ -108,12 +111,15 @@ const initializePressHandlers = () => {
 
                     // Smoother expansion animation
                     window.Motion.animate(element, {
-                        scale: [1, 1.01],
+                        scale: [1, 1.025],
                         y: [0, -4],
-                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+                        willChange: 'transform',
+                        backfaceVisibility: 'hidden',
+                        transform: 'translateZ(0)',
                     }, { 
                         duration: 0.3,
-                        easing: [0.2, 0.8, 0.2, 1] // Custom spring-like easing
+                        easing: [0.2, 0.8, 0.2, 1]
                     });
 
                     // Content expansion with improved flow
