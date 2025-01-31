@@ -2,28 +2,49 @@
 {% load i18n %}
 
 <div class="walk-item p-3 md:p-5 backdrop-blur-md rounded-xl shadow-sm hover:shadow-lg
-            transition-all duration-300 ease-out cursor-pointer
+            transition-all duration-300 ease-out cursor-pointer"
+            :data-walk-id="walk.id"
             border border-white/20 hover:border-primary-200/50
             bg-white/5 hover:bg-white/10 group relative
             w-full max-w-4xl mx-auto transform-gpu backface-visibility-hidden"
      :class="{
-         'expanded': expanded,
-         'border-blue-500/50 bg-white/25': $store.walks.selectedWalk?.id === walk.id,
-         'walk-item-pending': $store.walks.pendingFavorites.has(walk.id)
-     }" 
+  'expanded': expanded,
+  'border-blue-500/50 bg-white/25': $store.walks.selectedWalk?.id === walk.id,
+  'walk-item-pending': $store.walks.pendingFavorites.has(walk.id),
+  'opacity-0 translate-y-4': !inView,
+  'opacity-100 translate-y-0': inView
+}"
+style="transition: opacity 0.5s ease-out, transform 0.5s ease-out"
      :key="walk.id"
-     x-data="{ 
-         expanded: false,
-         walk: walk,
-         toggleExpand(event) {
-             if (event.target.closest('.favorite-btn, .action-btn')) return;
-             this.expanded = !this.expanded;
-             if (this.expanded && $store.walks) {
-                 $store.walks.setSelectedWalk(this.walk);
-             }
-         }
-     }"
-     @click="toggleExpand($event)"
+     x-data="{
+               expanded: false,
+               walk: walk,
+               inView: false,
+               toggleExpand(event) {
+                   if (event.target.closest('.favorite-btn, .action-btn')) return;
+                   
+                   const wasExpanded = this.expanded;
+                   this.expanded = !wasExpanded;
+                   
+                   // When expanding, dispatch event for map interaction
+                   if (!wasExpanded) {
+                       window.dispatchEvent(new CustomEvent('walk:selected', {
+                           detail: this.walk
+                       }));
+                   }
+               },
+               handleSelection() {
+                   $store.walks.setSelectedWalk(this.walk);
+                   const targetEl = $el.getBoundingClientRect();
+                   const viewportHeight = window.innerHeight;
+                   if (targetEl.top < 0 || targetEl.bottom > viewportHeight) {
+                       $el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                   }
+               }
+           }"
+           x-intersect:enter="inView = true"
+           x-intersect:leave="inView = false"
+           @click="toggleExpand($event)"
      @keydown.space.prevent="toggleExpand($event)"
      @keydown.enter.prevent="toggleExpand($event)"
      role="button"

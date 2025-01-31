@@ -75,6 +75,13 @@ document.addEventListener('alpine:init', () => {
                 console.log('Starting initialization...');
                 
                 try {
+                    // Add event listener for walk selection
+                    window.addEventListener('walk:selected', (event) => {
+                        if (event.detail) {
+                            this.handleWalkSelection(event.detail);
+                        }
+                    });
+
                     await this.initializeData();
                     await this.initializeMap();
                     await this.fetchWalks();
@@ -278,11 +285,23 @@ document.addEventListener('alpine:init', () => {
                 return;
             }
             
+            // First set selected walk in store
             this.$store.walks.setSelectedWalk(detail);
             
             this.$nextTick(() => {
+                // Show sidebar and store preference
                 this.showSidebar = true;
                 window.localStorage.setItem('sidebar', 'true');
+
+                // Find and expand the corresponding walk card
+                const walkCard = document.querySelector(`.walk-item[data-walk-id="${detail.id}"]`);
+                if (walkCard) {
+                    const cardComponent = Alpine.$data(walkCard);
+                    if (cardComponent) {
+                        cardComponent.expanded = true;
+                        walkCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }
                 
                 if (this.currentRouteState.id === detail.id) {
                     // Route is already loaded, just update the view
