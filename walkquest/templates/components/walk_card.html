@@ -1,12 +1,13 @@
 {% load slippers %}
 {% load i18n %}
 
-<div class="walk-item p-3 backdrop-blur-md rounded-xl shadow-sm hover:shadow-md 
+<div class="walk-item p-2 md:p-4 backdrop-blur-md rounded-xl shadow-sm hover:shadow-lg 
             transition-all duration-300 ease-out cursor-pointer 
             border border-white/20 hover:border-primary-200/50 
-            bg-white/5 hover:bg-white/10 group"
+            bg-white/5 hover:bg-white/10 group relative
+            sm:max-w-sm md:max-w-md lg:max-w-lg mx-auto w-full transform-gpu backface-visibility-hidden"
      :class="{
-         'expanded p-4': expanded,
+         'expanded': expanded,
          'border-primary-500/50 bg-white/15': $store.walks.selectedWalk?.id === walk.id,
          'walk-item-pending': $store.walks.pendingFavorites.has(walk.id)
      }" 
@@ -15,111 +16,210 @@
          expanded: false,
          walk: walk,
          toggleExpand(event) {
-             if (event.target.closest('.favorite-btn')) return;
+             if (event.target.closest('.favorite-btn, .action-btn')) return;
              this.expanded = !this.expanded;
+             console.log('Categories:', this.walk.related_categories); // Debug line
              if (this.expanded && $store.walks) {
                  $store.walks.setSelectedWalk(this.walk);
              }
          }
      }"
-     @click="toggleExpand($event)">
-     
-    <!-- Header Section -->
-    <div class="flex justify-between items-start gap-3">
-        <!-- Title Section with proper pointer events -->
-        <div class="flex-1 pointer-events-none">
-            <h3 class="text-lg font-semibold text-gray-900 group-hover:text-primary-900 
-                       transition-colors duration-200"
-                :class="{ 'text-xl': expanded, 'line-clamp-1': !expanded }"
+     @click="toggleExpand($event)"
+     @keydown.space.prevent="toggleExpand($event)"
+     @keydown.enter.prevent="toggleExpand($event)"
+     role="button"
+     tabindex="0">
+
+    <!-- Header Section with improved spacing -->
+    <div class="flex justify-between items-start gap-4 pb-3 border-b border-white/10">
+        <div class="flex-1 space-y-2.5">
+            <h3 class="text-xl md:text-2xl font-semibold text-gray-900 group-hover:text-primary-900 
+                       transition-colors duration-200 line-clamp-2"
+                :class="{ 'md:text-3xl': expanded }"
                 x-text="walk.walk_name"></h3>
             
-            <!-- Basic Info Row -->
-            <div class="mt-1.5 flex items-center gap-2 text-sm text-gray-600">
-                <span x-text="`${walk.distance?.toFixed(1) || 0} miles`"></span>
-                <span class="text-gray-400">•</span>
-                <span x-text="walk.steepness_level || 'Easy'"></span>
+            <!-- Enhanced Info Row -->
+            <div class="flex flex-wrap items-center gap-4 text-sm md:text-base text-gray-600">
+                <span class="flex items-center gap-2 bg-white/5 px-3 py-1 rounded-full">
+                    <iconify-icon icon="mdi:map-marker-distance" class="w-5 h-5"></iconify-icon>
+                    <span x-text="`${walk.distance?.toFixed(1) || 0} miles`"></span>
+                </span>
+                <span class="flex items-center gap-2 bg-white/5 px-3 py-1 rounded-full">
+                    <iconify-icon icon="mdi:mountain" class="w-5 h-5"></iconify-icon>
+                    <span x-text="walk.steepness_level || 'Easy'"></span>
+                </span>
             </div>
         </div>
 
-        <!-- Favorite Button with isolated click handling -->
-        <button class="favorite-btn p-2 rounded-full hover:bg-white/10 
-                       transition-colors duration-200 pointer-events-auto"
+        <!-- Improved Favorite Button -->
+        <button class="favorite-btn p-2.5 rounded-full hover:bg-white/10 
+                       transition-all duration-200 transform hover:scale-110
+                       focus:outline-none focus:ring-2 focus:ring-primary-500/50
+                       transform-gpu backface-visibility-hidden"
                 @click.stop="$dispatch('toggle-favorite', { walkId: walk.id })"
                 :aria-label="walk.is_favorite ? 'Remove from favorites' : 'Add to favorites'">
-            <iconify-icon icon="mdi:heart" class="w-5 h-5"
+            <iconify-icon icon="mdi:heart" class="w-6 h-6"
                          :class="walk.is_favorite ? 'text-red-500' : 'text-gray-400'">
             </iconify-icon>
         </button>
     </div>
 
-    <!-- Primary Categories -->
-    <div class="mt-2 flex flex-wrap gap-2">
-        <template x-for="category in walk.categories?.slice(0, 3)" :key="category.slug">
-            <span class="category-tag inline-flex items-center px-2.5 py-1 
-                        rounded-full text-xs font-medium bg-primary-50/50 
-                        text-primary-700 pointer-events-none
-                        transition-all duration-300">
-                <span x-text="category.name"></span>
-            </span>
-        </template>
-    </div>
-
-    <!-- Expandable Content -->
-    <div class="expandable-content overflow-hidden mt-0 opacity-0 transition-all duration-500" style="height: 0">
-        <!-- Additional Categories -->
-        <div class="mt-3 flex flex-wrap gap-2" :class="{ 'mt-4': expanded }">
-            <template x-for="category in walk.categories?.slice(3)" :key="category.slug">
-                <span class="category-tag inline-flex items-center px-2.5 py-1 
-                            rounded-full text-xs font-medium bg-primary-50/50 
-                            text-primary-700 pointer-events-none
-                            transition-all duration-300">
+    <!-- Debug categories (temporary) -->
+        <div x-show="false">
+            <pre x-text="JSON.stringify(walk.related_categories, null, 2)"></pre>
+        </div>
+    
+        <!-- Categories -->
+        <div class="mt-0 flex flex-wrap gap-2">
+            <template x-for="category in walk.related_categories?.slice(0, 3)" :key="category.slug">
+                <span class="category-tag inline-flex items-center px-1 py-1.5
+                            rounded-full text-sm font-medium 
+                            bg-primary-100/80 text-primary-800
+                            border border-primary-200/50 hover:bg-primary-200/80
+                            transform-gpu backface-visibility-hidden transition-all duration-200
+                            hover:scale-105 hover:shadow-sm">
                     <span x-text="category.name"></span>
                 </span>
             </template>
         </div>
 
-        <!-- Description -->
-        <div class="highlights mt-3 text-sm text-gray-600 leading-relaxed" :class="{ 'mt-4': expanded }">
-            <p x-text="walk.description || walk.highlights" class="pointer-events-none"></p>
-        </div>
+    <!-- Expandable Content -->
+    <div class="expandable-content w-full overflow-hidden transition-all duration-500"
+         :class="{ 'mt-6 mb-6 opacity-100': expanded, 'mt-0 opacity-0 h-0': !expanded }">
+        
+        <!-- Bento Grid Layout -->
+        <div class="grid grid-cols-1 gap-4 w-full">
 
-        <!-- Walk Details Grid -->
-        <div class="mt-3 grid grid-cols-2 gap-4 text-sm text-gray-600" :class="{ 'mt-4': expanded }">
-            <div class="pointer-events-none">
-                <span class="font-medium">{% translate "Duration" %}:</span>
-                <span x-text="walk.duration"></span>
+            <!-- Additional Categories -->
+            <div class="flex flex-wrap gap-2" x-show="walk.related_categories?.length > 3">
+                <template x-for="category in walk.related_categories?.slice(3)" :key="category.slug">
+                    <span class="category-tag inline-flex items-center px-3 py-1.5
+                                rounded-full text-sm font-medium 
+                                bg-primary-100/80 text-primary-800
+                                border border-primary-200/50 hover:bg-primary-200/80
+                                transform-gpu backface-visibility-hidden transition-all duration-200
+                                hover:scale-105 hover:shadow-sm">
+                        <span x-text="category.name"></span>
+                    </span>
+                </template>
             </div>
-            <div class="pointer-events-none">
-                <span class="font-medium">{% translate "Elevation" %}:</span>
-                <span x-text="`${walk.elevation_gain || 0}m`"></span>
+
+            <!-- Description Card -->
+            <div class="w-full bg-white/5 p-4 rounded-lg">
+                <div class="font-medium flex items-center gap-2 text-gray-700 mb-2">
+                    <iconify-icon icon="mdi:text-box-outline" class="w-5 h-5"></iconify-icon>
+                    {% translate "Description" %}
+                </div>
+                <div class="prose prose-sm prose-gray max-w-none text-gray-600 leading-relaxed">
+                    <p x-text="walk.description || walk.highlights" class="whitespace-pre-line pointer-events-none"></p>
+                </div>
+            </div>
+
+            <!-- Bento Grid Layout for Walk Details -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <!-- Duration -->
+                <div class="bg-white/5 p-4 rounded-lg space-y-1.5" x-show="walk.duration">
+                    <div class="font-medium flex items-center gap-2 text-gray-700">
+                        <iconify-icon icon="mdi:clock-outline" class="w-5 h-5"></iconify-icon>
+                        {% translate "Duration" %}
+                    </div>
+                    <div class="text-gray-600 pl-7" x-text="walk.duration"></div>
+                </div>
+
+                <!-- Elevation -->
+                <div class="bg-white/5 p-4 rounded-lg space-y-1.5" x-show="walk.elevation_gain">
+                    <div class="font-medium flex items-center gap-2 text-gray-700">
+                        <iconify-icon icon="mdi:trending-up" class="w-5 h-5"></iconify-icon>
+                        {% translate "Elevation" %}
+                    </div>
+                    <div class="text-gray-600 pl-7" x-text="`${walk.elevation_gain || 0}m`"></div>
+                </div>
+                
+                <!-- Recommended Footwear -->
+                <div class="bg-white/5 p-4 rounded-lg space-y-1.5" x-show="walk.recommended_footwear">
+                    <div class="font-medium flex items-center gap-2 text-gray-700">
+                        <iconify-icon icon="mdi:shoe-print" class="w-5 h-5"></iconify-icon>
+                        {% translate "Recommended Footwear" %}
+                    </div>
+                    <div class="text-gray-600 pl-7" x-text="walk.recommended_footwear"></div>
+                </div>
+
+                <!-- Points of Interest -->
+                <div class="bg-white/5 p-4 rounded-lg space-y-1.5 sm:col-span-2 lg:col-span-1" x-show="walk.points_of_interest">
+                    <div class="font-medium flex items-center gap-2 text-gray-700">
+                        <iconify-icon icon="mdi:star" class="w-5 h-5"></iconify-icon>
+                        {% translate "Points of Interest" %}
+                    </div>
+                    <div class="text-gray-600 pl-7" x-text="walk.points_of_interest"></div>
+                </div>
+
+                <!-- Pubs List (Compact) -->
+                <div class="bg-white/5 p-4 rounded-lg space-y-1.5 sm:col-span-2 lg:col-span-2" x-show="walk.pubs_list?.length > 0">
+                    <div class="font-medium flex items-center gap-2 text-gray-700">
+                        <iconify-icon icon="mdi:beer" class="w-5 h-5"></iconify-icon>
+                        {% translate "Pubs on Route" %}
+                    </div>
+                    <div class="text-gray-600 pl-7 text-sm" x-text="walk.pubs_list?.map(pub => pub.name).join(' • ')"></div>
+                </div>
+
+                <!-- Trail Features -->
+                <div class="bg-white/5 p-4 rounded-lg space-y-1.5 col-span-full" x-show="walk.has_stiles">
+                    <div class="font-medium flex items-center gap-2 text-gray-700">
+                        <iconify-icon icon="mdi:information" class="w-5 h-5"></iconify-icon>
+                        {% translate "Trail Features" %}
+                    </div>
+                    <div class="text-gray-600 pl-7 space-y-2">
+                        <div x-show="walk.has_stiles" class="flex items-center gap-2">
+                            <iconify-icon icon="mdi:gate" class="w-4 h-4"></iconify-icon>
+                            {% translate "Has stiles" %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trail Considerations -->
+                <div class="bg-white/5 p-4 rounded-lg space-y-1.5 col-span-full" x-show="walk.trail_considerations">
+                    <div class="font-medium flex items-center gap-2 text-gray-700">
+                        <iconify-icon icon="mdi:alert" class="w-5 h-5"></iconify-icon>
+                        {% translate "Trail Considerations" %}
+                    </div>
+                    <div class="text-gray-600 pl-7" x-text="walk.trail_considerations"></div>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Features Icons -->
-    <div class="mt-2 flex flex-wrap gap-3 text-xs text-gray-500" :class="{ 'mt-4': expanded }">
-        <template x-if="walk.has_pub">
-            <span class="inline-flex items-center pointer-events-none">
-                <iconify-icon icon="mdi:beer" class="w-4 h-4 mr-1"></iconify-icon>
-                {% translate "Pub Stop" %}
-            </span>
-        </template>
-        <template x-if="walk.has_cafe">
-            <span class="inline-flex items-center pointer-events-none">
-                <iconify-icon icon="mdi:coffee" class="w-4 h-4 mr-1"></iconify-icon>
-                {% translate "Café Stop" %}
-            </span>
-        </template>
-        <template x-if="walk.has_bus_access">
-            <span class="inline-flex items-center pointer-events-none">
-                <iconify-icon icon="mdi:bus" class="w-4 h-4 mr-1"></iconify-icon>
-                {% translate "Bus Access" %}
-            </span>
-        </template>
-        <template x-if="walk.has_parking">
-            <span class="inline-flex items-center pointer-events-none">
-                <iconify-icon icon="mdi:parking" class="w-4 h-4 mr-1"></iconify-icon>
-                {% translate "Parking" %}
+    <div class="mt-4 flex flex-wrap justify-between items-center gap-3 text-xs text-gray-500 border-t border-white/10 pt-3">
+        <div class="flex flex-wrap gap-3">
+            <template x-if="walk.has_pub">
+                <span class="inline-flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-full">
+                    <iconify-icon icon="mdi:beer" class="w-4 h-4"></iconify-icon>
+                    {% translate "Pub Stop" %}
+                </span>
+            </template>
+            <template x-if="walk.has_cafe">
+                <span class="inline-flex items-center pointer-events-none">
+                    <iconify-icon icon="mdi:coffee" class="w-4 h-4 mr-1"></iconify-icon>
+                    {% translate "Café Stop" %}
+                </span>
+            </template>
+            <template x-if="walk.has_bus_access">
+                <span class="inline-flex items-center pointer-events-none">
+                    <iconify-icon icon="mdi:bus" class="w-4 h-4 mr-1"></iconify-icon>
+                    {% translate "Bus Access" %}
+                </span>
+            </template>
+            <template x-if="walk.has_parking">
+                <span class="inline-flex items-center pointer-events-none">
+                    <iconify-icon icon="mdi:parking" class="w-4 h-4 mr-1"></iconify-icon>
+                    {% translate "Parking" %}
+                </span>
+            </template>
+        </div>
+        <template x-if="walk.footwear_category">
+            <span class="inline-flex items-center pointer-events-none text-primary-600">
+                <iconify-icon icon="mdi:shoe-sneaker" class="w-4 h-4 mr-1"></iconify-icon>
+                <span x-text="walk.footwear_category"></span>
             </span>
         </template>
     </div>

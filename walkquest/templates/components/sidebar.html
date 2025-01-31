@@ -1,7 +1,7 @@
 {% load slippers %}
 {% load i18n %}
 
-<aside class="fixed right-0 top-0 h-full w-80 bg-white/10 backdrop-blur-xl border-l border-white/25 shadow-2xl z-40"
+<aside class="fixed right-0 top-0 h-full w-full lg:w-xl sm:w-xs bg-white/10 backdrop-blur-xl border-l border-white/25 shadow-2xl z-40 will-change-transform"
        x-show="showSidebar"
        x-cloak
        @keydown.escape.window="showSidebar = false"
@@ -55,7 +55,7 @@
 
         <!-- Walk List -->
         <template x-if="!isLoading && !error">
-            <div class="flex-1 overflow-y-auto">
+            <div class="flex-1 transform-gpu overflow-y-auto">
                 <div class="space-y-4 p-4">
                     <template x-for="walk in walks" :key="walk.id">
                         {% #walk_card %}{% /walk_card %}
