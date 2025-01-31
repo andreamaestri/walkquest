@@ -11,7 +11,7 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        'fira': ['Fira Sans', ...fontFamily.sans],
+        'ibm': ['IBM Plex Sans Condensed', ...fontFamily.sans],
       },
       colors: {
         primary: {

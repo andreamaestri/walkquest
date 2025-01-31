@@ -8,8 +8,8 @@
             bg-white/5 hover:bg-white/10 group relative
             w-full max-w-4xl mx-auto transform-gpu backface-visibility-hidden"
      :class="{
-  'expanded': expanded,
-  'border-blue-500/50 bg-white/25': $store.walks.selectedWalk?.id === walk.id,
+  'expanded': isSelected,
+  'border-blue-500/50 bg-white/25': isSelected,
   'walk-item-pending': $store.walks.pendingFavorites.has(walk.id),
   'opacity-0 translate-y-4': !inView,
   'opacity-100 translate-y-0': inView
@@ -19,27 +19,31 @@ style="transition: opacity 0.5s ease-out, transform 0.5s ease-out"
      x-data="{
                walk: walk,
                inView: false,
-               get expanded() {
+               get isSelected() {
                    return this.$store.walks.selectedWalk?.id === this.walk.id;
                },
                toggleExpand(event) {
                    if (event.target.closest('.favorite-btn, .action-btn')) return;
                    
-                   // Toggle using store
-                   if (this.expanded) {
-                       this.$store.walks.setSelectedWalk(null);
-                   } else {
-                       this.$store.walks.setSelectedWalk(this.walk);
-                       // Trigger map update
-                       window.dispatchEvent(new CustomEvent('walk:selected', {
-                           detail: this.walk
-                       }));
+                   const newState = !this.isSelected;
+                   this.$store.walks.setSelectedWalk(newState ? this.walk : null);
+                   
+                   window.dispatchEvent(new CustomEvent('walk:selected', {
+                       detail: newState ? this.walk : null
+                   }));
+               },
+               init() {
+                   if (this.$store.walks.selectedWalk?.id === this.walk.id) {
+                       this.$nextTick(() => {
+                           this.$store.walks.setSelectedWalk(this.walk);
+                           window.dispatchEvent(new CustomEvent('walk:selected', {
+                               detail: this.walk
+                           }));
+                       });
                    }
+                   this.inView = true;  // Show immediately without intersection observer
                }
            }"
-           x-intersect:enter.margin.100px="inView = true"
-           x-intersect:leave.margin.100px="inView = false"
-           x-intersect:enter.margin.100px="$nextTick(() => { if ($store.walks.selectedWalk?.id === walk.id && !expanded) toggleExpand($event) })"
            @click="toggleExpand($event)"
      @keydown.space.prevent="toggleExpand($event)"
      @keydown.enter.prevent="toggleExpand($event)"
@@ -51,7 +55,7 @@ style="transition: opacity 0.5s ease-out, transform 0.5s ease-out"
         <div class="flex-1 space-y-3">
             <h3 class="text-xl md:text-2xl font-bold text-gray-900 group-hover:text-primary-900
                        transition-colors duration-200 line-clamp-2"
-                :class="{ 'md:text-3xl': expanded }"
+                :class="{ 'md:text-3xl': isSelected }"
                 x-text="walk.walk_name"></h3>
             
             <!-- Enhanced Info Row -->
@@ -95,24 +99,40 @@ style="transition: opacity 0.5s ease-out, transform 0.5s ease-out"
     </div>
 
     <!-- Expandable Content -->
-    <div class="expandable-content w-full overflow-hidden transform-gpu backface-visibility-hidden"
+    <div class="expandable-content w-full overflow-hidden transform-gpu backface-visibility-hidden relative"
+         x-show="isSelected"
          x-cloak
-         x-show="expanded"
-         x-transition:enter="transition ease-out duration-300"
-         x-transition:enter-start="opacity-0 -translate-y-4"
-         x-transition:enter-end="opacity-100 translate-y-0"
-         x-transition:leave="transition ease-in duration-200"
-         x-transition:leave-start="opacity-100 translate-y-0"
-         x-transition:leave-end="opacity-0 -translate-y-4"
-         @click.away="expanded = false">
-        
-        <!-- Optimized Bento Grid Layout -->
-        <div class="grid grid-cols-1 gap-3 w-full"
-             x-init="$nextTick(() => { 
-                 if ($store.walks?.selectedWalk?.id === walk.id) {
-                     expanded = true;
-                 }
-             })">
+         role="region"
+         :aria-expanded="isSelected"
+         x-transition:enter="transition-all ease-out duration-500"
+         x-transition:enter-start="opacity-0 transform -translate-y-4 scale-95"
+         x-transition:enter-end="opacity-100 transform translate-y-0 scale-100"
+         x-transition:leave="transition-all ease-in duration-300"
+         x-transition:leave-start="opacity-100 transform translate-y-0 scale-100"
+         x-transition:leave-end="opacity-0 transform -translate-y-4 scale-95"
+         @transitionstart="$store.walks.startLoading()"
+         @transitionend="
+           if (!isSelected) $el.style.height = '0px';
+           $store.walks.stopLoading();
+           $store.walks.setProgress(100);
+         "
+         style="height: 0px; opacity: 1; margin-top: 16px;">
+
+       <!-- Loading State -->
+       <div x-show="$store.walks.loading"
+            class="absolute inset-0 bg-white/50 backdrop-blur-sm flex items-center justify-center z-10">
+           <div class="loading-spinner w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
+       </div>
+
+       <!-- Progress Indicator -->
+       <div class="h-1 bg-primary-100/20 rounded-full overflow-hidden">
+           <div class="h-full bg-primary-500 transition-all duration-700"
+                :style="{ width: $store.walks.progress + '%' }">
+           </div>
+       </div>
+
+       <!-- Optimized Bento Grid Layout -->
+       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 w-full mt-6">
 
             <!-- Additional Categories -->
             <div x-show="walk.related_categories?.length > 3" class="flex flex-wrap gap-2">
@@ -134,7 +154,7 @@ style="transition: opacity 0.5s ease-out, transform 0.5s ease-out"
                     <iconify-icon icon="mdi:text-box-outline" class="w-5 h-5 text-primary-600"></iconify-icon>
                     {% translate "Highlights" %}
                 </h3>
-                <div class="prose max-w-none leading-relaxed" :class="{ 'line-clamp-none': expanded, 'line-clamp-3': !expanded }">
+                <div class="prose max-w-none leading-relaxed" :class="{ 'line-clamp-none': isSelected, 'line-clamp-3': !isSelected }">
                     <p x-text="walk.highlights" class="whitespace-pre-line text-slate-700"></p>
                 </div>
             </div>
@@ -145,7 +165,7 @@ style="transition: opacity 0.5s ease-out, transform 0.5s ease-out"
                     <iconify-icon icon="mdi:star" class="w-5 h-5 text-primary-600"></iconify-icon>
                     {% translate "Points of Interest" %}
                 </div>
-                <p class="text-slate-700 text-sm leading-relaxed" :class="{ 'line-clamp-none': expanded, 'line-clamp-3': !expanded }" x-text="walk.points_of_interest"></p>
+                <p class="text-slate-700 text-sm leading-relaxed" :class="{ 'line-clamp-none': isSelected, 'line-clamp-3': !isSelected }" x-text="walk.points_of_interest"></p>
             </div>
         
             <!-- Pubs List -->
@@ -170,7 +190,7 @@ style="transition: opacity 0.5s ease-out, transform 0.5s ease-out"
                     <iconify-icon icon="mdi:alert" class="w-5 h-5 text-primary-600"></iconify-icon>
                     {% translate "Trail Notes" %}
                 </div>
-                <p class="text-slate-700 text-sm leading-relaxed" :class="{ 'line-clamp-none': expanded, 'line-clamp-3': !expanded }" x-text="walk.trail_considerations"></p>
+                <p class="text-slate-700 text-sm leading-relaxed" :class="{ 'line-clamp-none': isSelected, 'line-clamp-3': !isSelected }" x-text="walk.trail_considerations"></p>
             </div>
         </div>
     </div>
