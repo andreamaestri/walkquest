@@ -138,13 +138,16 @@ document.addEventListener('alpine:init', () => {
                 
                 this.map = new mapboxgl.Map({
                     container: mapContainer,
-                    style: 'mapbox://styles/mapbox/standard?optimize=true',
+                    style: 'mapbox://styles/mapbox/outdoors-v12?optimize=true',
                     center: config.map?.defaultCenter || [-4.85, 50.4],
                     zoom: config.map?.defaultZoom || 9.5,
-                    preserveDrawingBuffer: true,
+                    preserveDrawingBuffer: false,
                     maxZoom: 16, // Limit max zoom for performance
-                    minZoom: 3,  // Lower minimum zoom for context
+                    minZoom: 1,  // Lower minimum zoom for context
                     renderWorldCopies: false, // Disable world copies for performance
+                    trackResize: true,
+                    useWebGL: true,
+                    antialias: false,
                     maxBounds: new mapboxgl.LngLatBounds(
                         [-5.8, 49.8], // Southwest coordinates (includes Scilly Isles)
                         [-4.0, 51.0]  // Northeast coordinates (includes north coast)
@@ -187,8 +190,8 @@ document.addEventListener('alpine:init', () => {
                                 'line-cap': 'round'
                             },
                             paint: {
-                                'line-color': '#4338CA',
-                                'line-width': 8
+                                'line-color': '#242424',
+                                'line-width': 4
                             }
                         });
 
@@ -307,7 +310,7 @@ document.addEventListener('alpine:init', () => {
                     'Moderate': '#4338CA',    // Blue for moderate
                     'Challenging': '#DC2626', // Red for challenging
                     'Easy': '#10B981'         // Green for easy
-                }[detail.steepness_level] || '#4338CA';
+                }[detail.steepness_level] || '#242424';
 
                 if (this.currentRouteState.color !== color) {
                     this.currentRouteState.color = color;
