@@ -296,11 +296,19 @@ document.addEventListener('alpine:init', () => {
                 // Find and expand the corresponding walk card
                 const walkCard = document.querySelector(`.walk-item[data-walk-id="${detail.id}"]`);
                 if (walkCard) {
-                    const cardComponent = Alpine.$data(walkCard);
-                    if (cardComponent) {
-                        cardComponent.expanded = true;
-                        walkCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }
+                    // Scroll the card into view first
+                    walkCard.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center'
+                    });
+
+                    // Wait for scroll to complete before expanding
+                    setTimeout(() => {
+                        const cardComponent = Alpine.$data(walkCard);
+                        if (cardComponent) {
+                            cardComponent.expanded = true;
+                        }
+                    }, 300); // Match the scroll duration
                 }
                 
                 if (this.currentRouteState.id === detail.id) {
