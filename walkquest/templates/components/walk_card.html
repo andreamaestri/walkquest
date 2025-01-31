@@ -17,28 +17,23 @@
 style="transition: opacity 0.5s ease-out, transform 0.5s ease-out"
      :key="walk.id"
      x-data="{
-               expanded: false,
                walk: walk,
                inView: false,
+               get expanded() {
+                   return this.$store.walks.selectedWalk?.id === this.walk.id;
+               },
                toggleExpand(event) {
                    if (event.target.closest('.favorite-btn, .action-btn')) return;
                    
-                   const wasExpanded = this.expanded;
-                   this.expanded = !wasExpanded;
-                   
-                   // When expanding, dispatch event for map interaction
-                   if (!wasExpanded) {
+                   // Toggle using store
+                   if (this.expanded) {
+                       this.$store.walks.setSelectedWalk(null);
+                   } else {
+                       this.$store.walks.setSelectedWalk(this.walk);
+                       // Trigger map update
                        window.dispatchEvent(new CustomEvent('walk:selected', {
                            detail: this.walk
                        }));
-                   }
-               },
-               handleSelection() {
-                   $store.walks.setSelectedWalk(this.walk);
-                   const targetEl = $el.getBoundingClientRect();
-                   const viewportHeight = window.innerHeight;
-                   if (targetEl.top < 0 || targetEl.bottom > viewportHeight) {
-                       $el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                    }
                }
            }"
