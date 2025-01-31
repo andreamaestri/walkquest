@@ -25,6 +25,8 @@ document.addEventListener('alpine:init', () => {
         
         setSelectedWalk(walk) {
             this.selectedWalk = walk;
+            // Dispatch a custom event for walk selection
+            window.dispatchEvent(new CustomEvent('walkSelected', { detail: walk }));
             console.log('Selected walk updated:', walk?.walk_name);
         },
         togglePendingFavorite(walkId) {
@@ -277,8 +279,13 @@ document.addEventListener('alpine:init', () => {
                 console.error('Invalid walk detail or HTMX not loaded');
                 return;
             }
-            
+            // Update store and UI state
+            Alpine.store('walks').setSelectedWalk(detail);
+            this.showSidebar = true;
             this.$store.walks.setSelectedWalk(detail);
+
+            // Update map view and fetch path
+            this.updateMapView(detail);
             
             this.$nextTick(() => {
                 this.showSidebar = true;
@@ -367,6 +374,8 @@ document.addEventListener('alpine:init', () => {
                     essential: true,
                     padding
                 });
+                // Fetch and display path
+                this.fetchAndDisplayPath(detail.id);
             }
         },
 
