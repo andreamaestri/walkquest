@@ -3,7 +3,7 @@
 Alpine.store('walks', {
     selectedWalk: null,
     pendingFavorites: new Set(),
-    markerStates: {}, // New state for marker-specific data
+    markerStates: {},
     
     setSelectedWalk(walk) {
         this.selectedWalk = walk;
