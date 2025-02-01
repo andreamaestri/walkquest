@@ -252,28 +252,48 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        // Helper method to fetch walks with common error handling
+        async fetchWalksPage(page, isLoadMore = false) {
+            try {
+                const response = await window.ApiService.filterWalks({
+                    search: this.searchQuery,
+                    page,
+                    page_size: 10
+                });
+
+                if (!response?.walks) {
+                    throw new Error('Invalid response format');
+                }
+
+                return {
+                    walks: response.walks,
+                    hasMore: response.walks.length >= 10
+                };
+            } catch (error) {
+                console.error(`Failed to ${isLoadMore ? 'load more' : 'fetch'} walks:`, error);
+                this.error = `Failed to ${isLoadMore ? 'load more' : 'load'} walks. ${error.message || 'Please try again.'}`;
+                throw error;
+            }
+        },
+
         async fetchWalks() {
             if (this.isLoading) return;
+            
             this.isLoading = true;
             window.dispatchEvent(new Event('loading:show'));
 
             try {
-                const response = await window.ApiService.filterWalks({
-                    search: this.searchQuery,
-                    page: 1,
-                    page_size: 10
-                });
-                
-                this.walks = response.walks || [];
-                this.hasMore = (response.walks || []).length >= 10;
+                const { walks, hasMore } = await this.fetchWalksPage(1);
+                this.walks = walks;
+                this.hasMore = hasMore;
                 this.page = 1;
                 this.error = null;
                 
-                // Update markers for new walks
-                this.updateMarkers(this.walks);
-            } catch (error) {
-                console.error('Failed to fetch walks:', error);
-                this.error = 'Failed to load walks. Please try again.';
+                this.$nextTick(() => {
+                    this.updateMarkers(this.walks);
+                });
+            } catch {
+                // Error already handled in fetchWalksPage
             } finally {
                 this.isLoading = false;
                 window.dispatchEvent(new Event('loading:hide'));
@@ -282,26 +302,21 @@ document.addEventListener('alpine:init', () => {
 
         async loadMore() {
             if (this.isLoadingMore || !this.hasMore) return;
+            
             this.isLoadingMore = true;
-
             try {
-                const response = await window.ApiService.filterWalks({
-                    search: this.searchQuery,
-                    page: this.page + 1,
-                    page_size: 10
-                });
+                const { walks: newWalks, hasMore } = await this.fetchWalksPage(this.page + 1, true);
                 
-                const newWalks = response.walks || [];
                 this.walks = [...this.walks, ...newWalks];
-                this.hasMore = newWalks.length >= 10;
+                this.hasMore = hasMore;
                 this.page++;
                 this.error = null;
 
-                // Update markers with complete list of walks
-                this.updateMarkers(this.walks);
-            } catch (error) {
-                console.error('Failed to load more walks:', error);
-                this.error = 'Failed to load more walks. Please try again.';
+                this.$nextTick(() => {
+                    this.updateMarkers(this.walks);
+                });
+            } catch {
+                // Error already handled in fetchWalksPage
             } finally {
                 this.isLoadingMore = false;
             }
@@ -320,14 +335,18 @@ document.addEventListener('alpine:init', () => {
                 this.showSidebar = true;
                 window.localStorage.setItem('sidebar', 'true');
 
+                // Find and scroll to the matching card
                 const walkCard = document.querySelector(`.walk-item[data-walk-id="${detail.id}"]`);
                 if (walkCard) {
-                    const headerOffset = 80;
-                    const cardPosition = walkCard.getBoundingClientRect().top + window.pageYOffset;
-                    window.scrollTo({
-                        top: cardPosition - headerOffset,
-                        behavior: 'smooth'
-                    });
+                    // Ensure sidebar is fully visible before scrolling
+                    setTimeout(() => {
+                        const headerOffset = 80;
+                        const cardPosition = walkCard.getBoundingClientRect().top + window.pageYOffset;
+                        window.scrollTo({
+                            top: cardPosition - headerOffset,
+                            behavior: 'smooth'
+                        });
+                    }, 100); // Small delay to ensure sidebar transition has started
                 }
             } else {
                 // Clear selection
@@ -349,13 +368,14 @@ document.addEventListener('alpine:init', () => {
             }
 
             this.$nextTick(() => {
-                
-                if (this.currentRouteState.id === detail.id) {
+                if (this.currentRouteState.id === detail?.id) {
                     // Route is already loaded, just update the view
                     this.updateMapView(detail);
                     return;
                 }
 
+                if (!detail) return;
+                
                 this.currentRouteState.id = detail.id;
 
                 // Clear existing path efficiently
@@ -383,78 +403,85 @@ document.addEventListener('alpine:init', () => {
                     this.map.setPaintProperty('route', 'line-color', color);
                 }
 
-                // Start loading state
-                this.$store.walks.startLoading();
-                this.$store.walks.setProgress(20);
-
                 // Fetch and display new path with AbortController
                 const controller = new AbortController();
                 const signal = controller.signal;
 
+                const cleanup = () => controller.abort();
+                
                 fetch(`/api/walks/${detail.id}/geometry`, { signal })
                     .then(response => {
-                        this.$store.walks.setProgress(50);
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
                         return response.json();
                     })
                     .then(geojson => {
-                        if (this.currentRouteState.id !== detail.id) return;
+                        if (this.currentRouteState.id !== detail.id) {
+                            cleanup();
+                            return;
+                        }
                         
-                        this.$store.walks.setProgress(80);
-
                         const source = this.map.getSource('route');
                         if (source) {
                             source.setData(geojson);
                         }
 
                         // Update map view with the new path
-                        this.updateMapView(detail, geojson.coordinates);
-                        
-                        // Complete loading
-                        this.$store.walks.setProgress(100);
-                        this.$store.walks.stopLoading();
+                        this.updateMapView(detail, geojson?.coordinates);
                     })
                     .catch(error => {
-                        if (error.name === 'AbortError') {
-                            this.$store.walks.stopLoading();
-                            return;
-                        }
+                        if (error.name === 'AbortError') return;
                         console.error('Failed to load walk geometry:', error);
-                        this.$store.walks.stopLoading();
-                        this.$store.walks.setProgress(0);
+                        this.$store.walks.setProgress(100); // Ensure loading state is cleared
                     });
 
-                return () => {
-                    controller.abort();
-                    this.$store.walks.stopLoading();
-                    this.$store.walks.setProgress(0);
-                }; // Cleanup function
+                return cleanup;
             });
         },
 
         updateMapView(detail, coordinates = null) {
-            if (!this.map || !detail) return;
+            if (!this.map || !detail) {
+                console.warn('Missing map or detail for view update');
+                return;
+            }
 
-            const padding = { top: 50, bottom: 50, left: 50, right: 384 };
+            const padding = { top: 50, bottom: 50, left: this.showSidebar ? 50 : 384, right: this.showSidebar ? 384 : 50 };
 
-            if (coordinates && coordinates.length > 0) {
-                // If we have path coordinates, fit bounds to show the entire path
-                const bounds = coordinates.reduce((bounds, coord) => {
-                    return bounds.extend(coord);
-                }, new mapboxgl.LngLatBounds(coordinates[0], coordinates[0]));
+            try {
+                if (coordinates?.length > 1) {
+                    // Create bounds from first and last coordinates for efficiency
+                    let bounds = new mapboxgl.LngLatBounds(coordinates[0], coordinates[0]);
+                    
+                    // Extend bounds with path endpoints and midpoint for better fit
+                    const midIndex = Math.floor(coordinates.length / 2);
+                    [0, midIndex, coordinates.length - 1].forEach(i => {
+                        if (coordinates[i]) {
+                            bounds.extend(coordinates[i]);
+                        }
+                    });
 
-                this.map.fitBounds(bounds, {
-                    padding,
-                    maxZoom: 15,
-                    duration: 1000
-                });
-            } else if (detail.longitude && detail.latitude) {
-                // Otherwise just center on the walk point
-                this.map.flyTo({
-                    center: [detail.longitude, detail.latitude],
-                    zoom: 14,
-                    essential: true,
-                    padding
-                });
+                    this.map.fitBounds(bounds, {
+                        padding,
+                        maxZoom: 15,
+                        duration: 1000,
+                        essential: true // Marks the animation as essential for performance
+                    });
+                } else if (detail.longitude && detail.latitude) {
+                    this.map.flyTo({
+                        center: [detail.longitude, detail.latitude],
+                        zoom: 14,
+                        essential: true,
+                        padding,
+                        duration: 1000
+                    });
+                }
+            } catch (error) {
+                console.error('Error updating map view:', error);
+                // Fallback to simple center if bounds calculation fails
+                if (detail.longitude && detail.latitude) {
+                    this.map.setCenter([detail.longitude, detail.latitude]);
+                }
             }
         },
 

@@ -2,18 +2,19 @@
 {% load i18n %}
 
 <div class="walk-item p-3 md:p-5 backdrop-blur-md rounded-xl shadow-sm hover:shadow-lg
-            transition-all duration-300 ease-out cursor-pointer opacity-0 translate-y-4"
+            transition-all duration-300 ease-out cursor-pointer"
             :data-walk-id="walk.id"
-            x-intersect:enter.once="$el.classList.add('reveal-card')"
-            :class="{
-                'reveal-card': inView,
-                'expanded': isSelected(),
-                'border-blue-500/50 bg-white/25': isSelected(),
-                'walk-item-pending': $store.walks.pendingFavorites.has(walk.id)
-            }"
-            x-data="walkCardMixin(walk)" 
-            x-init="init()"
-            @click="toggleExpand($event)">
+            border border-white/20 hover:border-primary-200/50
+            bg-white/5 hover:bg-white/10 group relative
+            w-full max-w-4xl mx-auto transform-gpu backface-visibility-hidden"
+     :class="{
+        'expanded': isSelected(),
+        'border-blue-500/50 bg-white/25': isSelected(),
+        'walk-item-pending': $store.walks.pendingFavorites.has(walk.id)
+     }"
+     x-data="walkCardMixin(walk)" 
+     x-init="init()"
+     @click="toggleExpand($event)">
 
     <!-- Enhanced Header Section -->
     <div class="flex justify-between items-start gap-4 pb-4 border-b border-white/10">
@@ -50,27 +51,46 @@
     </div>
    
     <!-- Categories -->
-    <div x-show="walk.related_categories?.length > 0" class="mt-0 flex flex-wrap gap-2">
-        <template x-for="category in walk.related_categories?.slice(0, 3)" :key="category.slug">
-            <span class="category-tag inline-flex items-center px-3 py-1.5
-                        rounded-lg text-sm font-medium
-                        bg-blue-500 text-white
-                        border border-white/10 hover:bg-blue-600
-                        transform-gpu backface-visibility-hidden transition-all duration-200
-                        hover:scale-105 hover:shadow-sm">
-                <span class="whitespace-nowrap" x-text="category.name"></span>
-            </span>
-        </template>
+    <div class="relative mt-0 flex flex-wrap gap-2 min-h-[2.5rem]">
+        <!-- Initial Categories -->
+        <div class="flex flex-wrap gap-2">
+            <template x-for="category in walk.related_categories?.slice(0, 3)" :key="category.slug">
+                <span class="category-tag inline-flex items-center px-3 py-1.5
+                            rounded-lg text-sm font-medium
+                            bg-blue-500 text-white
+                            border border-white/10 hover:bg-blue-600
+                            transform-gpu backface-visibility-hidden transition-all duration-200
+                            hover:scale-105 hover:shadow-sm">
+                    <span class="whitespace-nowrap" x-text="category.name"></span>
+                </span>
+            </template>
+        </div>
+
+        <!-- Additional Categories (Inline) -->
+        <div x-show="walk.related_categories?.length > 3" 
+             class="flex flex-wrap gap-2"
+             :class="{ 'opacity-0 h-0': !isSelected(), 'opacity-100': isSelected() }"
+             style="transition: opacity 0.3s ease-out">
+            <template x-for="category in walk.related_categories?.slice(3)" :key="category.slug">
+                <span class="category-tag inline-flex items-center px-3 py-1.5
+                            rounded-lg text-sm font-medium
+                            bg-blue-500 text-white
+                            border border-white/10 hover:bg-blue-600
+                            transform-gpu backface-visibility-hidden transition-all duration-200
+                            hover:scale-105 hover:shadow-sm">
+                    <span class="whitespace-nowrap" x-text="category.name"></span>
+                </span>
+            </template>
+        </div>
     </div>
 
     <!-- Expandable Content -->
-    <div class="expandable-content w-full overflow-hidden transform-gpu backface-visibility-hidden"
+    <div class="expandable-content w-full h-0 opacity-0 overflow-hidden transform-gpu backface-visibility-hidden"
          x-ref="content"
-         style="display: none;">
-        
+         style="display: none; transition: all 0.5s ease-out;">
+
         <!-- Content Grid -->
-        <div class="space-y-4 opacity-0 transition-opacity duration-300"
-             :class="{ 'opacity-100': isSelected() }">
+        <div class="space-y-4">
             <!-- Progress -->
             <div class="h-1 bg-primary-100/20 rounded-full overflow-hidden">
                 <div class="h-full bg-primary-500 transition-all duration-700"
