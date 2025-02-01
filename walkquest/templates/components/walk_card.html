@@ -51,37 +51,36 @@
     </div>
    
     <!-- Categories -->
-    <div class="relative mt-0 flex flex-wrap gap-2 min-h-[2.5rem]">
-        <!-- Initial Categories -->
-        <div class="flex flex-wrap gap-2">
-            <template x-for="category in walk.related_categories?.slice(0, 3)" :key="category.slug">
-                <span class="category-tag inline-flex items-center px-3 py-1.5
-                            rounded-lg text-sm font-medium
-                            bg-blue-500 text-white
-                            border border-white/10 hover:bg-blue-600
-                            transform-gpu backface-visibility-hidden transition-all duration-200
-                            hover:scale-105 hover:shadow-sm">
-                    <span class="whitespace-nowrap" x-text="category.name"></span>
-                </span>
-            </template>
-        </div>
-
-        <!-- Additional Categories (Inline) -->
-        <div x-show="walk.related_categories?.length > 3" 
-             class="flex flex-wrap gap-2"
-             :class="{ 'opacity-0 h-0': !isSelected(), 'opacity-100': isSelected() }"
-             style="transition: opacity 0.3s ease-out">
-            <template x-for="category in walk.related_categories?.slice(3)" :key="category.slug">
-                <span class="category-tag inline-flex items-center px-3 py-1.5
-                            rounded-lg text-sm font-medium
-                            bg-blue-500 text-white
-                            border border-white/10 hover:bg-blue-600
-                            transform-gpu backface-visibility-hidden transition-all duration-200
-                            hover:scale-105 hover:shadow-sm">
-                    <span class="whitespace-nowrap" x-text="category.name"></span>
-                </span>
-            </template>
-        </div>
+    <div class="relative mt-4 flex flex-wrap gap-2">
+        <!-- All Categories -->
+        <template x-for="(category, index) in walk.related_categories" :key="category.slug">
+            <span class="category-tag inline-flex items-center px-3 py-1.5
+                        rounded-lg text-sm font-medium
+                        bg-blue-500 text-white
+                        border border-white/10 hover:bg-blue-600
+                        transform-gpu backface-visibility-hidden transition-all duration-200
+                        hover:scale-105 hover:shadow-sm"
+                  x-show="isSelected() || index < 3"
+                  x-cloak
+                  x-transition:enter="transition ease-out duration-200"
+                  x-transition:enter-start="opacity-0 scale-95"
+                  x-transition:enter-end="opacity-100 scale-100">
+                <span class="whitespace-nowrap" x-text="category.name"></span>
+            </span>
+        </template>
+        <!-- Show count of hidden categories when not expanded -->
+        <span class="category-tag inline-flex items-center px-3 py-1.5
+                    rounded-lg text-sm font-medium
+                    bg-gray-500/50 text-white
+                    border border-white/10
+                    transform-gpu backface-visibility-hidden transition-all duration-200"
+              x-show="!isSelected() && walk.related_categories.length > 3"
+              x-cloak
+              x-transition:enter="transition ease-out duration-200"
+              x-transition:enter-start="opacity-0 scale-95"
+              x-transition:enter-end="opacity-100 scale-100">
+            <span class="whitespace-nowrap" x-text="`+${walk.related_categories.length - 3} more`"></span>
+        </span>
     </div>
 
     <!-- Expandable Content -->
@@ -100,20 +99,6 @@
 
             <!-- Main Content -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 w-full">
-                <!-- Additional Categories -->
-                <div x-show="walk.related_categories?.length > 3" class="flex flex-wrap gap-2">
-                    <template x-for="category in walk.related_categories?.slice(3)" :key="category.slug">
-                        <span class="category-tag inline-flex items-center px-3 py-1.5
-                            rounded-lg text-sm font-medium
-                            bg-blue-500 text-white
-                            border border-white/10 hover:bg-blue-600
-                            transform-gpu backface-visibility-hidden transition-all duration-200
-                            hover:scale-105 hover:shadow-sm">
-                            <span x-text="category.name"></span>
-                        </span>
-                    </template>
-                </div>
-
                 <!-- Description Card -->
                 <div x-show="walk.highlights" class="md:col-span-2 lg:col-span-3 bg-white/25 backdrop-blur-sm p-6 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300">
                     <h3 class="text-lg font-medium mb-4 flex items-center gap-2 text-slate-800">
