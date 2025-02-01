@@ -22,10 +22,25 @@ document.addEventListener('alpine:init', () => {
     Alpine.store('walks', {
         selectedWalk: null,
         pendingFavorites: new Set(),
+        loading: false,
+        progress: 0,
         
         setSelectedWalk(walk) {
             this.selectedWalk = walk;
+            this.progress = 0;
             console.log('Selected walk updated:', walk?.walk_name);
+        },
+
+        setProgress(value) {
+            this.progress = Math.min(100, Math.max(0, value));
+        },
+
+        startLoading() {
+            this.loading = true;
+        },
+
+        stopLoading() {
+            this.loading = false;
         },
         togglePendingFavorite(walkId) {
             this.pendingFavorites.has(walkId) 
@@ -280,36 +295,47 @@ document.addEventListener('alpine:init', () => {
         },
 
         handleWalkSelection(detail) {
-            if (!detail || !window.htmx) {
-                console.error('Invalid walk detail or HTMX not loaded');
+            if (!window.htmx) {
+                console.error('HTMX not loaded');
                 return;
             }
             
-            // First set selected walk in store
-            this.$store.walks.setSelectedWalk(detail);
-            
-            this.$nextTick(() => {
-                // Show sidebar and store preference
+            // Handle both selection and deselection
+            if (detail) {
+                // Show and scroll to card for selection
+                this.$store.walks.setSelectedWalk(detail);
                 this.showSidebar = true;
                 window.localStorage.setItem('sidebar', 'true');
 
-                // Find and expand the corresponding walk card
                 const walkCard = document.querySelector(`.walk-item[data-walk-id="${detail.id}"]`);
                 if (walkCard) {
-                    // Scroll the card into view first
-                    walkCard.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'center'
+                    const headerOffset = 80;
+                    const cardPosition = walkCard.getBoundingClientRect().top + window.pageYOffset;
+                    window.scrollTo({
+                        top: cardPosition - headerOffset,
+                        behavior: 'smooth'
                     });
-
-                    // Wait for scroll to complete before expanding
-                    setTimeout(() => {
-                        const cardComponent = Alpine.$data(walkCard);
-                        if (cardComponent) {
-                            cardComponent.expanded = true;
-                        }
-                    }, 300); // Match the scroll duration
                 }
+            } else {
+                // Clear selection
+                this.$store.walks.setSelectedWalk(null);
+                
+                // Clear the route from map
+                const source = this.map.getSource('route');
+                if (source) {
+                    source.setData({
+                        type: 'Feature',
+                        properties: {},
+                        geometry: {
+                            type: 'LineString',
+                            coordinates: []
+                        }
+                    });
+                }
+                this.currentRouteState.id = null;
+            }
+
+            this.$nextTick(() => {
                 
                 if (this.currentRouteState.id === detail.id) {
                     // Route is already loaded, just update the view
@@ -344,14 +370,23 @@ document.addEventListener('alpine:init', () => {
                     this.map.setPaintProperty('route', 'line-color', color);
                 }
 
+                // Start loading state
+                this.$store.walks.startLoading();
+                this.$store.walks.setProgress(20);
+
                 // Fetch and display new path with AbortController
                 const controller = new AbortController();
                 const signal = controller.signal;
 
                 fetch(`/api/walks/${detail.id}/geometry`, { signal })
-                    .then(response => response.json())
+                    .then(response => {
+                        this.$store.walks.setProgress(50);
+                        return response.json();
+                    })
                     .then(geojson => {
                         if (this.currentRouteState.id !== detail.id) return;
+                        
+                        this.$store.walks.setProgress(80);
 
                         const source = this.map.getSource('route');
                         if (source) {
@@ -360,13 +395,26 @@ document.addEventListener('alpine:init', () => {
 
                         // Update map view with the new path
                         this.updateMapView(detail, geojson.coordinates);
+                        
+                        // Complete loading
+                        this.$store.walks.setProgress(100);
+                        this.$store.walks.stopLoading();
                     })
                     .catch(error => {
-                        if (error.name === 'AbortError') return;
+                        if (error.name === 'AbortError') {
+                            this.$store.walks.stopLoading();
+                            return;
+                        }
                         console.error('Failed to load walk geometry:', error);
+                        this.$store.walks.stopLoading();
+                        this.$store.walks.setProgress(0);
                     });
 
-                return () => controller.abort(); // Cleanup function
+                return () => {
+                    controller.abort();
+                    this.$store.walks.stopLoading();
+                    this.$store.walks.setProgress(0);
+                }; // Cleanup function
             });
         },
 
@@ -432,7 +480,9 @@ document.addEventListener('alpine:init', () => {
                         
                         markerEl = marker.getElement();
                         markerEl.addEventListener('click', () => {
-                            this.handleWalkSelection(walk);
+                            // Toggle selection if clicking the same marker
+                            const isCurrentlySelected = this.$store.walks.selectedWalk?.id === walk.id;
+                            this.handleWalkSelection(isCurrentlySelected ? null : walk);
                         });
                         
                         this.markerCache.set(walk.id, markerEl);

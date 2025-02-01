@@ -51,20 +51,25 @@
         <script src="{% static 'js/services.js' %}"></script>
         
         <!-- Alpine Components (after Alpine.js and plugins) -->
+        <script src="{% static 'js/walkCardMixin.js' %}"></script>
         <script src="{% static 'js/alpine-components.js' %}"></script>
 
         <!-- Import Motion (after Alpine initialization) -->
         <script type="module">
             import { 
-                animate, hover, scroll, inView, press,
-                spring, stagger, delay, frame, mix, transform 
+                animate,    // Used for card animations
+                hover,      // Used for hover effects
+                press,      // Used in walkCardMixin for press interactions
+                stagger     // Used for staggered animations
             } from "https://cdn.jsdelivr.net/npm/motion@latest/+esm"
             
             window.Motion = { 
-                animate, hover, scroll, inView, press,
-                spring, stagger, delay, frame, mix, transform
+                animate,
+                hover, 
+                press,
+                stagger
             };
-
+        
             window.addEventListener('DOMContentLoaded', () => {
                 window.dispatchEvent(new Event('motion:ready'));
                 console.log('Motion initialized');

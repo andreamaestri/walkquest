@@ -85,6 +85,12 @@
         opacity: 0;
         margin-top: 0;
         will-change: height, opacity, margin-top;
+        transition: height 0.5s ease-out, opacity 0.5s ease-out, margin-top 0.5s ease-out;
+        transform-style: preserve-3d;
+        transform-origin: top;
+        backface-visibility: hidden;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
     }
 
     .category-tag {

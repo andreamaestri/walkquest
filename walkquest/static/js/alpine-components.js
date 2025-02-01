@@ -26,13 +26,26 @@ document.addEventListener('alpine:init', () => {
         progress: 0,
         
         setSelectedWalk(walk) {
-            this.selectedWalk = walk;
+            console.log('Store - Previous selectedWalk:', this.selectedWalk?.id);
+            // Reset loading and progress when changing selection
+            this.stopLoading();
             this.progress = 0;
-            console.log('Selected walk updated:', walk?.walk_name);
+            
+            this.selectedWalk = walk;
+            if (walk) {
+                // Start loading when a walk is selected
+                this.startLoading();
+                this.setProgress(20);
+            }
+            console.log('Store - New selectedWalk:', walk?.id, walk);
         },
 
         setProgress(value) {
             this.progress = Math.min(100, Math.max(0, value));
+            if (this.progress === 100) {
+                // Automatically stop loading when progress is complete
+                setTimeout(() => this.stopLoading(), 200);
+            }
         },
 
         startLoading() {
