@@ -46,22 +46,18 @@ window.walkCardMixin = (walk) => {
         content.style.opacity = '1';
         content.style.marginTop = '16px';
 
-        // Calculate optimal scroll position
+        // Improved scroll calculation
         requestAnimationFrame(() => {
           const searchBar = document.querySelector('.search-bar');
-          const searchBarHeight = searchBar ? searchBar.offsetHeight + 16 : 0; // Add 16px padding
-          const cardTop = this.$el.getBoundingClientRect().top + window.scrollY;
-          const viewportHeight = window.innerHeight;
-          const cardHeight = this.$el.offsetHeight;
-          
-          // Calculate optimal scroll position to show as much of the card as possible
-          let scrollTarget = cardTop - searchBarHeight;
-          
-          // If card is taller than viewport, position it near the top
-          if (cardHeight > viewportHeight - searchBarHeight) {
-            scrollTarget = cardTop - searchBarHeight - 16; // Additional 16px buffer
+          const headerOffset = searchBar ? searchBar.offsetHeight + 16 : 16;
+          const cardRect = this.$el.getBoundingClientRect();
+          const currentScrollY = window.scrollY;
+          // Check if card is partially out of view
+          let scrollTarget = currentScrollY;
+          if (cardRect.top < headerOffset || cardRect.bottom > window.innerHeight) {
+            // Center the card vertically in the viewport considering header offset
+            scrollTarget = currentScrollY + cardRect.top - ((window.innerHeight - cardRect.height) / 2) - headerOffset;
           }
-          
           window.scrollTo({ top: scrollTarget, behavior: 'smooth' });
         });
         
