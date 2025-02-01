@@ -779,6 +779,9 @@
   .max-h-80 {
     max-height: calc(var(--spacing) * 80);
   }
+  .min-h-\[200px\] {
+    min-height: 200px;
+  }
   .min-h-full {
     min-height: 100%;
   }

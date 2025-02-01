@@ -14,6 +14,7 @@
      }"
      x-data="walkCardMixin(walk)" 
      x-init="init()"
+     x-intersect.once="adjustScroll()"
      @click="toggleExpand($event)">
 
     <!-- Enhanced Header Section -->
