@@ -71,8 +71,8 @@
         <!-- Show count of hidden categories when not expanded -->
         <span class="category-tag inline-flex items-center px-3 py-1.5
                     rounded-lg text-sm font-medium
-                    bg-gray-500/50 text-white
-                    border border-white/10
+                    bg-gray-950/10 text-white
+                    border-2 border-white/70
                     transform-gpu backface-visibility-hidden transition-all duration-200"
               x-show="!isSelected() && walk.related_categories.length > 3"
               x-cloak
@@ -120,17 +120,23 @@
                 </div>
             
                 <!-- Pubs List -->
-                <div x-show="walk.pubs_list?.length > 0" class="bg-white/20 backdrop-blur-sm p-5 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 transform hover:scale-[1.02]">
+                <div x-show="walk.pubs_list?.length > 0" 
+                     class="col-span-1 md:col-span-1 lg:col-span-1 bg-white/20 backdrop-blur-sm p-3 
+                            rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 
+                            transform hover:scale-[1.02]">
                     <div class="flex items-center gap-2 text-slate-800 text-sm mb-3">
-                        <iconify-icon icon="mdi:beer" class="w-5 h-5 text-primary-600"></iconify-icon>
+                        <iconify-icon icon="mdi:glass-mug-variant" class="w-5 h-5 text-primary-600"></iconify-icon>
                         {% translate "Pubs" %}
                     </div>
-                    <div class="flex flex-wrap gap-2">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2 gap-0">
                         <template x-for="pub in walk.pubs_list" :key="pub.name">
-                            <span class="inline-flex items-center gap-1.5 bg-white/25 px-3 py-1.5 rounded-xl text-sm text-slate-700 hover:bg-white/30 transition-colors duration-200">
-                                <iconify-icon icon="mdi:beer" class="w-4 h-4 text-primary-600"></iconify-icon>
-                                <span x-text="pub.name"></span>
-                            </span>
+                            <div class="flex items-center w-full">
+                                <span class="inline-flex items-center bg-white/25 p-2
+                                           rounded-sm text-sm text-slate-700 hover:bg-white/30 
+                                           transition-colors duration-200 flex-1">
+                                    <span class="overflow-auto whitespace-nowrap" x-text="pub.name"></span>
+                                </span>
+                            </div>
                         </template>
                     </div>
                 </div>

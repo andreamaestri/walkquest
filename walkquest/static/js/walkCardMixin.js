@@ -17,6 +17,7 @@ window.walkCardMixin = (walk) => {
       if (newState) {
         // First make it visible but with 0 height
         content.style.display = 'block';
+        content.style.position = 'relative';
         content.style.height = '0px';
         content.style.opacity = '0';
         content.style.marginTop = '0px';
@@ -25,7 +26,12 @@ window.walkCardMixin = (walk) => {
         content.offsetHeight;
         
         // Set transition
-        content.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+        requestAnimationFrame(() => {
+          content.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+          
+          // Add transition to parent for smoother height animation
+          this.$el.style.transition = 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+        });
         
         // Get target height
         content.style.height = 'auto';
@@ -39,6 +45,25 @@ window.walkCardMixin = (walk) => {
         content.style.height = targetHeight + 'px';
         content.style.opacity = '1';
         content.style.marginTop = '16px';
+
+        // Calculate optimal scroll position
+        requestAnimationFrame(() => {
+          const searchBar = document.querySelector('.search-bar');
+          const searchBarHeight = searchBar ? searchBar.offsetHeight + 16 : 0; // Add 16px padding
+          const cardTop = this.$el.getBoundingClientRect().top + window.scrollY;
+          const viewportHeight = window.innerHeight;
+          const cardHeight = this.$el.offsetHeight;
+          
+          // Calculate optimal scroll position to show as much of the card as possible
+          let scrollTarget = cardTop - searchBarHeight;
+          
+          // If card is taller than viewport, position it near the top
+          if (cardHeight > viewportHeight - searchBarHeight) {
+            scrollTarget = cardTop - searchBarHeight - 16; // Additional 16px buffer
+          }
+          
+          window.scrollTo({ top: scrollTarget, behavior: 'smooth' });
+        });
         
         // Start loading state
         this.$store.walks.startLoading();
@@ -46,6 +71,10 @@ window.walkCardMixin = (walk) => {
       } else {
         // Collapse
         const currentHeight = content.scrollHeight;
+        
+        // Ensure smooth collapse transition
+        content.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+        
         content.style.height = currentHeight + 'px';
         
         // Force reflow
@@ -56,11 +85,17 @@ window.walkCardMixin = (walk) => {
         content.style.opacity = '0';
         content.style.marginTop = '0px';
         
+        // Smooth scroll if card is above viewport
+        if (this.$el.getBoundingClientRect().top < 0) {
+          this.$el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+        
         // Hide after transition
         content.addEventListener('transitionend', () => {
           if (!this.isSelected()) {
             content.style.display = 'none';
           }
+          this.$el.style.transition = '';
         }, { once: true });
       }
 
