@@ -338,15 +338,7 @@ document.addEventListener('alpine:init', () => {
                 // Find and scroll to the matching card
                 const walkCard = document.querySelector(`.walk-item[data-walk-id="${detail.id}"]`);
                 if (walkCard) {
-                    // Ensure sidebar is fully visible before scrolling
-                    setTimeout(() => {
-                        const headerOffset = 80;
-                        const cardPosition = walkCard.getBoundingClientRect().top + window.pageYOffset;
-                        window.scrollTo({
-                            top: cardPosition - headerOffset,
-                            behavior: 'smooth'
-                        });
-                    }, 100); // Small delay to ensure sidebar transition has started
+                    this.adjustScroll(walkCard);
                 }
             } else {
                 // Clear selection
@@ -491,6 +483,26 @@ document.addEventListener('alpine:init', () => {
                 this.loadingStates = {};
             }
             this.loadingStates[type] = isLoading;
+        },
+        
+        // Helper method for smooth scrolling
+        adjustScroll(element, options = {}) {
+            if (!element) return;
+
+            const {
+                headerOffset = 80,
+                delay = 100,
+                behavior = 'smooth'
+            } = options;
+
+            // Ensure sidebar is fully visible before scrolling
+            setTimeout(() => {
+                const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
+                window.scrollTo({
+                    top: elementPosition - headerOffset,
+                    behavior
+                });
+            }, delay);
         },
 
         updateMarkers(walks) {
