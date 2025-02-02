@@ -1,24 +1,108 @@
-// Define the loading component outside alpine:init to ensure it's available immediately
-window.loading = () => ({
-    show: false,
-    init() {
-        window.addEventListener('loading:show', () => {
-            this.show = true;
-        });
-        window.addEventListener('loading:hide', () => {
-            this.show = false;
-        });
-    }
-});
+// Define component functions immediately in global scope
+(function() {
+    // Mobile menu component
+    window.mobileMenu = function() {
+        return {
+            isOpen: false,
+            toggleMenu() {
+                this.isOpen = !this.isOpen;
+                const globals = Alpine.store('globals');
+                if (globals) {
+                    globals.mobileMenu.isOpen = this.isOpen;
+                    globals.isOpen = this.isOpen;
+                }
+            }
+        };
+    };
 
-// Wait for Alpine.js to be ready
+    // Loading component
+    window.loading = function() {
+        return {
+            show: false,
+            init() {
+                const globals = Alpine.store('globals');
+                if (globals?.loading) {
+                    this.show = globals.loading.show;
+                }
+
+                window.addEventListener('loading:show', () => {
+                    this.show = true;
+                    const globals = Alpine.store('globals');
+                    if (globals?.loading) globals.loading.show = true;
+                });
+                
+                window.addEventListener('loading:hide', () => {
+                    this.show = false;
+                    const globals = Alpine.store('globals');
+                    if (globals?.loading) globals.loading.show = false;
+                });
+            }
+        };
+    };
+
+    // Walk interface component
+    window.walkInterface = function() {
+        return {
+            walks: [],
+            searchQuery: '',
+            showSidebar: window.localStorage.getItem('sidebar') === 'true',
+            isMapLoading: true,
+            error: null,
+            loadingStates: { map: false, path: false },
+            map: null,
+            markers: new Map(),
+            markerCache: new Map(),
+            hasMore: true,
+            page: 1,
+            
+            init() {
+                console.group('WalkInterface Initialization');
+                try {
+                    // Sync with global store
+                    const globals = Alpine.store('globals');
+                    if (globals?.walkInterface) {
+                        Object.assign(this, globals.walkInterface);
+                    }
+                    
+                    // Initialize walks store if needed
+                    if (!Alpine.store('walks')) {
+                        Alpine.store('walks', {
+                            selectedWalk: null,
+                            pendingFavorites: new Set()
+                        });
+                    }
+                    
+                    // Add walk selection listener
+                    window.addEventListener('walk:selected', (event) => {
+                        if (event.detail) {
+                            this.handleWalkSelection(event.detail);
+                        }
+                    });
+                    
+                    console.log('WalkInterface initialized');
+                } catch (error) {
+                    console.error('WalkInterface initialization failed:', error);
+                    this.error = 'Failed to initialize interface';
+                } finally {
+                    console.groupEnd();
+                }
+            },
+
+            handleWalkSelection(detail) {
+                if (!detail) return;
+                
+                const store = Alpine.store('walks');
+                if (store) {
+                    store.setSelectedWalk(detail);
+                }
+            }
+        };
+    };
+})();
+
+// Initialize Alpine.js stores and components
 document.addEventListener('alpine:init', () => {
-    console.log('Initializing Alpine.js components...');
-
-    // Register loading component with Alpine
-    Alpine.data('loading', window.loading);
-
-    // Initialize store first
+    // Initialize walks store first
     Alpine.store('walks', {
         selectedWalk: null,
         pendingFavorites: new Set(),
@@ -26,548 +110,63 @@ document.addEventListener('alpine:init', () => {
         progress: 0,
         
         setSelectedWalk(walk) {
-            console.log('Store - Previous selectedWalk:', this.selectedWalk?.id);
-            // Reset loading and progress when changing selection
             this.stopLoading();
             this.progress = 0;
-            
             this.selectedWalk = walk;
+            
             if (walk) {
-                // Start loading when a walk is selected
                 this.startLoading();
                 this.setProgress(20);
             }
-            console.log('Store - New selectedWalk:', walk?.id, walk);
         },
-
+        
         setProgress(value) {
             this.progress = Math.min(100, Math.max(0, value));
             if (this.progress === 100) {
-                // Automatically stop loading when progress is complete
                 setTimeout(() => this.stopLoading(), 200);
             }
         },
-
+        
         startLoading() {
             this.loading = true;
         },
-
+        
         stopLoading() {
             this.loading = false;
         },
+        
         togglePendingFavorite(walkId) {
-            this.pendingFavorites.has(walkId) 
-                ? this.pendingFavorites.delete(walkId)
-                : this.pendingFavorites.add(walkId);
+            if (this.pendingFavorites.has(walkId)) {
+                this.pendingFavorites.delete(walkId);
+            } else {
+                this.pendingFavorites.add(walkId);
+            }
         },
+        
         isPending(walkId) {
             return this.pendingFavorites.has(walkId);
         }
     });
 
-    // Define mobile menu component
-    Alpine.data('mobileMenu', () => ({
-        isOpen: false,
-        toggleMenu() {
-            this.isOpen = !this.isOpen;
+    // Register components
+    Alpine.data('loading', window.loading);
+    Alpine.data('mobileMenu', window.mobileMenu);
+    Alpine.data('walkInterface', window.walkInterface);
+
+    // Backward compatibility
+    window.adjustScroll = function(element) {
+        const walkInterface = document.querySelector('[x-data="walkInterface"]')?.__x?.Alpine;
+        if (walkInterface) {
+            walkInterface.$data.ensureInView(element);
         }
-    }));
+    };
 
-    // Define walk interface component
-    Alpine.data('walkInterface', () => ({
-        // Component state
-        walks: [],
-        searchQuery: "",
-        showSidebar: window.localStorage.getItem('sidebar') === 'true',
-        isMapLoading: true,
-        isLoading: false,
-        isLoadingMore: false,
-        hasMore: true,
-        page: 1,
-        map: null,
-        markers: new Map(),
-        markerCache: new Map(), // Cache marker DOM elements
-        error: null,
-        loadingStates: {
-            map: false,
-            path: false
-        },
-        currentRouteState: {
-            id: null,
-            color: null
-        },
-
-        init() {
-            return new Promise(async (resolve) => {
-                console.group('WalkInterface Initialization');
-                console.log('Starting initialization...');
-                
-                try {
-                    // Add event listener for walk selection
-                    window.addEventListener('walk:selected', (event) => {
-                        if (event.detail) {
-                            this.handleWalkSelection(event.detail);
-                        }
-                    });
-
-                    await this.initializeData();
-                    await this.initializeMap();
-                    await this.fetchWalks();
-                    console.log('Initialization complete');
-                } catch (error) {
-                    console.error('Initialization failed:', error);
-                    this.error = 'Failed to initialize interface';
-                } finally {
-                    console.groupEnd();
-                    resolve();
-                }
-            });
-        },
-
-        async initializeData() {
-            console.log('Initializing data...');
-            const walksData = document.getElementById('walks-data');
-            if (!walksData) {
-                console.warn('No initial walks data found');
-                return;
-            }
-
-            try {
-                const initialData = JSON.parse(walksData.textContent);
-                this.walks = initialData.walks || [];
-                this.hasMore = initialData.hasMore || false;
-                console.log('Data initialized with', this.walks.length, 'walks');
-                
-                // Initialize markers for initial walks once map is loaded
-                this.$nextTick(() => {
-                    if (this.map) {
-                        this.updateMarkers(this.walks);
-                    }
-                });
-            } catch (error) {
-                console.error('Failed to parse initial data:', error);
-                throw error;
-            }
-        },
-
-        async initializeMap() {
-            const configScript = document.getElementById('config-data');
-            if (!configScript) {
-                console.error('Config data script tag not found');
-                this.error = 'Configuration not found';
-                this.isMapLoading = false;
-                return;
-            }
-
-            try {
-                const config = JSON.parse(configScript.textContent);
-                if (!config.mapboxToken) {
-                    throw new Error('Mapbox token not found in config');
-                }
-
-                mapboxgl.accessToken = config.mapboxToken;
-                const mapContainer = document.getElementById('map');
-                if (!mapContainer) {
-                    throw new Error('Map container element not found');
-                }
-                
-                this.map = new mapboxgl.Map({
-                    container: mapContainer,
-                    style: 'mapbox://styles/mapbox/outdoors-v12?optimize=true',
-                    center: config.map?.defaultCenter || [-4.85, 50.4],
-                    zoom: config.map?.defaultZoom || 9.5,
-                    preserveDrawingBuffer: false,
-                    maxZoom: 16, // Limit max zoom for performance
-                    minZoom: 1,  // Lower minimum zoom for context
-                    renderWorldCopies: false, // Disable world copies for performance
-                    trackResize: true,
-                    useWebGL: true,
-                    antialias: false,
-                    maxBounds: new mapboxgl.LngLatBounds(
-                        [-5.8, 49.8], // Southwest coordinates (includes Scilly Isles)
-                        [-4.0, 51.0]  // Northeast coordinates (includes north coast)
-                    )
-                });
-
-                this.map.on('load', () => {
-                    console.log('Map loaded successfully');
-                    this.isMapLoading = false;
-                    this.map.resize();
-                    
-                    try {
-                        // Remove existing source and layer if they exist
-                        if (this.map.getLayer('route')) {
-                            this.map.removeLayer('route');
-                        }
-                        if (this.map.getSource('route')) {
-                            this.map.removeSource('route');
-                        }
-
-                        // Add new source and layer
-                        this.map.addSource('route', {
-                            type: 'geojson',
-                            data: {
-                                type: 'Feature',
-                                properties: {},
-                                geometry: {
-                                    type: 'LineString',
-                                    coordinates: []
-                                }
-                            }
-                        });
-
-                        this.map.addLayer({
-                            id: 'route',
-                            type: 'line',
-                            source: 'route',
-                            layout: {
-                                'line-join': 'round',
-                                'line-cap': 'round'
-                            },
-                            paint: {
-                                'line-color': '#242424',
-                                'line-width': 4
-                            }
-                        });
-
-                        console.log('Successfully initialized route source and layer');
-                    } catch (error) {
-                        console.error('Error initializing route:', error);
-                    }
-
-                    // Debug logging
-                    console.log('Path layer initialized:', this.map.getLayer('walk-path'));
-                    
-                    // Initialize markers
-                    if (this.walks.length > 0) {
-                        this.updateMarkers(this.walks);
-                    }
-                });
-
-                this.map.addControl(new mapboxgl.NavigationControl(), 'top-left');
-            } catch (error) {
-                console.error('Failed to initialize map:', error);
-                this.error = error.message;
-                this.isMapLoading = false;
-            }
-        },
-
-        // Helper method to fetch walks with common error handling
-        async fetchWalksPage(page, isLoadMore = false) {
-            try {
-                const response = await window.ApiService.filterWalks({
-                    search: this.searchQuery,
-                    page,
-                    page_size: 10
-                });
-
-                if (!response?.walks) {
-                    throw new Error('Invalid response format');
-                }
-
-                return {
-                    walks: response.walks,
-                    hasMore: response.walks.length >= 10
-                };
-            } catch (error) {
-                console.error(`Failed to ${isLoadMore ? 'load more' : 'fetch'} walks:`, error);
-                this.error = `Failed to ${isLoadMore ? 'load more' : 'load'} walks. ${error.message || 'Please try again.'}`;
-                throw error;
-            }
-        },
-
-        async fetchWalks() {
-            if (this.isLoading) return;
-            
-            this.isLoading = true;
-            window.dispatchEvent(new Event('loading:show'));
-
-            try {
-                const { walks, hasMore } = await this.fetchWalksPage(1);
-                this.walks = walks;
-                this.hasMore = hasMore;
-                this.page = 1;
-                this.error = null;
-                
-                this.$nextTick(() => {
-                    this.updateMarkers(this.walks);
-                });
-            } catch {
-                // Error already handled in fetchWalksPage
-            } finally {
-                this.isLoading = false;
-                window.dispatchEvent(new Event('loading:hide'));
-            }
-        },
-
-        async loadMore() {
-            if (this.isLoadingMore || !this.hasMore) return;
-            
-            this.isLoadingMore = true;
-            try {
-                const { walks: newWalks, hasMore } = await this.fetchWalksPage(this.page + 1, true);
-                
-                this.walks = [...this.walks, ...newWalks];
-                this.hasMore = hasMore;
-                this.page++;
-                this.error = null;
-
-                this.$nextTick(() => {
-                    this.updateMarkers(this.walks);
-                });
-            } catch {
-                // Error already handled in fetchWalksPage
-            } finally {
-                this.isLoadingMore = false;
-            }
-        },
-
-        handleWalkSelection(detail) {
-            if (!window.htmx) {
-                console.error('HTMX not loaded');
-                return;
-            }
-            
-            // Handle both selection and deselection
-            if (detail) {
-                // Show and scroll to card for selection
-                this.$store.walks.setSelectedWalk(detail);
-                this.showSidebar = true;
-                window.localStorage.setItem('sidebar', 'true');
-
-                // Find and scroll to the matching card
-                const walkCard = document.querySelector(`.walk-item[data-walk-id="${detail.id}"]`);
-                if (walkCard) {
-                    this.adjustScroll(walkCard);
-                }
-            } else {
-                // Clear selection
-                this.$store.walks.setSelectedWalk(null);
-                
-                // Clear the route from map
-                const source = this.map.getSource('route');
-                if (source) {
-                    source.setData({
-                        type: 'Feature',
-                        properties: {},
-                        geometry: {
-                            type: 'LineString',
-                            coordinates: []
-                        }
-                    });
-                }
-                this.currentRouteState.id = null;
-            }
-
-            this.$nextTick(() => {
-                if (this.currentRouteState.id === detail?.id) {
-                    // Route is already loaded, just update the view
-                    this.updateMapView(detail);
-                    return;
-                }
-
-                if (!detail) return;
-                
-                this.currentRouteState.id = detail.id;
-
-                // Clear existing path efficiently
-                const source = this.map.getSource('route');
-                if (source) {
-                    source.setData({
-                        type: 'Feature',
-                        properties: {},
-                        geometry: {
-                            type: 'LineString',
-                            coordinates: []
-                        }
-                    });
-                }
-
-                // Update path color based on steepness level
-                const color = {
-                    'Moderate': '#4338CA',    // Blue for moderate
-                    'Challenging': '#DC2626', // Red for challenging
-                    'Easy': '#10B981'         // Green for easy
-                }[detail.steepness_level] || '#242424';
-
-                if (this.currentRouteState.color !== color) {
-                    this.currentRouteState.color = color;
-                    this.map.setPaintProperty('route', 'line-color', color);
-                }
-
-                // Fetch and display new path with AbortController
-                const controller = new AbortController();
-                const signal = controller.signal;
-
-                const cleanup = () => controller.abort();
-                
-                fetch(`/api/walks/${detail.id}/geometry`, { signal })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error(`HTTP error! status: ${response.status}`);
-                        }
-                        return response.json();
-                    })
-                    .then(geojson => {
-                        if (this.currentRouteState.id !== detail.id) {
-                            cleanup();
-                            return;
-                        }
-                        
-                        const source = this.map.getSource('route');
-                        if (source) {
-                            source.setData(geojson);
-                        }
-
-                        // Update map view with the new path
-                        this.updateMapView(detail, geojson?.coordinates);
-                    })
-                    .catch(error => {
-                        if (error.name === 'AbortError') return;
-                        console.error('Failed to load walk geometry:', error);
-                        this.$store.walks.setProgress(100); // Ensure loading state is cleared
-                    });
-
-                return cleanup;
-            });
-        },
-
-        updateMapView(detail, coordinates = null) {
-            if (!this.map || !detail) {
-                console.warn('Missing map or detail for view update');
-                return;
-            }
-
-            const padding = { top: 50, bottom: 50, left: this.showSidebar ? 50 : 384, right: this.showSidebar ? 384 : 50 };
-
-            try {
-                if (coordinates?.length > 1) {
-                    // Create bounds from first and last coordinates for efficiency
-                    let bounds = new mapboxgl.LngLatBounds(coordinates[0], coordinates[0]);
-                    
-                    // Extend bounds with path endpoints and midpoint for better fit
-                    const midIndex = Math.floor(coordinates.length / 2);
-                    [0, midIndex, coordinates.length - 1].forEach(i => {
-                        if (coordinates[i]) {
-                            bounds.extend(coordinates[i]);
-                        }
-                    });
-
-                    this.map.fitBounds(bounds, {
-                        padding,
-                        maxZoom: 15,
-                        duration: 1000,
-                        essential: true // Marks the animation as essential for performance
-                    });
-                } else if (detail.longitude && detail.latitude) {
-                    this.map.flyTo({
-                        center: [detail.longitude, detail.latitude],
-                        zoom: 14,
-                        essential: true,
-                        padding,
-                        duration: 1000
-                    });
-                }
-            } catch (error) {
-                console.error('Error updating map view:', error);
-                // Fallback to simple center if bounds calculation fails
-                if (detail.longitude && detail.latitude) {
-                    this.map.setCenter([detail.longitude, detail.latitude]);
-                }
-            }
-        },
-
-        // Add helper method for loading states
-        setLoadingState(type, isLoading) {
-            if (!this.loadingStates) {
-                this.loadingStates = {};
-            }
-            this.loadingStates[type] = isLoading;
-        },
-        
-        // Helper method for smooth scrolling
-        adjustScroll(element, options = {}) {
-            if (!element) return;
-
-            const {
-                headerOffset = 80,
-                delay = 100,
-                behavior = 'smooth'
-            } = options;
-
-            // Ensure sidebar is fully visible before scrolling
-            setTimeout(() => {
-                const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
-                window.scrollTo({
-                    top: elementPosition - headerOffset,
-                    behavior
-                });
-            }, delay);
-        },
-
-        updateMarkers(walks) {
-            if (!this.map) return;
-            
-            const existingIds = new Set(this.markers.keys());
-            const newIds = new Set();
-            
-            // Update or add new markers
-            for (const walk of walks) {
-                if (!walk.latitude || !walk.longitude) continue;
-                newIds.add(walk.id);
-                
-                if (!this.markers.has(walk.id)) {
-                    // Create new marker if it doesn't exist
-                    let markerEl;
-                    if (this.markerCache.has(walk.id)) {
-                        markerEl = this.markerCache.get(walk.id);
-                    } else {
-                        const marker = new mapboxgl.Marker({
-                            // Optimize marker options
-                            clickTolerance: 3,
-                            draggable: false
-                        })
-                        .setLngLat([walk.longitude, walk.latitude])
-                        .addTo(this.map);
-                        
-                        markerEl = marker.getElement();
-                        markerEl.addEventListener('click', () => {
-                            // Toggle selection if clicking the same marker
-                            const isCurrentlySelected = this.$store.walks.selectedWalk?.id === walk.id;
-                            this.handleWalkSelection(isCurrentlySelected ? null : walk);
-                        });
-                        
-                        this.markerCache.set(walk.id, markerEl);
-                        this.markers.set(walk.id, marker);
-                    }
-                } else {
-                    // Update existing marker position if needed
-                    const marker = this.markers.get(walk.id);
-                    marker.setLngLat([walk.longitude, walk.latitude]);
-                }
-            }
-            
-            // Remove markers that are no longer needed
-            for (const id of existingIds) {
-                if (!newIds.has(id)) {
-                    const marker = this.markers.get(id);
-                    if (marker) {
-                        marker.remove();
-                        this.markers.delete(id);
-                    }
-                }
-            }
-        }
-    }));
-});
-
-// Single debug initialization event listener
-window.addEventListener('alpine:initialized', () => {
-    console.log('Alpine.js ready:', {
+    console.log('Alpine.js initialization complete:', {
         store: Alpine.store('walks'),
-        walkInterface: Alpine.data('walkInterface'),
-        walkList: Alpine.data('walkList'),
-        mobileMenu: Alpine.data('mobileMenu'),
-        loading: Alpine.data('loading')
+        components: {
+            walkInterface: window.walkInterface,
+            mobileMenu: window.mobileMenu,
+            loading: window.loading
+        }
     });
 });

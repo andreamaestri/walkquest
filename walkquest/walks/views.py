@@ -25,6 +25,7 @@ import json
 import logging
 from typing import Any
 
+from django.core.paginator import Paginator
 from django.conf import settings
 from django.core.cache import cache
 from django.core.serializers.json import DjangoJSONEncoder
@@ -355,8 +356,9 @@ class WalkFilterView(ListView):
 class WalkListView(ListView):
     """HTMX view for walk list."""
     model = Walk
-    template_name = "walks/partials/walk_list.html"  # Updated template path
+    template_name = "partials/walk_list.html"
     context_object_name = "walks"
+    paginate_by = 10
 
     def get_queryset(self):
         """Get optimized queryset."""
@@ -368,26 +370,28 @@ class WalkListView(ListView):
         )
 
     def get(self, request, *args, **kwargs):
-        """Handle GET requests with error handling."""
+        """Handle GET requests with pagination and error handling."""
         try:
+            page = request.GET.get('page', 1)
             queryset = self.get_queryset()
-            serialized_walks = [self.serialize_walk(walk) for walk in queryset]
+            paginator = Paginator(queryset, self.paginate_by)
+            walks = paginator.get_page(page)
 
             response_data = {
-                "walks": serialized_walks,
+                "walks": [self.serialize_walk(walk) for walk in walks],
+                "has_next": walks.has_next(),
+                "next_page": walks.next_page_number() if walks.has_next() else None,
+                "total_pages": paginator.num_pages
             }
 
             if request.headers.get("HX-Request"):
                 return JsonResponse(response_data)
 
             return self.render_to_response({"walks": response_data})
-
         except Exception:
             logger.exception("Error in walk list view")
-            return JsonResponse(
-                {"error": "Unable to load walks"},
-                status=500,
-            )
+            return JsonResponse({"error": "Unable to load walks"},
+                              status=500)
 
     def serialize_walk(self, walk):
         """Consistent walk serialization."""

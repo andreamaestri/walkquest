@@ -1,6 +1,6 @@
 {% load walk_tags %}
 
-<article class="bg-white rounded-lg shadow-sm hover:shadow-md p-4 cursor-pointer transform transition-all duration-300 ease-in-out" 
+<article class="walk-item bg-white rounded-lg shadow-sm hover:shadow-md p-4 cursor-pointer transform transition-all duration-300 ease-in-out" 
          x-data="{ 
             isVisible: false, 
             isHovered: false,
@@ -21,7 +21,7 @@
          role="listitem"
          tabindex="0">
     
-    <div class="space-y-3">
+    <div class="space-y-3 expandable-content">
         <h4 class="text-lg font-semibold text-gray-900" x-text="walk.walk_name || 'Unnamed Walk'"></h4>
         <p class="text-sm text-gray-600" x-text="walk.description ? (walk.description.length > 150 ? walk.description.substring(0, 150) + '...' : walk.description) : 'No description available'"></p>
         
