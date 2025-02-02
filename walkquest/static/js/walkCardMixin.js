@@ -20,6 +20,15 @@ window.walkCardMixin = (walk) => ({
 
         // Initialize favorite state
         const walkId = this.$el.dataset.walkId;
+        
+        // Initialize expandable content
+        const content = this.$refs.content;
+        if (content) {
+            content.style.display = 'block';
+            content.style.height = '0px';
+            content.style.opacity = '0';
+        }
+        
         if (walkId) {
             this.isFavorited = localStorage.getItem(`favorite_walk_${walkId}`) === 'true';
         }
@@ -42,28 +51,47 @@ window.walkCardMixin = (walk) => ({
         });
     },
 
-    toggleExpand() {
+    toggleExpand(event) {
+        if (event) event.stopPropagation();
+        
+        const content = this.$refs.content;
+        if (!content) return;
+
         this.isExpanded = !this.isExpanded;
         
         if (this.isExpanded) {
+            // Show content first to measure height
+            content.style.display = 'block';
+            const targetHeight = content.scrollHeight;
+            
             // Animate expansion
-            window.Motion?.animate(this.$el, {
-                height: 'auto',
-                scale: [0.98, 1],
+            window.Motion?.animate(content, {
+                height: [0, targetHeight],
+                opacity: [0, 1],
+                margin: [0, '1rem 0']
             }, {
                 duration: 0.3,
                 easing: [0.4, 0, 0.2, 1]
             });
         } else {
             // Animate collapse
-            window.Motion?.animate(this.$el, {
-                scale: [1, 0.98],
-                height: this.$el.scrollHeight + 'px'
+            window.Motion?.animate(content, {
+                height: [content.scrollHeight, 0],
+                opacity: [1, 0],
+                margin: ['1rem 0', 0]
             }, {
                 duration: 0.2,
-                easing: [0.4, 0, 0.2, 1]
+                easing: [0.4, 0, 0.2, 1],
+                onComplete: () => {
+                    content.style.display = 'none';
+                }
             });
         }
+
+        // Dispatch event for map marker sync
+        window.dispatchEvent(new CustomEvent('walk:expanded', { 
+            detail: { walkId: this.walk.id, expanded: this.isExpanded }
+        }));
     },
 
     toggleFavorite() {
@@ -105,5 +133,46 @@ window.walkCardMixin = (walk) => ({
         } else {
             this.isVisible = false;
         }
+    },
+
+    adjustScroll() {
+        // Wait for any animations to complete
+        setTimeout(() => {
+            const cardList = this.$el.closest('.walk-list');
+            if (!cardList) return;
+            
+            // Calculate optimal scroll position
+            const cardRect = this.$el.getBoundingClientRect();
+            const listRect = cardList.getBoundingClientRect();
+            const viewportCenter = window.innerHeight / 2;
+            
+            // Calculate target scroll position to center the card
+            const targetScroll = cardList.scrollTop + 
+                (cardRect.top - listRect.top) - 
+                (listRect.height - cardRect.height) / 2;
+            
+            // Initial smooth scroll to center the card
+            cardList.scrollTo({
+                top: targetScroll,
+                behavior: 'smooth'
+            });
+
+            // Handle expanded content visibility after expansion animation
+            if (this.isExpanded && this.$refs.content) {
+                setTimeout(() => {
+                    const contentRect = this.$refs.content.getBoundingClientRect();
+                    const listBottom = listRect.bottom;
+                    
+                    // If expanded content is cut off, scroll to show it
+                    if (contentRect.bottom > listBottom) {
+                        const additionalScroll = contentRect.bottom - listBottom + 40; // Add padding
+                        cardList.scrollBy({
+                            top: additionalScroll,
+                            behavior: 'smooth'
+                        });
+                    }
+                }, 300); // Wait for expansion animation
+            }
+        }, 50); // Reduced initial delay for better responsiveness
     }
 });

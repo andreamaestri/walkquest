@@ -15,7 +15,9 @@
      x-data="walkCardMixin(walk)" 
      x-init="init()"
      x-intersect.once="() => adjustScroll()"
-     @click="toggleExpand($event)">
+     @click="toggleExpand($event)"
+     @mouseenter="showBadges = true"
+     @mouseleave="showBadges = false">
 
     <!-- Enhanced Header Section -->
     <div class="flex justify-between items-start gap-4 pb-4 border-b border-white/10">
@@ -23,7 +25,12 @@
             <h3 class="text-xl md:text-2xl font-bold text-gray-900 group-hover:text-primary-900
                        transition-colors duration-200 line-clamp-2"
                 :class="{ 'md:text-3xl': isExpanded }"
-                x-text="walk.walk_name"></h3>
+                x-text="walk.walk_name">
+            </h3>
+            <div class="flex gap-2">
+                <span x-show="walk.difficulty" class="badge ml-2" x-text="walk.difficulty"></span>
+                <span x-show="walk.duration" class="badge ml-2" x-text="`${walk.duration} mins`"></span>
+            </div>
             
             <!-- Enhanced Info Row -->
             <div class="flex flex-wrap items-center gap-3 text-sm md:text-base text-gray-600">
@@ -85,9 +92,8 @@
     </div>
 
     <!-- Expandable Content -->
-    <div class="expandable-content w-full h-0 opacity-0 overflow-hidden transform-gpu backface-visibility-hidden"
-         x-ref="content"
-         style="display: none; transition: all 0.5s ease-out;">
+    <div class="expandable-content w-full overflow-hidden transform-gpu backface-visibility-hidden"
+         x-ref="content">
 
         <!-- Content Grid -->
         <div class="space-y-4">

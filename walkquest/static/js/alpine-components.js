@@ -208,20 +208,25 @@
                     const response = await window.ApiService.filterWalks({
                         search: this.searchQuery,
                         page: 1,
-                        page_size: 10
+                        page_size: 10,
+                        include_expanded: true // Add parameter to fetch expanded content
                     });
 
                     if (!response?.walks) {
                         throw new Error('Invalid response format');
                     }
 
-                    this.walks = response.walks;
+                    this.walks = response.walks.map(walk => ({
+                        ...walk,
+                        isExpanded: false // Initialize expansion state
+                    }));
                     this.hasMore = response.walks.length >= 10;
                     this.page = 1;
                     this.error = null;
                     
                     this.$nextTick(() => {
                         this.updateMarkers(this.walks);
+                        this.initializeExpandedContent();
                     });
                 } catch (error) {
                     console.error('Failed to fetch walks:', error);
@@ -232,6 +237,14 @@
                 }
             },
 
+            initializeExpandedContent() {
+                // Initialize any previously expanded cards
+                const expandedWalkIds = JSON.parse(localStorage.getItem('expandedWalks') || '[]');
+                this.walks.forEach(walk => {
+                    walk.isExpanded = expandedWalkIds.includes(walk.id);
+                });
+            },
+
             async loadMore() {
                 if (this.isLoadingMore || !this.hasMore) return;
                 
@@ -240,20 +253,27 @@
                     const response = await window.ApiService.filterWalks({
                         search: this.searchQuery,
                         page: this.page + 1,
-                        page_size: 10
+                        page_size: 10,
+                        include_expanded: true // Add parameter to fetch expanded content
                     });
 
                     if (!response?.walks) {
                         throw new Error('Invalid response format');
                     }
 
-                    this.walks = [...this.walks, ...response.walks];
+                    const newWalks = response.walks.map(walk => ({
+                        ...walk,
+                        isExpanded: false // Initialize expansion state
+                    }));
+
+                    this.walks = [...this.walks, ...newWalks];
                     this.hasMore = response.walks.length >= 10;
                     this.page++;
                     this.error = null;
 
                     this.$nextTick(() => {
                         this.updateMarkers(this.walks);
+                        this.saveExpandedStates();
                     });
                 } catch (error) {
                     console.error('Failed to load more walks:', error);
@@ -261,6 +281,19 @@
                 } finally {
                     this.isLoadingMore = false;
                 }
+            },
+
+            toggleWalkExpansion(walkId) {
+                const walk = this.walks.find(w => w.id === walkId);
+                if (walk) {
+                    walk.isExpanded = !walk.isExpanded;
+                    this.saveExpandedStates();
+                }
+            },
+
+            saveExpandedStates() {
+                const expandedWalkIds = this.walks.filter(w => w.isExpanded).map(w => w.id);
+                localStorage.setItem('expandedWalks', JSON.stringify(expandedWalkIds));
             },
 
             handleWalkSelection(detail) {
@@ -272,16 +305,32 @@
                     return;
                 }
 
+                // Collapse all cards first
+                this.walks.forEach(walk => {
+                    if (walk.id !== detail.id && walk.isExpanded) {
+                        walk.isExpanded = false;
+                    }
+                });
+                this.saveExpandedStates();
+
                 const store = Alpine.store('walks');
                 if (store) store.setSelectedWalk(detail);
                 
                 this.showSidebar = true;
                 window.localStorage.setItem('sidebar', 'true');
 
-                // Update map view
-                this.updateMapView(detail);
-                this.loadWalkGeometry(detail);
-            },
+                // Ensure proper timing for view updates
+                this.$nextTick(() => {
+                    // First ensure card is in view
+                    this.ensureInView(detail.id);
+                    
+                    // Then update map view and load geometry
+                    setTimeout(() => {
+                        this.updateMapView(detail);
+                        this.loadWalkGeometry(detail);
+                    }, 400); // Wait for scroll and expansion
+                });
+            }, 
 
             updateMapView(detail) {
                 if (!this.map || !detail) return;
@@ -345,45 +394,53 @@
                             .setLngLat([walk.longitude, walk.latitude])
                             .addTo(this.map);
                         
-                         if (!marker.getElement().getAttribute('data-listener-added')) {
-                            marker.getElement().addEventListener('click', () => {
-                                try {
-                                    // Find the corresponding walk card element
-                                    const card = document.querySelector(`[data-walk-id="${walk.id}"]`);
-                                    if (card) {
-                                        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                        // Get Alpine component instance and call toggleExpand directly
-                                        const cardComponent = Alpine.$data(card);
-                                        if (cardComponent && typeof cardComponent.toggleExpand === 'function') {
-                                            cardComponent.toggleExpand();
-                                        } else {
-                                            console.warn('Walk card component or toggleExpand method not found');
+                        marker.getElement().addEventListener('click', () => {
+                            try {
+                                const card = document.querySelector(`[data-walk-id="${walk.id}"]`);
+                                if (card) {
+                                    // First scroll the card into view
+                                    const cardComponent = Alpine.$data(card);
+                                    if (cardComponent) {
+                                        // Ensure card is in view before expanding
+                                        if (typeof cardComponent.adjustScroll === 'function') {
+                                            cardComponent.adjustScroll();
                                         }
-                                    } else {
-                                        console.warn('Walk card not found for walk id:', walk.id);
+                                        
+                                        // Small delay before expanding to ensure smooth scroll
+                                        setTimeout(() => {
+                                            if (typeof cardComponent.toggleExpand === 'function') {
+                                                cardComponent.toggleExpand();
+                                                this.toggleWalkExpansion(walk.id);
+                                            }
+                                        }, 300);
                                     }
-                                    // Dispatch custom event for reactive selection
-                                    window.dispatchEvent(new CustomEvent('walk:selected', { detail: walk }));
-                                    // Fly to the marker
+
+                                    // Update map view with padding for sidebar
                                     if (this.map) {
-                                        this.map.flyTo({
-                                            center: [walk.longitude, walk.latitude],
-                                            zoom: 14,
-                                            padding: {
-                                                top: 50,
-                                                bottom: 50,
-                                                left: this.showSidebar ? 384 : 50,
-                                                right: 50
-                                            },
-                                            duration: 1000
-                                        });
+                                        setTimeout(() => {
+                                            this.map.flyTo({
+                                                center: [walk.longitude, walk.latitude],
+                                                zoom: 14,
+                                                padding: {
+                                                    top: 50,
+                                                    bottom: 50,
+                                                    left: this.showSidebar ? 384 : 50,
+                                                    right: 50
+                                                },
+                                                duration: 1000
+                                            });
+                                        }, 100);
                                     }
-                                } catch (err) {
-                                    console.error('Error handling marker click:', err);
+
+                                    // Dispatch selection event
+                                    window.dispatchEvent(new CustomEvent('walk:selected', { 
+                                        detail: walk 
+                                    }));
                                 }
-                            });
-                            marker.getElement().setAttribute('data-listener-added', 'true');
-                        }
+                            } catch (error) {
+                                console.error('Error handling marker click:', error);
+                            }
+                        });
                         
                         this.markers.set(walk.id, marker);
                     }
@@ -399,6 +456,47 @@
                         }
                     }
                 }
+            },
+
+            ensureInView(walkId) {
+                // Add small delay to ensure DOM updates
+                setTimeout(() => {
+                    const card = document.querySelector(`[data-walk-id="${walkId}"]`);
+                    const container = card?.closest('.walk-list');
+                    if (!card || !container) return;
+                    
+                    // First, collapse all other cards
+                    this.walks.forEach(w => {
+                        if (w.id !== walkId && w.isExpanded) {
+                            w.isExpanded = false;
+                        }
+                    });
+                    
+                    // Get updated dimensions after collapse
+                    const containerRect = container.getBoundingClientRect();
+                    const cardRect = card.getBoundingClientRect();
+                    const headerOffset = 80; // Account for fixed header
+                    
+                    // Calculate the ideal scroll position to center the card
+                    const targetScroll = container.scrollTop + 
+                        (cardRect.top - containerRect.top) - 
+                        (containerRect.height - cardRect.height) / 2;
+                    
+                    // Smooth scroll to position
+                    container.scrollTo({
+                        top: Math.max(0, targetScroll - headerOffset),
+                        behavior: 'smooth'
+                    });
+                    
+                    // Expand the selected card after scrolling
+                    setTimeout(() => {
+                        const walk = this.walks.find(w => w.id === walkId);
+                        if (walk) {
+                            walk.isExpanded = true;
+                            this.saveExpandedStates();
+                        }
+                    }, 300); // Wait for scroll to complete
+                }, 50);
             }
         };
     };
