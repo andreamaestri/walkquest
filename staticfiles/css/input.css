@@ -9,10 +9,14 @@
 /* Custom Styles */
 @layer base {
     body {
-        @apply bg-slate-50 dark:bg-gray-900 font-['IBM Plex Sans Condensed'];
+        @apply bg-slate-50 align-middle dark:bg-gray-900 font-[IBM_Plex_Sans_Condensed];
     }
     * {
         font-family: 'IBM Plex Sans Condensed', system-ui, sans-serif;
+    }
+    
+    iconify-icon {
+        @apply align-middle;
     }
 }
 
@@ -26,7 +30,7 @@
     .navbar {
         @apply fixed w-full bg-white/10 backdrop-blur-lg shadow-sm transition-all duration-300 
                border-b border-white/30;
-        z-index: 50;  /* Top layer */
+        z-index: 50;  
         height: 4rem;
     }
 
@@ -85,6 +89,12 @@
         opacity: 0;
         margin-top: 0;
         will-change: height, opacity, margin-top;
+        transition: height 0.5s ease-out, opacity 0.5s ease-out, margin-top 0.5s ease-out;
+        transform-style: preserve-3d;
+        transform-origin: top;
+        backface-visibility: hidden;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
     }
 
     .category-tag {

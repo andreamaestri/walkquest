@@ -1,115 +1,204 @@
-window.walkCardMixin = (walk) => ({
-  walk,
-  inView: false,
-  isSelected() {
-    return this.$store.walks.selectedWalk?.id === this.walk.id;
-  },
-  intersectionOptions: {
-    threshold: 0.5,
-    margin: '100px 0px 100px 0px'
-  },
-  onIntersect(entries) {
-    const [entry] = entries;
-    if (entry?.isIntersecting) {
-      this.inView = true;
-    }
-  },
-  getStickyHeaderHeight() {
-    const searchBar = document.querySelector('.sticky.top-0');
-    return searchBar ? searchBar.offsetHeight : 0;
-  },
-  // Smoothly scroll the card into view considering the sticky header,
-  // only if the card is not fully visible.
-  scrollIntoViewSmoothly() {
-    const headerHeight = this.getStickyHeaderHeight();
-    const scrollContainer = this.$el.closest('.overflow-y-auto');
-    if (!scrollContainer) return;
-    const offset = headerHeight + 16;
-    const containerRect = scrollContainer.getBoundingClientRect();
-    const elementRect = this.$el.getBoundingClientRect();
-    // Skip scroll if already fully visible in container.
-    if (elementRect.top >= containerRect.top + offset &&
-        elementRect.bottom <= containerRect.bottom) {
-      return;
-    }
-    const targetScroll = scrollContainer.scrollTop + (elementRect.top - containerRect.top) - offset;
-    requestAnimationFrame(() => {
-      scrollContainer.scrollTo({ top: targetScroll, behavior: 'smooth' });
-    });
-  },
-  toggleExpand(event) {
-    if (event?.target?.closest('.favorite-btn, .action-btn')) return;
-    const content = this.$el.querySelector('.expandable-content');
-    if (!content) return;
+// Animation constants
+const ANIMATION_CONFIG = {
+  duration: 500,
+  easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+  pressScale: 0.98,
+  pressDuration: 100,
+  scrollOffset: 16
+};
+
+window.walkCardMixin = (walk) => {
+  // Cache DOM queries
+  let contentElement = null;
+  let scrollContainer = null;
+  let headerHeight = null;
+
+  return {
+    walk,
+    inView: false,
+    expanded: false, // Track expansion state locally
     
-    const expanding = !this.isSelected();
-    if (expanding) {
-      // If another card is expanded, collapse it first.
-      if (this.$store.walks.selectedWalk && this.$store.walks.selectedWalk.id !== this.walk.id) {
-        window.dispatchEvent(new Event('collapse-other-cards'));
-        // Wait for collapse animation (~500ms) before scrolling
-        setTimeout(() => {
-          this.scrollIntoViewSmoothly();
-        }, 550);
+    // Computed properties
+    isSelected() {
+      return this.$store.walks.selectedWalk?.id === this.walk.id;
+    },
+
+    // Intersection Observer options
+    intersectionOptions: {
+      threshold: 0.5,
+      margin: '100px 0px 100px 0px'
+    },
+
+    // Lazily initialize cached elements
+    getElements() {
+      if (!contentElement) {
+        contentElement = this.$el.querySelector('.expandable-content');
+      }
+      if (!scrollContainer) {
+        scrollContainer = this.$el.closest('.overflow-y-auto');
+      }
+      if (headerHeight === null) {
+        const searchBar = document.querySelector('.sticky.top-0');
+        headerHeight = searchBar ? searchBar.offsetHeight : 0;
+      }
+      return { contentElement, scrollContainer, headerHeight };
+    },
+
+    // Handle intersection observer updates
+    onIntersect(entries) {
+      const [entry] = entries;
+      if (entry?.isIntersecting) {
+        this.inView = true;
+      }
+    },
+
+    // Check if element is fully visible in container
+    isFullyVisible() {
+      const { scrollContainer, headerHeight } = this.getElements();
+      if (!scrollContainer) return true;
+
+      const containerRect = scrollContainer.getBoundingClientRect();
+      const elementRect = this.$el.getBoundingClientRect();
+      const offset = headerHeight + ANIMATION_CONFIG.scrollOffset;
+
+      return elementRect.top >= containerRect.top + offset &&
+             elementRect.bottom <= containerRect.bottom;
+    },
+
+    // Smooth scroll with performance optimizations
+    scrollIntoViewSmoothly() {
+      const { scrollContainer, headerHeight } = this.getElements();
+      if (!scrollContainer || this.isFullyVisible()) return;
+
+      const containerRect = scrollContainer.getBoundingClientRect();
+      const elementRect = this.$el.getBoundingClientRect();
+      const offset = headerHeight + ANIMATION_CONFIG.scrollOffset;
+      const targetScroll = scrollContainer.scrollTop + 
+                          (elementRect.top - containerRect.top) - offset;
+
+      requestAnimationFrame(() => {
+        scrollContainer.scrollTo({ 
+          top: targetScroll, 
+          behavior: 'smooth' 
+        });
+      });
+    },
+
+    // Handle content animation with performance optimizations
+    async animateContent(expanding) {
+      const { contentElement } = this.getElements();
+      if (!contentElement) return;
+
+      const animationProps = {
+        duration: ANIMATION_CONFIG.duration,
+        easing: ANIMATION_CONFIG.easing
+      };
+
+      if (expanding) {
+        // Setup initial state without forced reflow
+        contentElement.style.cssText = 
+          'display: block; position: relative; height: auto; opacity: 0; margin-top: 0px;';
+        
+        const targetHeight = contentElement.scrollHeight;
+        
+        // Animate using Web Animations API for better performance
+        await Promise.all([
+          contentElement.animate([
+            { height: '0px', opacity: 0, marginTop: '0px' },
+            { height: `${targetHeight}px`, opacity: 1, marginTop: '16px' }
+          ], animationProps).finished,
+          
+          this.$el.animate([
+            { transform: 'scale(1)' },
+            { transform: `scale(${ANIMATION_CONFIG.pressScale})` },
+            { transform: 'scale(1)' }
+          ], { duration: ANIMATION_CONFIG.pressDuration }).finished
+        ]);
+
+        contentElement.style.cssText = 
+          'display: block; height: auto; opacity: 1; margin-top: 16px;';
       } else {
+        const animation = contentElement.animate([
+          { height: `${contentElement.scrollHeight}px`, opacity: 1, marginTop: '16px' },
+          { height: '0px', opacity: 0, marginTop: '0px' }
+        ], animationProps);
+
+        await animation.finished;
+        if (!this.isSelected()) {
+          contentElement.style.display = 'none';
+        }
+      }
+    },
+
+    // Handle expand/collapse with improved state management
+    async toggleExpand(event) {
+      // Ignore clicks on action buttons
+      if (event?.target?.closest('.favorite-btn, .action-btn')) return;
+      
+      const expanding = !this.isSelected();
+      
+      // Handle state changes first
+      if (expanding) {
+        // Collapse other cards before expanding this one
+        if (this.$store.walks.selectedWalk?.id !== this.walk.id) {
+          window.dispatchEvent(new Event('collapse-other-cards'));
+          // Wait for collapse animation
+          await new Promise(resolve => setTimeout(resolve, ANIMATION_CONFIG.duration + 50));
+        }
+        
+        // Update store state
+        this.$store.walks.setSelectedWalk(this.walk);
+        this.$store.walks.startLoading();
+        this.$store.walks.setProgress(20);
+      } else {
+        this.$store.walks.setSelectedWalk(null);
+      }
+
+      // Animate content
+      await this.animateContent(expanding);
+      
+      // Scroll into view if needed (only when expanding)
+      if (expanding) {
         this.scrollIntoViewSmoothly();
       }
-      // Expand: set initial state and trigger animation
-      content.style.cssText = 'display: block; position: relative; height: 0px; opacity: 0; margin-top: 0px;';
-      content.offsetHeight; // Force reflow
-      requestAnimationFrame(() => {
-        content.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
-        this.$el.style.transition = 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+
+      // Dispatch event after animation completes
+      window.dispatchEvent(new CustomEvent('walk:selected', { 
+        detail: expanding ? this.walk : null 
+      }));
+    },
+
+    // Initialize the component
+    init() {
+      // Setup Motion.js press animation if available
+      if (window.Motion?.press) {
+        window.Motion.press(this.$el, {
+          scale: ANIMATION_CONFIG.pressScale,
+          duration: ANIMATION_CONFIG.pressDuration
+        });
+      }
+
+      // Handle collapse events
+      window.addEventListener('collapse-other-cards', () => {
+        if (this.isSelected()) {
+          this.toggleExpand({});
+        }
       });
-      content.style.height = 'auto';
-      const targetHeight = content.scrollHeight;
-      content.style.height = '0px';
-      content.offsetHeight; // Force reflow
-      content.style.height = targetHeight + 'px';
-      content.style.opacity = '1';
-      content.style.marginTop = '16px';
-      this.$store.walks.startLoading();
-      this.$store.walks.setProgress(20);
-    } else {
-      // Collapse: animate to collapse without scrolling
-      const currentHeight = content.scrollHeight;
-      content.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
-      content.style.height = currentHeight + 'px';
-      content.offsetHeight;
-      content.style.height = '0px';
-      content.style.opacity = '0';
-      content.style.marginTop = '0px';
-      content.addEventListener('transitionend', () => {
-        if (!this.isSelected()) content.style.display = 'none';
-        this.$el.style.transition = '';
-      }, { once: true });
+
+      // Setup intersection observer
+      const observer = new IntersectionObserver(
+        entries => this.onIntersect(entries),
+        {
+          root: this.getElements().scrollContainer,
+          rootMargin: this.intersectionOptions.margin,
+          threshold: this.intersectionOptions.threshold
+        }
+      );
+
+      observer.observe(this.$el);
+
+      // Cleanup on component destroy
+      this.$cleanup = () => observer.disconnect();
     }
-    
-    this.$store.walks.setSelectedWalk(expanding ? this.walk : null);
-    window.dispatchEvent(new CustomEvent('walk:selected', { detail: expanding ? this.walk : null }));
-  },
-  adjustScroll() {
-    this.scrollIntoViewSmoothly();
-  },
-  init() {
-    if (window.Motion?.press) {
-      window.Motion.press(this.$el, () => ({ scale: 0.98, transition: { duration: 0.1 } }));
-    }
-    // Listen for collapse event from other cards
-    window.addEventListener('collapse-other-cards', () => {
-      if (this.isSelected()) {
-        // Simulate collapse without event details
-        this.toggleExpand({});
-      }
-    });
-    const observer = new IntersectionObserver(
-      (entries) => this.onIntersect(entries),
-      {
-        root: this.$el.closest('.overflow-y-auto'),
-        rootMargin: this.intersectionOptions.margin,
-        threshold: this.intersectionOptions.threshold
-      }
-    );
-    observer.observe(this.$el);
-  }
-});
+  };
+};
