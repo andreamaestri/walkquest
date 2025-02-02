@@ -398,44 +398,13 @@
                             try {
                                 const card = document.querySelector(`[data-walk-id="${walk.id}"]`);
                                 if (card) {
-                                    // First scroll the card into view
-                                    const cardComponent = Alpine.$data(card);
-                                    if (cardComponent) {
-                                        // Ensure card is in view before expanding
-                                        if (typeof cardComponent.adjustScroll === 'function') {
-                                            cardComponent.adjustScroll();
-                                        }
-                                        
-                                        // Small delay before expanding to ensure smooth scroll
-                                        setTimeout(() => {
-                                            if (typeof cardComponent.toggleExpand === 'function') {
-                                                cardComponent.toggleExpand();
-                                                this.toggleWalkExpansion(walk.id);
-                                            }
-                                        }, 300);
-                                    }
-
-                                    // Update map view with padding for sidebar
-                                    if (this.map) {
-                                        setTimeout(() => {
-                                            this.map.flyTo({
-                                                center: [walk.longitude, walk.latitude],
-                                                zoom: 14,
-                                                padding: {
-                                                    top: 50,
-                                                    bottom: 50,
-                                                    left: this.showSidebar ? 384 : 50,
-                                                    right: 50
-                                                },
-                                                duration: 1000
-                                            });
-                                        }, 100);
-                                    }
-
-                                    // Dispatch selection event
+                                    // Dispatch selection event first
                                     window.dispatchEvent(new CustomEvent('walk:selected', { 
                                         detail: walk 
                                     }));
+                                
+                                    // Let the selection handler manage scrolling and expansion
+                                    return;
                                 }
                             } catch (error) {
                                 console.error('Error handling marker click:', error);
@@ -462,8 +431,11 @@
                 // Add small delay to ensure DOM updates
                 setTimeout(() => {
                     const card = document.querySelector(`[data-walk-id="${walkId}"]`);
-                    const container = card?.closest('.walk-list');
-                    if (!card || !container) return;
+                    const container = document.querySelector('.walk-list'); // Direct selector instead of closest
+                    if (!card || !container) {
+                        console.log('Card or container not found:', { walkId, card, container });
+                        return;
+                    }
                     
                     // First, collapse all other cards
                     this.walks.forEach(w => {
@@ -475,7 +447,6 @@
                     // Get updated dimensions after collapse
                     const containerRect = container.getBoundingClientRect();
                     const cardRect = card.getBoundingClientRect();
-                    const headerOffset = 80; // Account for fixed header
                     
                     // Calculate the ideal scroll position to center the card
                     const targetScroll = container.scrollTop + 
@@ -484,7 +455,7 @@
                     
                     // Smooth scroll to position
                     container.scrollTo({
-                        top: Math.max(0, targetScroll - headerOffset),
+                        top: Math.max(0, targetScroll),
                         behavior: 'smooth'
                     });
                     
