@@ -28,6 +28,28 @@ window.walkCardMixin = (walk) => ({
             content.style.height = '0px';
             content.style.opacity = '0';
         }
+
+        // Listen for expansion changes from store
+        const handleExpansion = (event) => {
+            // Only update if we have valid detail and this card exists
+            if (!this.$el) return;
+            if (event.detail) {
+                const wasExpanded = this.isExpanded;
+                this.isExpanded = event.detail.walkId === this.walk.id;
+                
+                if (this.isExpanded !== wasExpanded) {
+                    this.animateContent(this.isExpanded);
+                    if (this.isExpanded) this.adjustScroll();
+                }
+            }
+        };
+
+        window.addEventListener('walk:expansion-changed', handleExpansion);
+
+        // Cleanup listener when component is destroyed
+        this.$cleanup = () => {
+            window.removeEventListener('walk:expansion-changed', handleExpansion);
+        };
         
         if (walkId) {
             this.isFavorited = localStorage.getItem(`favorite_walk_${walkId}`) === 'true';
@@ -53,18 +75,28 @@ window.walkCardMixin = (walk) => ({
 
     toggleExpand(event) {
         if (event) event.stopPropagation();
-        
+
+        // Use the store to handle expansion
+        const store = Alpine.store('walks');
+        if (store?.expandWalk) {
+            store.expandWalk(this.walk.id);
+        }
+
+        // Dispatch walk:selected event first (will handle map movement and expansion)
+        window.dispatchEvent(new CustomEvent('walk:selected', { 
+            detail: this.walk,
+            bubbles: true  // Ensure event bubbles up through DOM
+        }));
+    },
+
+    animateContent(shouldExpand) {
         const content = this.$refs.content;
         if (!content) return;
 
-        this.isExpanded = !this.isExpanded;
-        
-        if (this.isExpanded) {
-            // Show content first to measure height
+        if (shouldExpand) {
             content.style.display = 'block';
             const targetHeight = content.scrollHeight;
             
-            // Animate expansion
             window.Motion?.animate(content, {
                 height: [0, targetHeight],
                 opacity: [0, 1],
@@ -74,7 +106,6 @@ window.walkCardMixin = (walk) => ({
                 easing: [0.4, 0, 0.2, 1]
             });
         } else {
-            // Animate collapse
             window.Motion?.animate(content, {
                 height: [content.scrollHeight, 0],
                 opacity: [1, 0],
@@ -87,11 +118,6 @@ window.walkCardMixin = (walk) => ({
                 }
             });
         }
-
-        // Dispatch event for map marker sync
-        window.dispatchEvent(new CustomEvent('walk:expanded', { 
-            detail: { walkId: this.walk.id, expanded: this.isExpanded }
-        }));
     },
 
     toggleFavorite() {
@@ -121,17 +147,21 @@ window.walkCardMixin = (walk) => ({
         }));
     },
 
-    handleIntersection(entries) {
-        // Update visibility and trigger animations
-        const [entry] = entries;
-        if (entry.isIntersecting) {
-            this.isVisible = true;
-            if (!this.hasAnimated) {
-                this.hasAnimated = true;
-                window.WalkAnimations?.animateEntry(this.$el);
+    handleVisibility() {
+        this.isVisible = true;
+        // Only animate once when card becomes visible
+        if (!this.hasAnimated) {
+            this.hasAnimated = true;
+            if (window.Motion) {
+                window.Motion.animate(this.$el, {
+                    y: [20, 0],
+                    opacity: [0, 1],
+                    scale: [0.95, 1]
+                }, {
+                    duration: 0.3,
+                    easing: [0.2, 0.4, 0.2, 1]
+                });
             }
-        } else {
-            this.isVisible = false;
         }
     },
 
@@ -147,8 +177,8 @@ window.walkCardMixin = (walk) => ({
             const viewportCenter = window.innerHeight / 2;
             
             // Calculate target scroll position to center the card
-            const targetScroll = cardList.scrollTop + 
-                (cardRect.top - listRect.top) - 
+            const targetScroll = cardList.scrollTop +
+                (cardRect.top - listRect.top) -
                 (listRect.height - cardRect.height) / 2;
             
             // Initial smooth scroll to center the card
@@ -174,5 +204,5 @@ window.walkCardMixin = (walk) => ({
                 }, 300); // Wait for expansion animation
             }
         }, 50); // Reduced initial delay for better responsiveness
-    }
+    },
 });

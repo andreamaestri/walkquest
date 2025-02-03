@@ -14,7 +14,7 @@
      }"
      x-data="walkCardMixin(walk)" 
      x-init="init()"
-     x-intersect.once="() => adjustScroll()"
+     x-intersect.once="handleVisibility()"
      @click="toggleExpand($event)"
      @mouseenter="showBadges = true"
      @mouseleave="showBadges = false">

@@ -147,47 +147,7 @@
                         console.log('Map loaded successfully');
                         this.isMapLoading = false;
                         this.map.resize();
-                        
-                        try {
-                            if (this.map.getLayer('route')) {
-                                this.map.removeLayer('route');
-                            }
-                            if (this.map.getSource('route')) {
-                                this.map.removeSource('route');
-                            }
-
-                            this.map.addSource('route', {
-                                type: 'geojson',
-                                data: {
-                                    type: 'Feature',
-                                    properties: {},
-                                    geometry: {
-                                        type: 'LineString',
-                                        coordinates: []
-                                    }
-                                }
-                            });
-
-                            this.map.addLayer({
-                                id: 'route',
-                                type: 'line',
-                                source: 'route',
-                                layout: {
-                                    'line-join': 'round',
-                                    'line-cap': 'round'
-                                },
-                                paint: {
-                                    'line-color': '#242424',
-                                    'line-width': 4
-                                }
-                            });
-
-                            if (this.walks.length > 0) {
-                                this.updateMarkers(this.walks);
-                            }
-                        } catch (error) {
-                            console.error('Error initializing route:', error);
-                        }
+                        this.updateMarkers(this.walks);
                     });
 
                     this.map.addControl(new mapboxgl.NavigationControl(), 'top-left');
@@ -298,6 +258,11 @@
 
             handleWalkSelection(detail) {
                 if (!detail) {
+                    // Clear active state from all markers when deselecting
+                    this.markers.forEach(marker => {
+                        marker.getElement().classList.remove('active-marker');
+                    });
+                    
                     const store = Alpine.store('walks');
                     if (store) store.setSelectedWalk(null);
                     this.showSidebar = false;
@@ -305,65 +270,125 @@
                     return;
                 }
 
-                // Collapse all cards first
-                this.walks.forEach(walk => {
-                    if (walk.id !== detail.id && walk.isExpanded) {
-                        walk.isExpanded = false;
-                    }
-                });
-                this.saveExpandedStates();
-
+                // Expand the selected walk card
                 const store = Alpine.store('walks');
-                if (store) store.setSelectedWalk(detail);
-                
-                this.showSidebar = true;
-                window.localStorage.setItem('sidebar', 'true');
+                if (store) {
+                    store.setSelectedWalk(detail);
+                    store.expandWalk(detail.id);
+                }
 
-                // Ensure proper timing for view updates
+                // Update selection and sidebar state
+                if (store?.setSelectedWalk) {
+                    store.setSelectedWalk(detail);
+                }
+
+                // Update view after state changes
                 this.$nextTick(() => {
-                    // First ensure card is in view
-                    this.ensureInView(detail.id);
-                    
-                    // Then update map view and load geometry
-                    setTimeout(() => {
-                        this.updateMapView(detail);
-                        this.loadWalkGeometry(detail);
-                    }, 400); // Wait for scroll and expansion
+                    const card = document.querySelector(`[data-walk-id="${detail.id}"]`);
+                    if (card) {
+                        const cardComponent = Alpine.$data(card);
+                        if (cardComponent?.adjustScroll) {
+                            cardComponent.adjustScroll();
+                        }
+                    }
+
+                    // Update sidebar state after card is found and adjusted
+                    this.showSidebar = true;
+                    window.localStorage.setItem('sidebar', 'true');
+                    this.updateMapView(detail);
+                    this.loadWalkGeometry(detail);
                 });
             }, 
 
             updateMapView(detail) {
                 if (!this.map || !detail) return;
                 
+                // Calculate offset to keep marker visible with expanded card
+                const isMobile = window.innerWidth < 768;
                 const padding = {
                     top: 50,
                     bottom: 50,
-                    left: this.showSidebar ? 384 : 50,
+                    left: this.showSidebar && !isMobile ? 384 + 50 : 50, // Add extra padding for sidebar
                     right: 50
                 };
+
+                // Calculate optimal zoom based on window size
+                const optimalZoom = isMobile ? 13 : 14;
+
+                // Calculate offset to keep marker visible
+                const offset = [
+                    this.showSidebar && !isMobile ? -150 : 0, // Horizontal offset when sidebar is open
+                    0 // Vertical offset
+                ];
 
                 if (detail.longitude && detail.latitude) {
                     this.map.flyTo({
                         center: [detail.longitude, detail.latitude],
-                        zoom: 14,
+                        zoom: optimalZoom,
                         padding,
-                        duration: 1000
+                        offset,
+                        duration: 1200,
+                        essential: true, // Makes the movement happen even during low-power mode
+                        easing: (t) => {
+                            // Custom easing function for smoother movement
+                            return t < 0.5
+                                ? 4 * t * t * t
+                                : 1 - Math.pow(-2 * t + 2, 3) / 2;
+                        }
+                    });
+
+                    // Highlight the active marker
+                    const marker = this.markers.get(detail.id);
+                    marker?.getElement().classList.add('active-marker');
+                    setTimeout(() => {
+                        marker?.getElement().classList.remove('active-marker');
                     });
                 }
             },
 
             async loadWalkGeometry(detail) {
                 if (!detail?.id) return;
-                
+        
                 try {
                     const response = await fetch(`/api/walks/${detail.id}/geometry`);
                     if (!response.ok) throw new Error('Failed to load geometry');
                     
                     const geojson = await response.json();
-                    const source = this.map.getSource('route');
-                    if (source) {
-                        source.setData(geojson);
+
+                    // Ensure source exists
+                    if (!this.map.getSource('route')) {
+                        this.map.addSource('route', {
+                            type: 'geojson',
+                            data: {
+                                type: 'Feature',
+                                properties: {},
+                                geometry: {
+                                    type: 'LineString',
+                                    coordinates: []
+                                }
+                            }
+                        });
                     }
+
+                    // Ensure layer exists
+                    if (!this.map.getLayer('route')) {
+                        this.map.addLayer({
+                            id: 'route',
+                            type: 'line',
+                            source: 'route',
+                            layout: {
+                                'line-join': 'round',
+                                'line-cap': 'round'
+                            },
+                            paint: {
+                                'line-color': '#242424',
+                                'line-width': 4
+                            }
+                        });
+                    }
+
+                    // Update source data
+                    this.map.getSource('route').setData(geojson);
 
                     // Update route color based on steepness
                     const color = {
@@ -394,23 +419,17 @@
                             .setLngLat([walk.longitude, walk.latitude])
                             .addTo(this.map);
                         
+                        // Add marker styling
+                        marker.getElement().classList.add('walk-marker');
+
                         marker.getElement().addEventListener('click', () => {
-                            try {
-                                const card = document.querySelector(`[data-walk-id="${walk.id}"]`);
-                                if (card) {
-                                    // Dispatch selection event first
-                                    window.dispatchEvent(new CustomEvent('walk:selected', { 
-                                        detail: walk 
-                                    }));
-                                
-                                    // Let the selection handler manage scrolling and expansion
-                                    return;
-                                }
-                            } catch (error) {
-                                console.error('Error handling marker click:', error);
-                            }
+                            // Dispatch walk:selected event, letting the handler manage both map and UI updates
+                            window.dispatchEvent(new CustomEvent('walk:selected', { 
+                                detail: walk,
+                                bubbles: true
+                            }));
                         });
-                        
+
                         this.markers.set(walk.id, marker);
                     }
                 }

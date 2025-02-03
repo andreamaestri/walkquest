@@ -40,7 +40,7 @@
         };
     };
 
-    // Walk interface component
+    // Walk interface component with full map and walk card functionality
     window.walkInterface = function() {
         return {
             walks: [],
@@ -55,46 +55,420 @@
             hasMore: true,
             page: 1,
             
-            init() {
+            async init() {
                 console.group('WalkInterface Initialization');
+                console.log('Starting initialization...');
+                
                 try {
-                    // Sync with global store
-                    const globals = Alpine.store('globals');
-                    if (globals?.walkInterface) {
-                        Object.assign(this, globals.walkInterface);
-                    }
-                    
-                    // Initialize walks store if needed
-                    if (!Alpine.store('walks')) {
-                        Alpine.store('walks', {
-                            selectedWalk: null,
-                            pendingFavorites: new Set()
-                        });
-                    }
-                    
                     // Add walk selection listener
                     window.addEventListener('walk:selected', (event) => {
                         if (event.detail) {
                             this.handleWalkSelection(event.detail);
                         }
                     });
-                    
-                    console.log('WalkInterface initialized');
+
+                    await this.initializeData();
+                    await this.initializeMap();
+                    await this.fetchWalks();
+                    console.log('Initialization complete');
                 } catch (error) {
-                    console.error('WalkInterface initialization failed:', error);
+                    console.error('Initialization failed:', error);
                     this.error = 'Failed to initialize interface';
                 } finally {
                     console.groupEnd();
                 }
             },
 
-            handleWalkSelection(detail) {
-                if (!detail) return;
+            async initializeData() {
+                console.log('Initializing data...');
+                const walksData = document.getElementById('walks-data');
+                if (!walksData) {
+                    console.warn('No initial walks data found');
+                    return;
+                }
+
+                try {
+                    const initialData = JSON.parse(walksData.textContent);
+                    this.walks = initialData.walks || [];
+                    this.hasMore = initialData.hasMore || false;
+                    console.log('Data initialized with', this.walks.length, 'walks');
+                    
+                    this.$nextTick(() => {
+                        if (this.map) {
+                            this.updateMarkers(this.walks);
+                        }
+                    });
+                } catch (error) {
+                    console.error('Failed to parse initial data:', error);
+                    throw error;
+                }
+            },
+
+            async initializeMap() {
+                const configScript = document.getElementById('config-data');
+                if (!configScript) {
+                    console.error('Config data script tag not found');
+                    this.error = 'Configuration not found';
+                    this.isMapLoading = false;
+                    return;
+                }
+
+                try {
+                    const config = JSON.parse(configScript.textContent);
+                    if (!config.mapboxToken) {
+                        throw new Error('Mapbox token not found in config');
+                    }
+
+                    mapboxgl.accessToken = config.mapboxToken;
+                    const mapContainer = document.getElementById('map');
+                    if (!mapContainer) {
+                        throw new Error('Map container element not found');
+                    }
+                    
+                    this.map = new mapboxgl.Map({
+                        container: mapContainer,
+                        style: 'mapbox://styles/mapbox/outdoors-v12?optimize=true',
+                        center: config.map?.defaultCenter || [-4.85, 50.4],
+                        zoom: config.map?.defaultZoom || 9.5,
+                        preserveDrawingBuffer: false,
+                        maxZoom: 16,
+                        minZoom: 1,
+                        renderWorldCopies: false,
+                        trackResize: true,
+                        useWebGL: true,
+                        antialias: false,
+                        maxBounds: new mapboxgl.LngLatBounds(
+                            [-5.8, 49.8],
+                            [-4.0, 51.0]
+                        )
+                    });
+
+                    this.map.on('load', () => {
+                        console.log('Map loaded successfully');
+                        this.isMapLoading = false;
+                        this.map.resize();
+                        
+                        try {
+                            if (this.map.getLayer('route')) {
+                                this.map.removeLayer('route');
+                            }
+                            if (this.map.getSource('route')) {
+                                this.map.removeSource('route');
+                            }
+
+                            this.map.addSource('route', {
+                                type: 'geojson',
+                                data: {
+                                    type: 'Feature',
+                                    properties: {},
+                                    geometry: {
+                                        type: 'LineString',
+                                        coordinates: []
+                                    }
+                                }
+                            });
+
+                            this.map.addLayer({
+                                id: 'route',
+                                type: 'line',
+                                source: 'route',
+                                layout: {
+                                    'line-join': 'round',
+                                    'line-cap': 'round'
+                                },
+                                paint: {
+                                    'line-color': '#242424',
+                                    'line-width': 4
+                                }
+                            });
+
+                            if (this.walks.length > 0) {
+                                this.updateMarkers(this.walks);
+                            }
+                        } catch (error) {
+                            console.error('Error initializing route:', error);
+                        }
+                    });
+
+                    this.map.addControl(new mapboxgl.NavigationControl(), 'top-left');
+                } catch (error) {
+                    console.error('Failed to initialize map:', error);
+                    this.error = error.message;
+                    this.isMapLoading = false;
+                }
+            },
+
+            async fetchWalks() {
+                if (this.isLoading) return;
                 
+                this.isLoading = true;
+                window.dispatchEvent(new Event('loading:show'));
+
+                try {
+                    const response = await window.ApiService.filterWalks({
+                        search: this.searchQuery,
+                        page: 1,
+                        page_size: 10,
+                        include_expanded: true // Add parameter to fetch expanded content
+                    });
+
+                    if (!response?.walks) {
+                        throw new Error('Invalid response format');
+                    }
+
+                    this.walks = response.walks.map(walk => ({
+                        ...walk,
+                        isExpanded: false // Initialize expansion state
+                    }));
+                    this.hasMore = response.walks.length >= 10;
+                    this.page = 1;
+                    this.error = null;
+                    
+                    this.$nextTick(() => {
+                        this.updateMarkers(this.walks);
+                        this.initializeExpandedContent();
+                    });
+                } catch (error) {
+                    console.error('Failed to fetch walks:', error);
+                    this.error = `Failed to load walks: ${error.message || 'Please try again.'}`;
+                } finally {
+                    this.isLoading = false;
+                    window.dispatchEvent(new Event('loading:hide'));
+                }
+            },
+
+            initializeExpandedContent() {
+                // Initialize any previously expanded cards
+                const expandedWalkIds = JSON.parse(localStorage.getItem('expandedWalks') || '[]');
+                this.walks.forEach(walk => {
+                    walk.isExpanded = expandedWalkIds.includes(walk.id);
+                });
+            },
+
+            async loadMore() {
+                if (this.isLoadingMore || !this.hasMore) return;
+                
+                this.isLoadingMore = true;
+                try {
+                    const response = await window.ApiService.filterWalks({
+                        search: this.searchQuery,
+                        page: this.page + 1,
+                        page_size: 10,
+                        include_expanded: true // Add parameter to fetch expanded content
+                    });
+
+                    if (!response?.walks) {
+                        throw new Error('Invalid response format');
+                    }
+
+                    const newWalks = response.walks.map(walk => ({
+                        ...walk,
+                        isExpanded: false // Initialize expansion state
+                    }));
+
+                    this.walks = [...this.walks, ...newWalks];
+                    this.hasMore = response.walks.length >= 10;
+                    this.page++;
+                    this.error = null;
+
+                    this.$nextTick(() => {
+                        this.updateMarkers(this.walks);
+                        this.saveExpandedStates();
+                    });
+                } catch (error) {
+                    console.error('Failed to load more walks:', error);
+                    this.error = `Failed to load more walks: ${error.message || 'Please try again.'}`;
+                } finally {
+                    this.isLoadingMore = false;
+                }
+            },
+
+            toggleWalkExpansion(walkId) {
+                const walk = this.walks.find(w => w.id === walkId);
+                if (walk) {
+                    walk.isExpanded = !walk.isExpanded;
+                    this.saveExpandedStates();
+                }
+            },
+
+            saveExpandedStates() {
+                const expandedWalkIds = this.walks.filter(w => w.isExpanded).map(w => w.id);
+                localStorage.setItem('expandedWalks', JSON.stringify(expandedWalkIds));
+            },
+
+            handleWalkSelection(detail) {
+                if (!detail) {
+                    const store = Alpine.store('walks');
+                    if (store) store.setSelectedWalk(null);
+                    this.showSidebar = false;
+                    window.localStorage.removeItem('sidebar');
+                    return;
+                }
+
+                // Expand the selected walk card
                 const store = Alpine.store('walks');
-                if (store) {
+                if (store?.expandWalk) {
+                    store.expandWalk(detail.id);
+                }
+
+                // Update selection and sidebar state
+                if (store?.setSelectedWalk) {
                     store.setSelectedWalk(detail);
                 }
+                
+                this.showSidebar = true;
+                window.localStorage.setItem('sidebar', 'true');
+
+                // Update view after state changes
+                this.$nextTick(() => {
+                    const card = document.querySelector(`[data-walk-id="${detail.id}"]`);
+                    if (card) {
+                        const cardComponent = Alpine.$data(card);
+                        if (cardComponent?.adjustScroll) {
+                            cardComponent.adjustScroll();
+                        }
+                    }
+                    this.updateMapView(detail);
+                    this.loadWalkGeometry(detail);
+                });
+            }, 
+
+            updateMapView(detail) {
+                if (!this.map || !detail) return;
+                
+                const padding = {
+                    top: 50,
+                    bottom: 50,
+                    left: this.showSidebar ? 384 : 50,
+                    right: 50
+                };
+
+                if (detail.longitude && detail.latitude) {
+                    this.map.flyTo({
+                        center: [detail.longitude, detail.latitude],
+                        zoom: 14,
+                        padding,
+                        duration: 1000
+                    });
+                }
+            },
+
+            async loadWalkGeometry(detail) {
+                if (!detail?.id) return;
+                
+                try {
+                    const response = await fetch(`/api/walks/${detail.id}/geometry`);
+                    if (!response.ok) throw new Error('Failed to load geometry');
+                    
+                    const geojson = await response.json();
+                    const source = this.map.getSource('route');
+                    if (source) {
+                        source.setData(geojson);
+                    }
+
+                    // Update route color based on steepness
+                    const color = {
+                        'Moderate': '#4338CA',
+                        'Challenging': '#DC2626',
+                        'Easy': '#10B981'
+                    }[detail.steepness_level] || '#242424';
+
+                    this.map.setPaintProperty('route', 'line-color', color);
+                } catch (error) {
+                    console.error('Failed to load walk geometry:', error);
+                }
+            },
+
+            updateMarkers(walks) {
+                if (!this.map) return;
+                
+                const existingIds = new Set(this.markers.keys());
+                const newIds = new Set();
+                
+                // Update or add new markers
+                for (const walk of walks) {
+                    if (!walk.latitude || !walk.longitude) continue;
+                    newIds.add(walk.id);
+                    
+                    if (!this.markers.has(walk.id)) {
+                        const marker = new mapboxgl.Marker()
+                            .setLngLat([walk.longitude, walk.latitude])
+                            .addTo(this.map);
+                        
+                        marker.getElement().addEventListener('click', () => {
+                            try {
+                                const card = document.querySelector(`[data-walk-id="${walk.id}"]`);
+                                if (card) {
+                                    // Dispatch selection event first
+                                    window.dispatchEvent(new CustomEvent('walk:selected', { 
+                                        detail: walk 
+                                    }));
+                                
+                                    // Let the selection handler manage scrolling and expansion
+                                    return;
+                                }
+                            } catch (error) {
+                                console.error('Error handling marker click:', error);
+                            }
+                        });
+                        
+                        this.markers.set(walk.id, marker);
+                    }
+                }
+                
+                // Remove unused markers
+                for (const id of existingIds) {
+                    if (!newIds.has(id)) {
+                        const marker = this.markers.get(id);
+                        if (marker) {
+                            marker.remove();
+                            this.markers.delete(id);
+                        }
+                    }
+                }
+            },
+
+            ensureInView(walkId) {
+                // Add small delay to ensure DOM updates
+                setTimeout(() => {
+                    const card = document.querySelector(`[data-walk-id="${walkId}"]`);
+                    const container = document.querySelector('.walk-list'); // Direct selector instead of closest
+                    if (!card || !container) {
+                        console.log('Card or container not found:', { walkId, card, container });
+                        return;
+                    }
+                    
+                    // First, collapse all other cards
+                    this.walks.forEach(w => {
+                        if (w.id !== walkId && w.isExpanded) {
+                            w.isExpanded = false;
+                        }
+                    });
+                    
+                    // Get updated dimensions after collapse
+                    const containerRect = container.getBoundingClientRect();
+                    const cardRect = card.getBoundingClientRect();
+                    
+                    // Calculate the ideal scroll position to center the card
+                    const targetScroll = container.scrollTop + 
+                        (cardRect.top - containerRect.top) - 
+                        (containerRect.height - cardRect.height) / 2;
+                    
+                    // Smooth scroll to position
+                    container.scrollTo({
+                        top: Math.max(0, targetScroll),
+                        behavior: 'smooth'
+                    });
+                    
+                    // Expand the selected card after scrolling
+                    setTimeout(() => {
+                        const walk = this.walks.find(w => w.id === walkId);
+                        if (walk) {
+                            walk.isExpanded = true;
+                            this.saveExpandedStates();
+                        }
+                    }, 300); // Wait for scroll to complete
+                }, 50);
             }
         };
     };
@@ -105,18 +479,26 @@ document.addEventListener('alpine:init', () => {
     // Initialize walks store first
     Alpine.store('walks', {
         selectedWalk: null,
+        // Removed isSelecting property for simplicity
         pendingFavorites: new Set(),
         loading: false,
         progress: 0,
         
         setSelectedWalk(walk) {
-            this.stopLoading();
-            this.progress = 0;
+            // Toggle selection if the same walk is clicked
+            if (this.selectedWalk && this.selectedWalk.id === walk?.id) {
+                this.selectedWalk = null;
+                // ...existing code for deselection (e.g., sidebar management)...
+                window.localStorage.removeItem('sidebar');
+                return;
+            }
             this.selectedWalk = walk;
-            
+            this.progress = 0;
             if (walk) {
                 this.startLoading();
                 this.setProgress(20);
+            } else {
+                this.stopLoading();
             }
         },
         

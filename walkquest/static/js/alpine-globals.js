@@ -1,4 +1,34 @@
 document.addEventListener('alpine:init', () => {
+    // Initialize walks store first
+    Alpine.store('walks', {
+        selectedWalk: null,
+        pendingFavorites: new Set(),
+        expandedWalkId: null,
+        
+        // Method to expand a walk card
+        expandWalk(walkId) {
+            // If same card, collapse it
+            if (this.expandedWalkId === walkId) {
+                this.expandedWalkId = null;
+            } else {
+                this.expandedWalkId = walkId;
+            }
+            // Notify all cards of the change
+            window.dispatchEvent(new CustomEvent('walk:expansion-changed', {
+                detail: { walkId: this.expandedWalkId }
+            }));
+        },
+
+        // Preserve existing methods
+        isPending(walkId) {
+            return this.pendingFavorites.has(walkId);
+        },
+
+        setSelectedWalk(detail) {
+            this.selectedWalk = detail;
+        }
+    });
+
     // Initialize global store with all required properties
     Alpine.store('globals', {
         // Mobile menu state with complete implementation
@@ -80,14 +110,6 @@ document.addEventListener('alpine:init', () => {
         init() {
             console.log('Globals store initialized');
             
-            // Initialize walks store if needed
-            if (!Alpine.store('walks')) {
-                Alpine.store('walks', {
-                    selectedWalk: null,
-                    pendingFavorites: new Set()
-                });
-            }
-
             // Initialize walkInterface if provided
             if (this.walkInterface?.init) {
                 this.walkInterface.init();
