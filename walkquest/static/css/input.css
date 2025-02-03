@@ -61,20 +61,22 @@
     /* Walk Card Components */
     .walk-item {
         @apply bg-white/5 backdrop-blur-md rounded-xl p-4 
-               transition-all duration-300 ease-out cursor-pointer 
                border border-white/20 hover:border-blue-200/50 
-               hover:bg-white/10 relative opacity-0 translate-y-4;
-            transform-style: preserve-3d;
-            transform-origin: center center;
-            backface-visibility: hidden;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-            will-change: transform, box-shadow, opacity;
+               hover:bg-white/10 relative;
+        transform-style: preserve-3d;
+        backface-visibility: hidden;
+        will-change: transform, opacity;
+        opacity: 0; /* Start invisible */
+        transform: translateY(15px) scale(0.97); /* Initial transform state */
+        pointer-events: none; /* Disable interaction until revealed */
     }
 
+    /* Remove any transition properties since Motion handles animations */
+
     .walk-item.revealed {
-        @apply opacity-100 translate-y-0;
-        transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+        @apply opacity-100;
+        transform: translateY(0) scale(1);
+        pointer-events: auto; /* Re-enable interaction after animation */
     }
 
     .walk-item:not(.expanded):hover {
@@ -118,6 +120,19 @@
         backface-visibility: hidden;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
+    }
+    /* Subtle loading animations */
+    .loading-pulse {
+        @apply animate-pulse bg-blue-500/10;
+    }
+
+    .loading-spin {
+        @apply animate-spin text-blue-500;
+    }
+
+    /* Fade transitions */
+    .loading-fade {
+        @apply transition-opacity duration-200;
     }
 
     .category-tag {
@@ -165,31 +180,6 @@
             @apply fixed inset-0 w-full h-full;
             z-index: 1;
         }
-
-         /* Ensure markers are visible */
-        /* Ensure markers are above other map elements */
-        .mapboxgl-marker {
-            z-index: 1000 !important;
-            /* Optimize shadow performance */
-            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
-            /* Hardware acceleration */
-            transform: translate3d(0, 0, 0);
-            will-change: transform;
-            /* Reduce paint operations */
-            contain: layout style;
-            /* Improve animation performance */
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        /* Ensure popups are above markers */
-        .mapboxgl-popup {
-            z-index: 1001 !important;
-        }
-
-        /* Ensure controls are above markers */
-        .mapboxgl-control-container {
-            z-index: 1002 !important;
-        }
     
         .map-inner {
             @apply absolute inset-0;
@@ -232,39 +222,6 @@
         .icon {
             @apply w-6 h-6 text-gray-600;
         }
-    }
-
-    /* New Marker Styles */
-    .walk-marker {
-        @apply cursor-pointer transition-all duration-300 ease-out;
-        transform-origin: bottom center;
-        will-change: transform;
-        /* Hardware acceleration optimizations */
-        -webkit-transform: translate3d(0, 0, 0);
-        -webkit-backface-visibility: hidden;
-        -webkit-perspective: 1000;
-        backface-visibility: hidden;
-        perspective: 1000;
-        /* Optimize paint operations */
-        contain: layout style paint;
-    }
-    .walk-marker.active-marker {
-        transform: scale(1.2) translateY(-5px);
-        /* Active marker animation will override this */
-    }
-    .walk-marker:hover {
-        transform: translate3d(0, -3px, 0) scale3d(1.15, 1.15, 1);
-        filter: brightness(1.1);
-    }
-    .walk-marker.active-marker {
-        transform: translate3d(0, -5px, 0) scale3d(1.2, 1.2, 1);
-    }
-    .mapboxgl-marker {
-        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
-    }
-    .walk-marker:hover {
-        transform: scale(1.15) translateY(-3px);
-        filter: brightness(1.1);
     }
 } /* Close @layer components */
 

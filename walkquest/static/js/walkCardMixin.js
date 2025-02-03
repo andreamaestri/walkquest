@@ -179,20 +179,14 @@ window.walkCardMixin = (walk) => ({
     },
 
     handleVisibility() {
+        if (this.isVisible) return;
         this.isVisible = true;
-        // Only animate once when card becomes visible
-        if (!this.hasAnimated) {
-            this.hasAnimated = true;
-            if (window.Motion) {
-                window.Motion.animate(this.$el, {
-                    y: [20, 0],
-                    opacity: [0, 1],
-                    scale: [0.95, 1]
-                }, {
-                    duration: 0.3,
-                    easing: [0.2, 0.4, 0.2, 1]
-                });
-            }
+        
+        // Let the intersection observer handle the animation
+        // Just ensure the initial state is set
+        if (!this.$el.classList.contains('revealed')) {
+            this.$el.style.opacity = '0';
+            this.$el.style.transform = 'translateY(20px) scale(0.95)';
         }
     },
 

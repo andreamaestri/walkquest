@@ -56,15 +56,21 @@
             </div>
         </template>
 
-        <div class="space-y-4">
-            <template x-for="walk in walks" :key="walk.id">
-                <div class="opacity-0 transform translate-y-4 transition-all duration-300 ease-out"
-                     x-data="{ walk }"
-                     x-intersect:enter.once="$el.classList.add('revealed')"
-                     :class="{ 'revealed': true }">
-                    {% #walk_card %}{% /walk_card %}
-                </div>
-            </template>
+        <div class="walk-list relative">
+            <!-- Search loading indicator -->
+            <div x-show="loadingStates.search" 
+                 class="absolute top-0 left-0 w-full h-1">
+                <div class="h-full bg-primary-500/20 animate-pulse"></div>
+            </div>
+    
+            <!-- Walks grid -->
+            <div class="grid gap-4 p-4" :class="{
+                'opacity-75': loadingStates.search
+            }">
+                <template x-for="walk in walks" :key="walk.id">
+                    <!-- Walk card component -->
+                </template>
+            </div>
         </div>
 
         <!-- Load More Indicator -->
