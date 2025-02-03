@@ -175,7 +175,6 @@ STATIC_URL = "/static/"
 # https://docs.djangoproject.com/en/dev/ref/contrib/staticfiles/#std:setting-STATICFILES_DIRS
 STATICFILES_DIRS = [
     str(APPS_DIR / "static"),
-    BASE_DIR / "node_modules",
 ]
 # https://docs.djangoproject.com/en/dev/ref/contrib/staticfiles/#staticfiles-finders
 STATICFILES_FINDERS = [
@@ -355,12 +354,6 @@ STATICFILES_FINDERS = [
     "compressor.finders.CompressorFinder",
 ]
 
-ESM_IMPORTMAP = {
-    "imports": {
-        "#walkquest/*": "static/js/*",
-        "#components/*": "static/js/components/*",
-    },
-}
 
 # Maps
 MAPBOX_TOKEN = env("MAPBOX_TOKEN", default=None)
