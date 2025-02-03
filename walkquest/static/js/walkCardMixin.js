@@ -122,32 +122,61 @@ window.walkCardMixin = (walk) => ({
 
     animateContent(shouldExpand) {
         const content = this.$refs.content;
-        if (!content) return;
+        if (!content || !window.Motion) return;
 
         if (shouldExpand) {
+            // Pre-calculate the target height
             content.style.display = 'block';
             const targetHeight = content.scrollHeight;
-            
-            window.Motion?.animate(content, {
-                height: [0, targetHeight],
-                opacity: [0, 1],
-                margin: [0, '1rem 0']
-            }, {
-                duration: 0.3,
-                easing: [0.4, 0, 0.2, 1]
-            });
+
+            // Create a sequence for expand animation
+            window.Motion.animate([
+                [content, {
+                    height: [0, targetHeight],
+                    opacity: [0, 1],
+                    margin: [0, '1rem 0'],
+                    y: [-10, 0],
+                    scale: [0.98, 1]
+                }, {
+                    duration: 0.4,
+                    easing: [0.22, 1, 0.36, 1]
+                }],
+                [content.querySelectorAll('img, .category-tag, p'), {
+                    opacity: [0, 1],
+                    y: [10, 0],
+                    scale: [0.95, 1]
+                }, {
+                    duration: 0.3,
+                    delay: window.Motion.stagger(0.05, { start: 0.1 }),
+                    easing: [0.22, 1, 0.36, 1]
+                }]
+            ]);
         } else {
-            window.Motion?.animate(content, {
-                height: [content.scrollHeight, 0],
-                opacity: [1, 0],
-                margin: ['1rem 0', 0]
-            }, {
-                duration: 0.2,
-                easing: [0.4, 0, 0.2, 1],
-                onComplete: () => {
-                    content.style.display = 'none';
-                }
-            });
+            // Collapse animation sequence
+            window.Motion.animate([
+                [content.querySelectorAll('img, .category-tag, p'), {
+                    opacity: [1, 0],
+                    y: [0, -5],
+                    scale: [1, 0.98]
+                }, {
+                    duration: 0.2,
+                    delay: window.Motion.stagger(0.03),
+                    easing: [0.4, 0, 0.2, 1]
+                }],
+                [content, {
+                    height: [content.scrollHeight, 0],
+                    opacity: [1, 0],
+                    margin: ['1rem 0', 0],
+                    scale: [1, 0.98]
+                }, {
+                    duration: 0.3,
+                    easing: [0.4, 0, 0.2, 1],
+                    at: "<",
+                    onComplete: () => {
+                        content.style.display = 'none';
+                    }
+                }]
+            ]);
         }
     },
 

@@ -1,5 +1,14 @@
 // Define component functions immediately in global scope
 (function() {
+    // Loading component
+    window.loading = function() {
+        return {
+            init() {
+                // Component initialization if needed
+            }
+        };
+    };
+
     // Mobile menu component
     window.mobileMenu = function() {
         return {
@@ -22,6 +31,7 @@
             searchQuery: '',
             showSidebar: window.localStorage.getItem('sidebar') === 'true',
             isMapLoading: true,
+            fullscreen: false, // Add missing fullscreen state
             error: null,
             loadingStates: {
                 walks: new Set(),    // Track loading state per walk
@@ -33,6 +43,16 @@
             markerCache: new Map(),
             
             async init() {
+                // Ensure proper binding context
+                const self = this;
+                
+                // Bind methods to preserve context
+                ['handleWalkSelection', 'clearSelection', 'toggleFullscreen'].forEach(method => {
+                    if (typeof this[method] === 'function') {
+                        this[method] = this[method].bind(this);
+                    }
+                });
+
                 console.group('WalkInterface Initialization');
                 console.log('Starting initialization...');
                 
@@ -581,6 +601,17 @@
                         }
                     }, 300); // Wait for scroll to complete
                 }, 50);
+            },
+
+            // Add fullscreen toggle method
+            toggleFullscreen() {
+                this.fullscreen = !this.fullscreen;
+                // Allow layout to update before any animations
+                this.$nextTick(() => {
+                    if (this.map) {
+                        this.map.resize();
+                    }
+                });
             }
         };
     };
@@ -637,8 +668,17 @@ document.addEventListener('alpine:init', () => {
             }
         },
         isPending(walkId) {
-            return this.pendingFavorites.has(walkId);
+            return this.pendingFavorites.has(wwalkId);
         }
+    });
+
+    // Initialize global store first
+    Alpine.store('globals', {
+        fullscreen: false,
+        mobileMenu: {
+            isOpen: false
+        },
+        expandWalk: null
     });
 
     // Register components

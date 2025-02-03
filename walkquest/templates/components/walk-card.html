@@ -1,0 +1,39 @@
+{% load i18n static %}
+
+<div class="walk-item" 
+     x-data="walkCardMixin($walk)"
+     x-intersect:enter="handleVisibility"
+     :data-walk-id="walk.id"
+     @click="toggleExpand">
+    
+    <div class="flex items-start justify-between">
+        <div class="flex-1">
+            <h3 class="text-lg font-medium text-gray-900" x-text="walk.title"></h3>
+            <div class="mt-1 flex flex-wrap gap-2">
+                <span class="category-tag" 
+                      :class="$badges(walk.steepness_level).color">
+                    <span x-text="$badges(walk.steepness_level).icon" class="mr-1"></span>
+                    <span x-text="walk.steepness_level"></span>
+                </span>
+                <span class="category-tag bg-gray-100 text-gray-800">
+                    <span x-text="walk.distance"></span> km
+                </span>
+            </div>
+        </div>
+        
+        <button @click.stop="toggleFavorite" 
+                class="favorite-button" 
+                :class="isFavorited ? 'favorite-button-active' : 'favorite-button-inactive'">
+            <span class="sr-only">{% translate "Toggle favorite" %}</span>
+            <iconify-icon icon="heroicons:heart" width="24"></iconify-icon>
+        </button>
+    </div>
+
+    <div x-ref="content" 
+         class="expandable-content">
+        <div class="prose prose-sm mt-4">
+            <p x-text="walk.description"></p>
+            {% include "components/walk-details.html" %}
+        </div>
+    </div>
+</div>
