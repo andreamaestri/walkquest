@@ -31,8 +31,8 @@
                 x-text="walk.walk_name">
             </h3>
             <div class="flex gap-2">
-                <span x-show="walk.difficulty" class="badge ml-2" x-text="walk.difficulty"></span>
-                <span x-show="walk.duration" class="badge ml-2" x-text="`${walk.duration} mins`"></span>
+                <span x-show="walk.difficulty && showBadges" class="badge ml-2" x-text="walk.difficulty"></span>
+                <span x-show="walk.duration && showBadges" class="badge ml-2" x-text="`${walk.duration} mins`"></span>
             </div>
             
             <!-- Enhanced Info Row -->
@@ -41,7 +41,7 @@
                     <iconify-icon icon="mdi:map-marker-distance" class="w-5 h-5"></iconify-icon>
                     <span x-text="`${walk.distance?.toFixed(1) || 0} miles`"></span>
                 </span>
-                <span x-show="walk.steepness_level" class="flex items-center gap-2 bg-gray-900/5 px-3 py-1.5 rounded-lg font-medium">
+                <span x-show="walk.steepness_level && showBadges" class="flex items-center gap-2 bg-gray-900/5 px-3 py-1.5 rounded-lg font-medium">
                     <iconify-icon icon="mdi:mountain" class="w-5 h-5 text-primary-600"></iconify-icon>
                     <span x-text="walk.steepness_level"></span>
                 </span>
@@ -183,7 +183,7 @@
             </template>
             <template x-if="walk.has_stiles">
                 <span class="inline-flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-lg hover:bg-white/15 transition-colors duration-200">
-                    <iconify-icon icon="mdi:sign-pole" class="w-5 h-5 text-primary-600"></iconify-icon>
+                    <iconify-icon icon="fluent:steps-16-filled" class="w-5 h-5 text-primary-600"></iconify-icon>
                     {% translate "Stiles" %}
                 </span>
             </template>
