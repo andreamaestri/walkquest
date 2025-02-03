@@ -144,10 +144,29 @@
                         )
                     });
 
+
                     this.map.on('load', () => {
                         console.log('Map loaded successfully');
-                        this.isMapLoading = false;
-                        this.map.resize();
+                        // Optimize initial map load
+                        requestAnimationFrame(() => {
+                            this.isMapLoading = false;
+                            this.map.resize();
+                            
+                            // Apply performance optimizations
+                            if (this.map) {
+                                // Reduce memory usage for tiles
+                                if (config.map?.maxTileCacheSize != null) {
+                                    this.map.setMaxTileCacheSize(config.map.maxTileCacheSize);
+                                }
+                                
+                                // Only request tiles within the maxBounds
+                                this.map.setRenderWorldCopies(false);
+                                
+                                // Optimize for static map usage
+                                this.map.dragRotate.disable();
+                                this.map.touchZoomRotate.disableRotation();
+                            }
+                        });
                     });
 
                     this.map.addControl(new mapboxgl.NavigationControl(), 'top-left');
@@ -403,18 +422,34 @@
                 const existingIds = new Set(this.markers.keys());
                 const newIds = new Set();
                 
-                // Update or add new markers
                 for (const walk of walks) {
                     if (!walk.latitude || !walk.longitude) continue;
                     newIds.add(walk.id);
                     
                     if (!this.markers.has(walk.id)) {
-                        const marker = new mapboxgl.Marker({
-                            color: this.getMarkerColor(walk.steepness_level)
-                        })
-                        .setLngLat([walk.longitude, walk.latitude])
-                        .addTo(this.map);
+                        let marker;
+                        if (this.markerCache.has(walk.steepness_level)) {
+                            marker = new mapboxgl.Marker(this.markerCache.get(walk.steepness_level).cloneNode(true));
+                        } else {
+                            const element = document.createElement('div');
+                            // Update class name to match CSS
+                            element.className = 'walk-marker';
+                            // Add size and shape styles
+                            element.style.width = '24px';
+                            element.style.height = '24px';
+                            element.style.borderRadius = '50%';
+                            element.style.backgroundColor = this.getMarkerColor(walk.steepness_level);
+                            // Add drop shadow
+                            element.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+                            this.markerCache.set(walk.steepness_level, element);
+                            marker = new mapboxgl.Marker({
+                                element: element,
+                                anchor: 'center'
+                            });
+                        }
                         
+                        marker.setLngLat([walk.longitude, walk.latitude]).addTo(this.map);
+
                         marker.getElement().addEventListener('click', () => {
                             window.dispatchEvent(new CustomEvent('walk:selected', { 
                                 detail: walk,
@@ -503,10 +538,24 @@
             }
         };
     };
+
+    // Add showBadges helper function
+    window.showBadges = function(steepnessLevel) {
+        const badges = {
+            'Easy': { icon: '🌳', color: 'bg-green-100 text-green-800' },
+            'Moderate': { icon: '⛰️', color: 'bg-blue-100 text-blue-800' },
+            'Challenging': { icon: '🏔️', color: 'bg-red-100 text-red-800' }
+        };
+        return badges[steepnessLevel] || { icon: '🚶', color: 'bg-gray-100 text-gray-800' };
+    };
+
 })();
 
 // Initialize Alpine.js stores and components
 document.addEventListener('alpine:init', () => {
+    // Register showBadges as a global Alpine property
+    Alpine.magic('badges', () => (steepnessLevel) => window.showBadges(steepnessLevel));
+    
     // Initialize walks store first with toggle behavior
     Alpine.store('walks', {
         selectedWalkId: null,
