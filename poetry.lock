@@ -3236,27 +3236,6 @@ files = [
 tests = ["pytest", "pytest-cov"]
 
 [[package]]
-name = "tetra"
-version = "0.1.1"
-description = "Full stack component framework for Django using Alpine.js"
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "tetra-0.1.1-py3-none-any.whl", hash = "sha256:9ac34c1542c15fadb3e0a6c2672caa0b4517fa109b8033568375d1b39404ff8c"},
-    {file = "tetra-0.1.1.tar.gz", hash = "sha256:6c71f07bd2480e20d1ded92ce4bf56ac8e75a684d86b04edd648bcd0fe4c51c3"},
-]
-
-[package.dependencies]
-cryptography = ">=37.0.1"
-Django = ">=3.2.0"
-django-environ = "*"
-python-dateutil = ">=2.8.2"
-
-[package.extras]
-demo = ["PyYAML (>=6.0)", "django-environ", "gunicorn", "markdown (>=3.3.7)", "sourcetypes (>=0.0.4)", "whitenoise (>=6.6.0)"]
-dev = ["beautifulsoup4", "black", "build", "pre-commit", "pytest", "pytest-django", "python-dateutil (>=2.8.2)", "tetra[demo]", "twine"]
-
-[[package]]
 name = "text-unidecode"
 version = "1.3"
 description = "The most basic Text::Unidecode port"
