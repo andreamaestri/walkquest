@@ -179,6 +179,14 @@ const ApiService = {
             console.error('Filter walks error:', error);
             throw error;
         }
+    },
+
+    async getWalkMarkers() {
+        const response = await this.fetch('/walks/markers');
+        if (!response?.markers) {
+            throw new Error('Invalid marker data response');
+        }
+        return response.markers;
     }
 };
 

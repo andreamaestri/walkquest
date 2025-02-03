@@ -67,8 +67,11 @@
                         }
                     });
 
-                    await this.initializeData();
                     await this.initializeMap();
+                    // Fetch all markers via full API call
+                    await this.fetchMarkers();
+                    // Fetch paginated walks without overriding markers
+                    await this.initializeData();
                     await this.fetchWalks();
                     console.log('Initialization complete');
                 } catch (error) {
@@ -95,7 +98,8 @@
                     
                     this.$nextTick(() => {
                         if (this.map) {
-                            this.updateMarkers(this.walks);
+                            // Removed marker update to preserve the full marker set from fetchMarkers
+                            // this.updateMarkers(this.walks);
                         }
                     });
                 } catch (error) {
@@ -147,7 +151,6 @@
                         console.log('Map loaded successfully');
                         this.isMapLoading = false;
                         this.map.resize();
-                        this.updateMarkers(this.walks);
                     });
 
                     this.map.addControl(new mapboxgl.NavigationControl(), 'top-left');
@@ -169,7 +172,7 @@
                         search: this.searchQuery,
                         page: 1,
                         page_size: 10,
-                        include_expanded: true // Add parameter to fetch expanded content
+                        include_expanded: true // Fetch expanded content
                     });
 
                     if (!response?.walks) {
@@ -185,7 +188,8 @@
                     this.error = null;
                     
                     this.$nextTick(() => {
-                        this.updateMarkers(this.walks);
+                        // Removed marker update here to preserve the full set loaded by fetchMarkers
+                        // this.updateMarkers(this.walks);
                         this.initializeExpandedContent();
                     });
                 } catch (error) {
@@ -194,6 +198,21 @@
                 } finally {
                     this.isLoading = false;
                     window.dispatchEvent(new Event('loading:hide'));
+                }
+            },
+
+            async fetchMarkers() {
+                try {
+                    // Use the new service method if available; otherwise, call directly
+                    const response = await fetch('/api/walks/markers');
+                    const data = await response.json();
+                    if (!data.markers) {
+                        throw new Error('Invalid marker data response');
+                    }
+                    // Update markers immediately using the lightweight data
+                    this.updateMarkers(data.markers);
+                } catch (error) {
+                    console.error('Error fetching markers:', error);
                 }
             },
 
@@ -214,7 +233,7 @@
                         search: this.searchQuery,
                         page: this.page + 1,
                         page_size: 10,
-                        include_expanded: true // Add parameter to fetch expanded content
+                        include_expanded: true // Fetch expanded content
                     });
 
                     if (!response?.walks) {
@@ -232,7 +251,7 @@
                     this.error = null;
 
                     this.$nextTick(() => {
-                        this.updateMarkers(this.walks);
+                        // Removed marker update here to preserve full marker set
                         this.saveExpandedStates();
                     });
                 } catch (error) {
@@ -413,24 +432,17 @@
                     newIds.add(walk.id);
                     
                     if (!this.markers.has(walk.id)) {
-                        const marker = new mapboxgl.Marker()
-                            .setLngLat([walk.longitude, walk.latitude])
-                            .addTo(this.map);
+                        const marker = new mapboxgl.Marker({
+                            color: this.getMarkerColor(walk.steepness_level)
+                        })
+                        .setLngLat([walk.longitude, walk.latitude])
+                        .addTo(this.map);
                         
-                        marker.getElement().classList.add('walk-marker');
                         marker.getElement().addEventListener('click', () => {
-                            const globals = Alpine.store('globals');
-                            const isCurrentlyExpanded = globals?.expandedWalkId === walk.id;
-
-                            // Dispatch walk:selected event first
                             window.dispatchEvent(new CustomEvent('walk:selected', { 
                                 detail: walk,
                                 bubbles: true
                             }));
-
-                            if (globals?.expandWalk) {
-                                globals.expandWalk(isCurrentlyExpanded ? null : walk.id);
-                            }
                         });
                         this.markers.set(walk.id, marker);
                     }
@@ -446,6 +458,15 @@
                         }
                     }
                 }
+            },
+
+            getMarkerColor(steepnessLevel) {
+                const colors = {
+                    'Easy': '#10B981',      // Green
+                    'Moderate': '#4338CA',  // Blue
+                    'Challenging': '#DC2626' // Red
+                };
+                return colors[steepnessLevel] || '#242424'; // Default color
             },
 
             ensureInView(walkId) {

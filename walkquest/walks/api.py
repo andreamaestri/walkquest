@@ -133,6 +133,28 @@ def list_walks(
         print(f"Error in list_walks: {e}")  # Debug log
         return []
 
+@router.get("/walks/markers")
+def list_walk_markers(request: HttpRequest):
+    """Return lightweight marker data for all walks."""
+    try:
+        markers = Walk.objects.all().values(
+            'id', 
+            'walk_id', 
+            'walk_name', 
+            'latitude', 
+            'longitude',
+            'steepness_level'  # Added for marker styling
+        )
+        return {
+            "markers": list(markers),
+            "status": "success"
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
 @router.get("/walks/{walk_id}", response=WalkOutSchema)
 def get_walk(request: HttpRequest, walk_id: UUID):
     """Get a single walk"""
@@ -207,6 +229,14 @@ class TagResponseSchema(Schema):
     usage_count: int
     type: str
 
+# Add MarkerSchema definition
+class MarkerSchema(Schema):
+    id: int
+    walk_id: str
+    walk_name: str
+    latitude: float
+    longitude: float
+
 # List tags
 @api.get("/tags", response=List[TagResponseSchema])
 def list_tags(request):
@@ -260,7 +290,7 @@ def get_config(request):
     return {
         "mapboxToken": settings.MAPBOX_TOKEN,
         "map": {
-            "style": "mapbox://styles/mapbox/standard",
+            "style": "mapbox://styles/mapbox/outdoors-v12?optimize=true",
             "defaultCenter": [-4.85, 50.4],  # Cornwall's approximate center
             "defaultZoom": 9.5,
             "markerColors": {
@@ -308,6 +338,5 @@ def toggle_favorite(request: HttpRequest, walk_id: UUID):
         }
     except Walk.DoesNotExist:
         return {"status": "error", "message": "Walk not found"}
-
 
 api.add_router("/", router)

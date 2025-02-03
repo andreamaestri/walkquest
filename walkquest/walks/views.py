@@ -63,7 +63,7 @@ class WalkQuestConfig:
     ]
 
     MAP_CONFIG = {
-        "style": "mapbox://styles/mapbox/standard",
+        "style": "mapbox://styles/mapbox/outdoors-v12?optimize=true",
         "defaultCenter": [-4.85, 50.4],
         "defaultZoom": 9,
         "markerColors": {
