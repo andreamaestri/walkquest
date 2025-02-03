@@ -19,8 +19,6 @@
          x-effect="$store.walks.selectedWalk && (showSidebar = true)"
          @keydown.escape.window="showSidebar = false"
          @walk-selected.window="handleWalkSelection($event.detail)"
-         @scroll.window="if (!showSidebar) return;
-                        if ((window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 200) loadMore()"
          class="relative h-screen flex">
           
         <!-- Sidebar with walk list -->

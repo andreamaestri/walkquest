@@ -15,6 +15,9 @@
      x-data="walkCardMixin(walk)" 
      x-init="init()"
      x-intersect.once="handleVisibility()"
+     :key="walk.id"
+     x-bind:data-walk-id="walk.id"
+     x-bind="walkTransition(walk, index)"
      @click="toggleExpand($event)"
      @mouseenter="showBadges = true"
      @mouseleave="showBadges = false">
@@ -127,13 +130,13 @@
               </div>
            
               <!-- Pubs List -->
-              <div x-show="walk.pubs_list?.length > 0" 
+              <div x-show="walk.pubs_list && walk.pubs_list.length > 0" 
                   class="col-span-1 md:col-span-1 lg:col-span-1">
                   <div class="pub-names-container flex flex-wrap gap-2">
-                     <template x-for="pub in walk.pubs_list" :key="pub.name">
+                     <template x-for="(pub, index) in walk.pubs_list" :key="index">
                         <span class="pub-tag bg-blue-500 text-white px-3 py-1 rounded-md flex items-center gap-1">
                             <iconify-icon icon="mdi:glass-mug-variant" class="w-5 h-5"></iconify-icon>
-                            <span x-text="pub.name"></span>
+                            <span x-text="pub.name || pub"></span>
                         </span>
                      </template>
                   </div>
@@ -176,6 +179,12 @@
                 <span class="inline-flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-lg hover:bg-white/15 transition-colors duration-200">
                     <iconify-icon icon="mdi:parking" class="w-5 h-5 text-primary-600"></iconify-icon>
                     {% translate "Parking" %}
+                </span>
+            </template>
+            <template x-if="walk.has_stiles">
+                <span class="inline-flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-lg hover:bg-white/15 transition-colors duration-200">
+                    <iconify-icon icon="mdi:sign-text" class="w-5 h-5 text-primary-600"></iconify-icon>
+                    {% translate "Stiles" %}
                 </span>
             </template>
         </div>

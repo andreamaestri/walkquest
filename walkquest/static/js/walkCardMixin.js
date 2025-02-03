@@ -18,6 +18,20 @@ window.walkCardMixin = (walk) => ({
             });
         }
 
+        // Replace previous press animation with reactive effects:
+        this.$el.addEventListener('mousedown', () => {
+            window.Motion.animate(this.$el, { scale: [1, 0.95] }, {
+                duration: 0.08,
+                easing: [0.4, 0, 0.2, 1]
+            });
+        });
+        this.$el.addEventListener('mouseup', () => {
+            window.Motion.animate(this.$el, { scale: [0.95, 1.05, 1] }, {
+                duration: 0.15,
+                easing: [0.175, 0.885, 0.32, 1.275]
+            });
+        });
+
         // Initialize favorite state
         const walkId = this.$el.dataset.walkId;
         

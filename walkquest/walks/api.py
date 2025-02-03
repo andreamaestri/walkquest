@@ -48,8 +48,6 @@ def list_walks(
     search: Optional[str] = None,
     categories: Optional[str] = None,  # Changed from List[str] to str
     features: Optional[str] = None,    # Changed from List[str] to str
-    page: Optional[int] = 1,
-    page_size: Optional[int] = 10,
     difficulty: Optional[str] = None,  # Add difficulty filter
     has_stiles: Optional[bool] = None,  # Add stiles filter
     has_bus: Optional[bool] = None    # Add bus access filter
@@ -81,10 +79,6 @@ def list_walks(
             walks = walks.filter(has_stiles=has_stiles)
         if has_bus is not None:
             walks = walks.filter(has_bus_access=has_bus)
-
-        # Apply pagination
-        start = (page - 1) * page_size
-        walks = walks[start:start + page_size]
 
         walk_list = []
         for walk in walks:

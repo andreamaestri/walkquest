@@ -52,8 +52,6 @@
             map: null,
             markers: new Map(),
             markerCache: new Map(),
-            hasMore: true,
-            page: 1,
             
             async init() {
                 console.group('WalkInterface Initialization');
@@ -93,7 +91,6 @@
                 try {
                     const initialData = JSON.parse(walksData.textContent);
                     this.walks = initialData.walks || [];
-                    this.hasMore = initialData.hasMore || false;
                     console.log('Data initialized with', this.walks.length, 'walks');
                     
                     this.$nextTick(() => {
@@ -163,16 +160,14 @@
 
             async fetchWalks() {
                 if (this.isLoading) return;
-                
                 this.isLoading = true;
                 window.dispatchEvent(new Event('loading:show'));
 
                 try {
                     const response = await window.ApiService.filterWalks({
                         search: this.searchQuery,
-                        page: 1,
-                        page_size: 10,
-                        include_expanded: true // Fetch expanded content
+                        include_transition: true,
+                        include_expanded: true
                     });
 
                     if (!response?.walks) {
@@ -181,16 +176,26 @@
 
                     this.walks = response.walks.map(walk => ({
                         ...walk,
-                        isExpanded: false // Initialize expansion state
+                        isExpanded: false,
+                        // Ensure pubs_list is always an array
+                        pubs_list: Array.isArray(walk.pubs_list) ? walk.pubs_list : []
                     }));
-                    this.hasMore = response.walks.length >= 10;
-                    this.page = 1;
                     this.error = null;
-                    
+
                     this.$nextTick(() => {
-                        // Removed marker update here to preserve the full set loaded by fetchMarkers
-                        // this.updateMarkers(this.walks);
+                        // Add staggered reveal animations
+                        document.querySelectorAll('.walk-item').forEach((card, index) => {
+                            setTimeout(() => {
+                                card.classList.add('revealed');
+                            }, index * 100);
+                        });
+
                         this.initializeExpandedContent();
+                        
+                        // Initialize hover effects after cards are revealed
+                        if (window.WalkAnimations?.initializeHoverEffects) {
+                            window.WalkAnimations.initializeHoverEffects();
+                        }
                     });
                 } catch (error) {
                     console.error('Failed to fetch walks:', error);
@@ -222,44 +227,6 @@
                 this.walks.forEach(walk => {
                     walk.isExpanded = expandedWalkIds.includes(walk.id);
                 });
-            },
-
-            async loadMore() {
-                if (this.isLoadingMore || !this.hasMore) return;
-                
-                this.isLoadingMore = true;
-                try {
-                    const response = await window.ApiService.filterWalks({
-                        search: this.searchQuery,
-                        page: this.page + 1,
-                        page_size: 10,
-                        include_expanded: true // Fetch expanded content
-                    });
-
-                    if (!response?.walks) {
-                        throw new Error('Invalid response format');
-                    }
-
-                    const newWalks = response.walks.map(walk => ({
-                        ...walk,
-                        isExpanded: false // Initialize expansion state
-                    }));
-
-                    this.walks = [...this.walks, ...newWalks];
-                    this.hasMore = response.walks.length >= 10;
-                    this.page++;
-                    this.error = null;
-
-                    this.$nextTick(() => {
-                        // Removed marker update here to preserve full marker set
-                        this.saveExpandedStates();
-                    });
-                } catch (error) {
-                    console.error('Failed to load more walks:', error);
-                    this.error = `Failed to load more walks: ${error.message || 'Please try again.'}`;
-                } finally {
-                    this.isLoadingMore = false;
-                }
             },
 
             toggleWalkExpansion(walkId) {
@@ -420,6 +387,16 @@
                 }
             },
 
+            walkTransition(walk, index) {
+                return {
+                    ':class': "{ 'opacity-0': $store.walks.loading }",
+                    'x-transition:enter': 'transition ease-out duration-300',
+                    'x-transition:enter-start': 'opacity-0 translate-y-4',
+                    'x-transition:enter-end': 'opacity-100 translate-y-0',
+                    'style': `animation-delay: ${index * 100}ms`
+                };
+            },
+
             updateMarkers(walks) {
                 if (!this.map) return;
                 
@@ -443,6 +420,19 @@
                                 detail: walk,
                                 bubbles: true
                             }));
+                        });
+                        /* Add reactive press animations for markers */
+                        marker.getElement().addEventListener('mousedown', () => {
+                            window.Motion.animate(marker.getElement(), { scale: [1, 0.9] }, {
+                                duration: 0.08,
+                                easing: [0.4, 0, 0.2, 1]
+                            });
+                        });
+                        marker.getElement().addEventListener('mouseup', () => {
+                            window.Motion.animate(marker.getElement(), { scale: [0.9, 1.1, 1] }, {
+                                duration: 0.15,
+                                easing: [0.175, 0.885, 0.32, 1.275]
+                            });
                         });
                         this.markers.set(walk.id, marker);
                     }

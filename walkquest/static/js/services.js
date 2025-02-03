@@ -76,8 +76,6 @@ const ApiService = {
         if (params.categories?.length) {
             queryParams.append('categories', params.categories.join(','));
         }
-        if (params.page) queryParams.append('page', params.page);
-        if (params.page_size) queryParams.append('page_size', params.page_size);
         
         const url = `/walks${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
         console.log('Fetching walks with URL:', url);
@@ -143,12 +141,7 @@ const ApiService = {
     async filterWalks(filters = {}) {
         try {
             console.log('Filtering walks with:', filters);
-            
-            // Build query parameters
-            const queryParams = new URLSearchParams({
-                page: filters.page || '1',
-                page_size: filters.page_size || '10'
-            });
+            const queryParams = new URLSearchParams();
             
             if (filters.search) {
                 queryParams.append('search', filters.search);
@@ -172,8 +165,7 @@ const ApiService = {
 
             return {
                 walks: Array.isArray(response) ? response : [],
-                total: Array.isArray(response) ? response.length : 0,
-                hasMore: Array.isArray(response) && response.length >= (filters.page_size || 10)
+                total: Array.isArray(response) ? response.length : 0
             };
         } catch (error) {
             console.error('Filter walks error:', error);
