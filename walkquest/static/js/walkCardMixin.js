@@ -85,14 +85,25 @@ window.walkCardMixin = (walk) => ({
 
     toggleExpand(event) {
         if (event) event.stopPropagation();
-        const globals = Alpine.store('globals');
-        if (globals?.expandWalk) {
-            globals.expandWalk(this.walk.id);
+        // Collapse if already expanded
+        if (this.isExpanded) {
+            this.isExpanded = false;
+            this.animateContent(false);
+            window.dispatchEvent(new CustomEvent('walk:expansion-changed', { detail: { walkId: null } }));
+            // Also clear selection from store
+            const store = Alpine.store('walks');
+            store.setSelectedWalk(null);
+        } else {
+            // Expand
+            const globals = Alpine.store('globals');
+            if (globals?.expandWalk) {
+                globals.expandWalk(this.walk.id);
+            }
+            window.dispatchEvent(new CustomEvent('walk:selected', { 
+                detail: this.walk,
+                bubbles: true
+            }));
         }
-        window.dispatchEvent(new CustomEvent('walk:selected', { 
-            detail: this.walk,
-            bubbles: true
-        }));
     },
 
     animateContent(shouldExpand) {

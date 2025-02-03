@@ -263,12 +263,15 @@
                     store.setSelectedWalk(null);
                     return;
                 }
-            
+                // If clicked walk is already selected, collapse it.
+                if (store.selectedWalkId === detail.id) {
+                    this.clearSelection();
+                    store.setSelectedWalk(null);
+                    return;
+                }
+                // Otherwise, select and expand
                 store.setSelectedWalk(detail);
-            
-                // Update view after state changes
                 this.$nextTick(() => {
-                    // Always treat the selection as active and open the sidebar
                     const card = document.querySelector(`[data-walk-id="${detail.id}"]`);
                     if (card) {
                         const cardComponent = Alpine.$data(card);
