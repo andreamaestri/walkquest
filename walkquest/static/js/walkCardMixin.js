@@ -21,6 +21,16 @@ window.walkCardMixin = (walk) => ({
         // Initialize favorite state
         const walkId = this.$el.dataset.walkId;
         
+        // Add event listeners to prevent card being invisible on hover
+        this.$el.addEventListener('mouseenter', () => {
+            this.isHovered = true;
+            this.$el.style.opacity = 1;
+        });
+        this.$el.addEventListener('mouseleave', () => {
+            this.isHovered = false;
+            this.$el.style.opacity = 1;
+        });
+        
         // Initialize expandable content
         const content = this.$refs.content;
         if (content) {
@@ -75,17 +85,13 @@ window.walkCardMixin = (walk) => ({
 
     toggleExpand(event) {
         if (event) event.stopPropagation();
-
-        // Use the store to handle expansion
-        const store = Alpine.store('walks');
-        if (store?.expandWalk) {
-            store.expandWalk(this.walk.id);
+        const globals = Alpine.store('globals');
+        if (globals?.expandWalk) {
+            globals.expandWalk(this.walk.id);
         }
-
-        // Dispatch walk:selected event first (will handle map movement and expansion)
         window.dispatchEvent(new CustomEvent('walk:selected', { 
             detail: this.walk,
-            bubbles: true  // Ensure event bubbles up through DOM
+            bubbles: true
         }));
     },
 
@@ -166,43 +172,17 @@ window.walkCardMixin = (walk) => ({
     },
 
     adjustScroll() {
-        // Wait for any animations to complete
+        this.$el.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+            inline: 'nearest'
+        });
+        // After scrolling, expand the card if not already expanded
         setTimeout(() => {
-            const cardList = this.$el.closest('.walk-list');
-            if (!cardList) return;
-            
-            // Calculate optimal scroll position
-            const cardRect = this.$el.getBoundingClientRect();
-            const listRect = cardList.getBoundingClientRect();
-            const viewportCenter = window.innerHeight / 2;
-            
-            // Calculate target scroll position to center the card
-            const targetScroll = cardList.scrollTop +
-                (cardRect.top - listRect.top) -
-                (listRect.height - cardRect.height) / 2;
-            
-            // Initial smooth scroll to center the card
-            cardList.scrollTo({
-                top: targetScroll,
-                behavior: 'smooth'
-            });
-
-            // Handle expanded content visibility after expansion animation
-            if (this.isExpanded && this.$refs.content) {
-                setTimeout(() => {
-                    const contentRect = this.$refs.content.getBoundingClientRect();
-                    const listBottom = listRect.bottom;
-                    
-                    // If expanded content is cut off, scroll to show it
-                    if (contentRect.bottom > listBottom) {
-                        const additionalScroll = contentRect.bottom - listBottom + 40; // Add padding
-                        cardList.scrollBy({
-                            top: additionalScroll,
-                            behavior: 'smooth'
-                        });
-                    }
-                }, 300); // Wait for expansion animation
+            if (!this.isExpanded) {
+                this.isExpanded = true;
+                this.animateContent(true);
             }
-        }, 50); // Reduced initial delay for better responsiveness
+        }, 300);
     },
 });

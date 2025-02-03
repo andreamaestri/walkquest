@@ -257,33 +257,18 @@
             },
 
             handleWalkSelection(detail) {
+                const store = Alpine.store('walks');
                 if (!detail) {
-                    // Clear active state from all markers when deselecting
-                    this.markers.forEach(marker => {
-                        marker.getElement().classList.remove('active-marker');
-                    });
-                    
-                    const store = Alpine.store('walks');
-                    if (store) store.setSelectedWalk(null);
-                    this.showSidebar = false;
-                    window.localStorage.removeItem('sidebar');
+                    this.clearSelection();
+                    store.setSelectedWalk(null);
                     return;
                 }
-
-                // Expand the selected walk card
-                const store = Alpine.store('walks');
-                if (store) {
-                    store.setSelectedWalk(detail);
-                    store.expandWalk(detail.id);
-                }
-
-                // Update selection and sidebar state
-                if (store?.setSelectedWalk) {
-                    store.setSelectedWalk(detail);
-                }
-
+            
+                store.setSelectedWalk(detail);
+            
                 // Update view after state changes
                 this.$nextTick(() => {
+                    // Always treat the selection as active and open the sidebar
                     const card = document.querySelector(`[data-walk-id="${detail.id}"]`);
                     if (card) {
                         const cardComponent = Alpine.$data(card);
@@ -291,14 +276,24 @@
                             cardComponent.adjustScroll();
                         }
                     }
-
-                    // Update sidebar state after card is found and adjusted
                     this.showSidebar = true;
                     window.localStorage.setItem('sidebar', 'true');
                     this.updateMapView(detail);
                     this.loadWalkGeometry(detail);
                 });
-            }, 
+            },
+            
+            clearSelection() {
+                // Clear active state from all markers when deselecting
+                this.markers.forEach(marker => {
+                    marker.getElement().classList.remove('active-marker');
+                });
+                
+                const store = Alpine.store('walks');
+                if (store) store.setSelectedWalk(null);
+                this.showSidebar = false;
+                window.localStorage.removeItem('sidebar');
+            },
 
             updateMapView(detail) {
                 if (!this.map || !detail) return;
@@ -419,17 +414,21 @@
                             .setLngLat([walk.longitude, walk.latitude])
                             .addTo(this.map);
                         
-                        // Add marker styling
                         marker.getElement().classList.add('walk-marker');
-
                         marker.getElement().addEventListener('click', () => {
-                            // Dispatch walk:selected event, letting the handler manage both map and UI updates
+                            const globals = Alpine.store('globals');
+                            const isCurrentlyExpanded = globals?.expandedWalkId === walk.id;
+
+                            // Dispatch walk:selected event first
                             window.dispatchEvent(new CustomEvent('walk:selected', { 
                                 detail: walk,
                                 bubbles: true
                             }));
-                        });
 
+                            if (globals?.expandWalk) {
+                                globals.expandWalk(isCurrentlyExpanded ? null : walk.id);
+                            }
+                        });
                         this.markers.set(walk.id, marker);
                     }
                 }
@@ -494,47 +493,33 @@
 
 // Initialize Alpine.js stores and components
 document.addEventListener('alpine:init', () => {
-    // Initialize walks store first
+    // Initialize walks store first with toggle behavior
     Alpine.store('walks', {
-        selectedWalk: null,
-        // Removed isSelecting property for simplicity
+        selectedWalkId: null,
+        setSelectedWalk(detail) {
+            // Always set the selected walk without toggling
+            this.selectedWalkId = detail ? detail.id : null;
+        },
+        isWalkSelected(walkId) {
+            return this.selectedWalkId === walkId;
+        },
         pendingFavorites: new Set(),
         loading: false,
         progress: 0,
         
-        setSelectedWalk(walk) {
-            // Toggle selection if the same walk is clicked
-            if (this.selectedWalk && this.selectedWalk.id === walk?.id) {
-                this.selectedWalk = null;
-                // ...existing code for deselection (e.g., sidebar management)...
-                window.localStorage.removeItem('sidebar');
-                return;
-            }
-            this.selectedWalk = walk;
-            this.progress = 0;
-            if (walk) {
-                this.startLoading();
-                this.setProgress(20);
-            } else {
-                this.stopLoading();
-            }
-        },
-        
+        // ...existing methods for progress/loading...
         setProgress(value) {
             this.progress = Math.min(100, Math.max(0, value));
             if (this.progress === 100) {
                 setTimeout(() => this.stopLoading(), 200);
             }
         },
-        
         startLoading() {
             this.loading = true;
         },
-        
         stopLoading() {
             this.loading = false;
         },
-        
         togglePendingFavorite(walkId) {
             if (this.pendingFavorites.has(walkId)) {
                 this.pendingFavorites.delete(walkId);
@@ -542,7 +527,6 @@ document.addEventListener('alpine:init', () => {
                 this.pendingFavorites.add(walkId);
             }
         },
-        
         isPending(walkId) {
             return this.pendingFavorites.has(walkId);
         }
