@@ -61,15 +61,40 @@
     /* Walk Card Components */
     .walk-item {
         @apply bg-white/5 backdrop-blur-md rounded-xl p-4 
-               transition-all duration-300 ease-out cursor-pointer 
                border border-white/20 hover:border-blue-200/50 
                hover:bg-white/10 relative;
-            transform-style: preserve-3d;
-            transform-origin: center center;
-            backface-visibility: hidden;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-            will-change: transform, box-shadow;
+        transform-style: preserve-3d;
+        backface-visibility: hidden;
+        will-change: transform, opacity;
+        opacity: 0; /* Start invisible */
+        transform: translateY(15px) scale(0.97); /* Initial transform state */
+        pointer-events: none; /* Disable interaction until revealed */
+    }
+
+    /* Remove any transition properties since Motion handles animations */
+
+    .walk-item.revealed {
+        @apply opacity-100;
+        transform: translateY(0) scale(1);
+        pointer-events: auto; /* Re-enable interaction after animation */
+    }
+
+    .walk-item:not(.expanded):hover {
+        @apply shadow-lg;
+        transform: translateY(-4px) scale(1.01);
+        background-color: rgba(255, 255, 255, 0.12);
+        border-color: rgba(96, 165, 250, 0.5);
+    }
+
+    .walk-item.expanded {
+        @apply shadow-xl bg-white/15;
+        border-color: rgba(96, 165, 250, 0.5);
+        transform: translateY(0) scale(1);
+    }
+
+    .walk-item:not(.expanded):active {
+        transform: translateY(-2px) scale(1.005);
+        transition-duration: 0.1s;
     }
 
     .walk-item-selected {
@@ -95,6 +120,19 @@
         backface-visibility: hidden;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
+    }
+    /* Subtle loading animations */
+    .loading-pulse {
+        @apply animate-pulse bg-blue-500/10;
+    }
+
+    .loading-spin {
+        @apply animate-spin text-blue-500;
+    }
+
+    /* Fade transitions */
+    .loading-fade {
+        @apply transition-opacity duration-200;
     }
 
     .category-tag {
@@ -142,22 +180,6 @@
             @apply fixed inset-0 w-full h-full;
             z-index: 1;
         }
-
-         /* Ensure markers are visible */
-        /* Ensure markers are above other map elements */
-        .mapboxgl-marker {
-            z-index: 1000 !important;
-        }
-
-        /* Ensure popups are above markers */
-        .mapboxgl-popup {
-            z-index: 1001 !important;
-        }
-
-        /* Ensure controls are above markers */
-        .mapboxgl-control-container {
-            z-index: 1002 !important;
-        }
     
         .map-inner {
             @apply absolute inset-0;
@@ -202,3 +224,34 @@
         }
     }
 } /* Close @layer components */
+
+/* Keyframes for Active Marker Animation */
+@keyframes markerBounce {
+    0%, 100% {
+        transform: scale(1.2) translateY(-5px);
+    }
+    50% {
+        transform: scale(1.2) translateY(-8px);
+    }
+}
+
+/* Reapply animation for active marker */
+.walk-marker.active-marker {
+    animation: markerBounce 0.6s ease-in-out;
+}
+
+@keyframes optimizedMarkerBounce {
+    0%, 100% {
+        transform: translate3d(0, -5px, 0) scale3d(1.2, 1.2, 1);
+    }
+    50% {
+        transform: translate3d(0, -8px, 0) scale3d(1.2, 1.2, 1);
+    }
+}
+
+.walk-marker.active-marker {
+    animation: optimizedMarkerBounce 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    /* Optimize animation performance */
+    animation-fill-mode: forwards;
+    will-change: transform;
+}
