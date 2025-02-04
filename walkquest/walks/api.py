@@ -1,28 +1,51 @@
 from typing import List
 from typing import Optional
 from uuid import UUID
+
+import orjson
 from django.conf import settings
-from django.core.serializers.json import DjangoJSONEncoder
+from django.contrib.gis.geos import GEOSGeometry
 from django.db.models import Count
 from django.db.models import Exists
 from django.db.models import OuterRef
 from django.db.models import Value
 from django.http import HttpRequest
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404
-import json
 from ninja import NinjaAPI
 from ninja import Router
 from ninja import Schema
+from ninja.parser import Parser
+from ninja.renderers import BaseRenderer
 
 from .models import Walk
 from .models import WalkCategoryTag
 from .models import WalkFeatureTag
+from .schemas import ConfigSchema
+from .schemas import PubSchema
 from .schemas import TagResponseSchema
 from .schemas import WalkOutSchema
-from .schemas import ConfigSchema
 
-api = NinjaAPI(title="WalkQuest API", version="1.0.0", csrf=True)
+
+# Define custom ORJSONParser
+class ORJSONParser(Parser):
+    def parse_body(self, request):
+        return orjson.loads(request.body)
+
+# Define custom ORJSONRenderer using BaseRenderer
+class ORJSONRenderer(BaseRenderer):
+    media_type = "application/json"
+
+    def render(self, request, data, *, response_status):
+        return orjson.dumps(data)
+
+# Update API initialization to use ORJSONParser
+api = NinjaAPI(
+    title="WalkQuest API",
+    version="1.0.0",
+    csrf=True,
+    parser=ORJSONParser(),  
+    renderer=ORJSONRenderer()   # Using custom ORJSONRenderer
+)
 router = Router()
 
 @api.get("/")
@@ -50,7 +73,7 @@ def list_walks(
     features: Optional[str] = None,    # Changed from List[str] to str
     difficulty: Optional[str] = None,  # Add difficulty filter
     has_stiles: Optional[bool] = None,  # Add stiles filter
-    has_bus: Optional[bool] = None    # Add bus access filter
+    has_bus: Optional[bool] = None      # Add bus access filter
 ):
     """List walks with optional filtering"""
     try:
@@ -157,7 +180,7 @@ def get_walk(request: HttpRequest, walk_id: UUID):
         walk = Walk.objects.prefetch_related(
             'features',
             'categories',
-            'related_categories'  # Add prefetch for related_categories
+            'related_categories'  
         ).annotate(
             is_favorite=Exists(
                 Walk.favorites.through.objects.filter(
@@ -170,13 +193,16 @@ def get_walk(request: HttpRequest, walk_id: UUID):
         # Format pubs list correctly
         formatted_pubs = []
         for pub in walk.pubs_list:
-            if isinstance(pub, str):
-                formatted_pubs.append({'name': pub, 'description': ''})
-            elif isinstance(pub, dict):
-                formatted_pubs.append({
-                    'name': pub.get('name', ''),
-                    'description': pub.get('description', '')
-                })
+            if isinstance(pub, dict):
+                formatted_pubs.append(PubSchema(
+                    name=str(pub.get('name', '')),
+                    description=str(pub.get('description', ''))
+                ))
+            else:
+                formatted_pubs.append(PubSchema(
+                    name=str(pub),
+                    description=''
+                ))
 
         # Manually construct WalkOutSchema
         walk_data = WalkOutSchema(
@@ -213,9 +239,40 @@ def get_walk(request: HttpRequest, walk_id: UUID):
 
 @router.get("/walks/{walk_id}/geometry")
 def get_walk_geometry(request: HttpRequest, walk_id: UUID):
-    """Get geometry data for a specific walk"""
-    walk = get_object_or_404(Walk, id=walk_id)
-    return json.loads(walk.route_geometry.geojson)
+    """Get simplified geometry data for a specific walk based on zoom level"""
+    try:
+        zoom = int(request.GET.get('zoom', 14))
+        # Use full precision when zoomed in (>=15)
+        if zoom >= 15:
+            tolerance = 0
+        else:
+            tolerance = {
+                8: 0.0008,
+                10: 0.0005,
+                12: 0.0003,
+                14: 0.0001
+            }.get(zoom, 0.0001)
+        
+        walk = Walk.objects.get(id=walk_id)
+        original_geom = GEOSGeometry(walk.route_geometry.wkt)
+        # Apply simplification only if tolerance is non-zero
+        if tolerance:
+            geometry = original_geom.simplify(tolerance=tolerance, preserve_topology=True)
+        else:
+            geometry = original_geom
+        
+        geojson = geometry.geojson
+        
+        return {
+            "type": "Feature",
+            "geometry": json.loads(geojson),
+            "properties": {
+                "steepness_level": walk.steepness_level,
+                "name": walk.walk_name
+            }
+        }
+    except Walk.DoesNotExist:
+        return JsonResponse({"error": "Walk not found"}, status=404)
 
 class TagResponseSchema(Schema):
     name: str

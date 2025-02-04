@@ -99,20 +99,24 @@ window.walkCardMixin = (walk) => ({
 
     toggleExpand(event) {
         if (event) event.stopPropagation();
-        // Collapse if already expanded
+        // Add a temporary expanding state for smoother transitions
+        this.$el.classList.add('expanding');
         if (this.isExpanded) {
             this.isExpanded = false;
-            this.animateContent(false);
-            window.dispatchEvent(new CustomEvent('walk:expansion-changed', { detail: { walkId: null } }));
-            // Also clear selection from store
-            const store = Alpine.store('walks');
-            store.setSelectedWalk(null);
+            this.animateContent(false).then(() => {
+                this.$el.classList.remove('expanding');
+                window.dispatchEvent(new CustomEvent('walk:expansion-changed', { detail: { walkId: null } }));
+                const store = Alpine.store('walks');
+                store.setSelectedWalk(null);
+            });
         } else {
-            // Expand
             const globals = Alpine.store('globals');
             if (globals?.expandWalk) {
                 globals.expandWalk(this.walk.id);
             }
+            this.animateContent(true).then(() => {
+                this.$el.classList.remove('expanding');
+            });
             window.dispatchEvent(new CustomEvent('walk:selected', { 
                 detail: this.walk,
                 bubbles: true
@@ -121,63 +125,85 @@ window.walkCardMixin = (walk) => ({
     },
 
     animateContent(shouldExpand) {
-        const content = this.$refs.content;
-        if (!content || !window.Motion) return;
+        return new Promise((resolve) => {
+            const content = this.$refs.content;
+            const title = this.$el.querySelector('h3');
+            if (!content || !window.Motion) {
+                resolve();
+                return;
+            }
 
-        if (shouldExpand) {
-            // Pre-calculate the target height
-            content.style.display = 'block';
-            const targetHeight = content.scrollHeight;
-
-            // Create a sequence for expand animation
-            window.Motion.animate([
-                [content, {
-                    height: [0, targetHeight],
-                    opacity: [0, 1],
-                    margin: [0, '1rem 0'],
-                    y: [-10, 0],
-                    scale: [0.98, 1]
-                }, {
-                    duration: 0.4,
-                    easing: [0.22, 1, 0.36, 1]
-                }],
-                [content.querySelectorAll('img, .category-tag, p'), {
-                    opacity: [0, 1],
-                    y: [10, 0],
-                    scale: [0.95, 1]
-                }, {
-                    duration: 0.3,
-                    delay: window.Motion.stagger(0.05, { start: 0.1 }),
-                    easing: [0.22, 1, 0.36, 1]
-                }]
-            ]);
-        } else {
-            // Collapse animation sequence
-            window.Motion.animate([
-                [content.querySelectorAll('img, .category-tag, p'), {
-                    opacity: [1, 0],
-                    y: [0, -5],
-                    scale: [1, 0.98]
-                }, {
-                    duration: 0.2,
-                    delay: window.Motion.stagger(0.03),
-                    easing: [0.4, 0, 0.2, 1]
-                }],
-                [content, {
-                    height: [content.scrollHeight, 0],
-                    opacity: [1, 0],
-                    margin: ['1rem 0', 0],
-                    scale: [1, 0.98]
-                }, {
-                    duration: 0.3,
-                    easing: [0.4, 0, 0.2, 1],
-                    at: "<",
-                    onComplete: () => {
-                        content.style.display = 'none';
-                    }
-                }]
-            ]);
-        }
+            if (shouldExpand) {
+                content.style.display = 'block';
+                const targetHeight = content.scrollHeight;
+                window.Motion.animate([
+                    [content, {
+                        height: [0, targetHeight],
+                        opacity: [0, 1],
+                        margin: [0, '1rem 0'],
+                        y: [-20, 0],
+                        scale: [0.95, 1]
+                    }, {
+                        duration: 0.5,
+                        easing: 'easeOutQuart'
+                    }],
+                    [content.querySelectorAll('img, .category-tag, p'), {
+                        opacity: [0, 1],
+                        y: [20, 0],
+                        scale: [0.9, 1]
+                    }, {
+                        duration: 0.4,
+                        delay: window.Motion.stagger(0.07, { start: 0.1 }),
+                        easing: 'easeOutCubic'
+                    }],
+                    // Animate title with a smooth fade in and upward motion
+                    [title, {
+                        opacity: [0, 1],
+                        y: [-30, 0],
+                        scale: [0.9, 1]
+                    }, {
+                        duration: 0.6,
+                        easing: 'easeOutQuart',
+                        at: "<"
+                    }]
+                ]).finished.then(resolve);
+            } else {
+                window.Motion.animate([
+                    [content.querySelectorAll('img, .category-tag, p'), {
+                        opacity: [1, 0],
+                        y: [0, -10],
+                        scale: [1, 0.95]
+                    }, {
+                        duration: 0.3,
+                        delay: window.Motion.stagger(0.04),
+                        easing: 'easeInCubic'
+                    }],
+                    // Fade out the title simultaneously
+                    [title, {
+                        opacity: [1, 0],
+                        y: [0, -15],
+                        scale: [1, 0.95]
+                    }, {
+                        duration: 0.3,
+                        easing: 'easeInCubic',
+                        at: "<"
+                    }],
+                    [content, {
+                        height: [content.scrollHeight, 0],
+                        opacity: [1, 0],
+                        margin: ['1rem 0', 0],
+                        scale: [1, 0.95]
+                    }, {
+                        duration: 0.4,
+                        easing: 'easeInQuart',
+                        at: "<",
+                        onComplete: () => {
+                            content.style.display = 'none';
+                        }
+                    }]
+                ]).finished.then(resolve);
+            }
+        });
     },
 
     toggleFavorite() {

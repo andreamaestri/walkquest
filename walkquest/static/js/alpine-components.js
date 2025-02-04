@@ -442,46 +442,33 @@
             async loadWalkGeometry(detail) {
                 if (!detail?.id || this.loadingStates.walks.has(detail.id)) return;
                 this.loadingStates.walks.add(detail.id);
-
+            
                 try {
-                    const response = await fetch(`/api/walks/${detail.id}/geometry`);
+                    const zoom = Math.floor(this.map.getZoom());
+                    const response = await fetch(`/api/walks/${detail.id}/geometry?zoom=${zoom}`);
                     if (!response.ok) throw new Error('Failed to load geometry');
-                    
                     const geojson = await response.json();
-                    
-                    // Silently update the map without loading indicators
-                    if (this.map) {
-                        if (!this.map.getSource('route')) {
-                            this.map.addSource('route', {
-                                type: 'geojson',
-                                data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: [] } }
-                            });
-
-                            this.map.addLayer({
-                                id: 'route',
-                                type: 'line',
-                                source: 'route',
-                                layout: {
-                                    'line-join': 'round',
-                                    'line-cap': 'round'
-                                },
-                                paint: {
-                                    'line-color': ['get', 'color'],
-                                    'line-width': 4
-                                }
-                            });
-                        }
-
-                        // Update source data with color property
-                        geojson.properties = {
-                            color: {
-                                'Moderate': '#4338CA',
-                                'Challenging': '#DC2626',
-                                'Easy': '#10B981'
-                            }[detail.steepness_level] || '#242424'
-                        };
-                        
+            
+                    if (this.map.getSource('route')) {
                         this.map.getSource('route').setData(geojson);
+                    } else {
+                        this.map.addSource('route', {
+                            type: 'geojson',
+                            data: geojson
+                        });
+                        this.map.addLayer({
+                            id: 'route',
+                            type: 'line',
+                            source: 'route',
+                            layout: {
+                                'line-join': 'round',
+                                'line-cap': 'round'
+                            },
+                            paint: {
+                                'line-color': ['get', 'color'],
+                                'line-width': 4
+                            }
+                        });
                     }
                 } catch (error) {
                     console.error('Failed to load walk geometry:', error);
