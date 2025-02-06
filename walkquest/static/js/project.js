@@ -1,5 +1,5 @@
 // Initialize configuration
-function initializeConfig() {
+export function initializeConfig() {
     try {
         // Get config from script tag
         const configScript = document.getElementById('config-data');
@@ -23,20 +23,20 @@ function initializeConfig() {
     }
 }
 
-// Initialize services and components
-document.addEventListener('DOMContentLoaded', () => {
-    // Initialize config first
-    initializeConfig();
+// Error handling for component initialization
+export function initializeErrorHandling() {
+    document.addEventListener('error:component-init', (event) => {
+        console.error('Component initialization error:', event.detail);
+        const errorContainer = document.getElementById('error-container');
+        if (errorContainer) {
+            errorContainer.classList.remove('hidden');
+            errorContainer.textContent = 'Failed to initialize components. Please refresh the page.';
+        }
+    });
+}
 
-    // Initialize API service
-    if (window.ApiService?.init) {
-        window.ApiService.init();
-        console.log('ApiService initialized');
-    } else {
-        console.error('ApiService not found - check script loading order');
-    }
-
-    // Initialize animations
+// Initialize animations
+export function initializeAnimations() {
     if (window.WalkAnimations) {
         window.WalkAnimations.initializeHoverEffects();
     } else {
@@ -46,14 +46,4 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-
-    // Error handling for component initialization
-    document.addEventListener('error:component-init', (event) => {
-        console.error('Component initialization error:', event.detail);
-        const errorContainer = document.getElementById('error-container');
-        if (errorContainer) {
-            errorContainer.classList.remove('hidden');
-            errorContainer.textContent = 'Failed to initialize components. Please refresh the page.';
-        }
-    });
-});
+}

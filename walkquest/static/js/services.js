@@ -1,5 +1,5 @@
 // ApiService class definition
-const ApiService = {
+export const ApiService = {
     baseUrl: window.location.origin + '/api',
     csrfToken: null,
 
@@ -181,9 +181,6 @@ const ApiService = {
         return response.markers;
     }
 };
-
-// Make ApiService globally available
-window.ApiService = ApiService;
 
 // Initialize immediately when loaded
 if (document.readyState === 'loading') {

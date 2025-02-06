@@ -1,7 +1,8 @@
 {% load i18n %}
 
 <div x-data="loading" 
-     x-show="$store.walks.loading" 
+     x-init="init()"
+     x-show="loadingStates.some(state => state.loading)" 
      x-cloak
      :class="$store.globals.fullscreen ? 'fixed inset-0 z-50' : 'absolute inset-0 z-10'"
      class="flex items-center justify-center bg-white/80 backdrop-blur-sm">
@@ -13,9 +14,11 @@
             </svg>
             <span class="sr-only">{% translate "Loading..." %}</span>
         </div>
-        <p x-show="$store.walks.loading" 
-           class="text-sm text-gray-600 animate-pulse">
-            {% translate "Loading walks..." %}
-        </p>
+        <template x-for="state in loadingStates" :key="state.path">
+            <p x-show="state.loading" 
+               class="text-sm text-gray-600 animate-pulse"
+               x-text="state.path.includes('walks') ? '{% translate "Loading walks..." %}' : '{% translate "Loading..." %}'">
+            </p>
+        </template>
     </div>
 </div>

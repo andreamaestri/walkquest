@@ -1,0 +1,47 @@
+{
+  "name": "walkquest",
+  "version": "1.0.0",
+  "description": "**Walk in the Quest!** 🚶‍♂️🧭",
+  "main": "tailwind.config.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "rollup -c"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andreamaestri/walkquest.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/andreamaestri/walkquest/issues"
+  },
+  "homepage": "https://github.com/andreamaestri/walkquest#readme",
+  "dependencies": {
+    "@alpinejs/intersect": "^3.14.8",
+    "@alpinejs/morph": "^3.14.8",
+    "alpinejs": "^3.14.8",
+    "htmx.org": "^1.9.12",
+    "iconify-icon": "^2.3.0",
+    "mapbox-gl": "^3.9.4",
+    "motion": "^12.4.0"
+  },
+  "imports": {
+    "#walkquest/main": "./js/main.js",
+    "#walkquest/*": "./js/*"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.26.7",
+    "@babel/preset-env": "^7.26.7",
+    "@rollup/plugin-babel": "^6.0.4",
+    "@rollup/plugin-commonjs": "^28.0.2",
+    "@rollup/plugin-node-resolve": "^16.0.0",
+    "babel-loader": "^9.2.1",
+    "rollup": "^4.34.4"
+  }
+}

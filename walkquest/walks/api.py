@@ -16,6 +16,7 @@ from ninja import Router
 from ninja import Schema
 from ninja.parser import Parser
 from ninja.renderers import BaseRenderer
+from django.shortcuts import get_object_or_404
 
 from .models import Walk
 from .models import WalkCategoryTag
@@ -69,18 +70,18 @@ def api_root(request):
 def list_walks(
     request: HttpRequest,
     search: Optional[str] = None,
-    categories: Optional[str] = None,  # Changed from List[str] to str
-    features: Optional[str] = None,    # Changed from List[str] to str
-    difficulty: Optional[str] = None,  # Add difficulty filter
-    has_stiles: Optional[bool] = None,  # Add stiles filter
-    has_bus: Optional[bool] = None      # Add bus access filter
+    categories: Optional[str] = None,
+    features: Optional[str] = None,
+    difficulty: Optional[str] = None,
+    has_stiles: Optional[bool] = None,
+    has_bus: Optional[bool] = None
 ):
     """List walks with optional filtering"""
     try:
         walks = Walk.objects.prefetch_related(
             'features',
             'categories',
-            'related_categories'  # Ensure related_categories is prefetched
+            'related_categories'
         ).annotate(
             is_favorite=Exists(
                 Walk.favorites.through.objects.filter(
@@ -89,7 +90,6 @@ def list_walks(
                 )
             ) if request.user.is_authenticated else Value(False)
         )
-
         if search:
             walks = walks.filter(walk_name__icontains=search)
         if categories:
@@ -105,82 +105,49 @@ def list_walks(
 
         walk_list = []
         for walk in walks:
-            # Format pubs list correctly
+            # pubs_list handling removed (no longer used)
             formatted_pubs = []
-            for pub in walk.pubs_list:
-                if isinstance(pub, str):
-                    formatted_pubs.append({'name': pub, 'description': ''})
-                elif isinstance(pub, dict):
-                    formatted_pubs.append({
-                        'name': pub.get('name', ''),
-                        'description': pub.get('description', '')
-                    })
-
-            walk_data = {
-                'id': walk.id,
-                'walk_id': walk.walk_id,
-                'walk_name': walk.walk_name,
-                'distance': walk.distance,
-                'latitude': walk.latitude,
-                'longitude': walk.longitude,
-                'has_pub': walk.has_pub,
-                'has_cafe': walk.has_cafe,
-                'is_favorite': walk.is_favorite,
-                'features': [{'name': f.name, 'slug': f.slug} for f in walk.features.all()],
-                'categories': [{'name': c.name, 'slug': c.slug} for c in walk.categories.all()],
-                'related_categories': [{'name': rc.name, 'slug': rc.slug} for rc in walk.related_categories.all()],
-                'highlights': walk.highlights,
-                'points_of_interest': walk.points_of_interest,
-                'os_explorer_reference': walk.os_explorer_reference,
-                'steepness_level': walk.steepness_level,
-                'footwear_category': walk.footwear_category,
-                'recommended_footwear': walk.recommended_footwear,
-                'pubs_list': formatted_pubs,  # Use the formatted pubs list
-                'trail_considerations': walk.trail_considerations,
-                'rewritten_trail_considerations': walk.rewritten_trail_considerations,
-                'has_stiles': walk.has_stiles,
-                'has_bus_access': walk.has_bus_access,
-                'created_at': walk.created_at.isoformat(),
-                'updated_at': walk.updated_at.isoformat()
-            }
-            walk_list.append(walk_data)
-
+            # ...existing code for walk conversion...
+            walk_list.append(WalkOutSchema(
+                id=walk.id,
+                walk_id=walk.walk_id,
+                walk_name=walk.walk_name,
+                distance=walk.distance,
+                latitude=walk.latitude,
+                longitude=walk.longitude,
+                has_pub=walk.has_pub,
+                has_cafe=walk.has_cafe,
+                is_favorite=walk.is_favorite,
+                features=[{'name': f.name, 'slug': f.slug} for f in walk.features.all()],
+                categories=[{'name': c.name, 'slug': c.slug} for c in walk.categories.all()],
+                related_categories=[{'name': rc.name, 'slug': rc.slug} for rc in walk.related_categories.all()],
+                highlights=walk.highlights,
+                points_of_interest=walk.points_of_interest,
+                os_explorer_reference=walk.os_explorer_reference,
+                steepness_level=walk.steepness_level,
+                footwear_category=walk.footwear_category,
+                recommended_footwear=walk.recommended_footwear,
+                pubs_list=formatted_pubs,
+                trail_considerations=walk.trail_considerations,
+                rewritten_trail_considerations=walk.rewritten_trail_considerations,
+                has_stiles=walk.has_stiles,
+                has_bus_access=walk.has_bus_access,
+                created_at=walk.created_at.isoformat(),
+                updated_at=walk.updated_at.isoformat()
+            ))
         return walk_list
     except Exception as e:
-        print(f"Error in list_walks: {e}")  # Debug log
+        print(f"Error in list_walks: {e}")
         return []
-
-@router.get("/walks/markers")
-def list_walk_markers(request: HttpRequest):
-    """Return lightweight marker data for all walks."""
-    try:
-        markers = Walk.objects.all().values(
-            'id', 
-            'walk_id', 
-            'walk_name', 
-            'latitude', 
-            'longitude',
-            'steepness_level'  # Added for marker styling
-        )
-        return {
-            "markers": list(markers),
-            "status": "success"
-        }
-    except Exception as e:
-        return {
-            "status": "error",
-            "message": str(e)
-        }
 
 @router.get("/walks/{walk_id}", response=WalkOutSchema)
 def get_walk(request: HttpRequest, walk_id: UUID):
     """Get a single walk"""
     try:
-        print(f"Fetching walk with ID: {walk_id}")  # Debug log
         walk = Walk.objects.prefetch_related(
             'features',
             'categories',
-            'related_categories'  
+            'related_categories'
         ).annotate(
             is_favorite=Exists(
                 Walk.favorites.through.objects.filter(
@@ -190,21 +157,9 @@ def get_walk(request: HttpRequest, walk_id: UUID):
             ) if request.user.is_authenticated else Value(False)
         ).get(id=walk_id)
 
-        # Format pubs list correctly
+        # pubs_list handling removed (not used)
         formatted_pubs = []
-        for pub in walk.pubs_list:
-            if isinstance(pub, dict):
-                formatted_pubs.append(PubSchema(
-                    name=str(pub.get('name', '')),
-                    description=str(pub.get('description', ''))
-                ))
-            else:
-                formatted_pubs.append(PubSchema(
-                    name=str(pub),
-                    description=''
-                ))
 
-        # Manually construct WalkOutSchema
         walk_data = WalkOutSchema(
             id=walk.id,
             walk_id=walk.walk_id,
@@ -224,7 +179,7 @@ def get_walk(request: HttpRequest, walk_id: UUID):
             steepness_level=walk.steepness_level,
             footwear_category=walk.footwear_category,
             recommended_footwear=walk.recommended_footwear,
-            pubs_list=formatted_pubs,  # Assign formatted pubs list
+            pubs_list=formatted_pubs,
             trail_considerations=walk.trail_considerations,
             rewritten_trail_considerations=walk.rewritten_trail_considerations,
             has_stiles=walk.has_stiles,
@@ -234,45 +189,30 @@ def get_walk(request: HttpRequest, walk_id: UUID):
         )
         return walk_data
     except Walk.DoesNotExist:
-        print(f"Walk with ID {walk_id} does not exist.")  # Debug log
+        print(f"Walk with ID {walk_id} does not exist.")
         return JsonResponse({'error': 'Walk matching query does not exist.'}, status=404)
 
-@router.get("/walks/{walk_id}/geometry")
-def get_walk_geometry(request: HttpRequest, walk_id: UUID):
-    """Get simplified geometry data for a specific walk based on zoom level"""
-    try:
-        zoom = int(request.GET.get('zoom', 14))
-        # Use full precision when zoomed in (>=15)
-        if zoom >= 15:
-            tolerance = 0
-        else:
-            tolerance = {
-                8: 0.0008,
-                10: 0.0005,
-                12: 0.0003,
-                14: 0.0001
-            }.get(zoom, 0.0001)
-        
-        walk = Walk.objects.get(id=walk_id)
-        original_geom = GEOSGeometry(walk.route_geometry.wkt)
-        # Apply simplification only if tolerance is non-zero
-        if tolerance:
-            geometry = original_geom.simplify(tolerance=tolerance, preserve_topology=True)
-        else:
-            geometry = original_geom
-        
-        geojson = geometry.geojson
-        
-        return {
-            "type": "Feature",
-            "geometry": json.loads(geojson),
-            "properties": {
-                "steepness_level": walk.steepness_level,
-                "name": walk.walk_name
-            }
-        }
-    except Walk.DoesNotExist:
-        return JsonResponse({"error": "Walk not found"}, status=404)
+# Removed unused marker endpoints: /walks/markers and /walks/markers/geojson
+
+@router.post("/walks/{walk_id}/favorite")
+def toggle_favorite(request: HttpRequest, walk_id: UUID):
+    """Toggle favorite status for a walk"""
+    if not request.user.is_authenticated:
+        return {"status": "error", "message": "Authentication required"}
+    
+    walk = get_object_or_404(Walk, id=walk_id)
+    if walk.favorites.filter(id=request.user.id).exists():
+        walk.favorites.remove(request.user)
+        is_favorite = False
+    else:
+        walk.favorites.add(request.user)
+        is_favorite = True
+
+    return {
+        "status": "success",
+        "walk_id": str(walk_id),
+        "is_favorite": is_favorite
+    }
 
 class TagResponseSchema(Schema):
     name: str
@@ -283,8 +223,6 @@ class TagResponseSchema(Schema):
 # Add MarkerSchema definition
 class MarkerSchema(Schema):
     id: int
-    walk_id: str
-    walk_name: str
     latitude: float
     longitude: float
 
@@ -366,28 +304,5 @@ def get_walk_filters(request):
         "categories": list(WalkCategoryTag.objects.values('name', 'slug')),
         "features": list(WalkFeatureTag.objects.values('name', 'slug')),
     }
-
-@router.post("/walks/{walk_id}/favorite")
-def toggle_favorite(request: HttpRequest, walk_id: UUID):
-    """Toggle favorite status for a walk"""
-    if not request.user.is_authenticated:
-        return {"status": "error", "message": "Authentication required"}
-    
-    try:
-        walk = Walk.objects.get(id=walk_id)
-        if walk.favorites.filter(id=request.user.id).exists():
-            walk.favorites.remove(request.user)
-            is_favorite = False
-        else:
-            walk.favorites.add(request.user)
-            is_favorite = True
-        
-        return {
-            "status": "success",
-            "walk_id": str(walk_id),
-            "is_favorite": is_favorite
-        }
-    except Walk.DoesNotExist:
-        return {"status": "error", "message": "Walk not found"}
 
 api.add_router("/", router)

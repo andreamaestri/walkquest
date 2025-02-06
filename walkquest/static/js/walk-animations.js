@@ -1,5 +1,5 @@
 // Initialize all walk card animations
-const initializeHoverEffects = () => {
+export const initializeHoverEffects = () => {
     if (!window.Motion) return;
 
     // Only apply hover effects to non-expanded cards
@@ -65,10 +65,8 @@ const initializeHoverEffects = () => {
     });
 };
 
-// Initialize press animations for walk cards
-
-// Export animation utilities to window
-window.WalkAnimations = { 
+// Export animation utilities
+export const WalkAnimations = { 
     initializeHoverEffects
 };
 

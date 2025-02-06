@@ -274,7 +274,7 @@ dump.rdb
 
 ### Project template
 walkquest/media/
-
+./staticfiles/
 .pytest_cache/
 .env
 .envs/*

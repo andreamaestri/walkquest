@@ -1,7 +1,11 @@
 <!DOCTYPE html>
+{% load esm %}
 {% load static %}
 <html lang="en">
     <head>
+        <script type="importmap">
+            {% importmap %}
+        </script>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta name="csrf-token" content="{{ csrf_token }}">
@@ -21,8 +25,6 @@
             [x-cloak] { display: none !important; }
         </style>
         
-        <link href='https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.css' rel='stylesheet' />
-        
         {% block extra_head %}{% endblock %}
     </head>
     <body x-data="$store.globals">
@@ -35,54 +37,11 @@
         {% block javascript %}
         <!-- Default JavaScript block that can be overridden -->
         {% endblock %}
-        <script src="https://unpkg.com/htmx.org@2.0.4" integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+" crossorigin="anonymous"></script>
-        <!-- Alpine.js Core and Plugins (must load first) -->
-        <script src="https://cdn.jsdelivr.net/npm/@alpinejs/intersect@3.x.x/dist/cdn.min.js" defer></script>
-        <script src="https://cdn.jsdelivr.net/npm/@alpinejs/morph@3.x.x/dist/cdn.min.js" defer></script>
-        <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 
-        <!-- Third-party Dependencies -->
-        <script src="https://code.iconify.design/iconify-icon/2.2.0/iconify-icon.min.js"></script>
-        <script src='https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.js'></script>
-        <script src='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-supported/v0.1.0/mapbox-gl-supported.js'></script>
-        
-        <!-- Motion Helpers (must load after Motion initialization) -->
-        <script src="{% static 'js/motion-helpers.js' %}"></script>
-        
-        <!-- Core Application Code -->
-        <script src="{% static 'js/project.js' %}"></script>
-        <script src="{% static 'js/services.js' %}"></script>
-        
-        <!-- Alpine Components (after Alpine.js and plugins) -->
-        <script src="{% static 'js/walkCardMixin.js' %}"></script>
-        <script src="{% static 'js/alpine-components.js' %}"></script>
-        <!-- Global Alpine Component -->
-        <script src="{% static 'js/alpine-globals.js' %}"></script>
-
-        <!-- Import Motion (after Alpine initialization) -->
+        <!-- Main Application Entry Point -->
         <script type="module">
-            import { 
-                animate,    // Used for card animations
-                hover,      // Used for hover effects
-                press,      // Used in walkCardMixin for press interactions
-                stagger     // Used for staggered animations
-            } from "https://cdn.jsdelivr.net/npm/motion@latest/+esm"
-            
-            window.Motion = { 
-                animate,
-                hover, 
-                press,
-                stagger
-            };
-        
-            window.addEventListener('DOMContentLoaded', () => {
-                window.dispatchEvent(new Event('motion:ready'));
-                console.log('Motion initialized');
-            });
+            import "#walkquest/main";
         </script>
-        
-        <!-- Animation Components (after Motion initialization) -->
-        <script src="{% static 'js/walk-animations.js' %}"></script>
 
         <!-- Debug Initialization -->
         <script>

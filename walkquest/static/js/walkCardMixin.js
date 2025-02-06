@@ -1,5 +1,5 @@
 // Walk card mixin for shared functionality
-window.walkCardMixin = (walk) => ({
+export const walkCardMixin = (walk) => ({
     isVisible: false,
     isExpanded: false,
     isHovered: false,
@@ -260,3 +260,6 @@ window.walkCardMixin = (walk) => ({
         }, 300);
     },
 });
+
+// Make the mixin available globally for Alpine.js
+window.walkCardMixin = walkCardMixin;

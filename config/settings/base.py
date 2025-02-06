@@ -173,10 +173,13 @@ STATIC_ROOT = str(BASE_DIR / "staticfiles")
 STATIC_URL = "/static/"
 STATICFILES_DIRS = [
     str(APPS_DIR / "static"),
+    BASE_DIR / "node_modules",
 ]
 STATICFILES_FINDERS = [
     "django.contrib.staticfiles.finders.FileSystemFinder",
     "django.contrib.staticfiles.finders.AppDirectoriesFinder",
+    # django-esm finder
+    "django_esm.finders.ESMFinder",
 ]
 
 # Disable Django's static file handling in development
