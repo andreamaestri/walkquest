@@ -1,19 +1,12 @@
-// Initialize walk list component
-document.addEventListener('alpine:init', () => {
-    Alpine.data('walkList', () => ({
-        // Required properties
-        walks: [],
-        searchQuery: '',
-        error: null,
-        isLoading: false,
-        isLoadingMore: false,
-        hasMore: true,
-        page: 1,
-        selectedCategories: [],
-        selectedFeatures: [],
-        pendingFavorites: new Set(),
+import { withDefaults } from './alpine-defaults.js';
 
-        // Initialize component
+document.addEventListener('alpine:init', () => {
+    Alpine.data('walkList', walkList);
+});
+
+export function walkList() {
+    return withDefaults({
+        // Component methods and computed properties
         init() {
             try {
                 // Initialize data from DOM
@@ -24,13 +17,9 @@ document.addEventListener('alpine:init', () => {
                     this.hasMore = this.walks.length >= 10;
                 }
 
-                // Setup animations
-                this.$nextTick(() => {
-                    if (window.WalkAnimations) {
-                        window.WalkAnimations.initializeHoverEffects();
-                    }
-                });
-
+                // Setup scroll trigger for infinite loading
+                this.$watch('searchQuery', () => this.fetchWalks());
+                
                 // Event listeners
                 window.addEventListener('walk-favorited', this.handleFavoriteUpdate.bind(this));
             } catch (error) {
@@ -39,7 +28,7 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        // Search walks (required by template)
+        // Search walks
         async fetchWalks() {
             if (this.isLoading) return;
 
@@ -56,12 +45,6 @@ document.addEventListener('alpine:init', () => {
 
                 this.walks = response.walks || [];
                 this.hasMore = this.walks.length >= 10;
-
-                this.$nextTick(() => {
-                    if (window.WalkAnimations) {
-                        window.WalkAnimations.initializeHoverEffects();
-                    }
-                });
             } catch (error) {
                 console.error('Error searching walks:', error);
                 this.error = 'Failed to search walks';
@@ -88,12 +71,6 @@ document.addEventListener('alpine:init', () => {
                 this.walks = [...this.walks, ...newWalks];
                 this.hasMore = newWalks.length >= 10;
                 this.page = nextPage;
-                
-                this.$nextTick(() => {
-                    if (window.WalkAnimations) {
-                        window.WalkAnimations.initializeHoverEffects();
-                    }
-                });
             } catch (error) {
                 console.error('Error loading more walks:', error);
                 this.error = 'Failed to load more walks';
@@ -111,5 +88,19 @@ document.addEventListener('alpine:init', () => {
                 this.pendingFavorites.delete(walkId);
             }
         }
-    }));
-});
+    }, {
+        // Default state
+        walks: [],
+        error: null,
+        isLoading: false,
+        isLoadingMore: false,
+        hasMore: true,
+        page: 1,
+        searchQuery: '',
+        pendingFavorites: new Set(),
+        loadingStates: {
+            search: false,
+            more: false
+        }
+    });
+}

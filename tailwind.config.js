@@ -1,17 +1,17 @@
 /** @type {import('tailwindcss').Config} */
-module.exports = {
+export default {
   content: [
     './walkquest/templates/**/*.html',     // All HTML templates in main templates
     './walkquest/**/templates/**/*.html',  // Templates in app subdirectories
-    './walkquest/static/js/**/*.js',      // JavaScript files
-    './walkquest/static/src/**/*.js',     // Source JavaScript files if any
-    './walkquest/components/**/*.{html,js}', // Component files
-    './walkquest/**/static/**/*.{js,jsx}',  // Static files in app subdirectories
+    './walkquest/static/js/**/*.{js,vue}', // JavaScript and Vue files
+    './walkquest/static/src/**/*.{js,vue}', // Source files
+    './walkquest/components/**/*.{html,js,vue}', // Component files
+    './walkquest/**/static/**/*.{js,jsx,vue}',  // Static files in app subdirectories
   ],
   theme: {
     extend: {
       fontFamily: {
-        'ibm': ['IBM Plex Sans Condensed', ...fontFamily.sans],
+        'ibm': ['IBM Plex Sans Condensed', 'sans-serif'],
       },
       colors: {
         primary: {

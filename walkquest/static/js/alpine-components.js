@@ -1,5 +1,6 @@
 import Alpine from 'alpinejs';
-import mapboxgl from 'mapbox-gl';
+import ApiService from './services/api.js';
+import MapService from './services/map.js';
 
 /**
  * Alpine.js Components for WalkQuest
@@ -40,13 +41,13 @@ const ANIMATION_CONFIG = {
 };
 
 // Reusable helper for event registration with cleanup support.
-function addEvent(target, event, handler, options, cleanupSet) {
+export function addEvent(target, event, handler, options, cleanupSet) {
     target.addEventListener(event, handler, options);
     cleanupSet.add(() => target.removeEventListener(event, handler, options));
 }
 
 // Global debouncing helper to avoid duplication across components.
-function debounce(func, wait, context = null) {
+export function debounce(func, wait, context = null) {
     let timeout;
     return function(...args) {
         if (timeout) clearTimeout(timeout);
@@ -210,12 +211,15 @@ export function walkInterface() {
         isMapLoading: true,
         fullscreen: false,
         error: null,
+        isLoading: false,
+        mapLoading: false,
         
         // Loading states
         loadingStates: {
             walks: new Set(),    // Track loading state per walk
             map: false,          // Map loading state
-            search: false        // Search loading state
+            search: false,       // Search loading state
+            path: false         // Path loading state
         },
         
         // Cleanup registry for better resource management
@@ -334,110 +338,35 @@ export function walkInterface() {
         },
 
         async initializeMap() {
-            const configScript = document.getElementById('config-data');
-            if (!configScript) {
-                console.error('Config data script tag not found');
-                this.error = 'Configuration not found';
-                this.isMapLoading = false;
-                return;
-            }
-
             try {
+                const configScript = document.getElementById('config-data');
+                if (!configScript) {
+                    throw new Error('Config script not found');
+                }
+
                 const config = JSON.parse(configScript.textContent);
                 if (!config.mapboxToken) {
                     throw new Error('Mapbox token not found in config');
                 }
 
-                mapboxgl.accessToken = config.mapboxToken;
                 const mapContainer = document.getElementById('map');
                 if (!mapContainer) {
                     throw new Error('Map container element not found');
                 }
-                if (mapContainer.children.length > 0) {
-                    console.warn('Map container is not empty. Clearing existing content.');
-                    mapContainer.innerHTML = '';
-                }
-                
-                this.map = new mapboxgl.Map({
-                    container: mapContainer,
-                    style: 'mapbox://styles/andreamaestri/cm6qxyzui007201sedw2zc79a',
-                    center: config.map?.defaultCenter || [-4.85, 50.4],
-                    zoom: config.map?.defaultZoom || 9.5,
-                    preserveDrawingBuffer: false,
-                    maxZoom: 16,
-                    minZoom: 1,
-                    renderWorldCopies: false,
-                    trackResize: true,
-                    useWebGL: true,
-                    antialias: false,
-                    maxBounds: new mapboxgl.LngLatBounds(
-                        [-5.8, 49.8],
-                        [-4.0, 51.0]
-                    )
+
+                // Use MapService instead of direct mapboxgl
+                this.map = await MapService.initialize(mapContainer, {
+                    mapboxToken: config.mapboxToken,
+                    ...config.map
                 });
 
-
+                // Setup map event handlers
                 this.map.on('load', () => {
-                    console.log('Map loaded successfully');
-                    // Optimize initial map load
-                    requestAnimationFrame(() => {
-                        this.isMapLoading = false;
-                        this.map.resize();
-                        
-                        // Apply performance optimizations
-                        if (this.map) {
-                            // Reduce memory usage for tiles
-                            if (config.map?.maxTileCacheSize != null) {
-                                this.map.setMaxTileCacheSize(config.map.maxTileCacheSize);
-                            }
-                            
-                            // Only request tiles within the maxBounds
-                            this.map.setRenderWorldCopies(false);
-                            
-                            // Optimize for static map usage
-                            this.map.dragRotate.disable();
-                            this.map.touchZoomRotate.disableRotation();
-                        }
-                    });
-                    // Create a single popup for hover interaction
-                    const popup = new mapboxgl.Popup({
-                        closeButton: false,
-                        closeOnClick: false
-                    });
-                    
-                    // Combined hover and popup interaction
-                    this.map.on('mouseenter', 'geojson-cwfsvt', (e) => {
-                        this.map.getCanvas().style.cursor = 'pointer';
-                        const feature = e.features[0];
-                        let coordinates = feature.geometry.coordinates.slice();
-                        // Handle world wrapping
-                        while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
-                            coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
-                        }
-                        popup.setLngLat(coordinates)
-                            .setHTML(`Feature ID: ${feature.properties.id}`)
-                            .addTo(this.map);
-                    });
-                    
-                    this.map.on('mouseleave', 'geojson-cwfsvt', () => {
-                        this.map.getCanvas().style.cursor = '';
-                        popup.remove();
-                    });
-                    
-                    this.map.on('click', 'geojson-cwfsvt', (e) => {
-                        const feature = e.features[0];
-                        window.dispatchEvent(new CustomEvent('walk:selected', {
-                            detail: {
-                                id: feature.properties.id,
-                                longitude: feature.geometry.coordinates[0],
-                                latitude: feature.geometry.coordinates[1]
-                            },
-                            bubbles: true
-                        }));
-                    });
+                    // ...existing map load handler code...
                 });
 
-                this.map.addControl(new mapboxgl.NavigationControl(), 'top-left');
+                // Add controls using MapService
+                this.map.addControl(MapService.createNavigationControl(), 'top-left');
             } catch (error) {
                 console.error('Failed to initialize map:', error);
                 this.error = error.message;
@@ -450,7 +379,7 @@ export function walkInterface() {
             this.loadingStates.search = true;
 
             try {
-                const response = await window.ApiService.filterWalks({
+                const response = await ApiService.filterWalks({
                     search: this.searchQuery,
                     include_transition: true,
                     include_expanded: true
@@ -667,9 +596,7 @@ export function walkInterface() {
         
             try {
                 const zoom = Math.floor(this.map.getZoom());
-                const response = await fetch(`/api/walks/${detail.id}/geometry?zoom=${zoom}`);
-                if (!response.ok) throw new Error('Failed to load geometry');
-                const geojson = await response.json();
+                const geojson = await ApiService.getWalkGeometry(detail.id, zoom);
         
                 if (this.map.getSource('route')) {
                     this.map.getSource('route').setData(geojson);
@@ -837,6 +764,14 @@ export function walkInterface() {
                     MAP_CONFIG.DEFAULT_ZOOM.MOBILE :
                     MAP_CONFIG.DEFAULT_ZOOM.DESKTOP;
                 this.map.setZoom(optimalZoom);
+            }
+        },
+
+        // Add mobile menu handling
+        mobileMenu: {
+            isOpen: false,
+            toggleMenu() {
+                this.isOpen = !this.isOpen;
             }
         }
     };

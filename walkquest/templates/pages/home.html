@@ -10,9 +10,6 @@
     {{ config|json_script:"config-data" }}
     {{ initial_walks|json_script:"walks-data" }}
     
-    <!-- Include loading component -->
-    {% include "components/loading.html" %}
-
     <!-- Main layout container with walkInterface component -->
     <div x-data="walkInterface()"
          x-init="init()"
@@ -21,19 +18,36 @@
          @walk-selected.window="handleWalkSelection($event.detail)"
          class="relative h-screen flex">
           
+        <!-- Loading component with proper scoping -->
+        <div x-data="loading()" class="relative">
+            {% include "components/loading.html" %}
+        </div>
+
         <!-- Sidebar with walk list -->
         {% include "components/sidebar.html" %}
 
         <!-- Map container -->
         <main class="map h-full">
             <div class="map-container h-full relative">
-                <div x-show="Array.isArray(loadingStates) && loadingStates.length > 0" 
-                     class="absolute inset-0 bg-white/50 backdrop-blur-sm flex items-center justify-center"
-                     aria-live="polite">
-                    <iconify-icon icon="line-md:loading-twotone-loop" class="w-8 h-8 text-primary-500"></iconify-icon>
+                <!-- Map element with optimized loading state -->
+                <div id="map"
+                     class="map-inner h-full w-full"
+                     style="position: relative; min-height: 400px;">
                 </div>
-                <!-- Map element - will be completely emptied before initialization -->
-                <div id="map" class="map-inner h-full">
+
+                <!-- Map loading indicator with store reference -->
+                <div x-show="$store.ui.mapLoading || mapLoading"
+                     x-cloak
+                     class="absolute inset-0 bg-white/30 backdrop-blur-[2px] flex items-center justify-center"
+                     style="z-index: 1000;"
+                     aria-live="polite">
+                    <div class="bg-white/90 rounded-lg shadow-lg p-3 flex items-center space-x-2">
+                        <svg class="animate-spin h-5 w-5 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span class="text-sm font-medium text-gray-900">{% translate "Loading map..." %}</span>
+                    </div>
                 </div>
                 
                 <!-- Map path layer for HTMX updates -->
@@ -53,26 +67,23 @@
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <span class="text-sm text-gray-600">Loading path data...</span>
+                    <span class="text-sm text-gray-600">{% translate "Loading path data..." %}</span>
                 </div>
 
-                <!-- Loading indicator -->
-                <div x-show="isMapLoading" 
-                     x-cloak 
-                     x-transition 
-                     class="map-loading absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center">
-                    <div class="map-loading-spinner">
-                        <svg class="animate-spin h-8 w-8 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                            </path>
-                        </svg>
-                        <span class="sr-only">Loading map...</span>
-                    </div>
+                <!-- Path loading indicator - only shows when actively loading path data -->
+                <div x-show="$store.ui.loadingStates?.path || loadingStates?.path"
+                     x-cloak
+                     class="absolute bottom-4 left-4 bg-white/90 rounded-lg shadow-md px-3 py-2 flex items-center space-x-2"
+                     style="z-index: 1000;">
+                    <svg class="animate-spin h-4 w-4 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span class="text-sm text-gray-600">{% translate "Loading path data..." %}</span>
                 </div>
 
-                <!-- Error message -->
-                <div x-show="error"
+                <!-- Error message with fallback -->
+                <div x-show="error || $store.ui.error"
                      x-cloak 
                      x-transition.opacity.duration.300ms
                      class="absolute bottom-4 left-4 right-4 bg-red-50 border-l-4 border-red-400 p-4 rounded shadow-lg">
@@ -83,7 +94,7 @@
                             </svg>
                         </div>
                         <div class="ml-3">
-                            <p class="text-sm text-red-700" x-text="error"></p>
+                            <p class="text-sm text-red-700" x-text="error || $store.ui.error"></p>
                         </div>
                     </div>
                 </div>

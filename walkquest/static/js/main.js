@@ -1,121 +1,30 @@
-// Import npm packages
-import Alpine from 'alpinejs';
-import intersect from '@alpinejs/intersect';
-import morph from '@alpinejs/morph';
-import 'htmx.org';
-import "iconify-icon";
+import 'virtual:vite/modulepreload-polyfill'
+import { createApp } from 'vue'
+import { createPinia } from 'pinia'
+import App from './App.vue'
+import router from './router'
+import mapboxgl from 'mapbox-gl'
+import { useMapStore } from './stores/map'
+import '../css/project.css'
 
-// Attach to window if needed
-window.Alpine = Alpine;
+// Get Mapbox token from config data
+const configData = document.getElementById('config-data')
+const config = configData ? JSON.parse(configData.textContent) : {}
+mapboxgl.accessToken = config.mapboxToken
 
-// Initialize Alpine plugins
-Alpine.plugin(intersect);
-Alpine.plugin(morph);
+// Create Pinia instance
+const pinia = createPinia()
 
-// Import other modules in order
-import './motion-helpers.js';
-import './project.js';
-import './walkCardMixin.js';
-import './walk-animations.js';
-import './custom-layer-handler.js';
+// Create Vue app
+const app = createApp(App)
+app.use(pinia)
+app.use(router)
 
-// Add component definitions
-const loading = () => ({
-    get loadingStates() {
-        return Alpine.store('ui').loadingStates;
-    },
-    init() {
-        // Initialize loading states if they are not already initialized
-        if (!Alpine.store('ui').loadingStates || Alpine.store('ui').loadingStates.length === 0) {
-            Alpine.store('ui').loadingStates = [
-                { path: '/api/walks', loading: false },
-                { path: '/api/map', loading: false }
-            ];
-        }
-    }
-});
+// Wait for DOM to be ready
+document.addEventListener('DOMContentLoaded', () => {
+  // Mount the app
+  app.mount('#app')
 
-const mobileMenu = () => ({
-    isOpen: false,
-    toggle() {
-        this.isOpen = !this.isOpen;
-    }
-});
-
-const walkInterface = () => ({
-    ...Alpine.store('ui'),
-    walks: [],
-    loading: false,
-    init() {
-        // Initialize the walk interface
-        console.log('Walk interface initialized');
-        this.walks = Alpine.store('walks').items;
-    },
-    handleWalkSelection(walk) {
-        Alpine.store('walks').selectedWalk = walk;
-    },
-    fetchWalks() {
-        this.loading = true;
-        // Implement walk fetching logic
-        console.log('Fetching walks with query:', this.searchQuery);
-    }
-});
-
-// Register Alpine components and stores
-document.addEventListener('alpine:init', () => {
-    // Register stores first
-    Alpine.store('walks', { 
-        selectedWalk: null,
-        loading: false,
-        items: []  
-    });
-    
-    Alpine.store('globals', {
-        fullscreen: false
-    });
-    
-    Alpine.store('ui', { 
-        showSidebar: false,
-        searchQuery: '',
-        error: null,
-        isLoading: false,
-        loadingStates: [], 
-        isMapLoading: false,
-        updateLoadingState(path, isLoading) {
-            const states = this.loadingStates || [];
-            this.loadingStates = states.map(state => 
-                state.path === path ? { ...state, loading: isLoading } : state
-            );
-        }
-    });
-
-    // Then register components
-    Alpine.data('loading', loading);
-    Alpine.data('mobileMenu', mobileMenu);
-    Alpine.data('walkInterface', walkInterface);
-    Alpine.data('globalState', () => ({
-        ...Alpine.store('ui'),
-        ...Alpine.store('walks'),
-        ...Alpine.store('globals'),
-        get walks() { return Alpine.store('walks').items; }
-    }));
-});
-
-// Initialize Alpine
-Alpine.start();
-
-// Initialize ApiService
-import { ApiService } from './services.js';
-window.ApiService = ApiService;
-
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => ApiService.init());
-} else {
-    ApiService.init();
-}
-
-// Initialize Motion
-window.addEventListener('DOMContentLoaded', () => {
-    window.dispatchEvent(new Event('motion:ready'));
-    console.log('Motion initialized');
-});
+  // Initialize map store after mounting
+  const mapStore = useMapStore()
+})

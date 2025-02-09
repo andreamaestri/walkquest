@@ -6,7 +6,7 @@ from pathlib import Path
 
 import environ
 
-BASE_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # walkquest/
 APPS_DIR = BASE_DIR / "walkquest"
 env = environ.Env()
@@ -77,7 +77,6 @@ DJANGO_APPS = [
     "unfold.contrib.inlines",  # optional, if special inlines are needed
     "django.contrib.admin",
     "django.forms",
-    "django_esm",
 ]
 THIRD_PARTY_APPS = [
     "crispy_forms",
@@ -92,6 +91,7 @@ THIRD_PARTY_APPS = [
     "widget_tweaks",
     "slippers",
     "ninja",
+    "django_vite",
 ]
 
 LOCAL_APPS = [
@@ -174,12 +174,50 @@ STATIC_URL = "/static/"
 STATICFILES_DIRS = [
     str(APPS_DIR / "static"),
     BASE_DIR / "node_modules",
+    str(APPS_DIR / "static/dist"),
+]
+
+# Django Vite Configuration
+DJANGO_VITE = {
+    "": {  # Fallback configuration for empty app name.
+        "dev_mode": DEBUG,
+        "dev_server_protocol": "http",
+        "dev_server_host": "localhost",
+        "dev_server_port": 5173,
+        "static_url_prefix": "",  # Adjust if needed
+        "manifest_path": str(Path(STATIC_ROOT) / "manifest.json"),
+        "ws_client_url": "@vite/client",
+    },
+    "default": {  # Added default configuration fallback
+        "dev_mode": DEBUG,
+        "dev_server_protocol": "http",
+        "dev_server_host": "localhost",
+        "dev_server_port": 5173,
+        "static_url_prefix": "",  # Adjust if needed
+        "manifest_path": str(Path(STATIC_ROOT) / "manifest.json"),
+        "ws_client_url": "@vite/client",
+    },
+    "walkquest": {
+        "dev_mode": DEBUG,
+        "dev_server_protocol": "http",
+        "dev_server_host": "localhost",
+        "dev_server_port": 5173,
+        "static_url_prefix": "",  # Adjust if needed
+        "manifest_path": str(Path(STATIC_ROOT) / "manifest.json"),
+        "ws_client_url": "@vite/client",
+    },
+}
+
+# Add Vite output directory to STATICFILES_DIRS
+STATICFILES_DIRS = [
+    str(APPS_DIR / "static"),
+    BASE_DIR / "node_modules",
+    str(APPS_DIR / "static/dist"),
 ]
 STATICFILES_FINDERS = [
     "django.contrib.staticfiles.finders.FileSystemFinder",
     "django.contrib.staticfiles.finders.AppDirectoriesFinder",
-    # django-esm finder
-    "django_esm.finders.ESMFinder",
+
 ]
 
 # Disable Django's static file handling in development
@@ -273,7 +311,7 @@ LOGGING = {
     "disable_existing_loggers": False,
     "formatters": {
         "verbose": {
-            "format": "%(levelname)s %(asctime)s %(module)s %(process)d %(thread)d %(message)s %(name)s %(funcName)s %(pathname)s:%(lineno)d",
+            "format": "%(levelname)s %(asctime)s %(module)s %(process%d %(thread)d %(message)s %(name)s %(funcName)s %(pathname)s:%(lineno)d",
         },
     },
     "handlers": {
@@ -356,7 +394,6 @@ STATICFILES_FINDERS = [
     "compressor.finders.CompressorFinder",
 ]
 
-
 # Maps
 MAPBOX_TOKEN = env("MAPBOX_TOKEN", default=None)
 
@@ -368,3 +405,4 @@ APPEND_SLASH = True
 ICONIFY_COLLECTIONS = {
     "mdi": "https://api.iconify.design/mdi.json",
 }
+

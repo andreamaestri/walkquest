@@ -1,58 +1,49 @@
 <!DOCTYPE html>
-{% load esm %}
-{% load static %}
+{% load static django_vite %}
 <html lang="en">
     <head>
-        <script type="importmap">
-            {% importmap %}
-        </script>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta name="csrf-token" content="{{ csrf_token }}">
+        <!-- Add Mapbox configuration -->
+        <script id="config-data" type="application/json">
+            {
+                "mapboxToken": "{{ MAPBOX_TOKEN }}"
+            }
+        </script>
         <title>{% block title %}WalkQuest{% endblock %}</title>
         <link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/favicons/apple-touch-icon.png' %}">
         <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/favicons/favicon-32x32.png' %}">
         <link rel="icon" type="image/png" sizes="16x16" href="{% static 'images/favicons/favicon-16x16.png' %}">
-        <link rel="icon" type="image/png" sizes="96x96" href="{% static 'images/favicons/favicon-96x96.png' %}">
         <link rel="icon" type="image/svg+xml" href="{% static 'images/favicons/favicon.svg' %}">
         <link rel="shortcut icon" href="{% static 'images/favicons/favicon.ico' %}">
         <meta name="apple-mobile-web-app-title" content="WalkQuest">
         <link rel="manifest" href="{% static 'images/favicons/site.webmanifest' %}">
         <!-- Critical CSS -->
+        <link href='https://api.mapbox.com/mapbox-gl-js/v3.0.0/mapbox-gl.css' rel='stylesheet' />
         <link href="{% static 'css/project.css' %}" rel="stylesheet">
         <!-- Add x-cloak styles -->
         <style>
             [x-cloak] { display: none !important; }
         </style>
         
+        {% if debug %}
+            {% vite_hmr_client %}
+        {% endif %}
         {% block extra_head %}{% endblock %}
     </head>
-    <body x-data="$store.globals">
+    <body>
         {% include "components/navbar.html" %}
-
         <main>
-            {% block content %}{% endblock %}
+            <div id="app">
+                {% block content %}{% endblock %}
+            </div>
         </main>
-
         {% block javascript %}
         <!-- Default JavaScript block that can be overridden -->
         {% endblock %}
-
-        <!-- Main Application Entry Point -->
-        <script type="module">
-            import "#walkquest/main";
-        </script>
-
-        <!-- Debug Initialization -->
-        <script>
-            window.addEventListener('alpine:init', () => {
-                console.log('Alpine.js initialized with:', {
-                    ApiService: !!window.ApiService,
-                    Alpine: !!window.Alpine,
-                    AlpineIntersect: !!window.AlpineIntersect
-                });
-            });
-        </script>
+        <!-- Vite Entry Point -->
+        {% vite_asset 'walkquest/static/js/main.js' crossorigin %}
         
         <!-- Additional JavaScript -->
         {% block extra_javascript %}

@@ -2,7 +2,9 @@
 from .base import *  # noqa: F403
 from .base import INSTALLED_APPS
 from .base import MIDDLEWARE
+from .base import STATICFILES_FINDERS
 from .base import env
+from pathlib import Path
 
 # GENERAL
 # ------------------------------------------------------------------------------
@@ -44,7 +46,6 @@ EMAIL_BACKEND = env(
 # ------------------------------------------------------------------------------
 # http://whitenoise.evans.io/en/latest/django.html#using-whitenoise-in-development
 INSTALLED_APPS = ["whitenoise.runserver_nostatic", *INSTALLED_APPS]
-
 
 # django-browser-reload
 # ------------------------------------------------------------------------------
@@ -103,3 +104,13 @@ if "corsheaders.middleware.CorsMiddleware" not in MIDDLEWARE:
         MIDDLEWARE.index("django.middleware.common.CommonMiddleware"),
         "corsheaders.middleware.CorsMiddleware",
     )
+
+# django-esm
+# ------------------------------------------------------------------------------
+STATICFILES_FINDERS = [
+    "django.contrib.staticfiles.finders.FileSystemFinder",
+    "django.contrib.staticfiles.finders.AppDirectoriesFinder",
+]
+STATICFILES_DIRS = [
+    BASE_DIR / "node_modules",
+]
