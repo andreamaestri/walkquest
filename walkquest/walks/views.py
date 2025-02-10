@@ -25,9 +25,9 @@ import json
 import logging
 from typing import Any
 
-from django.core.paginator import Paginator
 from django.conf import settings
 from django.core.cache import cache
+from django.core.paginator import Paginator
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models import Count
 from django.db.models import QuerySet
@@ -38,8 +38,8 @@ from django.views import View
 from django.views.decorators.cache import cache_page
 from django.views.decorators.csrf import csrf_protect
 from django.views.generic import ListView
-from tagulous.views import autocomplete
 from tagulous.models.tagged import TaggedManager
+from tagulous.views import autocomplete
 
 from walkquest.walks.models import Walk
 from walkquest.walks.models import WalkCategoryTag
@@ -194,8 +194,8 @@ class HomePageView(ListView):
         context = super().get_context_data(**kwargs)
 
         try:
-            context["config"] = WalkQuestConfig.get_config()
-
+            config = WalkQuestConfig.get_config()
+            context["api_config"] = json.dumps(config)
             context["initial_walks"] = [
                 self.serialize_walk(walk)
                 for walk in self.get_queryset()

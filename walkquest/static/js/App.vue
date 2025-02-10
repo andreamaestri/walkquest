@@ -7,9 +7,3 @@
 
 <script setup>
 </script>
-
-<style>
-.app {
-  @apply p-4;
-}
-</style>

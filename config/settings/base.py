@@ -10,7 +10,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # walkquest/
 APPS_DIR = BASE_DIR / "walkquest"
 env = environ.Env()
-environ.Env.read_env()
+environ.Env.read_env(str(BASE_DIR / ".env"))
 
 
 # GENERAL

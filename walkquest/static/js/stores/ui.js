@@ -1,55 +1,45 @@
 import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
 
-export const useUiStore = defineStore('ui', {
-  state: () => ({
-    mobileMenu: {
-      isOpen: false
-    },
-    fullscreen: false,
-    showSidebar: false,
-    error: null,
-    isLoading: false,
-    loadingStates: {
-      map: false,
-      path: false,
-      search: false
-    },
-    searchQuery: ''
-  }),
+export const useUiStore = defineStore('ui', () => {
+  const error = ref(null)
+  const loading = ref(false)
+  const mapLoading = ref(true)
+  const showSidebar = ref(true)
+  const fullscreen = ref(false)
+  const mobileMenuOpen = ref(false)
 
-  actions: {
-    toggleMobileMenu() {
-      this.mobileMenu.isOpen = !this.mobileMenu.isOpen
-    },
+  const setError = (message) => {
+    error.value = message
+  }
 
-    toggleSidebar() {
-      this.showSidebar = !this.showSidebar
-    },
+  const setLoading = (state) => {
+    loading.value = state
+  }
 
-    toggleFullscreen() {
-      this.fullscreen = !this.fullscreen
-    },
+  const setMapLoading = (state) => {
+    mapLoading.value = state
+  }
 
-    setError(error) {
-      this.error = error
-    },
+  const toggleSidebar = () => {
+    showSidebar.value = !showSidebar.value
+  }
 
-    clearError() {
-      this.error = null
-    },
+  const setMobileMenuOpen = (state) => {
+    mobileMenuOpen.value = state
+  }
 
-    setLoading(state) {
-      this.isLoading = state
-    },
-
-    setLoadingState(key, state) {
-      if (key in this.loadingStates) {
-        this.loadingStates[key] = state
-      }
-    },
-
-    setSearchQuery(query) {
-      this.searchQuery = query
-    }
+  return {
+    error,
+    loading,
+    mapLoading,
+    showSidebar,
+    fullscreen,
+    mobileMenuOpen,
+    setError,
+    setLoading,
+    setMapLoading,
+    toggleSidebar,
+    setMobileMenuOpen
   }
 })

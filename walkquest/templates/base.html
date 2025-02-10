@@ -1,15 +1,13 @@
 <!DOCTYPE html>
 {% load static django_vite %}
-<html lang="en">
+<html lang="en" class="h-full">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta name="csrf-token" content="{{ csrf_token }}">
         <!-- Add Mapbox configuration -->
         <script id="config-data" type="application/json">
-            {
-                "mapboxToken": "{{ MAPBOX_TOKEN }}"
-            }
+            {{ api_config|safe }}
         </script>
         <title>{% block title %}WalkQuest{% endblock %}</title>
         <link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/favicons/apple-touch-icon.png' %}">
@@ -20,22 +18,17 @@
         <meta name="apple-mobile-web-app-title" content="WalkQuest">
         <link rel="manifest" href="{% static 'images/favicons/site.webmanifest' %}">
         <!-- Critical CSS -->
-        <link href='https://api.mapbox.com/mapbox-gl-js/v3.0.0/mapbox-gl.css' rel='stylesheet' />
         <link href="{% static 'css/project.css' %}" rel="stylesheet">
-        <!-- Add x-cloak styles -->
-        <style>
-            [x-cloak] { display: none !important; }
-        </style>
         
         {% if debug %}
             {% vite_hmr_client %}
         {% endif %}
         {% block extra_head %}{% endblock %}
     </head>
-    <body>
+    <body class="h-full overflow-hidden">
         {% include "components/navbar.html" %}
-        <main>
-            <div id="app">
+        <main class="h-full">
+            <div id="app" class="relative h-full">
                 {% block content %}{% endblock %}
             </div>
         </main>

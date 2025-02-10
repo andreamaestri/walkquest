@@ -24,6 +24,8 @@
   },
   "homepage": "https://github.com/andreamaestri/walkquest#readme",
   "dependencies": {
+    "@tailwindcss/postcss": "^4.0.5",
+    "@tanstack/vue-virtual": "^3.13.0",
     "axios": "^1.6.7",
     "iconify-icon": "^2.3.0",
     "mapbox-gl": "^3.9.4",

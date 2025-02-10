@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: '/walks/api',
   headers: {
     'Content-Type': 'application/json',
     'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value
@@ -9,37 +9,36 @@ const api = axios.create({
 })
 
 export const WalksAPI = {
-  async list(params = {}) {
-    const response = await api.get('/walks', { params })
+  async filterWalks(params = {}) {
+    const response = await api.get('/list/', { params })
     return response.data
   },
 
-  async get(walkId) {
-    const response = await api.get(`/walks/${walkId}`)
+  async search(query) {
+    const response = await api.get('/search/', { params: { q: query } })
     return response.data
   },
 
-  async toggleFavorite(walkId) {
-    const response = await api.post(`/walks/${walkId}/favorite`)
+  async filter(categories) {
+    const response = await api.post('/filter/', { tag: categories })
     return response.data
   },
 
-  async getTags() {
-    const response = await api.get('/tags')
+  async getGeometry(walkId) {
+    const response = await api.get(`/geometry/${walkId}/`)
     return response.data
   },
 
-  async getFilters() {
-    const response = await api.get('/walks/filters')
+  async getFeatures() {
+    const response = await api.get('/features/autocomplete/')
     return response.data
   }
 }
 
-export const ConfigAPI = {
-  async get() {
-    const response = await api.get('/config')
-    return response.data
-  }
+export default {
+  filterWalks: WalksAPI.filterWalks,
+  search: WalksAPI.search,
+  filter: WalksAPI.filter,
+  getGeometry: WalksAPI.getGeometry,
+  getFeatures: WalksAPI.getFeatures
 }
-
-export default api

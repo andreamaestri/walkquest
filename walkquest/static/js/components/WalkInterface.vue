@@ -1,146 +1,155 @@
 <template>
-  <div class="walk-interface">
-    <!-- Existing template content here -->
-    <h1>Walk Interface</h1>
-    <p>Search Query: {{ searchQuery }}</p>
-    <p>Show Sidebar: {{ showSidebar }}</p>
-    <p>Is Loading: {{ isLoading }}</p>
-    <p>Error: {{ error }}</p>
-    <WalkList />
+  <div class="walk-interface-container flex flex-col h-full">
+    <Loading ref="loadingComponent" />
+    
+    <div class="layout flex flex-1 h-full">
+      <!-- Sidebar with walk list -->
+      <Transition name="sidebar">
+        <div 
+          v-if="showSidebar"
+          class="sidebar overflow-hidden"
+          :class="{ 'mobile': isMobile }"
+        >
+          <div class="sidebar-header">
+            <h2 class="text-xl font-semibold">Available Walks</h2>
+            <button 
+              @click="toggleSidebar"
+              class="sidebar-toggle"
+            >
+              <span class="sr-only">Toggle sidebar</span>
+              <i class="icon-chevron-left"></i>
+            </button>
+          </div>
+
+          <div class="sidebar-content flex-1 overflow-hidden">
+            <WalkList 
+              :error="error"
+              @walk-selected="handleWalkSelection"
+            />
+          </div>
+        </div>
+      </Transition>
+
+      <!-- Map container -->
+      <div class="map-section flex-1 relative">
+        <div class="map-container h-full">
+          <MapView
+            ref="mapComponent"
+            :mapbox-token="mapboxToken"
+            :config="mapConfig"
+            @map-loaded="handleMapLoaded"
+            @map-error="handleMapError"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile menu -->
+    <MobileMenu v-if="isMobile">
+      <div class="mobile-menu-content">
+        <WalkList 
+          :error="error"
+          @walk-selected="handleWalkSelection"
+        />
+      </div>
+    </MobileMenu>
   </div>
 </template>
 
-<script>
-import { useWalksStore } from '../stores/walks'
+<script setup>
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useUiStore } from '../stores/ui'
-import { useMapStore } from '../stores/map'
-import mapboxgl from 'mapbox-gl'
-import { computed, onMounted, onUnmounted } from 'vue'
-// import { addEvent, debounce } from '../alpine-components.js';
+import { useWalksStore } from '../stores/walks'
+import Loading from './Loading.vue'
+import MapView from './MapView.vue'
 import WalkList from './WalkList.vue'
+import MobileMenu from './MobileMenu.vue'
 
-export default {
-  name: 'WalkInterface',
-  components: {
-    WalkList
+const props = defineProps({
+  mapboxToken: {
+    type: String,
+    required: true
   },
-  setup() {
-    const walksStore = useWalksStore()
-    const uiStore = useUiStore()
-    const mapStore = useMapStore()
+  mapConfig: {
+    type: Object,
+    default: () => ({})
+  },
+  initialWalks: {
+    type: Array,
+    default: () => []
+  }
+})
 
-    const searchQuery = computed(() => uiStore.searchQuery)
-    const showSidebar = computed(() => uiStore.showSidebar)
-    const isLoading = computed(() => walksStore.loading)
-    const error = computed(() => uiStore.error)
+// Component refs
+const loadingComponent = ref(null)
+const mapComponent = ref(null)
 
-    let cleanup = {
-      events: new Set(),
-      observers: new Set(),
-      intervals: new Set(),
-      timeouts: new Set()
-    }
+// Store access
+const uiStore = useUiStore()
+const walksStore = useWalksStore()
 
-    const handleError = (error) => {
-      uiStore.setError(error.message || 'An unexpected error occurred')
-      console.error('Error:', error)
-    }
+// Computed properties
+const error = computed(() => uiStore.error)
+const isFullscreen = computed(() => uiStore.fullscreen)
+const showSidebar = computed(() => uiStore.showSidebar)
+const isMobile = computed(() => window.innerWidth < 768)
 
-    const initializeMap = async () => {
-      uiStore.setLoadingState('map', true)
-      try {
-        // Map initialization logic here
-        console.log('Initializing map')
-      } catch (error) {
-        handleError(error)
-      } finally {
-        uiStore.setLoadingState('map', false)
-      }
-    }
-
-    const fetchWalks = async () => {
-      walksStore.loading = true
-      try {
-        await walksStore.fetchWalks()
-      } catch (error) {
-        handleError(error)
-      } finally {
-        walksStore.loading = false
-      }
-    }
-
-    // const registerEventListener = (target, event, handler) => {
-    //   const cleanupFunc = addEvent(target, event, handler);
-    //   cleanup.events.add(cleanupFunc);
-    //   return cleanupFunc;
-    // }
-
-    const updateResponsiveLayout = () => {
-      // Responsive layout update logic
-      console.log('Updating responsive layout')
-    }
-
-    const handleWalkInteractions = (event) => {
-      // Walk interactions handler logic
-      console.log('Handling walk interactions')
-    }
-
-    onMounted(async () => {
-      console.group('WalkInterface Initialization')
-      console.log('Starting initialization...')
-
-      try {
-        await initializeMap()
-        await fetchWalks()
-
-        // Handle responsive layout
-        // const debouncedResize = debounce(() => {
-        //   // if (mapStore.mapInstance) {
-        //   //   mapStore.mapInstance.resize()
-        //   // }
-        //   updateResponsiveLayout()
-        // }, 250)
-
-        // registerEventListener(window, 'resize', debouncedResize)
-        // registerEventListener(document, 'click', handleWalkInteractions)
-
-        updateResponsiveLayout()
-
-        console.log('Initialization complete')
-      } catch (error) {
-        handleError(error)
-      } finally {
-        console.groupEnd()
-      }
-    })
-
-    onUnmounted(() => {
-      console.log('WalkInterface unmounted')
-      // Cleanup logic
-      cleanup.events.forEach(cleanupFunc => cleanupFunc());
-      cleanup.observers.forEach(observer => observer.disconnect());
-      cleanup.intervals.forEach(clearInterval);
-      cleanup.timeouts.forEach(clearTimeout);
-
-      cleanup.events.clear();
-      cleanup.observers.clear();
-      cleanup.intervals.clear();
-      cleanup.timeouts.clear();
-    })
-
-    return {
-      walksStore,
-      uiStore,
-      mapStore,
-      searchQuery,
-      showSidebar,
-      isLoading,
-      error
-    }
+// Methods
+const initializeData = async () => {
+  if (props.initialWalks.length) {
+    walksStore.walks = props.initialWalks
+  } else {
+    await walksStore.loadWalks()
   }
 }
-</script>
 
-<style scoped>
-/* Component styles here */
-</style>
+const handleMapLoaded = (map) => {
+  uiStore.setMapLoading(false)
+}
+
+const handleMapError = (error) => {
+  uiStore.setError(error.message)
+  uiStore.setMapLoading(false)
+}
+
+const handleWalkSelection = (walk) => {
+  walksStore.setSelectedWalk(walk)
+  if (walk && isMobile.value) {
+    uiStore.setMobileMenuOpen(false)
+  }
+}
+
+const toggleSidebar = () => {
+  uiStore.toggleSidebar()
+}
+
+// Window resize handling
+let resizeTimeout
+const handleResize = () => {
+  clearTimeout(resizeTimeout)
+  resizeTimeout = setTimeout(() => {
+    if (mapComponent.value?.map) {
+      mapComponent.value.map.resize()
+    }
+  }, 250)
+}
+
+// Lifecycle hooks
+onMounted(async () => {
+  window.addEventListener('resize', handleResize)
+  
+  try {
+    loadingComponent.value.startLoading('Loading walks...')
+    await initializeData()
+  } catch (error) {
+    uiStore.setError(error.message)
+  } finally {
+    loadingComponent.value.stopLoading()
+  }
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize)
+  clearTimeout(resizeTimeout)
+})
+</script>

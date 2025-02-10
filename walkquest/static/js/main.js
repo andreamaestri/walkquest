@@ -1,30 +1,26 @@
-import 'virtual:vite/modulepreload-polyfill'
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import App from './App.vue'
-import router from './router'
-import mapboxgl from 'mapbox-gl'
-import { useMapStore } from './stores/map'
-import '../css/project.css'
-
-// Get Mapbox token from config data
-const configData = document.getElementById('config-data')
-const config = configData ? JSON.parse(configData.textContent) : {}
-mapboxgl.accessToken = config.mapboxToken
+import WalkInterface from './components/WalkInterface.vue'
 
 // Create Pinia instance
 const pinia = createPinia()
 
-// Create Vue app
-const app = createApp(App)
-app.use(pinia)
-app.use(router)
+// Get configuration from the embedded script tags
+const configScript = document.getElementById('config-data')
+const walksDataScript = document.getElementById('walks-data')
 
-// Wait for DOM to be ready
-document.addEventListener('DOMContentLoaded', () => {
-  // Mount the app
-  app.mount('#app')
+const config = configScript ? JSON.parse(configScript.textContent) : {}
+const initialData = walksDataScript ? JSON.parse(walksDataScript.textContent) : { walks: [] }
 
-  // Initialize map store after mounting
-  const mapStore = useMapStore()
+// Create Vue app with its props from initial data & config
+const app = createApp(WalkInterface, {
+    mapboxToken: config.mapboxToken,
+    mapConfig: config.map || {},
+    initialWalks: initialData.walks
 })
+
+// Install plugins
+app.use(pinia)
+
+// Mount the app
+app.mount('#app')

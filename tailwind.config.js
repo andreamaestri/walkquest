@@ -2,11 +2,7 @@
 export default {
   content: [
     './walkquest/templates/**/*.html',     // All HTML templates in main templates
-    './walkquest/**/templates/**/*.html',  // Templates in app subdirectories
     './walkquest/static/js/**/*.{js,vue}', // JavaScript and Vue files
-    './walkquest/static/src/**/*.{js,vue}', // Source files
-    './walkquest/components/**/*.{html,js,vue}', // Component files
-    './walkquest/**/static/**/*.{js,jsx,vue}',  // Static files in app subdirectories
   ],
   theme: {
     extend: {

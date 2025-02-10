@@ -6,121 +6,15 @@
 {% block title %}{% translate "Walks" %} - {{ block.super }}{% endblock %}
 
 {% block content %}
-    <!-- Embed JSON data safely -->
-    {{ config|json_script:"config-data" }}
-    {{ initial_walks|json_script:"walks-data" }}
+    <!-- Embed initial walks data safely -->
+    <script id="walks-data" type="application/json">
+        {
+            "walks": {{ initial_walks|safe }}
+        }
+    </script>
     
-    <!-- Main layout container with walkInterface component -->
-    <div x-data="walkInterface()"
-         x-init="init()"
-         x-effect="$store.walks.selectedWalk && (showSidebar = true)"
-         @keydown.escape.window="showSidebar = false"
-         @walk-selected.window="handleWalkSelection($event.detail)"
-         class="relative h-screen flex">
-          
-        <!-- Loading component with proper scoping -->
-        <div x-data="loading()" class="relative">
-            {% include "components/loading.html" %}
-        </div>
-
-        <!-- Sidebar with walk list -->
-        {% include "components/sidebar.html" %}
-
-        <!-- Map container -->
-        <main class="map h-full">
-            <div class="map-container h-full relative">
-                <!-- Map element with optimized loading state -->
-                <div id="map"
-                     class="map-inner h-full w-full"
-                     style="position: relative; min-height: 400px;">
-                </div>
-
-                <!-- Map loading indicator with store reference -->
-                <div x-show="$store.ui.mapLoading || mapLoading"
-                     x-cloak
-                     class="absolute inset-0 bg-white/30 backdrop-blur-[2px] flex items-center justify-center"
-                     style="z-index: 1000;"
-                     aria-live="polite">
-                    <div class="bg-white/90 rounded-lg shadow-lg p-3 flex items-center space-x-2">
-                        <svg class="animate-spin h-5 w-5 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <span class="text-sm font-medium text-gray-900">{% translate "Loading map..." %}</span>
-                    </div>
-                </div>
-                
-                <!-- Map path layer for HTMX updates -->
-                <div id="map-path-layer"
-                     hx-swap="innerHTML"
-                     hx-trigger="load"
-                     hx-target="this">
-                    <div class="htmx-indicator">Loading path...</div>
-                    <script type="application/json" id="path-data">{{ geometry_json|safe }}</script>
-                </div>
-            
-                <!-- Add loading indicator for path data -->
-                <div x-show="loadingStates?.path" 
-                     x-cloak 
-                     class="absolute bottom-4 left-4 p-2 bg-white/90 rounded-lg shadow flex items-center space-x-2">
-                    <svg class="animate-spin h-5 w-5 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span class="text-sm text-gray-600">{% translate "Loading path data..." %}</span>
-                </div>
-
-                <!-- Path loading indicator - only shows when actively loading path data -->
-                <div x-show="$store.ui.loadingStates?.path || loadingStates?.path"
-                     x-cloak
-                     class="absolute bottom-4 left-4 bg-white/90 rounded-lg shadow-md px-3 py-2 flex items-center space-x-2"
-                     style="z-index: 1000;">
-                    <svg class="animate-spin h-4 w-4 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span class="text-sm text-gray-600">{% translate "Loading path data..." %}</span>
-                </div>
-
-                <!-- Error message with fallback -->
-                <div x-show="error || $store.ui.error"
-                     x-cloak 
-                     x-transition.opacity.duration.300ms
-                     class="absolute bottom-4 left-4 right-4 bg-red-50 border-l-4 border-red-400 p-4 rounded shadow-lg">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
-                            </svg>
-                        </div>
-                        <div class="ml-3">
-                            <p class="text-sm text-red-700" x-text="error || $store.ui.error"></p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Toggle sidebar button -->
-            <button @click.stop="showSidebar = !showSidebar"
-                    class="fixed top-4 right-4 z-10 bg-white p-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
-                    :class="{
-                        'right-[24rem]': showSidebar,
-                        'shadow-lg': showSidebar
-                    }"
-                    :aria-label="$store.walks.selectedWalk ? '{% translate 'Hide details' %}' : '{% translate 'Show walks' %}'">
-                <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path x-show="!showSidebar" 
-                          stroke-linecap="round" 
-                          stroke-linejoin="round" 
-                          stroke-width="2" 
-                          d="M4 6h16M4 12h16m-7 6h7"></path>
-                    <path x-show="showSidebar" 
-                          stroke-linecap="round" 
-                          stroke-linejoin="round" 
-                          stroke-width="2" 
-                          d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-            </button>
-        </main>
+    <!-- Main Vue app container -->
+    <div id="app" class="h-full">
+        <!-- Vue will mount the WalkInterface component here -->
     </div>
 {% endblock %}
