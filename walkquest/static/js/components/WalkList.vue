@@ -153,7 +153,6 @@ const toggleExpand = async (walk) => {
   walksStore.expandWalk(walk.id)
   
   await nextTick()
-  virtualizer.measure()
 }
 
 const scrollToWalk = (walkId) => {
@@ -166,13 +165,11 @@ const scrollToWalk = (walkId) => {
 // Watch for changes in virtual items and update measurements
 watch(virtualRows, () => {
   nextTick(() => {
-    virtualizer.measure()
   })
 })
 
 onMounted(() => {
   nextTick(() => {
-    virtualizer.measure()
   })
 })
 </script>
