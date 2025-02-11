@@ -94,29 +94,45 @@ const walksStore = useWalksStore()
 const error = computed(() => uiStore.error)
 const isFullscreen = computed(() => uiStore.fullscreen)
 const showSidebar = computed(() => uiStore.showSidebar)
-const isMobile = computed(() => window.innerWidth < 768)
+const isMobile = computed(() => uiStore.isMobile)
 
 // Available walks from either props or store
 const availableWalks = computed(() => {
-  console.log('Computing available walks:')
-  console.log('Initial walks:', props.initialWalks?.length)
-  console.log('Store walks:', walksStore.walks?.length)
-  return props.initialWalks?.length ? props.initialWalks : walksStore.walks || []
+  const walks = props.initialWalks?.length ? props.initialWalks : walksStore.walks
+  console.log('Available walks computed:', walks?.length)
+  return walks || []
 })
 
 // Methods
 const initializeData = async () => {
   try {
+    uiStore.setLoading(true)
+    loadingComponent.value?.startLoading('Loading walks...')
+    
+    // Reset UI state
+    uiStore.resetState()
+    
     if (props.initialWalks?.length) {
-      walksStore.setWalks(props.initialWalks)
-      console.log('Initialized with initial walks:', props.initialWalks.length)
+      console.log('Setting initial walks:', props.initialWalks.length)
+      await walksStore.setWalks(props.initialWalks)
     } else {
+      console.log('Loading walks from API')
       await walksStore.loadWalks()
-      console.log('Loaded walks from store:', walksStore.walks?.length)
+    }
+    
+    console.log('Walks loaded:', walksStore.walks?.length)
+    
+    // Show sidebar if we have walks and not on mobile
+    if (walksStore.walks?.length > 0 && !isMobile.value) {
+      await nextTick()
+      uiStore.setSidebarVisibility(true)
     }
   } catch (error) {
     console.error('Failed to initialize data:', error)
     uiStore.setError(error.message)
+  } finally {
+    uiStore.setLoading(false)
+    loadingComponent.value?.stopLoading()
   }
 }
 
@@ -155,20 +171,25 @@ const handleResize = () => {
 // Watch for changes in walk data
 watch(() => walksStore.walks, (newWalks) => {
   console.log('Store walks updated:', newWalks?.length)
+  if (newWalks?.length > 0 && !showSidebar.value && !isMobile.value) {
+    uiStore.setSidebarVisibility(true)
+  }
 }, { deep: true })
+
+// Watch for sidebar visibility
+watch(showSidebar, (visible) => {
+  console.log('Sidebar visibility changed:', visible)
+  if (visible && mapComponent.value?.map?.map) {
+    nextTick(() => {
+      mapComponent.value.map.map.resize()
+    })
+  }
+})
 
 // Lifecycle hooks
 onMounted(async () => {
   window.addEventListener('resize', handleResize)
-  
-  try {
-    loadingComponent.value?.startLoading('Loading walks...')
-    await initializeData()
-  } catch (error) {
-    uiStore.setError(error.message)
-  } finally {
-    loadingComponent.value?.stopLoading()
-  }
+  await initializeData()
 })
 
 onBeforeUnmount(() => {
@@ -218,6 +239,7 @@ onBeforeUnmount(() => {
 .sidebar-content {
   flex: 1;
   overflow: hidden;
+  position: relative;
 }
 
 .map-section {

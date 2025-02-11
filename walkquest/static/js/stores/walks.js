@@ -8,31 +8,43 @@ export const useWalksStore = defineStore('walks', {
     walks: [],
     selectedWalk: null,
     loading: false,
-    pendingFavorites: new Set()
+    pendingFavorites: new Set(),
+    error: null
   }),
+
   actions: {
-    setWalks(walks) {
+    async setWalks(walks) {
       console.log('Setting walks:', walks?.length)
-      // Process walks to ensure consistent structure
-      const processedWalks = (Array.isArray(walks) ? walks : [walks])
-        .filter(Boolean)
-        .map(walk => ({
-          ...walk,
-          isExpanded: false,
-          pubs_list: Array.isArray(walk.pubs_list) ? walk.pubs_list : [],
-          loading: false
-        }))
+      
+      try {
+        // Process walks to ensure consistent structure
+        const processedWalks = (Array.isArray(walks) ? walks : [])
+          .filter(Boolean)
+          .map(walk => ({
+            ...walk,
+            isExpanded: false,
+            pubs_list: Array.isArray(walk.pubs_list) ? walk.pubs_list : [],
+            loading: false
+          }))
 
-      // Set the walks
-      this.walks = processedWalks
+        // Set the walks
+        this.walks = processedWalks
 
-      // Restore expanded states
-      const expandedWalkIds = JSON.parse(localStorage.getItem('expandedWalks') || '[]')
-      this.walks.forEach(walk => {
-        walk.isExpanded = expandedWalkIds.includes(walk.id)
-      })
+        // Restore expanded states
+        const expandedWalkIds = JSON.parse(localStorage.getItem('expandedWalks') || '[]')
+        this.walks.forEach(walk => {
+          walk.isExpanded = expandedWalkIds.includes(walk.id)
+        })
 
-      console.log('Processed and set walks:', this.walks?.length)
+        console.log('Processed and set walks:', this.walks?.length)
+        
+        // Clear any previous errors
+        this.error = null
+      } catch (error) {
+        console.error('Error processing walks:', error)
+        this.error = error.message
+        this.walks = [] // Ensure walks is an empty array on error
+      }
     },
 
     async loadWalks() {
@@ -41,6 +53,7 @@ export const useWalksStore = defineStore('walks', {
 
       this.loading = true
       uiStore.setLoadingState('walks', true)
+      this.error = null
 
       try {
         const response = await ApiService.filterWalks({
@@ -51,14 +64,16 @@ export const useWalksStore = defineStore('walks', {
 
         console.log('Raw API Response:', response)
 
-        // Ensure we have a walks array
-        const walksList = response?.walks || []
+        if (!response || !Array.isArray(response.walks)) {
+          throw new Error('Invalid response format from API')
+        }
 
         // Use setWalks to process and set the walks
-        this.setWalks(walksList)
+        await this.setWalks(response.walks)
 
       } catch (error) {
         console.error('Failed to fetch walks:', error)
+        this.error = error.message
         uiStore.setError(`Failed to load walks: ${error.message || 'Please try again.'}`)
         this.walks = [] // Ensure walks is an empty array on error
       } finally {
@@ -114,6 +129,12 @@ export const useWalksStore = defineStore('walks', {
       } finally {
         this.pendingFavorites.delete(walkId)
       }
+    },
+
+    clearWalks() {
+      this.walks = []
+      this.selectedWalk = null
+      this.error = null
     }
   },
 
@@ -121,6 +142,8 @@ export const useWalksStore = defineStore('walks', {
     getWalkById: (state) => (id) => state.walks.find(w => w.id === id),
     isPendingFavorite: (state) => (walkId) => state.pendingFavorites.has(walkId),
     getSelectedWalkId: (state) => state.selectedWalk?.id,
-    hasWalks: (state) => state.walks.length > 0
+    hasWalks: (state) => state.walks.length > 0,
+    hasError: (state) => !!state.error,
+    isLoading: (state) => state.loading
   }
 })

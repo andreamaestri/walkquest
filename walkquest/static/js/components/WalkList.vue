@@ -14,160 +14,167 @@
       ref="scrollElement"
       class="walk-list-container"
     >
-      <div v-if="walks.length === 0" class="no-walks-message">
+      <div v-if="!computedWalks.length" class="no-walks-message">
         No walks found
       </div>
 
-      <div
-        v-else
-        :style="{
-          height: `${getTotalSize}px`,
-          width: '100%',
-          position: 'relative'
-        }"
-      >
+      <template v-else>
         <div
-          v-for="virtualRow in virtualRows"
-          :key="virtualRow.key"
-          :data-index="virtualRow.index"
-          :data-walk-id="walks[virtualRow.index]?.id"
           :style="{
-            position: 'absolute',
-            top: 0,
-            left: 0,
+            height: `${totalSize}px`,
             width: '100%',
-            height: `${virtualRow.size}px`,
-            transform: `translateY(${virtualRow.start}px)`,
+            position: 'relative'
           }"
-          :ref="el => measureItem(el)"
         >
-          <div 
-            v-if="walks[virtualRow.index]"
-            :class="{
-              'walk-item revealed': true,
-              'is-expanded': walks[virtualRow.index]?.isExpanded,
-              'is-selected': selectedWalkId === walks[virtualRow.index]?.id
-            }"
-            @click="handleWalkClick(walks[virtualRow.index])"
-          >
-            <div class="walk-header">
-              <h3 class="text-lg font-semibold">{{ walks[virtualRow.index]?.walk_name }}</h3>
-              <div class="walk-badges">
-                <span 
-                  :class="getBadgeInfo(walks[virtualRow.index]?.steepness_level)?.color"
-                  class="badge"
-                >
-                  {{ getBadgeInfo(walks[virtualRow.index]?.steepness_level)?.icon }}
-                  {{ walks[virtualRow.index]?.steepness_level }}
-                </span>
-              </div>
-            </div>
-
-            <div class="walk-content">
-              <p class="text-sm text-gray-600">{{ walks[virtualRow.index]?.highlights }}</p>
-              <Transition name="expand">
-                <div v-if="walks[virtualRow.index]?.isExpanded" class="walk-details">
-                  <div v-if="walks[virtualRow.index]?.pubs_list?.length" class="pubs-list">
-                    <h4 class="font-medium mb-2">Pubs Along Route:</h4>
-                    <ul class="space-y-1">
-                      <li v-for="pub in walks[virtualRow.index]?.pubs_list" :key="pub.id">
-                        {{ pub.name }}
-                      </li>
-                    </ul>
+          <template v-if="virtualRows.length">
+            <div
+              v-for="virtualRow in virtualRows"
+              :key="virtualRow.key"
+              :data-index="virtualRow.index"
+              :data-walk-id="computedWalks[virtualRow.index]?.id"
+              class="virtual-row"
+              :style="{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: `${virtualRow.size}px`,
+                transform: `translateY(${virtualRow.start}px)`,
+              }"
+            >
+              <div 
+                v-if="computedWalks[virtualRow.index]"
+                :class="{
+                  'walk-item': true,
+                  'is-expanded': computedWalks[virtualRow.index]?.isExpanded,
+                  'is-selected': selectedWalkId === computedWalks[virtualRow.index]?.id
+                }"
+                @click="handleWalkClick(computedWalks[virtualRow.index])"
+              >
+                <div class="walk-header">
+                  <h3 class="text-lg font-semibold">{{ computedWalks[virtualRow.index]?.walk_name }}</h3>
+                  <div class="walk-badges">
+                    <span 
+                      :class="getBadgeInfo(computedWalks[virtualRow.index]?.steepness_level)?.color"
+                      class="badge"
+                    >
+                      {{ getBadgeInfo(computedWalks[virtualRow.index]?.steepness_level)?.icon }}
+                      {{ computedWalks[virtualRow.index]?.steepness_level }}
+                    </span>
                   </div>
                 </div>
-              </Transition>
-            </div>
 
-            <div class="walk-actions">
-              <button
-                @click.stop="toggleExpand(walks[virtualRow.index])"
-                class="action-button"
-              >
-                {{ walks[virtualRow.index]?.isExpanded ? 'Show Less' : 'Show More' }}
-              </button>
-              <button
-                @click.stop="selectWalk(walks[virtualRow.index])"
-                class="action-button primary"
-              >
-                View on Map
-              </button>
+                <div class="walk-content">
+                  <p class="text-sm text-gray-600">{{ computedWalks[virtualRow.index]?.highlights }}</p>
+                  <Transition name="expand">
+                    <div v-if="computedWalks[virtualRow.index]?.isExpanded" class="walk-details">
+                      <div v-if="computedWalks[virtualRow.index]?.pubs_list?.length" class="pubs-list">
+                        <h4 class="font-medium mb-2">Pubs Along Route:</h4>
+                        <ul class="space-y-1">
+                          <li v-for="pub in computedWalks[virtualRow.index]?.pubs_list" :key="pub.id">
+                            {{ pub.name }}
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                  </Transition>
+                </div>
+
+                <div class="walk-actions">
+                  <button
+                    @click.stop="toggleExpand(computedWalks[virtualRow.index])"
+                    class="action-button"
+                  >
+                    {{ computedWalks[virtualRow.index]?.isExpanded ? 'Show Less' : 'Show More' }}
+                  </button>
+                  <button
+                    @click.stop="selectWalk(computedWalks[virtualRow.index])"
+                    class="action-button primary"
+                  >
+                    View on Map
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-          <div v-else>
-            Walk data missing for index: {{ virtualRow.index }}
-          </div>
+          </template>
         </div>
-      </div>
+      </template>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch, effectScope } from 'vue'
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { useWalksStore } from '../stores/walks'
 import { useUiStore } from '../stores/ui'
 import { getBadgeInfo } from '../utils/helpers'
 import { animate } from 'motion'
 
-// Update props: make walks required
+// Props
 const props = defineProps({
   error: { type: String, default: null },
   walks: { type: Array, required: true }
 })
 
-// Use the passed-in prop value with logging for debugging
-const computedWalks = computed(() => {
-  console.log('Computing walks from props:', props.walks)
-  return props.walks || []
-})
-
-const listContainer = ref(null)
-const scrollElement = ref(null)
-const containerHeight = computed(() => window.innerHeight - 200) // Dynamic height based on viewport
-const rowHeight = 200 // Estimated height for each walk item
-
+// Store access
 const walksStore = useWalksStore()
 const uiStore = useUiStore()
 
-// State
+// Refs
+const listContainer = ref(null)
+const scrollElement = ref(null)
+const virtualizer = ref(null)
+
+// Computed
+const containerHeight = computed(() => window.innerHeight - 200)
 const selectedWalkId = computed(() => walksStore.selectedWalk?.id)
 
-// Update virtualizer creation with debugging
+const computedWalks = computed(() => {
+  console.log('Computing walks:', props.walks?.length)
+  return props.walks || []
+})
+
+// Virtual list setup
+const rowHeight = 200
+const overscan = 5
+
+// Create virtualizer
 const createVirtualizer = () => {
-  console.log('Creating virtualizer with count:', computedWalks.value.length)
+  if (!scrollElement.value || !computedWalks.value?.length) {
+    console.log('Cannot create virtualizer: missing requirements')
+    return null
+  }
+
+  console.log('Creating virtualizer with walks:', computedWalks.value.length)
+  
   return useVirtualizer({
     count: computedWalks.value.length,
     getScrollElement: () => scrollElement.value,
-    // Use a fixed estimate size for smooth scrolling (largest possible size)
-    estimateSize: (index) => rowHeight + 150,
-    overscan: 5,
+    estimateSize: () => rowHeight,
+    overscan,
     getItemKey: (index) => computedWalks.value[index]?.id || index
   })
 }
 
-// Immediate watcher to initialize virtualizer when walks are available
-const virtualizer = ref(null)
-watch(() => computedWalks.value, (newWalks) => {
-  console.log('Walks updated:', newWalks?.length)
-  if (newWalks?.length > 0 && scrollElement.value) {
-    nextTick(() => {
-      virtualizer.value = createVirtualizer()
-      console.log('Virtualizer created:', virtualizer.value)
-    })
-  }
-}, { immediate: true })
+// Computed values from virtualizer
+const virtualRows = computed(() => {
+  if (!virtualizer.value) return []
+  const items = virtualizer.value.getVirtualItems()
+  console.log('Virtual rows computed:', items.length)
+  return items
+})
 
-const virtualRows = computed(() => virtualizer.value?.virtualItems?.value ?? [])
-const getTotalSize = computed(() => virtualizer.value?.totalSize?.value ?? 0)
+const totalSize = computed(() => {
+  if (!virtualizer.value) return 0
+  const size = virtualizer.value.getTotalSize()
+  console.log('Total size computed:', size)
+  return size
+})
 
-// Watch for changes in expanded states
-watch(() => computedWalks.value.map(w => w.isExpanded), () => {
-  virtualizer.value?.measure?.()
-}, { deep: true })
-
+// Methods
 const handleWalkClick = (walk) => {
+  if (!walk) return
   if (selectedWalkId.value === walk.id) {
     walksStore.setSelectedWalk(null)
   } else {
@@ -176,6 +183,8 @@ const handleWalkClick = (walk) => {
 }
 
 const selectWalk = async (walk) => {
+  if (!walk) return
+  
   const card = document.querySelector(`[data-walk-id="${walk.id}"]`)
   if (card) {
     await animate(card, 
@@ -185,51 +194,48 @@ const selectWalk = async (walk) => {
   }
 
   walksStore.setSelectedWalk(walk)
-  uiStore.showSidebar = true
+  uiStore.setSidebarVisibility(true)
   scrollToWalk(walk.id)
 }
 
 const toggleExpand = async (walk) => {
+  if (!walk) return
   walksStore.expandWalk(walk.id)
-  
   await nextTick()
+  if (virtualizer.value) {
+    virtualizer.value.measure()
+  }
 }
 
 const scrollToWalk = (walkId) => {
+  if (!virtualizer.value) return
   const index = computedWalks.value.findIndex(w => w.id === walkId)
-  if (index !== -1 && virtualizer.value) {
+  if (index !== -1) {
     virtualizer.value.scrollToIndex(index, { align: 'center', behavior: 'smooth' })
   }
 }
 
-const fetchWalks = async () => {
-  try {
-    uiStore.setLoading(true)
-    await walksStore.loadWalks()
-    console.log('Walks loaded:', walksStore.walks)
-  } catch (error) {
-    uiStore.setError(error.message)
-  } finally {
-    uiStore.setLoading(false)
+// Initialize virtualizer when walks are available
+watch(() => computedWalks.value?.length, (newLength, oldLength) => {
+  console.log('Walks length changed:', newLength, 'from:', oldLength)
+  if (newLength > 0) {
+    nextTick(() => {
+      if (!virtualizer.value) {
+        virtualizer.value = createVirtualizer()
+      } else {
+        virtualizer.value.setCount(newLength)
+      }
+    })
   }
-}
+}, { immediate: true })
 
-// Watch for changes in walks and virtual items
-watch([computedWalks, virtualRows], () => {
-  nextTick(() => {
-    console.log('Walks or virtual rows updated')
-    console.log('Current walks:', computedWalks.value)
-  })
-})
-
+// Lifecycle
 onMounted(() => {
-  fetchWalks()
-  nextTick(() => {
-    console.log('Component mounted')
-    if (computedWalks.value.length > 0) {
+  if (computedWalks.value?.length > 0) {
+    nextTick(() => {
       virtualizer.value = createVirtualizer()
-    }
-  })
+    })
+  }
 })
 
 onBeforeUnmount(() => {
@@ -237,35 +243,101 @@ onBeforeUnmount(() => {
     virtualizer.value.scrollToIndex(0)
   }
 })
-
-// New helper function to measure each item
-const measureItem = (el) => {
-  if (el && virtualizer.value) {
-    virtualizer.value.measureElement(el)
-  }
-}
 </script>
 
 <style>
 .walk-list-container {
   z-index: 1;
   position: relative;
-  border: 1px solid #ddd; /* Debug border */
+  border: 1px solid #ddd;
+}
+
+.virtual-row {
+  padding: 0.5rem;
 }
 
 .walk-item {
-  margin-bottom: 1rem;
-  opacity: 1 !important;
-  pointer-events: auto !important;
-  transform: none !important;
-  padding: 1rem;
   background: white;
-  border: 1px solid #eee;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.walk-item:hover {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.walk-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.walk-badges {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  background: #f3f4f6;
+}
+
+.walk-content {
+  margin: 0.5rem 0;
+}
+
+.walk-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.action-button {
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s ease;
+}
+
+.action-button:hover {
+  background: #e5e7eb;
+}
+
+.action-button.primary {
+  background: #3b82f6;
+  color: white;
+  border: none;
+}
+
+.action-button.primary:hover {
+  background: #2563eb;
 }
 
 .no-walks-message {
   text-align: center;
   padding: 20px;
   color: gray;
+}
+
+/* Transitions */
+.expand-enter-active,
+.expand-leave-active {
+  transition: all 0.3s ease-out;
+}
+
+.expand-enter-from,
+.expand-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
 }
 </style>
