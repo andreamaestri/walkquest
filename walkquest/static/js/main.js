@@ -2,19 +2,27 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import router from './router'
 import App from './App.vue'
+import Navigation from './components/Navigation.vue'
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 import VueVirtualScroller from 'vue-virtual-scroller'
 
 // Create Pinia instance first
 const pinia = createPinia()
 
-// Create Vue app
+// Create main Vue app
 const app = createApp(App)
 
-// Install plugins
+// Create navigation app
+const navApp = createApp(Navigation)
+
+// Install plugins for main app
 app.use(pinia)
 app.use(router)
 app.use(VueVirtualScroller)
+
+// Install plugins for navigation
+navApp.use(pinia)
+navApp.use(router)
 
 // Get configuration from the embedded script tags
 const configScript = document.getElementById('config-data')
@@ -31,5 +39,6 @@ if (config.map) {
     app.config.globalProperties.mapConfig = config.map
 }
 
-// Mount the app
+// Mount both apps
+navApp.mount('#nav')
 app.mount('#app')

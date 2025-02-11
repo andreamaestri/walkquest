@@ -3,58 +3,68 @@
     <Loading ref="loadingComponent" />
     
     <div class="relative h-full w-full flex">
+      <!-- Sidebar for desktop -->
       <Transition 
-        enter-active-class="transition-all duration-300 ease-in-out"
-        leave-active-class="transition-all duration-300 ease-in-out"
-        enter-from-class="-translate-x-full"
-        leave-to-class="-translate-x-full"
+      enter-active-class="transition-all duration-300 ease-in-out"
+      leave-active-class="transition-all duration-300 ease-in-out"
+      enter-from-class="-translate-x-full"
+      leave-to-class="-translate-x-full"
       >
-        <div 
-          v-if="showSidebar"
-          class="fixed md:relative inset-y-0 left-0 z-10 flex flex-col
-                 bg-white border-r border-gray-200 overflow-hidden
-                 w-full md:w-80 lg:w-96
-                 transform md:transform-none"
+      <div 
+        v-if="showSidebar && !isMobile"
+        class="hidden md:flex flex-col fixed md:relative inset-y-0 left-0 z-10
+           bg-white border-r border-gray-200 overflow-hidden
+           w-md lg:w-xl
+           transform md:transform-none"
+      >
+        <div class="p-4 border-b border-gray-200 flex justify-between items-center">
+        <h2 class="text-xl font-semibold">Available Walks</h2>
+        <button 
+          @click="toggleSidebar"
+          class="p-2 hover:bg-gray-100 rounded-md transition-colors"
         >
-          <div class="p-4 border-b border-gray-200 flex justify-between items-center">
-            <h2 class="text-xl font-semibold">Available Walks</h2>
-            <button 
-              @click="toggleSidebar"
-              class="p-2 hover:bg-gray-100 rounded-md transition-colors"
-            >
-              <span class="sr-only">Toggle sidebar</span>
-              <i class="icon-chevron-left"></i>
-            </button>
-          </div>
-
-          <div class="flex-1 min-h-0 flex flex-col overflow-hidden">
-            <WalkList 
-              :error="error"
-              :walks="availableWalks"
-              :selected-walk-id="selectedWalkId"
-              @walk-selected="handleWalkSelection"
-              @walk-expanded="handleWalkExpanded"
-            />
-          </div>
+          <span class="sr-only">Toggle sidebar</span>
+          <i class="icon-chevron-left"></i>
+        </button>
         </div>
+
+        <div class="flex-1 min-h-0 flex flex-col overflow-hidden">
+        <WalkList 
+          :error="error"
+          :walks="availableWalks"
+          :selected-walk-id="selectedWalkId"
+          @walk-selected="handleWalkSelection"
+          @walk-expanded="handleWalkExpanded"
+        />
+        </div>
+      </div>
       </Transition>
 
-      <!-- Map container with responsive margin -->
+      <!-- Map container -->
       <div 
-        class="flex-1 relative transition-[margin] duration-300"
-        :class="{
-          'md:ml-80 lg:ml-96': showSidebar && !isMobile
-        }"
+      class="flex-1 relative transition-[margin] duration-300"
+      :class="{
+        'md:ml-80 lg:ml-96': showSidebar && !isMobile
+      }"
       >
-        <div class="absolute inset-0">
-          <MapView
-            ref="mapComponent"
-            :mapbox-token="mapboxToken"
-            :config="mapConfig"
-            @map-loaded="handleMapLoaded"
-            @map-error="handleMapError"
-          />
-        </div>
+      <div class="absolute inset-0">
+        <MapView
+        ref="mapComponent"
+        :mapbox-token="mapboxToken"
+        :config="mapConfig"
+        @map-loaded="handleMapLoaded"
+        @map-error="handleMapError"
+        />
+        <!-- Mobile toggle button -->
+        <button 
+        v-if="isMobile"
+        @click="uiStore.setMobileMenuOpen(true)"
+        class="absolute top-4 left-4 z-10 p-3 bg-white rounded-full shadow-lg"
+        >
+        <i class="icon-menu"></i>
+        <span class="sr-only">Open menu</span>
+        </button>
+      </div>
       </div>
     </div>
 
