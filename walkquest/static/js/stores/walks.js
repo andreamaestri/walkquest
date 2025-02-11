@@ -6,9 +6,35 @@ import { useUiStore } from './ui'
 export const useWalksStore = defineStore('walks', {
   state: () => ({
     walks: [],
-    selectedWalk: null
+    selectedWalk: null,
+    loading: false,
+    pendingFavorites: new Set()
   }),
   actions: {
+    setWalks(walks) {
+      console.log('Setting walks:', walks?.length)
+      // Process walks to ensure consistent structure
+      const processedWalks = (Array.isArray(walks) ? walks : [walks])
+        .filter(Boolean)
+        .map(walk => ({
+          ...walk,
+          isExpanded: false,
+          pubs_list: Array.isArray(walk.pubs_list) ? walk.pubs_list : [],
+          loading: false
+        }))
+
+      // Set the walks
+      this.walks = processedWalks
+
+      // Restore expanded states
+      const expandedWalkIds = JSON.parse(localStorage.getItem('expandedWalks') || '[]')
+      this.walks.forEach(walk => {
+        walk.isExpanded = expandedWalkIds.includes(walk.id)
+      })
+
+      console.log('Processed and set walks:', this.walks?.length)
+    },
+
     async loadWalks() {
       const uiStore = useUiStore()
       if (this.loading) return
@@ -28,26 +54,8 @@ export const useWalksStore = defineStore('walks', {
         // Ensure we have a walks array
         const walksList = response?.walks || []
 
-        // Ensure walksList is an array
-        const processedWalks = (Array.isArray(walksList) ? walksList : [walksList]).map(walk => ({
-          ...walk,
-          isExpanded: false,
-          pubs_list: Array.isArray(walk.pubs_list) ? walk.pubs_list : [],
-          loading: false
-        }))
-
-        console.log('Processed Walks:', processedWalks)
-
-        // Directly mutate the walks ref
-        this.walks = processedWalks
-
-        console.log('Walks Store Walks:', this.walks)
-
-        // Restore expanded states
-        const expandedWalkIds = JSON.parse(localStorage.getItem('expandedWalks') || '[]')
-        this.walks.forEach(walk => {
-          walk.isExpanded = expandedWalkIds.includes(walk.id)
-        })
+        // Use setWalks to process and set the walks
+        this.setWalks(walksList)
 
       } catch (error) {
         console.error('Failed to fetch walks:', error)
@@ -58,7 +66,9 @@ export const useWalksStore = defineStore('walks', {
         uiStore.setLoadingState('walks', false)
       }
     },
+
     setSelectedWalk(walk) {
+      console.log('Setting selected walk:', walk?.id)
       this.selectedWalk = walk
       if (walk) {
         // Dispatch custom event for compatibility with existing code
@@ -67,21 +77,26 @@ export const useWalksStore = defineStore('walks', {
         }))
       }
     },
+
     expandWalk(id) {
+      console.log('Expanding walk:', id)
       const walk = this.walks.find(w => w.id === id)
       if (walk) {
         walk.isExpanded = !walk.isExpanded
-      }
-      window.dispatchEvent(new CustomEvent('walk:expansion-changed', {
-        detail: { walkId: this.expandedWalkId }
-      }))
 
-      // Save expanded states
-      const expandedWalks = this.walks
-        .filter(w => w.isExpanded)
-        .map(w => w.id)
-      localStorage.setItem('expandedWalks', JSON.stringify(expandedWalks))
+        // Save expanded states
+        const expandedWalks = this.walks
+          .filter(w => w.isExpanded)
+          .map(w => w.id)
+        localStorage.setItem('expandedWalks', JSON.stringify(expandedWalks))
+
+        // Notify about expansion change
+        window.dispatchEvent(new CustomEvent('walk:expansion-changed', {
+          detail: { walkId: id }
+        }))
+      }
     },
+
     async toggleFavorite(walkId) {
       if (this.pendingFavorites.has(walkId)) return
 
@@ -94,15 +109,18 @@ export const useWalksStore = defineStore('walks', {
         }
       } catch (error) {
         console.error('Failed to toggle favorite:', error)
+        const uiStore = useUiStore()
         uiStore.setError(`Failed to update favorite: ${error.message}`)
       } finally {
         this.pendingFavorites.delete(walkId)
       }
     }
   },
+
   getters: {
     getWalkById: (state) => (id) => state.walks.find(w => w.id === id),
     isPendingFavorite: (state) => (walkId) => state.pendingFavorites.has(walkId),
-    getSelectedWalkId: (state) => state.selectedWalk?.id
+    getSelectedWalkId: (state) => state.selectedWalk?.id,
+    hasWalks: (state) => state.walks.length > 0
   }
 })

@@ -23,9 +23,9 @@ export function addEvent(target, event, handler, options = {}) {
  */
 export function getMarkerColor(steepnessLevel) {
   const colors = {
-    'Easy': '#10B981',      // Green
-    'Moderate': '#4338CA',  // Blue
-    'Challenging': '#DC2626' // Red
+    "Warden's Ascent": '#DC2626',    // Red for challenging
+    'Merchant Path': '#4338CA',       // Blue for moderate
+    'Village Trail': '#10B981'        // Green for easy
   };
   return colors[steepnessLevel] || '#242424'; // Default color
 }
@@ -33,20 +33,23 @@ export function getMarkerColor(steepnessLevel) {
 /**
  * Gets badge information for a steepness level
  */
-export const getBadgeInfo = (difficulty) => {
+export const getBadgeInfo = (steepnessLevel) => {
   const badges = {
-    'easy': {
-      color: 'badge-green',
-      icon: '🟢'
+    "Warden's Ascent": {
+      color: 'bg-red-100 text-red-800',
+      icon: 'mdi:mountain'
     },
-    'moderate': {
-      color: 'badge-yellow',
-      icon: '🟡'
+    'Merchant Path': {
+      color: 'bg-blue-100 text-blue-800',
+      icon: 'mdi:hiking'
     },
-    'challenging': {
-      color: 'badge-red',
-      icon: '🔴'
+    'Village Trail': {
+      color: 'bg-green-100 text-green-800',
+      icon: 'mdi:nature-people'
     }
   }
-  return badges[difficulty.toLowerCase()] || { color: 'badge-gray', icon: '⚪️' }
+  return badges[steepnessLevel] || { 
+    color: 'bg-gray-100 text-gray-800', 
+    icon: 'mdi:walk' 
+  }
 }

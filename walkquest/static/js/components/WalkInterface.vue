@@ -24,7 +24,7 @@
           <div class="sidebar-content flex-1 overflow-hidden">
             <WalkList 
               :error="error"
-              :walks="walksStore.walks || []"
+              :walks="availableWalks"
               @walk-selected="handleWalkSelection"
             />
           </div>
@@ -50,7 +50,7 @@
       <div class="mobile-menu-content">
         <WalkList 
           :error="error"
-          :walks="walksStore.walks || []"
+          :walks="availableWalks"
           @walk-selected="handleWalkSelection"
         />
       </div>
@@ -96,20 +96,24 @@ const isFullscreen = computed(() => uiStore.fullscreen)
 const showSidebar = computed(() => uiStore.showSidebar)
 const isMobile = computed(() => window.innerWidth < 768)
 
-// Log updated walks for debugging
-watch(() => walksStore.walks, (newWalks) => {
-  console.log('WalkInterface - walks updated:', newWalks?.length)
-}, { deep: true })
+// Available walks from either props or store
+const availableWalks = computed(() => {
+  console.log('Computing available walks:')
+  console.log('Initial walks:', props.initialWalks?.length)
+  console.log('Store walks:', walksStore.walks?.length)
+  return props.initialWalks?.length ? props.initialWalks : walksStore.walks || []
+})
 
 // Methods
 const initializeData = async () => {
   try {
     if (props.initialWalks?.length) {
-      walksStore.walks = [...props.initialWalks]
+      walksStore.setWalks(props.initialWalks)
+      console.log('Initialized with initial walks:', props.initialWalks.length)
     } else {
       await walksStore.loadWalks()
+      console.log('Loaded walks from store:', walksStore.walks?.length)
     }
-    console.log('Data initialized with walks:', walksStore.walks.length)
   } catch (error) {
     console.error('Failed to initialize data:', error)
     uiStore.setError(error.message)
@@ -126,6 +130,7 @@ const handleMapError = (error) => {
 }
 
 const handleWalkSelection = (walk) => {
+  console.log('Walk selected:', walk?.id)
   walksStore.setSelectedWalk(walk)
   if (walk && isMobile.value) {
     uiStore.setMobileMenuOpen(false)
@@ -147,17 +152,22 @@ const handleResize = () => {
   }, 250)
 }
 
+// Watch for changes in walk data
+watch(() => walksStore.walks, (newWalks) => {
+  console.log('Store walks updated:', newWalks?.length)
+}, { deep: true })
+
 // Lifecycle hooks
 onMounted(async () => {
   window.addEventListener('resize', handleResize)
   
   try {
-    loadingComponent.value.startLoading('Loading walks...')
+    loadingComponent.value?.startLoading('Loading walks...')
     await initializeData()
   } catch (error) {
     uiStore.setError(error.message)
   } finally {
-    loadingComponent.value.stopLoading()
+    loadingComponent.value?.stopLoading()
   }
 })
 
