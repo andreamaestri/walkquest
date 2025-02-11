@@ -6,7 +6,7 @@ from django.urls import include, path
 from django.views import defaults as default_views
 from django.views.generic import TemplateView
 from walkquest.walks.views import HomePageView 
-from walkquest.walks.api import api
+from walkquest.walks.api import api as api
 
 
 urlpatterns = [
@@ -25,7 +25,7 @@ urlpatterns = [
     path("walks/", include(('walkquest.walks.urls', 'walks'), namespace='walks')),
     # Media files
     *static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT),
-    path("api/", api.urls),
+    path("api/walks/", api.urls),
     path("__reload__/", include("django_browser_reload.urls")),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
