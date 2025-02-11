@@ -18,7 +18,7 @@ WalksAPI.filterWalks()
         const app = createApp(WalkInterface, {
             mapboxToken: config.mapboxToken,
             mapConfig: config.map || {},
-            initialWalks: data
+            initialWalks: data.walks || [] // Changed: pass array directly
         })
 
         // Install plugins

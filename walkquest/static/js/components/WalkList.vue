@@ -14,9 +14,14 @@
       ref="scrollElement"
       class="walk-list-container"
     >
+      <div v-if="walks.length === 0" class="no-walks-message">
+        No walks found
+      </div>
+
       <div
+        v-else
         :style="{
-          height: `${virtualizer.getTotalSize()}px`,
+          height: `${getTotalSize}px`,
           width: '100%',
           position: 'relative'
         }"
@@ -24,7 +29,8 @@
         <div
           v-for="virtualRow in virtualRows"
           :key="virtualRow.key"
-          :data-walk-id="walks[virtualRow.index].id"
+          :data-index="virtualRow.index"
+          :data-walk-id="walks[virtualRow.index]?.id"
           :style="{
             position: 'absolute',
             top: 0,
@@ -33,36 +39,38 @@
             height: `${virtualRow.size}px`,
             transform: `translateY(${virtualRow.start}px)`,
           }"
+          :ref="el => measureItem(el)"
         >
           <div 
+            v-if="walks[virtualRow.index]"
             :class="{
-              'walk-item revealed': true, // Always add revealed class
-              'is-expanded': walks[virtualRow.index].isExpanded,
-              'is-selected': selectedWalkId === walks[virtualRow.index].id
+              'walk-item revealed': true,
+              'is-expanded': walks[virtualRow.index]?.isExpanded,
+              'is-selected': selectedWalkId === walks[virtualRow.index]?.id
             }"
             @click="handleWalkClick(walks[virtualRow.index])"
           >
             <div class="walk-header">
-              <h3 class="text-lg font-semibold">{{ walks[virtualRow.index].walk_name }}</h3>
+              <h3 class="text-lg font-semibold">{{ walks[virtualRow.index]?.walk_name }}</h3>
               <div class="walk-badges">
                 <span 
-                  :class="getBadgeInfo(walks[virtualRow.index].steepness_level).color"
+                  :class="getBadgeInfo(walks[virtualRow.index]?.steepness_level)?.color"
                   class="badge"
                 >
-                  {{ getBadgeInfo(walks[virtualRow.index].steepness_level).icon }}
-                  {{ walks[virtualRow.index].steepness_level }}
+                  {{ getBadgeInfo(walks[virtualRow.index]?.steepness_level)?.icon }}
+                  {{ walks[virtualRow.index]?.steepness_level }}
                 </span>
               </div>
             </div>
 
             <div class="walk-content">
-              <p class="text-sm text-gray-600">{{ walks[virtualRow.index].highlights }}</p>
+              <p class="text-sm text-gray-600">{{ walks[virtualRow.index]?.highlights }}</p>
               <Transition name="expand">
-                <div v-if="walks[virtualRow.index].isExpanded" class="walk-details">
-                  <div v-if="walks[virtualRow.index].pubs_list?.length" class="pubs-list">
+                <div v-if="walks[virtualRow.index]?.isExpanded" class="walk-details">
+                  <div v-if="walks[virtualRow.index]?.pubs_list?.length" class="pubs-list">
                     <h4 class="font-medium mb-2">Pubs Along Route:</h4>
                     <ul class="space-y-1">
-                      <li v-for="pub in walks[virtualRow.index].pubs_list" :key="pub.id">
+                      <li v-for="pub in walks[virtualRow.index]?.pubs_list" :key="pub.id">
                         {{ pub.name }}
                       </li>
                     </ul>
@@ -76,7 +84,7 @@
                 @click.stop="toggleExpand(walks[virtualRow.index])"
                 class="action-button"
               >
-                {{ walks[virtualRow.index].isExpanded ? 'Show Less' : 'Show More' }}
+                {{ walks[virtualRow.index]?.isExpanded ? 'Show Less' : 'Show More' }}
               </button>
               <button
                 @click.stop="selectWalk(walks[virtualRow.index])"
@@ -85,6 +93,9 @@
                 View on Map
               </button>
             </div>
+          </div>
+          <div v-else>
+            Walk data missing for index: {{ virtualRow.index }}
           </div>
         </div>
       </div>
@@ -100,11 +111,16 @@ import { useUiStore } from '../stores/ui'
 import { getBadgeInfo } from '../utils/helpers'
 import { animate } from 'motion'
 
+// Update props: make walks required
 const props = defineProps({
-  error: {
-    type: String,
-    default: null
-  }
+  error: { type: String, default: null },
+  walks: { type: Array, required: true }
+})
+
+// Use the passed-in prop value with logging for debugging
+const computedWalks = computed(() => {
+  console.log('Computing walks from props:', props.walks)
+  return props.walks || []
 })
 
 const listContainer = ref(null)
@@ -115,17 +131,41 @@ const rowHeight = 200 // Estimated height for each walk item
 const walksStore = useWalksStore()
 const uiStore = useUiStore()
 
-const walks = computed(() => walksStore.walks)
+// State
 const selectedWalkId = computed(() => walksStore.selectedWalk?.id)
 
-const virtualizer = useVirtualizer({
-  count: computed(() => walks.value.length),
-  getScrollElement: () => scrollElement.value,
-  estimateSize: () => rowHeight,
-  overscan: 5
-})
+// Update virtualizer creation with debugging
+const createVirtualizer = () => {
+  console.log('Creating virtualizer with count:', computedWalks.value.length)
+  return useVirtualizer({
+    count: computedWalks.value.length,
+    getScrollElement: () => scrollElement.value,
+    // Use a fixed estimate size for smooth scrolling (largest possible size)
+    estimateSize: (index) => rowHeight + 150,
+    overscan: 5,
+    getItemKey: (index) => computedWalks.value[index]?.id || index
+  })
+}
 
-const virtualRows = computed(() => virtualizer.virtualItems)
+// Immediate watcher to initialize virtualizer when walks are available
+const virtualizer = ref(null)
+watch(() => computedWalks.value, (newWalks) => {
+  console.log('Walks updated:', newWalks?.length)
+  if (newWalks?.length > 0 && scrollElement.value) {
+    nextTick(() => {
+      virtualizer.value = createVirtualizer()
+      console.log('Virtualizer created:', virtualizer.value)
+    })
+  }
+}, { immediate: true })
+
+const virtualRows = computed(() => virtualizer.value?.virtualItems?.value ?? [])
+const getTotalSize = computed(() => virtualizer.value?.totalSize?.value ?? 0)
+
+// Watch for changes in expanded states
+watch(() => computedWalks.value.map(w => w.isExpanded), () => {
+  virtualizer.value?.measure?.()
+}, { deep: true })
 
 const handleWalkClick = (walk) => {
   if (selectedWalkId.value === walk.id) {
@@ -156,9 +196,9 @@ const toggleExpand = async (walk) => {
 }
 
 const scrollToWalk = (walkId) => {
-  const index = walks.value.findIndex(w => w.id === walkId)
-  if (index !== -1) {
-    virtualizer.scrollToIndex(index, { align: 'center', behavior: 'smooth' })
+  const index = computedWalks.value.findIndex(w => w.id === walkId)
+  if (index !== -1 && virtualizer.value) {
+    virtualizer.value.scrollToIndex(index, { align: 'center', behavior: 'smooth' })
   }
 }
 
@@ -166,6 +206,7 @@ const fetchWalks = async () => {
   try {
     uiStore.setLoading(true)
     await walksStore.loadWalks()
+    console.log('Walks loaded:', walksStore.walks)
   } catch (error) {
     uiStore.setError(error.message)
   } finally {
@@ -173,23 +214,43 @@ const fetchWalks = async () => {
   }
 }
 
-// Watch for changes in virtual items and update measurements
-watch(virtualRows, () => {
+// Watch for changes in walks and virtual items
+watch([computedWalks, virtualRows], () => {
   nextTick(() => {
+    console.log('Walks or virtual rows updated')
+    console.log('Current walks:', computedWalks.value)
   })
 })
 
 onMounted(() => {
   fetchWalks()
   nextTick(() => {
+    console.log('Component mounted')
+    if (computedWalks.value.length > 0) {
+      virtualizer.value = createVirtualizer()
+    }
   })
 })
+
+onBeforeUnmount(() => {
+  if (virtualizer.value) {
+    virtualizer.value.scrollToIndex(0)
+  }
+})
+
+// New helper function to measure each item
+const measureItem = (el) => {
+  if (el && virtualizer.value) {
+    virtualizer.value.measureElement(el)
+  }
+}
 </script>
 
 <style>
 .walk-list-container {
   z-index: 1;
   position: relative;
+  border: 1px solid #ddd; /* Debug border */
 }
 
 .walk-item {
@@ -197,5 +258,14 @@ onMounted(() => {
   opacity: 1 !important;
   pointer-events: auto !important;
   transform: none !important;
+  padding: 1rem;
+  background: white;
+  border: 1px solid #eee;
+}
+
+.no-walks-message {
+  text-align: center;
+  padding: 20px;
+  color: gray;
 }
 </style>

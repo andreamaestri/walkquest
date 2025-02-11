@@ -1,5 +1,5 @@
 <template>
-  <div class="walk-interface-container flex flex-col h-full">
+  <div class="walk-interface-container flex flex-col h-screen w-full relative">
     <Loading ref="loadingComponent" />
     
     <div class="layout flex flex-1 h-full">
@@ -24,6 +24,7 @@
           <div class="sidebar-content flex-1 overflow-hidden">
             <WalkList 
               :error="error"
+              :walks="walksStore.walks || []"
               @walk-selected="handleWalkSelection"
             />
           </div>
@@ -49,6 +50,7 @@
       <div class="mobile-menu-content">
         <WalkList 
           :error="error"
+          :walks="walksStore.walks || []"
           @walk-selected="handleWalkSelection"
         />
       </div>
@@ -57,7 +59,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useUiStore } from '../stores/ui'
 import { useWalksStore } from '../stores/walks'
 import Loading from './Loading.vue'
@@ -94,12 +96,23 @@ const isFullscreen = computed(() => uiStore.fullscreen)
 const showSidebar = computed(() => uiStore.showSidebar)
 const isMobile = computed(() => window.innerWidth < 768)
 
+// Log updated walks for debugging
+watch(() => walksStore.walks, (newWalks) => {
+  console.log('WalkInterface - walks updated:', newWalks?.length)
+}, { deep: true })
+
 // Methods
 const initializeData = async () => {
-  if (props.initialWalks.length) {
-    walksStore.walks = props.initialWalks
-  } else {
-    await walksStore.loadWalks()
+  try {
+    if (props.initialWalks?.length) {
+      walksStore.walks = [...props.initialWalks]
+    } else {
+      await walksStore.loadWalks()
+    }
+    console.log('Data initialized with walks:', walksStore.walks.length)
+  } catch (error) {
+    console.error('Failed to initialize data:', error)
+    uiStore.setError(error.message)
   }
 }
 
@@ -128,8 +141,8 @@ let resizeTimeout
 const handleResize = () => {
   clearTimeout(resizeTimeout)
   resizeTimeout = setTimeout(() => {
-    if (mapComponent.value?.map) {
-      mapComponent.value.map.resize()
+    if (mapComponent.value?.map?.map) {
+      mapComponent.value.map.map.resize()
     }
   }, 250)
 }
@@ -153,3 +166,78 @@ onBeforeUnmount(() => {
   clearTimeout(resizeTimeout)
 })
 </script>
+
+<style>
+.walk-interface-container {
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+.layout {
+  position: relative;
+  height: 100%;
+  width: 100%;
+}
+
+.sidebar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 384px;
+  height: 100%;
+  background: white;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #e5e7eb;
+}
+
+.sidebar.mobile {
+  display: none;
+}
+
+.sidebar-header {
+  padding: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow: hidden;
+}
+
+.map-section {
+  position: relative;
+  height: 100%;
+  width: 100%;
+}
+
+.map-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+/* Transitions */
+.sidebar-enter-active,
+.sidebar-leave-active {
+  transition: transform 0.3s ease;
+}
+
+.sidebar-enter-from,
+.sidebar-leave-to {
+  transform: translateX(-100%);
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    width: 100%;
+  }
+}
+</style>

@@ -26,18 +26,33 @@ const api = ky.create({
 
 export const WalksAPI = {
   async filterWalks(params = {}) {
-    const response = await api.get('walks/').json();
-    return response;
+    try {
+      // Explicitly request the walks endpoint
+      const response = await api.get('walks/walks').json();
+      console.log('Raw API Response:', response);
+      
+      // Check if response is already in the correct format
+      if (Array.isArray(response)) {
+        return { walks: response };
+      } else if (response.walks) {
+        return response;
+      } else {
+        return { walks: [response] };
+      }
+    } catch (error) {
+      console.error('API filterWalks error:', error);
+      throw error;
+    }
   },
 
   async search(query) {
-    const response = await api.get(`walks/?search=${query}`).json();
-    return response;
+    const response = await api.get(`walks/walks?search=${query}`).json();
+    return { walks: response };
   },
 
   async filter(categories) {
     const response = await api.post('walks/filter/', { tag: categories }).json();
-    return response;
+    return { walks: response };
   },
 
   async getGeometry(walkId) {
