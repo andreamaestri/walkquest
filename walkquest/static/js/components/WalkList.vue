@@ -7,7 +7,7 @@
     <div 
       :style="{
         height: `${containerHeight}px`,
-        width: '100%',
+        width: 'calc(100% - 2px)', // Account for border
         position: 'relative',
         overflow: 'auto'
       }"
@@ -22,7 +22,7 @@
         <div
           :style="{
             height: `${totalSize}px`,
-            width: '100%',
+            width: 'calc(100% - 1rem)', // Account for padding
             position: 'relative'
           }"
         >
@@ -37,7 +37,7 @@
                 position: 'absolute',
                 top: 0,
                 left: 0,
-                width: '100%',
+                width: 'calc(100% - 1rem)', // Account for padding
                 height: `${virtualRow.size}px`,
                 transform: `translateY(${virtualRow.start}px)`,
               }"
@@ -104,7 +104,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch, effectScope } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch, effectScope, onUpdated, onErrorCaptured } from 'vue'
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { useWalksStore } from '../stores/walks'
 import { useUiStore } from '../stores/ui'
@@ -125,6 +125,8 @@ const uiStore = useUiStore()
 const listContainer = ref(null)
 const scrollElement = ref(null)
 const virtualizer = ref(null)
+const scope = effectScope()
+const resizeObserver = ref(null)
 
 // Computed
 const containerHeight = computed(() => window.innerHeight - 200)
@@ -132,12 +134,12 @@ const selectedWalkId = computed(() => walksStore.selectedWalk?.id)
 
 const computedWalks = computed(() => {
   console.log('Computing walks:', props.walks?.length)
-  return props.walks || []
+  return Array.isArray(props.walks) ? props.walks : []
 })
 
 // Virtual list setup
-const rowHeight = 200
-const overscan = 5
+const rowHeight = 200 // Base height as per .clinerules
+const overscan = 10 // Increased for smoother scrolling
 
 // Create virtualizer
 const createVirtualizer = () => {
@@ -153,7 +155,11 @@ const createVirtualizer = () => {
     getScrollElement: () => scrollElement.value,
     estimateSize: () => rowHeight,
     overscan,
-    getItemKey: (index) => computedWalks.value[index]?.id || index
+    getItemKey: (index) => computedWalks.value[index]?.id || index,
+    scrollPaddingStart: 150, // Added padding as per .clinerules
+    scrollPaddingEnd: 150,
+    debug: true, // Enable debug logging
+    initialRect: { width: scrollElement.value?.clientWidth ?? 0, height: containerHeight.value }
   })
 }
 
@@ -161,14 +167,14 @@ const createVirtualizer = () => {
 const virtualRows = computed(() => {
   if (!virtualizer.value) return []
   const items = virtualizer.value.getVirtualItems()
-  console.log('Virtual rows computed:', items.length)
+  console.log('Virtual rows computed:', items?.length)
   return items
 })
 
 const totalSize = computed(() => {
   if (!virtualizer.value) return 0
-  const size = virtualizer.value.getTotalSize()
-  console.log('Total size computed:', size)
+  const size = virtualizer.value.getTotalSize?.() ?? rowHeight * (computedWalks.value?.length || 0)
+  console.log('Total size computed:', size, 'from rows:', computedWalks.value?.length)
   return size
 })
 
@@ -215,33 +221,85 @@ const scrollToWalk = (walkId) => {
   }
 }
 
+// Handle resize
+const handleResize = () => {
+  if (!virtualizer.value || !scrollElement.value) return
+  
+  try {
+    virtualizer.value.measure()
+  } catch (error) {
+    console.error('Error measuring virtualizer:', error)
+  }
+}
+
+// Error boundary
+onErrorCaptured((error, instance, info) => {
+  console.error('Virtual list error:', {
+    error,
+    instance,
+    info,
+    walks: computedWalks.value?.length
+  })
+  return false // Don't propagate
+})
+
 // Initialize virtualizer when walks are available
-watch(() => computedWalks.value?.length, (newLength, oldLength) => {
+const stopWatch = scope.run(() => watch(() => computedWalks.value?.length, (newLength, oldLength) => {
   console.log('Walks length changed:', newLength, 'from:', oldLength)
   if (newLength > 0) {
+    if (!virtualizer.value) {
+      virtualizer.value = createVirtualizer()
+    }
+    
+    // Ensure virtualizer is updated with new count
     nextTick(() => {
-      if (!virtualizer.value) {
-        virtualizer.value = createVirtualizer()
-      } else {
-        virtualizer.value.setCount(newLength)
-      }
+      virtualizer.value?.setCount?.(newLength)
+      virtualizer.value?.measure?.()
     })
   }
-}, { immediate: true })
+}, { immediate: true }))
 
 // Lifecycle
 onMounted(() => {
   if (computedWalks.value?.length > 0) {
+    // Set up resize observer
+    resizeObserver.value = new ResizeObserver(handleResize)
+    if (scrollElement.value) {
+      resizeObserver.value.observe(scrollElement.value)
+    }
+    
+    // Initial measure
+    nextTick(handleResize)
     nextTick(() => {
-      virtualizer.value = createVirtualizer()
+      if (!virtualizer.value) {
+        virtualizer.value = createVirtualizer()
+        virtualizer.value?.measure?.()
+      }
     })
   }
 })
 
+// Handle updates that might affect sizing
+onUpdated(() => {
+  nextTick(() => {
+    virtualizer.value?.measure?.()
+  })
+})
+
 onBeforeUnmount(() => {
-  if (virtualizer.value) {
-    virtualizer.value.scrollToIndex(0)
+  // Clean up
+  try {
+    virtualizer.value?.scrollToIndex?.(0)
+    if (resizeObserver.value) {
+      resizeObserver.value.disconnect()
+      resizeObserver.value = null
+    }
+    scope.stop()
+    stopWatch?.()
+  } catch (error) {
+    console.error('Cleanup error:', error)
   }
+  virtualizer.value = null
 })
 </script>
 
