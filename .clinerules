@@ -1,0 +1,22 @@
+# WalkQuest Project Rules
+
+# Frontend Patterns
+- Use Tailwind classes directly in HTML (no custom CSS or @apply)
+- Follow Vue 3 Composition API patterns
+- Use iconify-prerendered for all icons
+- All components must integrate with Pinia stores for state
+
+# Virtual List Implementation
+- Use @tanstack/vue-virtual with computed options
+- Base item height: 200px, expanded padding: 150px
+- Always implement proper cleanup in onBeforeUnmount
+
+# Map Integration
+- Include Mapbox CSS in base.html
+- Use empty container pattern for map
+- Place controls outside map container
+
+# Development Flow
+- Format with both Prettier (frontend) and Ruff (backend)
+- Always document store pattern changes
+- All new features need corresponding tests
