@@ -1,27 +1,33 @@
 <template>
-  <div class="walk-interface-container flex flex-col h-screen w-full relative">
+  <div class="h-screen w-screen overflow-hidden flex flex-col relative">
     <Loading ref="loadingComponent" />
     
-    <div class="layout flex flex-1 h-full">
-      <!-- Sidebar with walk list -->
-      <Transition name="sidebar">
+    <div class="relative h-full w-full flex">
+      <Transition 
+        enter-active-class="transition-all duration-300 ease-in-out"
+        leave-active-class="transition-all duration-300 ease-in-out"
+        enter-from-class="-translate-x-full"
+        leave-to-class="-translate-x-full"
+      >
         <div 
           v-if="showSidebar"
-          class="sidebar overflow-hidden"
-          :class="{ 'mobile': isMobile }"
+          class="fixed md:relative inset-y-0 left-0 z-10 flex flex-col
+                 bg-white border-r border-gray-200 overflow-hidden
+                 w-full md:w-80 lg:w-96
+                 transform md:transform-none"
         >
-          <div class="sidebar-header">
+          <div class="p-4 border-b border-gray-200 flex justify-between items-center">
             <h2 class="text-xl font-semibold">Available Walks</h2>
             <button 
               @click="toggleSidebar"
-              class="sidebar-toggle"
+              class="p-2 hover:bg-gray-100 rounded-md transition-colors"
             >
               <span class="sr-only">Toggle sidebar</span>
               <i class="icon-chevron-left"></i>
             </button>
           </div>
 
-          <div class="sidebar-content flex-1 overflow-hidden">
+          <div class="flex-1 min-h-0 flex flex-col overflow-hidden">
             <WalkList 
               :error="error"
               :walks="availableWalks"
@@ -33,9 +39,14 @@
         </div>
       </Transition>
 
-      <!-- Map container -->
-      <div class="map-section flex-1 relative">
-        <div class="map-container h-full">
+      <!-- Map container with responsive margin -->
+      <div 
+        class="flex-1 relative transition-[margin] duration-300"
+        :class="{
+          'md:ml-80 lg:ml-96': showSidebar && !isMobile
+        }"
+      >
+        <div class="absolute inset-0">
           <MapView
             ref="mapComponent"
             :mapbox-token="mapboxToken"
@@ -48,8 +59,8 @@
     </div>
 
     <!-- Mobile menu -->
-    <MobileMenu v-if="isMobile">
-      <div class="mobile-menu-content">
+    <MobileMenu v-if="isMobile" class="md:hidden">
+      <div class="w-full h-full">
         <WalkList 
           :error="error"
           :walks="availableWalks"
@@ -239,79 +250,4 @@ onBeforeUnmount(() => {
 </script>
 
 <style>
-.walk-interface-container {
-  height: 100vh;
-  width: 100vw;
-  overflow: hidden;
-}
-
-.layout {
-  position: relative;
-  height: 100%;
-  width: 100%;
-}
-
-.sidebar {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 384px;
-  height: 100%;
-  background: white;
-  z-index: 10;
-  display: flex;
-  flex-direction: column;
-  border-right: 1px solid #e5e7eb;
-}
-
-.sidebar.mobile {
-  display: none;
-}
-
-.sidebar-header {
-  padding: 1rem;
-  border-bottom: 1px solid #e5e7eb;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.sidebar-content {
-  flex: 1;
-  min-height: 0; /* Critical for Firefox */
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.map-section {
-  position: relative;
-  height: 100%;
-  width: 100%;
-}
-
-.map-container {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-}
-
-/* Transitions */
-.sidebar-enter-active,
-.sidebar-leave-active {
-  transition: transform 0.3s ease;
-}
-
-.sidebar-enter-from,
-.sidebar-leave-to {
-  transform: translateX(-100%);
-}
-
-@media (max-width: 768px) {
-  .sidebar {
-    width: 100%;
-  }
-}
 </style>

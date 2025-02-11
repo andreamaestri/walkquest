@@ -1,12 +1,13 @@
 <template>
   <div 
-    :class="{ 'fullscreen': isFullscreen }"
-    class="map-container h-screen w-full absolute top-0 left-0"
+    :class="{ 'fixed inset-0 z-50': isFullscreen }"
+    class="absolute inset-0"
   >
     <MapboxMap
       :access-token="mapboxToken"
       :map-style="mapStyle"
       :initial-options="{ center: [-4.85, 50.4], zoom: 9.5, bounds: bounds }"
+      class="w-full h-full"
       @load="handleMapLoaded"
       @error="handleMapError"
     >
@@ -17,10 +18,10 @@
           :trackUserLocation="true"
           :showAccuracyCircle="true"
         />
-        <div class="map-controls">
+        <div class="absolute top-4 right-4 z-10">
           <button 
             @click="toggleFullscreen"
-            class="map-control-button"
+            class="bg-white border border-gray-300 rounded p-2 shadow-sm hover:bg-gray-50 transition-colors"
           >
             <span class="sr-only">Toggle fullscreen</span>
             <i :class="isFullscreen ? 'icon-compress' : 'icon-expand'"></i>

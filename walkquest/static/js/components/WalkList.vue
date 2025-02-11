@@ -1,96 +1,93 @@
 <template>
-  <div class="walk-list debug-bg">
-    <div v-if="error" class="error-message">
+  <div class="h-full flex flex-col overflow-hidden relative bg-white">
+    <!-- Error state -->
+    <div v-if="error" class="p-4 m-4 bg-red-100 border border-red-400 rounded-md text-red-800">
       {{ error }}
     </div>
 
-    <div v-if="loading" class="loading-state">
-      <div class="loading-placeholder" v-for="i in 3" :key="i">
-        <div class="animate-pulse">
-          <div class="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
-          <div class="h-3 bg-gray-200 rounded w-1/2 mb-2"></div>
-          <div class="h-3 bg-gray-200 rounded w-1/4"></div>
+    <!-- Loading state -->
+    <div v-if="loading" class="p-4">
+      <div v-for="i in 3" :key="i" class="mb-4 p-4 border border-gray-200 rounded-lg">
+        <div>
+          <div class="h-4 bg-gray-200 rounded w-3/4 mb-4 animate-pulse"></div>
+          <div class="h-3 bg-gray-200 rounded w-1/2 mb-2 animate-pulse"></div>
+          <div class="h-3 bg-gray-200 rounded w-1/4 animate-pulse"></div>
         </div>
       </div>
     </div>
 
-    <div v-else-if="computedWalks.length" class="walk-list-container debug-border">
-      <DynamicScroller
-        ref="scroller"
-        class="scroller debug-border"
-        :items="computedWalks"
-        :min-item-size="minItemHeight"
-        key-field="id"
-      >
-        <template #default="{ item: walk, index, active }">
-          <DynamicScrollerItem
-            :item="walk"
-            :active="active"
-            :data-index="index"
-            :size-dependencies="[
-              walk.isExpanded,
-              walk.walk_name,
-              walk.highlights,
-              walk.pubs_list?.length
-            ]"
-          >
-            <div 
-              :class="{
-                'walk-item': true,
-                'is-expanded': walk.isExpanded,
-                'is-selected': selectedWalkId === walk.id
-              }"
-              @click="handleWalkClick(walk)"
-            >
-              <div class="walk-header">
-                <h3 class="text-lg font-semibold">{{ walk.walk_name }}</h3>
-                <div class="walk-badges">
-                  <span 
-                    v-if="walk.steepness_level"
-                    :class="getBadgeInfo(walk.steepness_level)?.color"
-                    class="badge"
-                  >
-                    {{ walk.steepness_level }}
-                  </span>
-                </div>
-              </div>
-
-              <div class="walk-content">
-                <p class="text-sm text-gray-600">{{ walk.highlights }}</p>
-                
-                <div v-if="walk.isExpanded" class="walk-details mt-4">
-                  <div v-if="walk.pubs_list?.length">
-                    <h4 class="font-medium mb-2">Pubs Along Route:</h4>
-                    <ul class="space-y-1">
-                      <li v-for="pub in walk.pubs_list" :key="pub.id">
-                        {{ pub.name }}
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-
-              <div class="walk-actions">
-                <button
-                  @click.stop="toggleExpand(walk)"
-                  class="action-button"
-                >
-                  {{ walk.isExpanded ? 'Show Less' : 'Show More' }}
-                </button>
-                <button
-                  @click.stop="selectWalk(walk)"
-                  class="action-button primary"
-                >
-                  View on Map
-                </button>
+    <!-- Walk list -->
+    <div v-else-if="computedWalks.length" class="flex-1 min-h-0 flex flex-col relative">
+      <div class="flex-1 overflow-y-auto p-4">
+        <!-- Test card -->
+        <div class="mb-8 bg-white rounded-lg border-2 border-blue-500 shadow-sm hover:shadow-md transition-all">
+          <div class="p-4">
+            <div class="flex justify-between items-start mb-2">
+              <h3 class="text-lg font-semibold">Test Walk Card</h3>
+              <div class="flex gap-2">
+                <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                  Test Badge
+                </span>
               </div>
             </div>
-          </DynamicScrollerItem>
-        </template>
-      </DynamicScroller>
+            <div class="space-y-4">
+              <p class="text-sm text-gray-600">
+                This is a test walk card to verify styling and layout.
+              </p>
+              <div class="mt-4">
+                <h4 class="font-medium mb-2">Test Details:</h4>
+                <ul class="space-y-1 text-sm">
+                  <li>Detail 1</li>
+                  <li>Detail 2</li>
+                </ul>
+              </div>
+            </div>
+            <div class="flex justify-end gap-2 mt-4">
+              <button class="px-4 py-2 text-sm font-medium bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
+                Show More
+              </button>
+              <button class="px-4 py-2 text-sm font-medium bg-blue-500 text-white hover:bg-blue-600 rounded-md transition-colors">
+                View on Map
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actual walk cards -->
+        <div 
+          v-for="walk in computedWalks.slice(0, 5)" 
+          :key="walk.id"
+          class="mb-4 bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all"
+          :class="{ 'border-blue-500 bg-blue-50': selectedWalkId === walk.id }"
+          @click="handleWalkClick(walk)"
+        >
+          <div class="p-4">
+            <div class="flex justify-between items-start mb-2">
+              <h3 class="text-lg font-semibold">{{ walk.walk_name }}</h3>
+              <div v-if="walk.steepness_level" class="flex gap-2">
+                <span 
+                  class="px-2 py-1 text-xs font-medium rounded-full"
+                  :class="getBadgeInfo(walk.steepness_level)?.color"
+                >
+                  {{ walk.steepness_level }}
+                </span>
+              </div>
+            </div>
+            <p class="text-sm text-gray-600">{{ walk.highlights }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Debug info -->
+      <div class="fixed bottom-4 right-4 bg-white p-4 rounded-lg shadow-lg z-50 font-mono text-xs opacity-90">
+        <p>Total walks: {{ computedWalks.length }}</p>
+        <p>Container height: {{ containerHeight }}px</p>
+        <p>First item height: {{ firstItemHeight }}px</p>
+      </div>
     </div>
 
-    <div v-else class="no-walks-message">
+    <!-- Empty state -->
+    <div v-else class="p-8 text-center text-gray-500">
       No walks available
     </div>
   </div>
@@ -137,15 +134,22 @@ const minItemHeight = 160 // Adjusted based on content
 // Add loading state
 const loading = computed(() => walksStore.loading)
 
-// Add ResizeObserver for RecycleScroller
+// Debug refs
+const containerHeight = ref(0)
+const firstItemHeight = ref(0)
 const scroller = ref(null)
 let resizeObserver = null
 
-// Enhanced dimension logging
+// Enhanced dimension logging with debug info update
 const logDimensions = (event = 'check') => {
   const walkList = document.querySelector('.walk-list')
   const container = document.querySelector('.walk-list-container')
-  const scroller = document.querySelector('.scroller')
+  const scrollerEl = document.querySelector('.scroller')
+  const firstItem = document.querySelector('.walk-item')
+  
+  // Update debug refs
+  containerHeight.value = container?.offsetHeight || 0
+  firstItemHeight.value = firstItem?.offsetHeight || 0
   
   console.debug('WalkList dimensions:', {
     event,
@@ -155,24 +159,27 @@ const logDimensions = (event = 'check') => {
       style: walkList?.style.height
     },
     container: {
-      height: container?.offsetHeight,
+      height: containerHeight.value,
       rect: container?.getBoundingClientRect(),
-      style: container?.style.height
     },
     scroller: {
-      height: scroller?.offsetHeight,
-      rect: scroller?.getBoundingClientRect(),
-      style: scroller?.style.height
+      height: scrollerEl?.offsetHeight,
+      rect: scrollerEl?.getBoundingClientRect(),
     },
-    computedWalksLength: computedWalks.value?.length,
-    firstWalkHeight: document.querySelector('.walk-item')?.offsetHeight
+    firstItem: firstItemHeight.value,
+    computedWalksLength: computedWalks.value?.length
   })
 }
 
-// Handle scroller resize
-const handleScrollerResize = () => {
-  logDimensions('resize')
-}
+// Combined resize handler
+const handleResize = debounce(() => {
+  if (scroller.value?.$el) {
+    nextTick(() => {
+      scroller.value.updateSize?.()
+      logDimensions('resize')
+    })
+  }
+}, 100)
 
 onMounted(() => {
   if (!window.ResizeObserver) {
@@ -180,21 +187,25 @@ onMounted(() => {
     return
   }
   
-  resizeObserver = new ResizeObserver(debounce(() => {
-    if (scroller.value?.$el) {
-      nextTick(() => {
-        // Call updateSize on the RecycleScroller instance
-        scroller.value.updateSize?.()
-      })
-    }
-  }, 100))
+  // Initialize single ResizeObserver
+  resizeObserver = new ResizeObserver(handleResize)
   
-  if (scroller.value?.$el) {
-    resizeObserver.observe(scroller.value.$el)
+  const container = document.querySelector('.walk-list-container')
+  if (container) {
+    resizeObserver.observe(container)
   }
-
+  
   nextTick(() => {
     logDimensions('mounted')
+    // Add detailed mount checks
+    console.debug('Walk list mount check:', {
+      walkList: document.querySelector('.walk-list'),
+      container: document.querySelector('.walk-list-container'),
+      scroller: document.querySelector('.scroller'),
+      testCard: document.querySelector('.test-card'),
+      walkItems: document.querySelectorAll('.walk-item').length,
+      computedWalksLength: computedWalks.value.length
+    })
   })
 })
 
@@ -234,156 +245,13 @@ const toggleExpand = (walk) => {
   if (!walk) return
   emit('walk-expanded', walk.id)
 }
+
+// Add sidebar visibility tracking
+watch(() => uiStore.showSidebar, (visible) => {
+  if (visible) {
+    nextTick(() => {
+      logDimensions('sidebar-visible')
+    })
+  }
+}, { immediate: true })
 </script>
-
-<style scoped>
-.walk-list {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.walk-list-container {
-  flex: 1;
-  min-height: 0; /* Important for Firefox */
-  position: relative;
-  display: flex;
-  flex-direction: column;
-}
-
-.scroller {
-  height: 100% !important;
-  overflow-y: auto !important;
-}
-
-.walk-item {
-  box-sizing: border-box;
-  margin: 0.5rem;
-  padding: 1rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
-  background: white;
-  transition: all 0.2s ease;
-  cursor: pointer;
-}
-
-.walk-item:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.walk-item.is-selected {
-  border-color: #3b82f6;
-  background: #f0f7ff;
-}
-
-.walk-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 0.5rem;
-}
-
-.walk-badges {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.badge {
-  padding: 0.25rem 0.5rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.walk-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  margin-top: 1rem;
-}
-
-.action-button {
-  padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  background: #f3f4f6;
-  border: 1px solid #e5e7eb;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.action-button:hover {
-  background: #e5e7eb;
-}
-
-.action-button.primary {
-  background: #3b82f6;
-  color: white;
-  border-color: #2563eb;
-}
-
-.action-button.primary:hover {
-  background: #2563eb;
-}
-
-.error-message {
-  padding: 1rem;
-  margin: 1rem;
-  background: #fee2e2;
-  border: 1px solid #ef4444;
-  border-radius: 0.375rem;
-  color: #b91c1c;
-}
-
-.no-walks-message {
-  padding: 2rem;
-  text-align: center;
-  color: #6b7280;
-}
-
-/* Transitions */
-.expand-enter-active,
-.expand-leave-active {
-  transition: all 0.3s ease-out;
-  max-height: 300px;
-  overflow: hidden;
-}
-
-.expand-enter-from,
-.expand-leave-to {
-  max-height: 0;
-  opacity: 0;
-}
-
-.loading-state {
-  padding: 1rem;
-}
-
-.loading-placeholder {
-  padding: 1rem;
-  margin-bottom: 1rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: .5; }
-}
-
-.animate-pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-/* Debug styles */
-.debug-bg {
-  background: rgba(245, 245, 245, 0.5) !important;
-}
-
-.debug-border {
-  border: 2px dashed rgba(255, 0, 0, 0.5) !important;
-}
-</style>
