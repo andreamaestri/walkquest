@@ -17,6 +17,11 @@ export const useUiStore = defineStore('ui', () => {
   })
   const searchQuery = ref('')
 
+  // Computed
+  const isMobile = computed(() => {
+    return window.innerWidth <= 768
+  })
+
   // Actions
   const setError = (message) => {
     error.value = message
@@ -58,6 +63,11 @@ export const useUiStore = defineStore('ui', () => {
     setSidebarVisibility(!showSidebar.value)
   }
 
+  const setFullscreen = (state) => {
+    fullscreen.value = state
+    console.log('Fullscreen state:', state)
+  }
+
   const setMobileMenuOpen = (state) => {
     mobileMenuOpen.value = state
     console.log('Mobile menu state:', state)
@@ -89,10 +99,6 @@ export const useUiStore = defineStore('ui', () => {
     return loading.value || Object.values(loadingStates.value).some(state => state)
   })
 
-  const isMobile = computed(() => {
-    return window.innerWidth < 768
-  })
-
   return {
     // State
     error,
@@ -116,6 +122,7 @@ export const useUiStore = defineStore('ui', () => {
     setLoadingState,
     setSidebarVisibility,
     toggleSidebar,
+    setFullscreen,
     setMobileMenuOpen,
     setSearchQuery,
     resetState

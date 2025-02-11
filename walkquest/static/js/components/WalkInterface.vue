@@ -25,7 +25,9 @@
             <WalkList 
               :error="error"
               :walks="availableWalks"
+              :selected-walk-id="selectedWalkId"
               @walk-selected="handleWalkSelection"
+              @walk-expanded="handleWalkExpanded"
             />
           </div>
         </div>
@@ -51,7 +53,9 @@
         <WalkList 
           :error="error"
           :walks="availableWalks"
+          :selected-walk-id="selectedWalkId"
           @walk-selected="handleWalkSelection"
+          @walk-expanded="handleWalkExpanded"
         />
       </div>
     </MobileMenu>
@@ -60,6 +64,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useUiStore } from '../stores/ui'
 import { useWalksStore } from '../stores/walks'
 import Loading from './Loading.vue'
@@ -76,9 +81,9 @@ const props = defineProps({
     type: Object,
     default: () => ({})
   },
-  initialWalks: {
-    type: Array,
-    default: () => []
+  walkId: {
+    type: [String, Number],
+    default: null
   }
 })
 
@@ -86,21 +91,27 @@ const props = defineProps({
 const loadingComponent = ref(null)
 const mapComponent = ref(null)
 
-// Store access
-const uiStore = useUiStore()
+// Store and router access
+const router = useRouter()
 const walksStore = useWalksStore()
+const uiStore = useUiStore()
 
 // Computed properties
 const error = computed(() => uiStore.error)
 const isFullscreen = computed(() => uiStore.fullscreen)
 const showSidebar = computed(() => uiStore.showSidebar)
 const isMobile = computed(() => uiStore.isMobile)
+const selectedWalkId = computed(() => props.walkId)
+const availableWalks = computed(() => walksStore.walks)
 
-// Available walks from either props or store
-const availableWalks = computed(() => {
-  const walks = props.initialWalks?.length ? props.initialWalks : walksStore.walks
-  console.log('Available walks computed:', walks?.length)
-  return walks || []
+// Route update handling using composition API
+watch(() => props.walkId, async (newId, oldId) => {
+  if (newId !== oldId) {
+    const walk = walksStore.getWalkById(newId)
+    if (walk) {
+      walksStore.setSelectedWalk(walk)
+    }
+  }
 })
 
 // Methods
@@ -108,33 +119,32 @@ const initializeData = async () => {
   try {
     uiStore.setLoading(true)
     loadingComponent.value?.startLoading('Loading walks...')
+    console.debug("WalkInterface.vue: Starting data initialization")
     
-    // Reset UI state
-    uiStore.resetState()
-    
-    if (props.initialWalks?.length) {
-      console.log('Setting initial walks:', props.initialWalks.length)
-      await walksStore.setWalks(props.initialWalks)
-    } else {
-      console.log('Loading walks from API')
-      await walksStore.loadWalks()
-    }
-    
-    console.log('Walks loaded:', walksStore.walks?.length)
+    await walksStore.loadWalks()
+    console.debug("WalkInterface.vue: Walks loaded from store:", walksStore.walks)
     
     // Show sidebar if we have walks and not on mobile
-    if (walksStore.walks?.length > 0 && !isMobile.value) {
+    if (walksStore.walks.length && !isMobile.value) {
       await nextTick()
       uiStore.setSidebarVisibility(true)
+      console.debug("WalkInterface.vue: Sidebar set visible, walks count:", walksStore.walks.length)
+    } else {
+      console.debug("WalkInterface.vue: Sidebar remains hidden. Walks count:", walksStore.walks.length, "isMobile:", isMobile.value)
     }
   } catch (error) {
-    console.error('Failed to initialize data:', error)
+    console.error("WalkInterface.vue: Data initialization failed:", error)
     uiStore.setError(error.message)
   } finally {
     uiStore.setLoading(false)
     loadingComponent.value?.stopLoading()
+    console.debug("WalkInterface.vue: Loading stopped")
   }
 }
+
+watch(availableWalks, (newVal) => {
+  console.debug("WalkInterface.vue: availableWalks updated:", newVal)
+}, { immediate: true })
 
 const handleMapLoaded = (map) => {
   uiStore.setMapLoading(false)
@@ -146,10 +156,26 @@ const handleMapError = (error) => {
 }
 
 const handleWalkSelection = (walk) => {
-  console.log('Walk selected:', walk?.id)
-  walksStore.setSelectedWalk(walk)
-  if (walk && isMobile.value) {
+  if (walk) {
+    router.push({ name: 'walk-detail', params: { id: walk.id } })
+  } else {
+    router.push({ name: 'home' })
+  }
+  
+  if (isMobile.value) {
     uiStore.setMobileMenuOpen(false)
+  }
+}
+
+const handleWalkExpanded = async (walkId) => {
+  const walks = [...availableWalks.value]
+  const walkIndex = walks.findIndex(w => w.id === walkId)
+  if (walkIndex !== -1) {
+    walks[walkIndex] = {
+      ...walks[walkIndex],
+      isExpanded: !walks[walkIndex].isExpanded
+    }
+    await walksStore.setWalks(walks)
   }
 }
 
@@ -176,12 +202,26 @@ watch(() => walksStore.walks, (newWalks) => {
   }
 }, { deep: true })
 
+// Add dimension logging
+const logContainerDimensions = () => {
+  const sidebar = document.querySelector('.sidebar')
+  const content = document.querySelector('.sidebar-content')
+  
+  console.debug('WalkInterface dimensions:', {
+    sidebar: sidebar?.getBoundingClientRect(),
+    content: content?.getBoundingClientRect()
+  })
+}
+
 // Watch for sidebar visibility
 watch(showSidebar, (visible) => {
   console.log('Sidebar visibility changed:', visible)
-  if (visible && mapComponent.value?.map?.map) {
+  if (visible) {
     nextTick(() => {
-      mapComponent.value.map.map.resize()
+      logContainerDimensions()
+      if (mapComponent.value?.map?.map) {
+        mapComponent.value.map.map.resize()
+      }
     })
   }
 })
@@ -238,8 +278,10 @@ onBeforeUnmount(() => {
 
 .sidebar-content {
   flex: 1;
+  min-height: 0; /* Critical for Firefox */
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
-  position: relative;
 }
 
 .map-section {

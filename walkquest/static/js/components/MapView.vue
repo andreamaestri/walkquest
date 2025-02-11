@@ -4,41 +4,39 @@
     class="map-container h-screen w-full absolute top-0 left-0"
   >
     <MapboxMap
-      ref="map"
       :access-token="mapboxToken"
-      :initial-bounds="bounds"
-      :zoom="9.5"
-      :center="[-4.85, 50.4]"
-      map-style="mapbox://styles/mapbox/streets-v12"
+      :map-style="mapStyle"
+      :initial-options="{ center: [-4.85, 50.4], zoom: 9.5, bounds: bounds }"
       @load="handleMapLoaded"
       @error="handleMapError"
     >
-      <MapboxNavigationControl position="top-left" />
-      <MapboxGeolocateControl position="top-left" />
-      
-      <div class="map-controls">
-        <button 
-          @click="toggleFullscreen"
-          class="map-control-button"
-        >
-          <span class="sr-only">Toggle fullscreen</span>
-          <i :class="isFullscreen ? 'icon-compress' : 'icon-expand'"></i>
-        </button>
-      </div>
+      <template #controls>
+        <MapboxNavigationControl position="top-left" />
+        <MapboxGeolocateControl 
+          position="top-left"
+          :trackUserLocation="true"
+          :showAccuracyCircle="true"
+        />
+        <div class="map-controls">
+          <button 
+            @click="toggleFullscreen"
+            class="map-control-button"
+          >
+            <span class="sr-only">Toggle fullscreen</span>
+            <i :class="isFullscreen ? 'icon-compress' : 'icon-expand'"></i>
+          </button>
+        </div>
+      </template>
     </MapboxMap>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watchEffect } from 'vue'
+import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { useUiStore } from '../stores/ui'
 import { useWalksStore } from '../stores/walks'
-import { debounce } from '../utils/helpers'
-import {
-  MapboxMap,
-  MapboxNavigationControl,
-  MapboxGeolocateControl
-} from '@studiometa/vue-mapbox-gl'
+import { MapboxMap, MapboxNavigationControl, MapboxGeolocateControl } from '@studiometa/vue-mapbox-gl'
+import 'mapbox-gl/dist/mapbox-gl.css'
 
 const props = defineProps({
   mapboxToken: {
@@ -48,19 +46,21 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['map-loaded', 'map-error'])
-
 const map = ref(null)
 const uiStore = useUiStore()
 const walksStore = useWalksStore()
 
+// Computed values
 const isFullscreen = computed(() => uiStore.fullscreen)
 const showSidebar = computed(() => uiStore.showSidebar)
+const mapStyle = computed(() => 'mapbox://styles/mapbox/streets-v11')
 
 // Default bounds for Cornwall
 const bounds = [-5.5, 49.9, -4.2, 50.9]
 
-// Map event handlers
-const handleMapLoaded = () => {
+// Map event handler updated to accept the map instance as parameter
+const handleMapLoaded = (mapInstance) => {
+  map.value = mapInstance
   uiStore.setMapLoading(false)
   emit('map-loaded', map.value)
 }
@@ -77,7 +77,7 @@ const toggleFullscreen = () => {
 }
 
 const updateMapView = (walk) => {
-  if (!map.value?.map || !walk?.longitude || !walk?.latitude) return
+  if (!map.value || !walk?.longitude || !walk?.latitude) return
 
   const isMobile = window.innerWidth < 768
   const offset = [
@@ -85,7 +85,7 @@ const updateMapView = (walk) => {
     0
   ]
   
-  map.value.map.flyTo({
+  map.value.flyTo({
     center: [walk.longitude, walk.latitude],
     zoom: isMobile ? 13 : 14,
     offset,
@@ -94,19 +94,18 @@ const updateMapView = (walk) => {
   })
 }
 
-// Selected walk observer
-watchEffect(() => {
-  const selectedWalk = walksStore.selectedWalk
-  if (selectedWalk) {
-    updateMapView(selectedWalk)
+// Watch for selected walk changes
+watch(() => walksStore.selectedWalk, (walk) => {
+  if (walk) {
+    updateMapView(walk)
   }
 })
 
-// Sidebar padding observer
-watchEffect(() => {
-  if (map.value?.map) {
+// Watch for sidebar changes
+watch([showSidebar, () => window.innerWidth], () => {
+  if (map.value) {
     const isMobile = window.innerWidth < 768
-    map.value.map.easeTo({
+    map.value.easeTo({
       padding: {
         top: 50,
         bottom: 50,
@@ -115,14 +114,20 @@ watchEffect(() => {
       }
     })
   }
+}, { immediate: true })
+
+// Cleanup on unmount
+onBeforeUnmount(() => {
+  if (map.value) {
+    map.value.remove()
+    map.value = null
+  }
 })
 
 // Methods exposed to parent
 defineExpose({
   map,
-  updateMapView,
-  handleMapLoaded,
-  handleMapError
+  updateMapView
 })
 </script>
 

@@ -1,9 +1,7 @@
 <template>
-  <div class="app">
-    <h1 class="text-2xl font-bold text-blue-600">Vue + Vite Test</h1>
-    <p class="mt-2">If you can see this styled with Tailwind, everything is working!</p>
-  </div>
+  <router-view :mapbox-token="mapboxToken"></router-view>
 </template>
 
 <script setup>
+const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN
 </script>
