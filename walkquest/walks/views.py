@@ -153,9 +153,9 @@ class HomePageView(ListView):
                 "id": str(walk.id),
                 "walk_id": walk.walk_id,
                 "walk_name": walk.walk_name,
-                "highlights": walk.highlights,
+                "highlights": walk.highlights.replace('"', '\\"') if walk.highlights else None,
                 "distance": float(walk.distance) if walk.distance else None,
-                "steepness_level": walk.steepness_level,
+                "steepness_level": walk.steepness_level.replace("'", "\\'") if walk.steepness_level else None,
                 "latitude": float(walk.latitude),
                 "longitude": float(walk.longitude),
                 "features": [

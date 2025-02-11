@@ -43,7 +43,7 @@ export const useWalksStore = defineStore('walks', () => {
     if (loading.value) return
 
     loading.value = true
-    uiStore.setLoadingState('search', true)
+    uiStore.setLoadingState('walks', true)
 
     try {
       const response = await ApiService.filterWalks({
@@ -74,7 +74,7 @@ export const useWalksStore = defineStore('walks', () => {
       uiStore.setError(`Failed to load walks: ${error.message || 'Please try again.'}`)
     } finally {
       loading.value = false
-      uiStore.setLoadingState('search', false)
+      uiStore.setLoadingState('walks', false)
     }
   }
 

@@ -1,26 +1,32 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import WalkInterface from './components/WalkInterface.vue'
+import { WalksAPI } from './services/api'
 
 // Create Pinia instance
 const pinia = createPinia()
 
 // Get configuration from the embedded script tags
 const configScript = document.getElementById('config-data')
-const walksDataScript = document.getElementById('walks-data')
 
 const config = configScript ? JSON.parse(configScript.textContent) : {}
-const initialData = walksDataScript ? JSON.parse(walksDataScript.textContent) : { walks: [] }
 
-// Create Vue app with its props from initial data & config
-const app = createApp(WalkInterface, {
-    mapboxToken: config.mapboxToken,
-    mapConfig: config.map || {},
-    initialWalks: initialData.walks
-})
+// Fetch walks data from the API
+WalksAPI.filterWalks()
+    .then(data => {
+        // Create Vue app with its props from initial data & config
+        const app = createApp(WalkInterface, {
+            mapboxToken: config.mapboxToken,
+            mapConfig: config.map || {},
+            initialWalks: data
+        })
 
-// Install plugins
-app.use(pinia)
+        // Install plugins
+        app.use(pinia)
 
-// Mount the app
-app.mount('#app')
+        // Mount the app
+        app.mount('#app')
+    })
+    .catch(error => {
+        console.error('Error fetching walks data:', error);
+    });

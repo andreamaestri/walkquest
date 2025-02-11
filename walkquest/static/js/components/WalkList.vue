@@ -162,6 +162,17 @@ const scrollToWalk = (walkId) => {
   }
 }
 
+const fetchWalks = async () => {
+  try {
+    uiStore.setLoading(true)
+    await walksStore.loadWalks()
+  } catch (error) {
+    uiStore.setError(error.message)
+  } finally {
+    uiStore.setLoading(false)
+  }
+}
+
 // Watch for changes in virtual items and update measurements
 watch(virtualRows, () => {
   nextTick(() => {
@@ -169,6 +180,7 @@ watch(virtualRows, () => {
 })
 
 onMounted(() => {
+  fetchWalks()
   nextTick(() => {
   })
 })

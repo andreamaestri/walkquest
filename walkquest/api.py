@@ -7,22 +7,12 @@ from walks.models import Walk  # Added import for Walk model
 router = Router()
 
 @router.get("/walks/", response=List[WalkOut])
-def list_walks(
-    request: HttpRequest,
-    search: Optional[str] = None,
-    categories: Optional[List[str]] = None,
-    features: Optional[List[str]] = None
-):
+def list_walks(request: HttpRequest):
     """
-    List walks with optional filtering
-    
-    Parameters:
-    - search: Optional string to filter walks by name (case-insensitive)
-    - categories: Optional list of category slugs to filter walks
-    - features: Optional list of feature slugs to filter walks
+    List all walks
     
     Example Request:
-    GET /api/walks/?search=park&categories=urban&features=dog-friendly
+    GET /api/walks/
     
     Response:
     [
@@ -40,15 +30,6 @@ def list_walks(
     - 500: Server Error
     """
     walks = Walk.objects.all()
-    
-    if search:
-        walks = walks.filter(walk_name__icontains=search)
-    
-    if categories:
-        walks = walks.filter(categories__slug__in=categories)
-    
-    if features:
-        walks = walks.filter(features__slug__in=features)
     
     # Add is_favorite field based on user authentication
     for walk in walks:
