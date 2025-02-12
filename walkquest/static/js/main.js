@@ -5,6 +5,7 @@ import App from './App.vue'
 import Navigation from './components/Navigation.vue'
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 import VueVirtualScroller from 'vue-virtual-scroller'
+import "iconify-icon"
 
 // Create Pinia instance first
 const pinia = createPinia()

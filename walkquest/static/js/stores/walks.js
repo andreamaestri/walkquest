@@ -20,10 +20,8 @@ export const useWalksStore = defineStore('walks', () => {
       uiStore.setLoadingState('walks', true)
       
       const { walks: loadedWalks } = await WalksAPI.filterWalks()
-      walks.value = loadedWalks?.map(walk => ({
-        ...walk,
-        isExpanded: false
-      })) || []
+      // Don't initialize isExpanded here since it's managed by the parent component
+      walks.value = loadedWalks || []
       
       return walks.value
     } catch (error) {

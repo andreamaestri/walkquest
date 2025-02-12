@@ -27,6 +27,7 @@
           :error="error"
           :walks="availableWalks"
           :selected-walk-id="selectedWalkId"
+          :expanded-walk-ids="expandedWalkIds"
           @walk-selected="handleWalkSelection"
           @walk-expanded="handleWalkExpanded"
         />
@@ -62,12 +63,17 @@
     </div>
 
     <!-- Mobile menu with animation -->
-    <MobileMenu v-if="isMobile" class="md:hidden mobile-menu">
+    <!-- Note: Added Tailwind utilities for transform and transition -->
+    <MobileMenu 
+      v-if="isMobile" 
+      class="mobile-menu md:hidden transform transition delay-150 duration-300 ease-in-out translate-x-full"
+    >
       <div class="w-full h-full">
         <WalkList 
           :error="error"
           :walks="availableWalks"
           :selected-walk-id="selectedWalkId"
+          :expanded-walk-ids="expandedWalkIds"
           @walk-selected="handleWalkSelection"
           @walk-expanded="handleWalkExpanded"
         />
@@ -102,10 +108,11 @@ const props = defineProps({
   }
 })
 
-// Component refs
+// Component refs and state
 const loadingComponent = ref(null)
 const mapComponent = ref(null)
 const sidebarRef = ref(null)
+const expandedWalkIds = ref([])
 let stopViewTracking
 
 // Store and router access
@@ -192,16 +199,19 @@ const handleWalkSelection = (walk) => {
   }
 }
 
-const handleWalkExpanded = async (walkId) => {
-  const walks = [...availableWalks.value]
-  const walkIndex = walks.findIndex(w => w.id === walkId)
-  if (walkIndex !== -1) {
-    walks[walkIndex] = {
-      ...walks[walkIndex],
-      isExpanded: !walks[walkIndex].isExpanded
-    }
-    await walksStore.setWalks(walks)
-  }
+// Expanded walks state management
+const handleWalkExpanded = ({ walkId, expanded }) => {
+  console.debug("WalkInterface.vue: Walk expansion toggled:", { walkId, expanded })
+  
+  // Create a new array to trigger reactivity
+  expandedWalkIds.value = expanded 
+    ? [...new Set([...expandedWalkIds.value, walkId])]
+    : expandedWalkIds.value.filter(id => id !== walkId)
+    
+  console.debug("WalkInterface.vue: Updated expandedWalkIds:", expandedWalkIds.value)
+  
+  // Save to localStorage for persistence
+  localStorage.setItem('expandedWalks', JSON.stringify(expandedWalkIds.value))
 }
 
 const toggleSidebar = () => {
@@ -308,6 +318,16 @@ watch(showSidebar, (visible) => {
 })
 
 onMounted(async () => {
+  // Load saved expanded states from localStorage
+  try {
+    const savedExpandedIds = JSON.parse(localStorage.getItem('expandedWalks') || '[]')
+    if (Array.isArray(savedExpandedIds)) {
+      expandedWalkIds.value = savedExpandedIds
+    }
+  } catch (e) {
+    console.error('Failed to load saved expanded states:', e)
+  }
+
   window.addEventListener('resize', handleResize)
   await initializeData()
 
@@ -335,9 +355,3 @@ onBeforeUnmount(() => {
   }
 })
 </script>
-
-<style>
-.mobile-menu {
-  transform: translateX(100%);
-}
-</style>

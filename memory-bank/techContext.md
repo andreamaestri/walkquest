@@ -4,28 +4,28 @@
 
 ### Virtual List Implementation
 - **TanStack Virtual**
-  - Optimized virtualizer initialization
-  - Dynamic size estimation with caching
-  - Efficient measurement strategy
-  - Clean item virtualization
-  - Proper cleanup handling
-  - Scroll performance optimization
+  - Base item height: 200px
+  - Expanded padding: 150px
+  - Proper cleanup in onBeforeUnmount
+  - Clean Pinia store integration
+  - Memory leak prevention
+  - Optimized scroll performance
 
 ### Size Calculation Strategy
-- Base item height: 200px
-- Expanded padding: 150px
-- Dynamic size estimation
-- Efficient measurement caching
-- Proper cleanup on unmount
-- Optimized re-rendering
+- Fixed base height (200px)
+- Expanded padding (150px)
+- Clean measurement handling
+- Efficient cleanup patterns
+- Store subscription optimization
+- Proper memory management
 
 ### Virtual Item Interface
-- Unique key identification
-- Efficient index tracking
-- Optimized position calculation
-- Dynamic size handling
-- Clean end position tracking
-- Proper type definitions
+- Unique key management
+- Fixed size implementation
+- Efficient store updates
+- Clean event handling
+- Memory-aware unmounting
+- Type-safe interfaces
 
 ### MapBox Integration
 - Proper CSS inclusion in base.html
@@ -136,12 +136,12 @@
 ## Performance Optimizations
 
 ### Virtual List
-- Dynamic size estimation
-- Efficient re-rendering
-- Proper measurement caching
-- Optimized scroll handling
-- Clean component cleanup
-- Memory management
+- Fixed base height (200px)
+- Expanded padding (150px)
+- Proper onBeforeUnmount cleanup
+- Optimized store subscriptions
+- Memory leak prevention
+- Efficient scroll handling
 
 ### Map Component
 - Empty container pattern

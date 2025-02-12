@@ -30,6 +30,8 @@
     "axios": "^1.6.7",
     "iconify-icon": "^2.3.0",
     "ky": "^1.7.4",
+    "lodash.debounce": "^4.0.8",
+    "lodash.isequal": "^4.5.0",
     "mapbox-gl": "^3.9.4",
     "motion": "^12.4.2",
     "pinia": "^2.1.7",
