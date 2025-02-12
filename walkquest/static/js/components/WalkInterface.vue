@@ -4,18 +4,12 @@
     
     <div class="relative h-full w-full flex">
       <!-- Sidebar for desktop -->
-      <Transition 
-      enter-active-class="transition-all duration-300 ease-in-out"
-      leave-active-class="transition-all duration-300 ease-in-out"
-      enter-from-class="-translate-x-full"
-      leave-to-class="-translate-x-full"
-      >
       <div 
         v-if="showSidebar && !isMobile"
+        ref="sidebarRef"
         class="hidden md:flex flex-col fixed md:relative inset-y-0 left-0 z-10
-           bg-white border-r border-gray-200 overflow-hidden
-           w-md lg:w-xl
-           transform md:transform-none"
+           bg-white border-r border-gray-200
+           w-md lg:w-xl h-full"
       >
         <div class="p-4 border-b border-gray-200 flex justify-between items-center">
         <h2 class="text-xl font-semibold">Available Walks</h2>
@@ -28,7 +22,7 @@
         </button>
         </div>
 
-        <div class="flex-1 min-h-0 flex flex-col overflow-hidden">
+        <div class="flex-1 overflow-hidden">
         <WalkList 
           :error="error"
           :walks="availableWalks"
@@ -38,16 +32,15 @@
         />
         </div>
       </div>
-      </Transition>
 
-      <!-- Map container -->
+      <!-- Map container with animation -->
       <div 
-      class="flex-1 relative transition-[margin] duration-300"
-      :class="{
-        'md:ml-80 lg:ml-96': showSidebar && !isMobile
-      }"
+        class="flex-1 relative transition-[margin] duration-300 map-container"
+        :class="{
+          'md:ml-80 lg:ml-96': showSidebar && !isMobile
+        }"
       >
-      <div class="absolute inset-0">
+        <div class="absolute inset-0">
         <MapView
         ref="mapComponent"
         :mapbox-token="mapboxToken"
@@ -68,8 +61,8 @@
       </div>
     </div>
 
-    <!-- Mobile menu -->
-    <MobileMenu v-if="isMobile" class="md:hidden">
+    <!-- Mobile menu with animation -->
+    <MobileMenu v-if="isMobile" class="md:hidden mobile-menu">
       <div class="w-full h-full">
         <WalkList 
           :error="error"
@@ -86,6 +79,7 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { animate, inView } from 'motion'
 import { useUiStore } from '../stores/ui'
 import { useWalksStore } from '../stores/walks'
 import Loading from './Loading.vue'
@@ -111,6 +105,8 @@ const props = defineProps({
 // Component refs
 const loadingComponent = ref(null)
 const mapComponent = ref(null)
+const sidebarRef = ref(null)
+let stopViewTracking
 
 // Store and router access
 const router = useRouter()
@@ -145,13 +141,21 @@ const initializeData = async () => {
     await walksStore.loadWalks()
     console.debug("WalkInterface.vue: Walks loaded from store:", walksStore.walks)
     
-    // Show sidebar if we have walks and not on mobile
+    // Ensure walks are loaded before showing the sidebar
+    await nextTick()
+    
     if (walksStore.walks.length && !isMobile.value) {
-      await nextTick()
       uiStore.setSidebarVisibility(true)
       console.debug("WalkInterface.vue: Sidebar set visible, walks count:", walksStore.walks.length)
-    } else {
-      console.debug("WalkInterface.vue: Sidebar remains hidden. Walks count:", walksStore.walks.length, "isMobile:", isMobile.value)
+      
+      // Force a reflow to ensure proper rendering
+      await nextTick()
+      const walkList = document.querySelector('.walk-list')
+      if (walkList) {
+        walkList.style.display = 'none'
+        walkList.offsetHeight // Force reflow
+        walkList.style.display = ''
+      }
     }
   } catch (error) {
     console.error("WalkInterface.vue: Data initialization failed:", error)
@@ -204,6 +208,59 @@ const toggleSidebar = () => {
   uiStore.toggleSidebar()
 }
 
+// Enhanced sidebar transition
+const toggleSidebarWithAnimation = async () => {
+  const sidebar = sidebarRef.value
+  if (!sidebar) return
+
+  if (showSidebar.value) {
+    await animate(sidebar, 
+      { x: ['-100%', '0%'], opacity: [0, 1] },
+      { duration: 0.3, easing: [0.2, 0.8, 0.2, 1] }
+    )
+  } else {
+    await animate(sidebar, 
+      { x: ['0%', '-100%'], opacity: [1, 0] },
+      { duration: 0.3, easing: [0.2, 0.8, 0.2, 1] }
+    )
+  }
+}
+
+// Enhanced mobile menu transition
+const handleMobileMenuTransition = async (isOpen) => {
+  const menu = document.querySelector('.mobile-menu')
+  if (!menu) return
+
+  if (isOpen) {
+    await animate(menu,
+      { 
+        x: ['100%', '0%'],
+        opacity: [0, 1]
+      },
+      { 
+        duration: 0.3,
+        easing: [0.2, 0.8, 0.2, 1]
+      }
+    )
+  } else {
+    await animate(menu,
+      { 
+        x: ['0%', '100%'],
+        opacity: [1, 0]
+      },
+      { 
+        duration: 0.3,
+        easing: [0.2, 0.8, 0.2, 1]
+      }
+    )
+  }
+}
+
+// Watch for mobile menu state changes
+watch(() => uiStore.isMobileMenuOpen, (isOpen) => {
+  handleMobileMenuTransition(isOpen)
+})
+
 // Window resize handling
 let resizeTimeout
 const handleResize = () => {
@@ -219,9 +276,11 @@ const handleResize = () => {
 watch(() => walksStore.walks, (newWalks) => {
   console.log('Store walks updated:', newWalks?.length)
   if (newWalks?.length > 0 && !showSidebar.value && !isMobile.value) {
-    uiStore.setSidebarVisibility(true)
+    nextTick(() => {
+      uiStore.setSidebarVisibility(true)
+    })
   }
-}, { deep: true })
+}, { deep: true, immediate: true })
 
 // Add dimension logging
 const logContainerDimensions = () => {
@@ -239,6 +298,7 @@ watch(showSidebar, (visible) => {
   console.log('Sidebar visibility changed:', visible)
   if (visible) {
     nextTick(() => {
+      toggleSidebarWithAnimation()
       logContainerDimensions()
       if (mapComponent.value?.map?.map) {
         mapComponent.value.map.map.resize()
@@ -247,17 +307,37 @@ watch(showSidebar, (visible) => {
   }
 })
 
-// Lifecycle hooks
 onMounted(async () => {
   window.addEventListener('resize', handleResize)
   await initializeData()
+
+  // Setup viewport tracking for map container
+  const mapContainer = document.querySelector('.map-container')
+  if (mapContainer) {
+    stopViewTracking = inView(mapContainer, () => {
+      animate(mapContainer, { scale: [0.95, 1], opacity: [0, 1] }, {
+        duration: 0.5,
+        easing: [0.2, 0.8, 0.2, 1]
+      })
+
+      return () => {
+        animate(mapContainer, { scale: 0.95, opacity: 0 })
+      }
+    })
+  }
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', handleResize)
   clearTimeout(resizeTimeout)
+  if (stopViewTracking) {
+    stopViewTracking()
+  }
 })
 </script>
 
 <style>
+.mobile-menu {
+  transform: translateX(100%);
+}
 </style>

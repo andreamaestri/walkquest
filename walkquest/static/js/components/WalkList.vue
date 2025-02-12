@@ -6,76 +6,81 @@
     </div>
 
     <!-- Loading state -->
-    <div v-if="loading" class="p-4">
+    <div v-if="loading" class="flex-1 p-4 overflow-y-auto">
       <div v-for="i in 3" :key="i" class="mb-4 p-4 border border-gray-200 rounded-lg">
-        <div>
-          <div class="h-4 bg-gray-200 rounded w-3/4 mb-4 animate-pulse"></div>
-          <div class="h-3 bg-gray-200 rounded w-1/2 mb-2 animate-pulse"></div>
-          <div class="h-3 bg-gray-200 rounded w-1/4 animate-pulse"></div>
+        <div class="animate-pulse space-y-3">
+          <div class="h-4 bg-gray-200 rounded w-3/4"></div>
+          <div class="h-3 bg-gray-200 rounded w-1/2"></div>
+          <div class="h-3 bg-gray-200 rounded w-1/4"></div>
         </div>
       </div>
     </div>
 
     <!-- Walk list -->
-    <div v-else-if="computedWalks.length" class="flex-1 min-h-0 flex flex-col relative">
-      <div class="flex-1 overflow-y-auto p-4">
-        <!-- Test card -->
-        <div class="mb-8 bg-white rounded-lg border-2 border-blue-500 shadow-sm hover:shadow-md transition-all">
-          <div class="p-4">
-            <div class="flex justify-between items-start mb-2">
-              <h3 class="text-lg font-semibold">Test Walk Card</h3>
-              <div class="flex gap-2">
-                <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
-                  Test Badge
-                </span>
-              </div>
-            </div>
-            <div class="space-y-4">
-              <p class="text-sm text-gray-600">
-                This is a test walk card to verify styling and layout.
-              </p>
-              <div class="mt-4">
-                <h4 class="font-medium mb-2">Test Details:</h4>
-                <ul class="space-y-1 text-sm">
-                  <li>Detail 1</li>
-                  <li>Detail 2</li>
-                </ul>
-              </div>
-            </div>
-            <div class="flex justify-end gap-2 mt-4">
-              <button class="px-4 py-2 text-sm font-medium bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
-                Show More
-              </button>
-              <button class="px-4 py-2 text-sm font-medium bg-blue-500 text-white hover:bg-blue-600 rounded-md transition-colors">
-                View on Map
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Actual walk cards -->
-        <div 
-          v-for="walk in computedWalks.slice(0, 5)" 
-          :key="walk.id"
-          class="mb-4 bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all"
-          :class="{ 'border-blue-500 bg-blue-50': selectedWalkId === walk.id }"
-          @click="handleWalkClick(walk)"
+    <div v-else-if="computedWalks.length" class="flex-1 overflow-y-auto">
+      <div class="p-4 space-y-4">
+        <TransitionGroup
+          tag="div"
+          class="space-y-4"
+          name="walk-list"
         >
-          <div class="p-4">
-            <div class="flex justify-between items-start mb-2">
-              <h3 class="text-lg font-semibold">{{ walk.walk_name }}</h3>
-              <div v-if="walk.steepness_level" class="flex gap-2">
-                <span 
-                  class="px-2 py-1 text-xs font-medium rounded-full"
-                  :class="getBadgeInfo(walk.steepness_level)?.color"
-                >
-                  {{ walk.steepness_level }}
-                </span>
+          <div 
+            v-for="walk in computedWalks" 
+            :key="walk.id"
+            class="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 walk-item opacity-100 transform translate-y-0 scale-100"
+            :class="{ 
+              'border-blue-500 bg-blue-50': selectedWalkId === walk.id,
+              'pointer-events-none': isCardExpanding
+            }"
+            @click="handleWalkClick(walk)"
+            :data-walk-id="walk.id"
+          >
+            <div class="p-4">
+              <div class="flex justify-between items-start mb-2">
+                <h3 class="text-lg font-semibold">{{ walk.walk_name }}</h3>
+                <div v-if="walk.steepness_level" class="flex gap-2">
+                  <span 
+                    class="px-2 py-1 text-xs font-medium rounded-full"
+                    :class="getBadgeInfo(walk.steepness_level)?.color"
+                  >
+                    {{ walk.steepness_level }}
+                  </span>
+                </div>
+              </div>
+              <p class="text-sm text-gray-600">{{ walk.highlights }}</p>
+              
+              <!-- Expandable content -->
+              <div class="expandable-content overflow-hidden">
+                <div class="space-y-4 mt-4">
+                  <div v-if="walk.categories?.length" class="flex flex-wrap gap-2">
+                    <span 
+                      v-for="category in walk.categories" 
+                      :key="category"
+                      class="category-tag px-2 py-1 text-xs font-medium bg-indigo-50 text-indigo-600 rounded-full"
+                    >
+                      {{ category }}
+                    </span>
+                  </div>
+                  
+                  <div v-if="walk.description" class="prose prose-sm max-w-none">
+                    <p>{{ walk.description }}</p>
+                  </div>
+
+                  <div class="flex flex-wrap gap-4">
+                    <div v-if="walk.distance" class="flex items-center gap-1">
+                      <span class="text-gray-500">Distance:</span>
+                      <span class="font-medium">{{ walk.distance }}km</span>
+                    </div>
+                    <div v-if="walk.duration" class="flex items-center gap-1">
+                      <span class="text-gray-500">Duration:</span>
+                      <span class="font-medium">{{ walk.duration }}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-            <p class="text-sm text-gray-600">{{ walk.highlights }}</p>
           </div>
-        </div>
+        </TransitionGroup>
       </div>
 
       <!-- Debug info -->
@@ -94,13 +99,15 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch, TransitionGroup } from 'vue'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 import { useUiStore } from '../stores/ui'
 import { getBadgeInfo } from '../utils/helpers'
 import { useWalksStore } from '../stores/walks'
 import debounce from 'lodash.debounce'
+import { animate, scroll, inView } from 'motion'
+import { useViewportAnimation } from '../composables/useViewportAnimation'
 
 // Props and emits setup
 const props = defineProps({
@@ -113,9 +120,19 @@ const emit = defineEmits(['walk-selected', 'walk-expanded'])
 const uiStore = useUiStore()
 const walksStore = useWalksStore()
 
+// Animation state
+const isCardExpanding = ref(false)
+const revealedCards = ref(new Set())
+
+// Loading and UI state
+const loading = computed(() => walksStore.loading)
+const containerHeight = ref(0)
+const firstItemHeight = ref(0)
+const scroller = ref(null)
+let resizeObserver = null
+
 // Debug computed property for walk data
 const computedWalks = computed(() => {
-  // Convert walks to a new array to avoid Proxy issues
   const rawWalks = props.walks ? [...props.walks] : []
   console.debug("WalkList.vue: Received walks from props:", rawWalks)
   const filteredWalks = rawWalks.filter(walk => walk?.id && walk?.walk_name)
@@ -123,22 +140,167 @@ const computedWalks = computed(() => {
   return filteredWalks
 })
 
-// Log right before render (using a watcher)
-watch(computedWalks, (newWalks) => {
-  console.debug("WalkList.vue: Final computedWalks ready for render:", newWalks)
-}, { immediate: true })
+// Enhanced enter/leave transitions
+const onBeforeEnter = (el) => {
+  el.style.opacity = '0'
+  el.style.transform = 'translateY(25px)'
+}
 
-// Item size - used by RecycleScroller
-const minItemHeight = 160 // Adjusted based on content
+const onEnter = async (el, done) => {
+  await animate(el, {
+    opacity: [0, 1],
+    y: [25, 0],
+    scale: [0.95, 1]
+  }, {
+    duration: 0.5,
+    easing: [0.2, 0.8, 0.2, 1]
+  })
+  done()
+}
 
-// Add loading state
-const loading = computed(() => walksStore.loading)
+const onLeave = async (el, done) => {
+  await animate(el, {
+    opacity: [1, 0],
+    y: [0, -25],
+    scale: [1, 0.95]
+  }, {
+    duration: 0.3,
+    easing: [0.2, 0.8, 0.2, 1]
+  })
+  done()
+}
 
-// Debug refs
-const containerHeight = ref(0)
-const firstItemHeight = ref(0)
-const scroller = ref(null)
-let resizeObserver = null
+// Enhanced card expansion animation
+const handleWalkClick = async (walk) => {
+  if (!walk || isCardExpanding.value) return
+  
+  isCardExpanding.value = true
+  const card = document.querySelector(`[data-walk-id="${walk.id}"]`)
+  
+  try {
+    if (props.selectedWalkId === walk.id) {
+      await animate(card, {
+        scale: [1.02, 1],
+        y: [-4, 0],
+        backgroundColor: ['rgb(239, 246, 255)', 'rgb(255, 255, 255)'],
+        borderColor: ['rgb(59, 130, 246)', 'rgb(229, 231, 235)'],
+      }, {
+        duration: 0.3,
+        easing: [0.2, 0.8, 0.2, 1]
+      })
+      emit('walk-selected', null)
+    } else {
+      await animate(card, {
+        scale: [1, 1.02],
+        y: [0, -4],
+        backgroundColor: ['rgb(255, 255, 255)', 'rgb(239, 246, 255)'],
+        borderColor: ['rgb(229, 231, 235)', 'rgb(59, 130, 246)'],
+      }, {
+        duration: 0.3,
+        easing: [0.2, 0.8, 0.2, 1]
+      })
+      emit('walk-selected', walk)
+    }
+  } finally {
+    isCardExpanding.value = false
+  }
+}
+
+// Enhanced animation methods
+const animateCard = async (card, shouldExpand = false) => {
+  if (shouldExpand) {
+    await animate(card, {
+      scale: [1, 1.02],
+      y: [0, -4],
+      backgroundColor: ['rgb(255, 255, 255)', 'rgb(239, 246, 255)'],
+      borderColor: ['rgb(229, 231, 235)', 'rgb(59, 130, 246)'],
+    }, {
+      duration: 0.3,
+      easing: [0.2, 0.8, 0.2, 1]
+    })
+  } else {
+    await animate(card, {
+      opacity: [0, 1],
+      y: [15, 0],
+      scale: [0.97, 1]
+    }, {
+      duration: 0.5,
+      easing: [0.2, 0.8, 0.2, 1]
+    })
+  }
+}
+
+const animateContent = async (content, shouldExpand) => {
+  if (!content || !window.Motion) return;
+
+  const title = content.querySelector('h3');
+  if (shouldExpand) {
+    content.style.display = 'block';
+    const targetHeight = content.scrollHeight;
+    await window.Motion.animate([
+      [content, {
+        height: [0, targetHeight],
+        opacity: [0, 1],
+        margin: [0, '1rem 0'],
+        y: [-20, 0],
+        scale: [0.95, 1]
+      }, {
+        duration: 0.5,
+        easing: 'easeOutQuart'
+      }],
+      [content.querySelectorAll('img, .category-tag, p'), {
+        opacity: [0, 1],
+        y: [20, 0],
+        scale: [0.9, 1]
+      }, {
+        duration: 0.4,
+        delay: window.Motion.stagger(0.07, { start: 0.1 }),
+        easing: 'easeOutCubic'
+      }],
+      [title, {
+        opacity: [0, 1],
+        y: [-30, 0],
+        scale: [0.9, 1]
+      }, {
+        duration: 0.6,
+        easing: 'easeOutQuart',
+        at: "<"
+      }]
+    ]);
+  } else {
+    await window.Motion.animate([
+      [content.querySelectorAll('img, .category-tag, p'), {
+        opacity: [1, 0],
+        y: [0, -10],
+        scale: [1, 0.95]
+      }, {
+        duration: 0.3,
+        delay: window.Motion.stagger(0.04),
+        easing: 'easeInCubic'
+      }],
+      [title, {
+        opacity: [1, 0],
+        y: [0, -20],
+        scale: [1, 0.95]
+      }, {
+        duration: 0.3,
+        easing: 'easeInCubic',
+        at: "<"
+      }],
+      [content, {
+        height: 0,
+        opacity: 0,
+        margin: 0,
+        scale: 0.95
+      }, {
+        duration: 0.3,
+        easing: 'easeInCubic',
+        at: "<"
+      }]
+    ]);
+    content.style.display = 'none';
+  }
+}
 
 // Enhanced dimension logging with debug info update
 const logDimensions = (event = 'check') => {
@@ -181,6 +343,9 @@ const handleResize = debounce(() => {
   }
 }, 100)
 
+const scrollAnimationCleanup = ref(null)
+
+// Remove the initScrollAnimations function since we're using Vue transitions
 onMounted(() => {
   if (!window.ResizeObserver) {
     console.warn('ResizeObserver not available')
@@ -197,21 +362,47 @@ onMounted(() => {
   
   nextTick(() => {
     logDimensions('mounted')
-    // Add detailed mount checks
-    console.debug('Walk list mount check:', {
-      walkList: document.querySelector('.walk-list'),
-      container: document.querySelector('.walk-list-container'),
-      scroller: document.querySelector('.scroller'),
-      testCard: document.querySelector('.test-card'),
-      walkItems: document.querySelectorAll('.walk-item').length,
-      computedWalksLength: computedWalks.value.length
+  })
+
+  // Initialize scroll animations for cards
+  const cards = document.querySelectorAll('.walk-item')
+  cards.forEach((card, index) => {
+    const stopTracking = inView(card, () => {
+      animate(card, { 
+        opacity: [0, 1],
+        y: [20, 0],
+        scale: [0.95, 1]
+      }, { 
+        delay: index * 0.1,
+        duration: 0.5,
+        easing: [0.2, 0.8, 0.2, 1]
+      })
+
+      return () => {
+        animate(card, { 
+          opacity: 0,
+          y: 20,
+          scale: 0.95
+        })
+      }
     })
+
+    // Store cleanup function
+    if (!scrollAnimationCleanup.value) {
+      scrollAnimationCleanup.value = []
+    }
+    scrollAnimationCleanup.value.push(stopTracking)
   })
 })
 
 onBeforeUnmount(() => {
   if (resizeObserver) {
     resizeObserver.disconnect()
+  }
+
+  // Cleanup scroll animations
+  if (scrollAnimationCleanup.value) {
+    scrollAnimationCleanup.value.forEach(cleanup => cleanup())
   }
 })
 
@@ -220,31 +411,10 @@ watch(computedWalks, (newWalks) => {
   if (newWalks.length) {
     nextTick(() => {
       logDimensions('walks-updated')
-      // Force scroller update
       scroller.value?.forceUpdate()
     })
   }
 })
-
-// Methods
-const handleWalkClick = (walk) => {
-  if (!walk) return
-  if (props.selectedWalkId === walk.id) {
-    emit('walk-selected', null)
-  } else {
-    selectWalk(walk)
-  }
-}
-
-const selectWalk = (walk) => {
-  if (!walk) return
-  emit('walk-selected', walk)
-}
-
-const toggleExpand = (walk) => {
-  if (!walk) return
-  emit('walk-expanded', walk.id)
-}
 
 // Add sidebar visibility tracking
 watch(() => uiStore.showSidebar, (visible) => {
@@ -255,3 +425,21 @@ watch(() => uiStore.showSidebar, (visible) => {
   }
 }, { immediate: true })
 </script>
+
+<style>
+.walk-list-move,
+.walk-list-enter-active,
+.walk-list-leave-active {
+  transition: all 0.5s ease;
+}
+
+.walk-list-enter-from,
+.walk-list-leave-to {
+  opacity: 0;
+  transform: translateY(25px);
+}
+
+.walk-list-leave-active {
+  position: absolute;
+}
+</style>
