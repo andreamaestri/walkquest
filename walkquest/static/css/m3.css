@@ -1,0 +1,134 @@
+.m3-navigation-rail {
+  width: var(--md-sys-sidebar-collapsed);
+  background-color: rgb(var(--md-sys-color-surface));
+  box-shadow: var(--md-sys-elevation-2);
+  transition: width var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+  padding: 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+  contain: layout style;
+}
+
+.m3-navigation-rail.is-expanded {
+  width: var(--md-sys-sidebar-standard);
+}
+
+:root {
+  --collapsed-width: 80px;
+  --expanded-width: 360px;
+  --md-sys-motion-duration-medium: 400ms;
+  --md-sys-motion-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --spring-regular: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.walk-list-container {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.walk-list-container.is-compact .scroll-item {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Virtual scroll optimization */
+.vue-recycle-scroller {
+  position: relative !important;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  height: calc(100vh - var(--md-sys-side-sheet-header-height)) !important;
+  contain: strict;
+}
+
+.vue-recycle-scroller__item-wrapper {
+  will-change: transform;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  contain: strict;
+}
+
+.vue-recycle-scroller__item-view {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  transform: translateZ(0);
+  contain: content;
+}
+
+.m3-rail-header {
+  height: var(--md-sys-side-sheet-header-height);
+  min-height: var(--md-sys-side-sheet-header-height);
+  padding: var(--md-sys-side-sheet-padding);
+  margin: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+
+.m3-navigation-fab {
+  position: absolute;
+  top: 8px;
+  right: 0;
+  transform: translateX(50%);
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  background: rgb(var(--md-sys-color-surface-container-highest));
+  color: rgb(var(--md-sys-color-on-surface));
+  display: grid;
+  place-items: center;
+  box-shadow: var(--md-sys-elevation-1);
+  cursor: pointer;
+  transition: all var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard);
+  z-index: 1;
+}
+
+/* Update WalkInterface specific styles */
+.vue-recycle-scroller.scroller {
+  contain: strict;
+  height: calc(100% - 64px) !important;
+}
+
+.vue-recycle-scroller__item-wrapper {
+  width: var(--md-sys-sidebar-standard) !important;
+  transform: translateZ(0);
+  contain: strict;
+  transition: width var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+}
+
+.is-compact .vue-recycle-scroller__item-wrapper {
+  width: var(--md-sys-sidebar-collapsed) !important;
+}
+
+.is-compact .vue-recycle-scroller__item-view {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-emphasized-accelerate);
+}
+
+.is-expanded .vue-recycle-scroller__item-view {
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized-decelerate);
+  transition-delay: var(--md-sys-motion-duration-short1);
+}
+
+/* M3 State Layer Effects */
+.m3-state-layer-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  flex-shrink: 0;
+  position: relative;
+  isolation: isolate;
+}

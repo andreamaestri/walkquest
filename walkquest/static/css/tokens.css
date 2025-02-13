@@ -1,0 +1,55 @@
+/* Motion tokens */
+:root {
+  /* Duration tokens */
+  --md-sys-motion-duration-short1: 100ms;
+  --md-sys-motion-duration-short2: 200ms;
+  --md-sys-motion-duration-medium1: 250ms;
+  --md-sys-motion-duration-medium2: 300ms;
+  --md-sys-motion-duration-long1: 350ms;
+  --md-sys-motion-duration-long2: 400ms;
+
+  /* Easing tokens */
+  --md-sys-motion-easing-linear: cubic-bezier(0, 0, 1, 1);
+  --md-sys-motion-easing-standard: cubic-bezier(0.2, 0, 0.2, 1);
+  --md-sys-motion-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --md-sys-motion-easing-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --md-sys-motion-easing-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+
+  /* Elevation tokens for side sheets */
+  --md-sys-elevation-level1: 0px 2px 1px -1px rgba(0,0,0,0.2),
+                            0px 1px 1px 0px rgba(0,0,0,0.14),
+                            0px 1px 3px 0px rgba(0,0,0,0.12);
+  --md-sys-elevation-level2: 0px 3px 3px -2px rgba(0,0,0,0.2),
+                            0px 3px 4px 0px rgba(0,0,0,0.14),
+                            0px 1px 8px 0px rgba(0,0,0,0.12);
+  
+  /* Side sheet dimensions per M3 specs */
+  --md-sys-sidebar-collapsed: 80px;    /* Standard navigation rail width */
+  --md-sys-sidebar-standard: 360px;    /* Standard side sheet width */
+  --md-sys-side-sheet-padding: 16px;
+  --md-sys-side-sheet-header-height: 64px;
+}
+
+/* Performance optimizations */
+.hardware-accelerated {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  will-change: transform;
+  contain: layout style paint;
+}
+
+/* Side sheet transitions */
+.side-sheet-transition-enter-active,
+.side-sheet-transition-leave-active {
+  transition: width var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+}
+
+.side-sheet-content-enter-active {
+  transition: opacity var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized-decelerate);
+  transition-delay: var(--md-sys-motion-duration-short1);
+}
+
+.side-sheet-content-leave-active {
+  transition: opacity var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-emphasized-accelerate);
+}

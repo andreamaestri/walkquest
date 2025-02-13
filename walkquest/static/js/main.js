@@ -1,11 +1,15 @@
-import 'vue/dist/vue.esm-bundler';
+import 'vue/dist/vue.esm-bundler'
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import router from './router'
 import App from './App.vue'
 import Navigation from './components/Navigation.vue'
 import { DynamicScroller, DynamicScrollerItem, RecycleScroller } from 'vue-virtual-scroller'
+import { useUiStore } from './stores/ui'
 import "iconify-icon"
+
+// Import required CSS
+import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 
 // Create Pinia instance first
 const pinia = createPinia()
@@ -36,6 +40,29 @@ if (config.mapboxToken) {
 if (config.map) {
     app.config.globalProperties.mapConfig = config.map
 }
+
+// Initialize UI store with defaults
+const uiStore = useUiStore(pinia)
+uiStore.$patch({
+    error: null,
+    loading: false,
+    mapLoading: true,
+    showSidebar: false,
+    fullscreen: false,
+    mobileMenuOpen: false,
+    isMobile: window.innerWidth <= 768,  // Add initial mobile state
+    loadingStates: {
+        walks: false,
+        map: false,
+        path: false,
+        search: false
+    }
+})
+
+// Set initial mobile state
+window.addEventListener('resize', () => {
+    uiStore.$patch({ isMobile: window.innerWidth <= 768 })  // Use $patch instead of direct assignment
+})
 
 // Mount the app
 app.mount('#app')

@@ -2,30 +2,39 @@
 
 ## Frontend Architecture
 
-### Virtual List Implementation
-- **TanStack Virtual**
-  - Base item height: 200px
-  - Expanded padding: 150px
-  - Proper cleanup in onBeforeUnmount
-  - Clean Pinia store integration
-  - Memory leak prevention
-  - Optimized scroll performance
+### Virtual List Implementation - CRITICAL ISSUES 🔴
+- **Vue Virtual Scroller**
+  - RecycleScroller component not rendering cards
+  - Item wrapper has 0px height and no children
+  - No card elements in DOM
+  - Required Investigation:
+    - Data flow to RecycleScroller
+    - Item size configuration
+    - Key field verification
+    - Scoped slot implementation
+    - DOM recycling checks
 
-### Size Calculation Strategy
-- Fixed base height (200px)
-- Expanded padding (150px)
-- Clean measurement handling
-- Efficient cleanup patterns
-- Store subscription optimization
-- Proper memory management
+### Virtual List Debug Areas
+1. **Component Setup**
+   - Verify RecycleScroller import and registration
+   - Check CSS import: 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
+   - Review scoped slot implementation
+   - Verify keyField configuration
+   - Check item size settings
 
-### Virtual Item Interface
-- Unique key management
-- Fixed size implementation
-- Efficient store updates
-- Clean event handling
-- Memory-aware unmounting
-- Type-safe interfaces
+2. **Component Integration**
+   - Verify items prop passing
+   - Check item-size prop
+   - Review key-field prop
+   - Validate scoped slot usage
+   - Check wrapper class sizing
+
+3. **Rendering Logic**
+   - Review item template structure
+   - Check view recycling
+   - Verify DOM element reuse
+   - Validate item positioning
+   - Review hover state handling
 
 ### MapBox Integration
 - Proper CSS inclusion in base.html
@@ -56,6 +65,7 @@
    ```bash
    pip install -r requirements/local.txt
    npm install
+   npm install vue-virtual-scroller@next
    ```
 
 3. **Database**
@@ -69,11 +79,13 @@
    npm run dev               # Vite dev server
    ```
 
-### Testing Environment
-- Pytest for Python tests
-- Coverage reporting
-- Vue Test Utils for component testing
-- Performance benchmarking tools
+### Testing Environment - CRITICAL NEED 🔴
+- RecycleScroller rendering tests
+- Component integration tests
+- Item recycling tests
+- Size calculation tests
+- Data flow verification
+- DOM recycling checks
 
 ## Technology Stack
 
@@ -91,7 +103,8 @@
   - Vite bundler
   - Pinia state management
   - Vue Router (implicit in templates)
-  - Optimized virtual list
+  - Vue Virtual Scroller needs fixing
+  - Debugging tools needed
 
 ### Key Libraries & Tools
 - **Backend Dependencies**
@@ -102,7 +115,7 @@
   - gunicorn (WSGI server)
 
 - **Frontend Dependencies**
-  - TanStack Virtual (virtualized lists)
+  - vue-virtual-scroller (needs debugging)
   - Mapbox GL (map integration)
   - Tailwind CSS (styling)
   - ky (HTTP client)
@@ -131,33 +144,31 @@
 - **Static Files**: WhiteNoise
 - **Caching**: Redis
 - **Container**: Docker
-- **Monitoring**: (To be implemented)
+- **Monitoring**: In Progress
 
-## Performance Optimizations
+## Debug Requirements 🔴
 
-### Virtual List
-- Fixed base height (200px)
-- Expanded padding (150px)
-- Proper onBeforeUnmount cleanup
-- Optimized store subscriptions
-- Memory leak prevention
-- Efficient scroll handling
+### Vue Virtual Scroller
+- Verify RecycleScroller setup
+- Debug item rendering
+- Check DOM recycling
+- Test size calculations
+- Validate scoped slots
+- Monitor memory usage
 
-### Map Component
-- Empty container pattern
-- External controls
-- Proper CSS loading
-- Responsive layout
-- Performance monitoring
-- Memory optimization
+### Component Integration
+- Test data passing
+- Verify scoped slots
+- Check RecycleScroller props
+- Review cleanup processes
+- Test item recycling
 
-### Frontend
-- Code splitting
-- Lazy loading
-- Asset optimization
-- Proper state management
-- Store efficiency
-- Component cleanup
+### Frontend Performance
+- Profile component rendering
+- Monitor memory usage
+- Track item recycling
+- Test scroll performance
+- Verify cleanup handling
 
 ## Security Considerations
 
@@ -177,19 +188,19 @@
 
 ## Development Workflow
 
-### Version Control
-- Git workflow
-- Feature branches
-- Pull request process
-- Code review guidelines
-- CI/CD integration
+### Testing Strategy - PRIORITY 🔴
+- RecycleScroller tests
+- Component integration tests
+- Item recycling tests
+- Size calculation tests
+- Performance profiling
+- Memory usage monitoring
 
-### Testing Strategy
-- Unit tests for components
-- Store testing
-- Virtual list testing
-- Map interaction testing
-- Performance benchmarking
-- Integration testing
+### Documentation Priority
+- Vue Virtual Scroller setup guide
+- Component integration docs
+- Testing procedures
+- Performance guidelines
+- Debugging workflows
 
-This technical context provides a comprehensive overview of the development environment, tools, and technical considerations for the WalkQuest project, with a focus on performance optimization and proper implementation patterns.
+This technical context reflects the critical issues with the Vue Virtual Scroller implementation and outlines the required debugging and testing strategies.

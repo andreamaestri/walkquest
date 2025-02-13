@@ -10,6 +10,7 @@ export const useWalksStore = defineStore('walks', () => {
   const walks = ref([])
   const selectedWalk = ref(null)
   const loading = ref(false)
+  const pendingFavorites = ref(new Set()) // Track pending favorite operations
   
   // Actions
   const loadWalks = async () => {
@@ -20,8 +21,11 @@ export const useWalksStore = defineStore('walks', () => {
       uiStore.setLoadingState('walks', true)
       
       const { walks: loadedWalks } = await WalksAPI.filterWalks()
-      // Don't initialize isExpanded here since it's managed by the parent component
-      walks.value = loadedWalks || []
+      // Ensure each walk has a stable ID for virtual scroll
+      walks.value = loadedWalks?.map(walk => ({
+        ...walk,
+        id: walk.id.toString() // Ensure ID is a string for consistency
+      })) || []
       
       return walks.value
     } catch (error) {
@@ -47,6 +51,32 @@ export const useWalksStore = defineStore('walks', () => {
     uiStore.setLoadingState('walks', state)
   }
 
+  const isPendingFavorite = (walkId) => {
+    return pendingFavorites.value.has(walkId)
+  }
+
+  const toggleFavorite = async (walkId) => {
+    try {
+      pendingFavorites.value.add(walkId)
+      const walk = walks.value.find(w => w.id === walkId)
+      if (!walk) return
+
+      // Toggle the favorite status
+      walk.is_favorite = !walk.is_favorite
+
+      // Here you would typically make an API call to persist the change
+      // await api.updateWalkFavorite(walkId, walk.is_favorite)
+
+    } catch (error) {
+      console.error('Failed to toggle favorite:', error)
+      // Revert the change on error
+      const walk = walks.value.find(w => w.id === walkId)
+      if (walk) walk.is_favorite = !walk.is_favorite
+    } finally {
+      pendingFavorites.value.delete(walkId)
+    }
+  }
+
   // Computed
   const getWalkById = computed(() => {
     return (id) => walks.value.find(w => w.id === id)
@@ -57,12 +87,15 @@ export const useWalksStore = defineStore('walks', () => {
     walks,
     selectedWalk,
     loading,
+    pendingFavorites,
     
     // Actions
     loadWalks,
     setWalks,
     setSelectedWalk,
     setLoading,
+    isPendingFavorite,
+    toggleFavorite,
     
     // Computed
     getWalkById

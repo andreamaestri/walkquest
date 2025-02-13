@@ -64,18 +64,52 @@
   transform: translateY(-2px) translateZ(20px);
   box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.15);
 }
+
+/* Virtual scroll optimizations */
 .virtual-scroll-container {
-    @apply relative w-full h-full overflow-y-auto;
-    contain: strict;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  contain: strict;
+  will-change: transform;
 }
 
 .virtual-scroll-item {
-    @apply absolute w-full left-0;
-    will-change: transform;
+  position: absolute;
+  width: 100%;
+  left: 0;
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
-.card-wrapper {
-    @apply transform-gpu;
-    contain: content;
-    will-change: transform, opacity;
+/* Sidebar animations */
+.sidebar-transition {
+  transition: transform 300ms var(--md-sys-motion-easing-emphasized);
+  will-change: transform;
+}
+
+.sidebar-enter-active,
+.sidebar-leave-active {
+  transition: transform 300ms var(--md-sys-motion-easing-emphasized),
+              width 300ms var(--md-sys-motion-easing-emphasized);
+}
+
+.sidebar-enter-from,
+.sidebar-leave-to {
+  transform: translateX(-100%);
+}
+
+/* Card visibility states */
+.card-hidden {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.card-visible {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms var(--md-sys-motion-easing-standard),
+              transform 300ms var(--md-sys-motion-easing-standard);
 }

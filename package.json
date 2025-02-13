@@ -28,6 +28,7 @@
     "@tailwindcss/postcss": "^4.0.6",
     "@tailwindcss/vite": "^4.0.6",
     "@tanstack/vue-virtual": "^3.13.0",
+    "@vueuse/components": "^12.5.0",
     "@vueuse/core": "^12.5.0",
     "@vueuse/motion": "^2.2.6",
     "axios": "^1.6.7",
