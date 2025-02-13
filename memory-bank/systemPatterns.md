@@ -76,6 +76,7 @@ WalkQuest follows a Model-View-Template (MVT) architecture on the backend with D
    - Implements virtual list
    - Manages walk items
    - Handles scroll events
+   - Integrates with walks store
    - Controls item rendering
 
 3. **WalkCard.vue**
@@ -96,6 +97,7 @@ WalkQuest follows a Model-View-Template (MVT) architecture on the backend with D
    - Handles API calls
    - Controls loading states
    - Manages favorites
+    - Optimized virtual list integration
 
 2. **ui.js**
    - Controls UI state

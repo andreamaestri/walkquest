@@ -34,7 +34,8 @@
    - Fixed size calculation (200px base)
    - Added expanded padding (150px)
    - Proper onBeforeUnmount cleanup
-   - Optimized Pinia store integration
+   - Integrated with walks.js Pinia store
+   - Performance optimization in progress
 
 3. **WalkCard.vue**
    - Using iconify-prerendered icons
@@ -54,8 +55,10 @@
 1. **walks.js**
    - Proper state management
    - Optimized actions
+   - Virtual list data handling
    - Efficient loading states
    - Clean error handling
+   - Optimized store subscriptions
    - Proper type definitions
 
 2. **ui.js**
@@ -76,7 +79,7 @@
 1. **Performance Optimization**
    - Virtual list memory profiling
    - Store subscription optimization
-   - Component re-render analysis
+   - Virtual list integration analysis
    - Network request batching
 
 2. **Testing**

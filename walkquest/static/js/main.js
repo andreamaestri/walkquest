@@ -1,10 +1,10 @@
+import 'vue/dist/vue.esm-bundler';
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import router from './router'
 import App from './App.vue'
 import Navigation from './components/Navigation.vue'
-import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
-import VueVirtualScroller from 'vue-virtual-scroller'
+import { DynamicScroller, DynamicScrollerItem, RecycleScroller } from 'vue-virtual-scroller'
 import "iconify-icon"
 
 // Create Pinia instance first
@@ -13,17 +13,14 @@ const pinia = createPinia()
 // Create main Vue app
 const app = createApp(App)
 
-// Create navigation app
-const navApp = createApp(Navigation)
-
 // Install plugins for main app
 app.use(pinia)
 app.use(router)
-app.use(VueVirtualScroller)
 
-// Install plugins for navigation
-navApp.use(pinia)
-navApp.use(router)
+// Register virtual scroller components globally
+app.component('DynamicScroller', DynamicScroller)
+app.component('DynamicScrollerItem', DynamicScrollerItem)
+app.component('RecycleScroller', RecycleScroller)
 
 // Get configuration from the embedded script tags
 const configScript = document.getElementById('config-data')
@@ -40,6 +37,5 @@ if (config.map) {
     app.config.globalProperties.mapConfig = config.map
 }
 
-// Mount both apps
-navApp.mount('#nav')
+// Mount the app
 app.mount('#app')

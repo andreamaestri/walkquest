@@ -1,12 +1,17 @@
 <template>
-  <div class="h-full flex flex-col overflow-hidden relative bg-white">
+  <div class="h-full flex flex-col" ref="container" style="min-height: 400px; height: 100vh;">
     <!-- Error state -->
-    <div v-if="error" class="p-4 m-4 bg-red-100 border border-red-400 rounded-md text-red-800">
-      {{ error }}
-    </div>
+    <Transition :css="false" @enter="onErrorEnter" @leave="onErrorLeave">
+      <div
+        v-if="error"
+        class="p-4 m-4 bg-red-100 border border-red-400 rounded-md text-red-800"
+      >
+        {{ error }}
+      </div>
+    </Transition>
 
     <!-- Loading state -->
-    <div v-if="loading" class="flex-1 p-4 overflow-y-auto">
+    <div v-if="loading" class="flex-1 p-4 overflow-y-auto" style="min-height: 100px">
       <div v-for="i in 3" :key="i" class="mb-4 p-4 border border-gray-200 rounded-lg">
         <div class="animate-pulse space-y-3">
           <div class="h-4 bg-gray-200 rounded w-3/4"></div>
@@ -16,124 +21,95 @@
       </div>
     </div>
 
-    <!-- Walk list -->
-    <div v-else-if="computedWalks.length" class="flex-1 overflow-y-auto">
-      <div class="p-4 space-y-4">
-        <TransitionGroup
-          tag="div"
-          class="space-y-4"
-          enter-active-class="transition-all duration-300 ease-linear"
-          enter-from-class="opacity-0 -translate-x-8"
-          enter-to-class="opacity-100 translate-x-0"
-          leave-active-class="transition-all duration-300 ease-linear absolute"
-          leave-from-class="opacity-100 translate-x-0"
-          leave-to-class="opacity-0 -translate-x-8"
-          move-class="transition-all duration-300 ease-linear"
-        >
-          <div 
-            v-for="walk in computedWalks" 
-            :key="walk.id"
-            class="bg-white rounded-lg border border-gray-200 shadow-sm walk-item relative"
-            :class="{ 
-              'border-blue-500 bg-blue-50 shadow-md': selectedWalkId === walk.id,
-              'pointer-events-none': isCardExpanding
-            }"
-            @click="handleWalkClick(walk)"
-            :data-walk-id="walk.id"
-            :data-expanded="walk.isExpanded"
-          >
-            <div class="p-4">
-              <!-- Header with walk name, badges & favorite button -->
-              <div class="flex justify-between items-center mb-2">
-                <div>
-                  <h3 class="text-lg font-semibold">{{ walk.walk_name }}</h3>
-                  <div class="flex space-x-2">
-                    <span v-if="walk.difficulty" class="text-xs uppercase font-bold text-gray-700">
+    <!-- Main content -->
+    <!-- Changed: Use a static class for scrolling -->
+    <div class="flex-1 overflow-y-auto">
+      <DynamicScroller
+        ref="dynamicScroller"
+        :items="computedWalks"
+        :min-item-size="128"
+        class="h-full relative overflow-y-auto"
+        :listClass="'walk-list'"
+        @resize="handleResize"
+        :style="{ minHeight: '200px', visibility: 'visible' }"
+      >
+        <template #default="{ item: walk, index, active }">
+          <DynamicScrollerItem :item="walk" :active="active" :size-dependencies="[walk.walk_name, walk.difficulty, walk.duration, walk.highlights]" class="card-item">
+            <div 
+              class="card-wrapper"
+              :class="{ 'animated': active }"
+              :ref="el => setScrollItemRef(el, walk.id)"
+              :data-walk-id="walk.id"
+            >
+              <!-- Updated: Added hover and press event listeners -->
+              <div
+                class="card-content cursor-pointer group"
+                :ref="setCardRef(walk.id)"
+                @click="handleWalkClick(walk)"
+                @mouseover="handleCardHover(walk.id, true)"
+                @mouseleave="handleCardHover(walk.id, false)"
+                @mousedown="handleCardPress(walk.id, true)"
+                @mouseup="handleCardPress(walk.id, false)"
+              >
+                <!-- Content wrapper -->
+                <div class="p-4 space-y-3">
+                  <h3 class="text-lg font-semibold group-hover:text-blue-600 transition-colors">
+                    {{ walk.walk_name }}
+                  </h3>
+
+                  <!-- Interactive badges -->
+                  <div class="flex gap-2">
+                    <span
+                      v-if="walk.difficulty"
+                      class="px-2 py-1 text-xs font-bold rounded-full bg-gray-100 text-gray-700 group-hover:bg-blue-50 group-hover:text-blue-700 transition-colors"
+                    >
                       {{ walk.difficulty }}
                     </span>
-                    <span v-if="walk.duration" class="text-xs uppercase font-bold text-gray-700">
+                    <span
+                      v-if="walk.duration"
+                      class="px-2 py-1 text-xs font-bold rounded-full bg-gray-100 text-gray-700 group-hover:bg-blue-50 group-hover:text-blue-700 transition-colors"
+                    >
                       {{ walk.duration }}
                     </span>
                   </div>
+
+                  <p class="text-sm text-gray-600 group-hover:text-gray-800 transition-colors">
+                    {{ walk.highlights }}
+                  </p>
+
+                  <button
+                    @click.stop="toggleFavorite(walk)"
+                    class="absolute top-3 right-3 p-2 rounded-full transition-all duration-300 hover:bg-red-50 hover:scale-125 active:scale-95"
+                  >
+                    <iconify-icon
+                      :icon="isFavorite(walk) ? 'mdi:heart' : 'mdi:heart-outline'"
+                      class="w-5 h-5"
+                      :class="isFavorite(walk) ? 'text-red-500' : 'text-gray-400'"
+                    />
+                  </button>
                 </div>
-                <button @click.stop="toggleFavorite(walk)" class="favorite-btn p-1 rounded-full hover:bg-gray-100">
-                  <iconify-icon :icon="isFavorite(walk) ? 'mdi:heart' : 'mdi:heart-outline'" class="w-5 h-5 text-red-500"></iconify-icon>
-                </button>
               </div>
-              
-              <p class="text-sm text-gray-600">{{ walk.highlights }}</p>
-              
-              <!-- Debug info -->
-              <div class="text-xs text-gray-400 mt-1">
-                ID: {{ walk.id }} | Expanded: {{ walk.isExpanded }}
-              </div>
-              
-              <!-- Additional details displayed when expanded -->
-              <Transition 
-                @before-enter="beforeEnter"
-                @enter="enter"
-                @after-enter="afterEnter"
-                @before-leave="beforeLeave"
-                @leave="leave"
-                @after-leave="afterLeave"
-              >
-                <div 
-                  v-show="walk.isExpanded" 
-                  class="mt-4 border-t pt-2 transition-all duration-300 ease-out"
-                >
-                  <!-- Detailed info row with staggered animation -->
-                  <div class="flex justify-between items-center text-sm mb-2 transition-all duration-300 delay-75">
-                    <span class="transition-all duration-300 delay-100">Distance: {{ convertToMiles(walk.distance) }} miles</span>
-                    <span class="transition-all duration-300 delay-150">Steepness: {{ walk.steepness_level }}</span>
-                  </div>
-                  <!-- Expandable content with staggered animations -->
-                  <div class="space-y-2">
-                    <div class="highlights-description text-sm transition-all duration-300 delay-200">
-                      <p>{{ walk.description }}</p>
-                    </div>
-                    <div class="points-of-interest text-sm transition-all duration-300 delay-300">
-                      <p><strong>Points of Interest:</strong> {{ walk.pointsOfInterest || 'N/A' }}</p>
-                    </div>
-                    <div class="pubs-list text-sm transition-all duration-300 delay-[400ms]">
-                      <p><strong>Pubs:</strong> {{ walk.pubs?.join(', ') || 'N/A' }}</p>
-                    </div>
-                    <div class="trail-considerations text-sm transition-all duration-300 delay-[500ms]">
-                      <p><strong>Trail Considerations:</strong> {{ walk.trailConsiderations || 'N/A' }}</p>
-                    </div>
-                  </div>
-                </div>
-              </Transition>
             </div>
-          </div>
-        </TransitionGroup>
-      </div>
-
-      <!-- Debug info -->
-      <div class="fixed bottom-4 right-4 bg-white p-4 rounded-lg shadow-lg z-50 font-mono text-xs opacity-90">
-        <p>Total walks: {{ computedWalks.length }}</p>
-        <p>Container height: {{ containerHeight }}px</p>
-        <p>First item height: {{ firstItemHeight }}px</p>
-      </div>
-    </div>
-
-    <!-- Empty state -->
-    <div v-else class="p-8 text-center text-gray-500">
-      No walks available
+          </DynamicScrollerItem>
+        </template>
+      </DynamicScroller>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch, TransitionGroup } from 'vue'
-import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
-import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch, reactive } from 'vue'
 import { useUiStore } from '../stores/ui'
 import { getBadgeInfo } from '../utils/helpers'
 import { useWalksStore } from '../stores/walks'
+import { animate, inView, press } from 'motion'
 import debounce from 'lodash.debounce'
 import isEqual from 'lodash.isequal'
-import { animate, scroll, inView, hover, press } from 'motion'
-import { useViewportAnimation } from '../composables/useViewportAnimation'
+import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
+import { DynamicScroller, DynamicScrollerItem, RecycleScroller } from 'vue-virtual-scroller'
+
+// Add a global WeakMap for animation state (placed at the top level in <script setup>)
+const animationState = new WeakMap()
 
 // Props and emits setup
 const props = defineProps({
@@ -147,16 +123,117 @@ const emit = defineEmits(['walk-selected', 'walk-expanded'])
 const uiStore = useUiStore()
 const walksStore = useWalksStore()
 
-// Animation state
-const isCardExpanding = ref(false)
-const revealedCards = ref(new Set())
-const gestureCleanup = ref([])
+// Add scroll state management
+const scrollState = reactive({
+  isScrolling: false,
+  scrollDirection: 'none',
+  lastScrollTop: 0,
+  scrollTimeout: null
+})
+
+// Refs for animations
+const container = ref(null)
+const dynamicScroller = ref(null)
+const listContainer = ref(null)
+const cardRefs = ref({})
+const visibleItems = ref(new Set())
+let stopViewTracking
+
+// Animation functions
+async function onErrorEnter(el, onComplete) {
+  await animate(el, { 
+    opacity: [0, 1], 
+    y: [-20, 0] 
+  }, { duration: 0.3 })
+  onComplete()
+}
+
+async function onErrorLeave(el, onComplete) {
+  await animate(el, { 
+    opacity: [1, 0], 
+    y: [0, -20] 
+  }, { duration: 0.3 })
+  onComplete()
+}
+
+async function onHeaderEnter(el, onComplete) {
+  await animate(el, { 
+    opacity: [0, 1], 
+    scale: [0.95, 1],
+    y: [-20, 0] 
+  }, { 
+    duration: 0.5,
+    easing: [.23,1,.32,1]
+  })
+  onComplete()
+}
+
+function beforeCardEnter(el) {
+  el.style.opacity = '0'
+  el.style.transform = 'translateY(30px) scale(0.9)'
+}
+
+async function onCardEnter(el, onComplete) {
+  const index = parseInt(el.dataset.index) || 0
+  const isRevealed = el.classList.contains('revealed')
+  const delay = isRevealed ? 0 : index * 50 // Only stagger new cards
+  
+  await animate(el, 
+    { 
+      opacity: [0, 1], 
+      y: [10, 0], // Reduced translateY value
+      scale: [0.95, 1],
+      filter: ['blur(4px)', 'blur(0px)']
+    }, 
+    { 
+      duration: 0.6,
+      delay,
+      easing: [.23, 1, .32, 1]
+    }
+  )
+  onComplete()
+}
+
+async function afterCardEnter(el) {
+  // Add subtle floating animation after entry
+  animate(
+    el,
+    { y: [0, -3, 0] },
+    { 
+      duration: 2,
+      repeat: Infinity,
+      easing: 'ease-in-out'
+    }
+  )
+}
+
+async function onCardLeave(el, onComplete) {
+  const rect = el.getBoundingClientRect()
+  const viewportHeight = window.innerHeight
+  const direction = rect.top > viewportHeight / 2 ? 1 : -1
+
+  await animate(el, 
+    { 
+      opacity: [1, 0],
+      y: [0, 30 * direction],
+      scale: [1, 0.9],
+      filter: ['blur(0px)', 'blur(4px)']
+    },
+    { 
+      duration: 0.4,
+      easing: [.23, 1, .32, 1]
+    }
+  )
+  onComplete()
+}
 
 // Loading and UI state
-const loading = computed(() => walksStore.loading)
-const containerHeight = ref(0)
-const firstItemHeight = ref(0)
-const scroller = ref(null)
+const loading = computed(() => {
+  const isLoading = walksStore.loading
+  console.log("loading.value:", isLoading)
+  return isLoading
+})
+
 let resizeObserver = null
 
 // Favorite handling state and helpers
@@ -176,390 +253,220 @@ const computedWalks = computed(() => {
   const rawWalks = props.walks ? [...props.walks] : []
   const expandedIds = props.expandedWalkIds || []
   
-  console.debug("WalkList.vue: Raw Data:", {
-    walks: rawWalks,
-    expandedIds,
-    selectedId: props.selectedWalkId
-  })
-  
-  const filteredWalks = rawWalks
-    .filter(walk => walk?.id && walk?.walk_name)
-    .map(walk => {
-      const isExpanded = expandedIds.includes(walk.id)
-      console.debug(`Walk ${walk.id} expanded state:`, isExpanded)
-      
-      return {
-        ...walk,
-        isExpanded,
-        pointsOfInterest: Array.isArray(walk.points_of_interest) 
+  console.log("props.walks in computedWalks:", props.walks)
+  const processedWalks = rawWalks
+    .filter(walk => {
+      const hasIdAndName = walk?.id && walk?.walk_name
+      if (!hasIdAndName) {
+        console.log("Filtered out walk due to missing id/name:", walk)
+      }
+      return hasIdAndName
+    })
+    .map(walk => ({
+      ...walk,
+      isExpanded: expandedIds.includes(walk.id),
+      pointsOfInterest: Array.isArray(walk.points_of_interest) 
           ? walk.points_of_interest.join(', ')
           : walk.points_of_interest || '',
-        pubs: Array.isArray(walk.pubs) 
+      pubs: Array.isArray(walk.pubs) 
           ? walk.pubs 
           : (walk.pubs ? [walk.pubs] : []),
-        trailConsiderations: walk.trail_considerations || '',
-        features: Array.isArray(walk.features) 
+      trailConsiderations: walk.trail_considerations || '',
+      features: Array.isArray(walk.features) 
           ? walk.features 
           : (walk.features ? [walk.features] : [])
-      }
-    })
-  
-  console.debug("WalkList.vue: Processed walks:", {
-    total: filteredWalks.length,
-    expanded: filteredWalks.filter(w => w.isExpanded).length,
-    walks: filteredWalks.map(w => ({
-      id: w.id,
-      name: w.walk_name,
-      isExpanded: w.isExpanded
     }))
-  })
-  
-  return filteredWalks
+  console.log("computedWalks processed:", processedWalks)
+  return processedWalks
 })
 
-// Enhanced card expansion animation with proper state management
-const handleWalkClick = async (walk) => {
-  if (!walk || isCardExpanding.value) return
-  
-  const card = document.querySelector(`[data-walk-id="${walk.id}"]`)
-  if (!card || card.classList.contains('pointer-events-none')) return
-  
-  isCardExpanding.value = true
+// Simplified click handler (old animation logic removed)
+const handleWalkClick = (walk) => {
+  if (!walk) return
+  console.log('Walk clicked:', walk.id)
   const wasSelected = props.selectedWalkId === walk.id
   const wasExpanded = props.expandedWalkIds.includes(walk.id)
-  
-  try {
-    // Clear any ongoing animations by resetting gesture state
-    if (gestureState.value[walk.id]) {
-      gestureState.value[walk.id].isHovered = false
-      gestureState.value[walk.id].isPressed = false
-    }
-    
-    // Emit events
-    emit('walk-selected', wasSelected ? null : walk)
-    emit('walk-expanded', { 
-      walkId: walk.id, 
-      expanded: !wasExpanded 
-    })
-    
-    // Animate with priority over gestures
-    await animate(card, {
-      scale: wasSelected ? [1.02, 1] : [1, 1.02],
-      y: wasSelected ? [-4, 0] : [0, -4],
-      backgroundColor: wasSelected 
-        ? ['rgb(239, 246, 255)', 'rgb(255, 255, 255)']
-        : ['rgb(255, 255, 255)', 'rgb(239, 246, 255)'],
-      borderColor: wasSelected
-        ? ['rgb(59, 130, 246)', 'rgb(229, 231, 235)']
-        : ['rgb(229, 231, 235)', 'rgb(59, 130, 246)']
-    }, {
-      duration: 0.3,
-      easing: [0.2, 0.8, 0.2, 1]
-    })
-  } finally {
-    // Re-enable gestures
-    isCardExpanding.value = false
-  }
-}
-
-// Enhanced animation methods
-const animateCard = async (card, shouldExpand = false) => {
-  if (shouldExpand) {
-    await animate(card, {
-      scale: [1, 1.02],
-      y: [0, -4],
-      backgroundColor: ['rgb(255, 255, 255)', 'rgb(239, 246, 255)'],
-      borderColor: ['rgb(229, 231, 235)', 'rgb(59, 130, 246)'],
-    }, {
-      duration: 0.2,
-      easing: 'easeOutQuad'
-    })
-  } else {
-    await animate(card, {
-      opacity: [0, 1],
-      y: [15, 0],
-      scale: [0.97, 1]
-    }, {
-      duration: 0.3,
-      easing: 'easeOutQuad'
-    })
-  }
-}
-
-const animateContent = async (content, shouldExpand) => {
-  if (!content || !window.Motion) return;
-
-  const title = content.querySelector('h3');
-  if (shouldExpand) {
-    content.style.display = 'block';
-    const targetHeight = content.scrollHeight;
-    await window.Motion.animate([
-      [content, {
-        height: [0, targetHeight],
-        opacity: [0, 1],
-        margin: [0, '1rem 0'],
-        y: [-20, 0],
-        scale: [0.95, 1]
-      }, {
-        duration: 0.3,
-        easing: 'easeOutQuart'
-      }],
-      [content.querySelectorAll('img, .category-tag, p'), {
-        opacity: [0, 1],
-        y: [20, 0],
-        scale: [0.9, 1]
-      }, {
-        duration: 0.25,
-        delay: window.Motion.stagger(0.05, { start: 0.1 }),
-        easing: 'easeOutCubic'
-      }],
-      [title, {
-        opacity: [0, 1],
-        y: [-30, 0],
-        scale: [0.9, 1]
-      }, {
-        duration: 0.3,
-        easing: 'easeOutQuart',
-        at: "<"
-      }]
-    ]);
-  } else {
-    await window.Motion.animate([
-      [content.querySelectorAll('img, .category-tag, p'), {
-        opacity: [1, 0],
-        y: [0, -10],
-        scale: [1, 0.95]
-      }, {
-        duration: 0.2,
-        delay: window.Motion.stagger(0.04),
-        easing: 'easeInCubic'
-      }],
-      [title, {
-        opacity: [1, 0],
-        y: [0, -20],
-        scale: [1, 0.95]
-      }, {
-        duration: 0.2,
-        easing: 'easeInCubic',
-        at: "<"
-      }],
-      [content, {
-        height: 0,
-        opacity: 0,
-        margin: 0,
-        scale: 0.95
-      }, {
-        duration: 0.2,
-        easing: 'easeInCubic',
-        at: "<"
-      }]
-    ]);
-    content.style.display = 'none';
-  }
-}
-
-// Transition hooks for dynamic height animation
-const beforeEnter = (el) => {
-  el.style.overflow = 'hidden'
-  el.style.maxHeight = '0px'
-  el.style.opacity = '0'
-  el.style.transform = 'translateY(-10px)'
-}
-
-const enter = (el, done) => {
-  nextTick(() => {
-    const height = el.scrollHeight
-    animate(el, {
-      maxHeight: [0, height],
-      opacity: [0, 1],
-      y: [-10, 0]
-    }, {
-      duration: 0.5,
-      easing: [0.4, 0, 0.2, 1],
-      onComplete: done
-    })
-  })
-}
-
-const afterEnter = (el) => {
-  el.style.overflow = ''
-  el.style.maxHeight = ''
-  el.style.opacity = ''
-  el.style.transform = ''
-}
-
-const beforeLeave = (el) => {
-  el.style.overflow = 'hidden'
-  el.style.maxHeight = `${el.scrollHeight}px`
-  el.style.opacity = '1'
-}
-
-const leave = (el, done) => {
-  animate(el, {
-    maxHeight: 0,
-    opacity: [1, 0],
-    y: [0, -10]
-  }, {
-    duration: 0.3,
-    easing: [0.4, 0, 0.2, 1],
-    onComplete: done
-  })
-}
-
-const afterLeave = (el) => {
-  el.style.overflow = ''
-  el.style.maxHeight = ''
-  el.style.opacity = ''
-  el.style.transform = ''
-}
-
-// Enhanced dimension logging with debug info update
-const logDimensions = (event = 'check') => {
-  const walkList = document.querySelector('.walk-list')
-  const container = document.querySelector('.walk-list-container')
-  const scrollerEl = document.querySelector('.scroller')
-  const firstItem = document.querySelector('.walk-item')
-  
-  // Update debug refs
-  containerHeight.value = container?.offsetHeight || 0
-  firstItemHeight.value = firstItem?.offsetHeight || 0
-  
-  console.debug('WalkList dimensions:', {
-    event,
-    walkList: {
-      height: walkList?.offsetHeight,
-      rect: walkList?.getBoundingClientRect(),
-      style: walkList?.style.height
-    },
-    container: {
-      height: containerHeight.value,
-      rect: container?.getBoundingClientRect(),
-    },
-    scroller: {
-      height: scrollerEl?.offsetHeight,
-      rect: scrollerEl?.getBoundingClientRect(),
-    },
-    firstItem: firstItemHeight.value,
-    computedWalksLength: computedWalks.value?.length
-  })
+  emit('walk-selected', wasSelected ? null : walk)
+  emit('walk-expanded', { walkId: walk.id, expanded: !wasExpanded })
 }
 
 // Combined resize handler
 const handleResize = debounce(() => {
-  if (scroller.value?.$el) {
-    nextTick(() => {
-      scroller.value.updateSize?.()
-      logDimensions('resize')
-    })
+  if (dynamicScroller.value && typeof dynamicScroller.value.updateSize === 'function') {
+    dynamicScroller.value.updateSize()
   }
 }, 100)
 
 const scrollAnimationCleanup = ref(null)
 
-// Add animation state tracking
-const gestureState = ref({})
-
-// Add debounced animation handler
-const handleCardAnimation = debounce((card, cardId) => {
-  if (!isCardExpanding.value && !card.classList.contains('pointer-events-none')) {
-    const animation = getCombinedAnimation(cardId)
-    if (animation) {
-      animate(card, animation.props, animation.options)
-    }
+const handleCardHover = (walkId, isHovered) => {
+  if (!walkId || !cardRefs.value[walkId]) return
+  
+  if (isHovered) {
+    animate(cardRefs.value[walkId], {
+      scale: 1.02,
+      boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)'
+    }, { 
+      duration: 0.3,
+      easing: [.23, 1, .32, 1]
+    })
+  } else {
+    animate(cardRefs.value[walkId], {
+      scale: 1,
+      boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)'
+    }, { 
+      duration: 0.2,
+      easing: [.23, 1, .32, 1]
+    })
   }
-}, 16) // Roughly 60fps
+}
 
-// Add helper for getting combined animation state
-const getCombinedAnimation = (cardId) => {
-  const state = gestureState.value[cardId]
-  if (!state) return null
+const handleCardPress = (walkId, isPressed) => {
+  if (!walkId || !cardRefs.value[walkId]) return
+  
+  if (isPressed) {
+    animate(cardRefs.value[walkId], {
+      scale: 0.98
+    }, { duration: 0.1 })
+  } else {
+    animate(cardRefs.value[walkId], {
+      scale: 1
+    }, { duration: 0.2 })
+  }
+}
 
-  // Priority: pressed > hovered > default
-  if (state.isPressed) {
-    return {
-      props: { 
-        scale: 0.98,
-        backgroundColor: 'rgb(243, 244, 246)',
-        boxShadow: '0 1px 2px 0 rgb(0 0 0 / 0.05)'
+// Remove touch interaction state
+const touchState = ref({
+  startX: 0,
+  startY: 0,
+  moveX: 0,
+  moveY: 0,
+  activeCard: null
+})
+
+const handleTouchStart = (event, walkId) => {
+  if (!walkId) return
+  const touch = event.touches[0]
+  touchState.value = {
+    startX: touch.clientX,
+    startY: touch.clientY,
+    moveX: touch.clientX,
+    moveY: touch.clientY,
+    activeCard: walkId
+  }
+}
+
+// Remove handleTouchMove function
+
+const handleTouchEnd = (walkId) => {
+  if (!walkId || touchState.value.activeCard !== walkId) return
+  
+  // Spring back to original position using animate instead of useMotion
+  if (cardRefs.value[walkId]) {
+    animate(
+      cardRefs.value[walkId],
+      { 
+        scale: 1,
+        rotateX: 0,
+        rotateY: 0,
+        y: 0
       },
-      options: { 
-        duration: 0.1,
-        easing: 'ease-in'
+      { 
+        duration: 0.3,
+        easing: [.23, 1, .32, 1]
       }
-    }
+    )
   }
   
-  if (state.isHovered) {
-    return {
-      props: { 
-        scale: 1.02,
-        y: -4,
-        backgroundColor: 'rgb(239, 246, 255)',
-        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)'
-      },
-      options: { 
-        duration: 0.2,
-        easing: [0.34, 1.56, 0.64, 1]
-      }
+  touchState.value = {
+    startX: 0,
+    startY: 0,
+    moveX: 0,
+    moveY: 0,
+    activeCard: null
+  }
+}
+
+// Enhanced card hover handler with tilt effect
+const scrollY = ref(0)
+const scrollOffset = ref(0)
+
+// Scroll handling for parallax and animation states
+const handleScroll = debounce((e) => {
+  const scroller = dynamicScroller.value
+  if (!scroller?.continuous) return
+  
+  const newVisibleItems = new Set(
+    scroller.continuous
+      .filter(item => item?.data)
+      .map(item => item.data.id)
+  )
+  
+  visibleItems.value = newVisibleItems
+}, 50) // Increased debounce to 50ms
+
+// Animation presets for different elements
+const getFloatingAnimation = (index, delay) => ({
+  initial: { y: 0 },
+  animate: {
+    y: [-1, 1],
+    transition: {
+      duration: 2,
+      delay: index * 0.05 + delay,
+      repeat: Infinity,
+      repeatType: 'reverse',
+      ease: 'easeInOut'
     }
   }
+})
 
+const getPopAnimation = (index, delay) => ({
+  initial: { scale: 0.9, opacity: 0 },
+  enter: {
+    scale: 1,
+    opacity: 1,
+    transition: {
+      type: 'spring',
+      stiffness: 500,
+      damping: 15,
+      mass: 0.5,
+      delay: index * 0.05 + delay
+    }
+  }
+})
+
+const getFadeAnimation = (index, delay) => ({
+  initial: { opacity: 0, y: 10 },
+  enter: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      type: 'spring',
+      stiffness: 300,
+      damping: 30,
+      delay: index * 0.05 + delay
+    }
+  }
+})
+
+// Refactor getCardStyle function to avoid direct manipulation of transform property
+const getCardStyle = (walkId) => {
+  const isHovered = hoverStates.value[walkId]
   return {
-    props: { 
-      scale: 1,
-      y: 0,
-      backgroundColor: 'rgb(255, 255, 255)',
-      boxShadow: '0 1px 2px 0 rgb(0 0 0 / 0.05)'
-    },
-    options: { 
-      duration: 0.2,
-      easing: 'ease-out'
-    }
+    willChange: 'transform, box-shadow',
+    transform: isHovered ? 'translateZ(10px)' : 'none'
   }
 }
 
-const attachGestures = () => {
-  // Clean up any existing gestures first
-  gestureCleanup.value.forEach(cleanup => cleanup?.())
-  gestureCleanup.value = []
+// Track hover states
+const hoverStates = ref({})
 
-  // Find all cards and attach new gestures
-  const cards = document.querySelectorAll('.walk-item')
-  cards.forEach(card => {
-    const cardId = card.dataset.walkId
-    gestureState.value[cardId] = { isHovered: false, isPressed: false }
-
-    const hoverCleanup = hover(card, () => {
-      if (gestureState.value[cardId]) {
-        gestureState.value[cardId].isHovered = true
-        handleCardAnimation(card, cardId)
-      }
-
-      return () => {
-        if (gestureState.value[cardId]) {
-          gestureState.value[cardId].isHovered = false
-          handleCardAnimation(card, cardId)
-        }
-      }
-    })
-
-    const pressCleanup = press(card, () => {
-      if (gestureState.value[cardId]) {
-        gestureState.value[cardId].isPressed = true
-        handleCardAnimation(card, cardId)
-      }
-
-      return (_, { success }) => {
-        if (gestureState.value[cardId]) {
-          gestureState.value[cardId].isPressed = false
-          handleCardAnimation(card, cardId)
-        }
-      }
-    })
-
-    gestureCleanup.value.push(hoverCleanup, pressCleanup)
+onMounted(() => {
+  // Initialize hover states
+  props.walks.forEach(walk => {
+    hoverStates.value[walk.id] = false
   })
-}
+})
 
 onMounted(() => {
   if (!window.ResizeObserver) {
@@ -570,113 +477,241 @@ onMounted(() => {
   // Initialize single ResizeObserver
   resizeObserver = new ResizeObserver(handleResize)
   
-  const container = document.querySelector('.walk-list-container')
+  const container = document.querySelector('.scroller')
   if (container) {
     resizeObserver.observe(container)
-  }
-  
-  nextTick(() => {
-    logDimensions('mounted')
-  })
-
-  // Initialize scroll animations for cards with improved reactive inView
-  const cards = document.querySelectorAll('.walk-item')
-  cards.forEach(card => {
-    const stopTracking = inView(card, (element, entry) => {
-      // Use intersectionRatio to compute a dynamic delay; the more visible, the shorter the delay
-      const delay = (1 - entry.intersectionRatio) * 0.2
-      animate(element, { 
-        opacity: [0, 1],
-        y: [20, 0],
-        scale: [0.95, 1]
-      }, { 
-        delay,
-        duration: 0.5,
-        easing: [0.2, 0.8, 0.2, 1]
-      })
-      return () => {
-        animate(element, { 
-          opacity: 0,
-          y: 20,
-          scale: 0.95
-        })
-      }
-    }, {
-      threshold: [0, 0.25, 0.5, 0.75, 1] // More reactive threshold values
+    // Debug element state
+    const style = window.getComputedStyle(container)
+    console.log('Container debug:', {
+      pointerEvents: style.pointerEvents,
+      zIndex: style.zIndex,
+      position: style.position,
+      overflow: style.overflow
     })
-    if (!scrollAnimationCleanup.value) {
-      scrollAnimationCleanup.value = []
-    }
-    scrollAnimationCleanup.value.push(stopTracking)
-  })
 
-  // Initialize gestures
-  nextTick(() => {
-    attachGestures()
-  })
-})
-
-onBeforeUnmount(() => {
-  if (resizeObserver) {
-    resizeObserver.disconnect()
+    // Check if any elements are overlapping the cards
+    const cards = document.querySelectorAll('.walk-item')
+    cards.forEach(card => {
+      const rect = card.getBoundingClientRect()
+      const elements = document.elementsFromPoint(rect.left + rect.width/2, rect.top + rect.height/2)
+      console.log('Elements at card center:', elements.map(el => el.className))
+    })
   }
-
-  // Cleanup scroll animations
-  if (scrollAnimationCleanup.value) {
-    scrollAnimationCleanup.value.forEach(cleanup => cleanup())
-  }
-
-  // Clean up Motion gestures
-  gestureCleanup.value.forEach(cleanup => cleanup?.())
-
-  // Cleanup for gesture state when component unmounts
-  gestureState.value = {}
 })
 
 // Watch for walk updates
 watch(computedWalks, (newWalks) => {
   if (newWalks.length) {
-    nextTick(() => {
-      logDimensions('walks-updated')
-      scroller.value?.forceUpdate()
-    })
+    console.log("Walks updated:", newWalks.length)
   }
 })
 
-// Watch for changes in the computed walks to reattach gestures
-watch(computedWalks, () => {
-  nextTick(() => {
-    attachGestures()
-  })
-}, { flush: 'post' })
-
-// Watch for changes to expandedWalkIds
-watch(() => props.expandedWalkIds, (newIds, oldIds) => {
-  if (!isEqual(newIds, oldIds)) {
-    console.debug("WalkList.vue: expandedWalkIds changed:", { 
-      new: newIds, 
-      old: oldIds 
-    })
-    // Force a re-computation of walks
-    nextTick(() => {
-      logDimensions('expansion-change')
-    })
-  }
+// Watch for changes and reattach gestures
+watch([computedWalks, () => props.expandedWalkIds], () => {
+  // Small delay to ensure DOM updates are complete
+  setTimeout(() => {
+    // Removed: attachGestures()
+  }, 50)
 }, { deep: true })
 
-// Add sidebar visibility tracking
-watch(() => uiStore.showSidebar, (visible) => {
-  if (visible) {
+watch(() => computedWalks.value, (newWalks) => {
+  if (newWalks?.length) {
     nextTick(() => {
-      logDimensions('sidebar-visible')
+      const scroller = document.querySelector('.scroller')
+      if (scroller) {
+        scroller.addEventListener('scroll', handleScroll)
+      }
     })
   }
 }, { immediate: true })
+
+onMounted(() => {
+  // Setup viewport detection
+  stopViewTracking = inView(container.value, (info) => {
+    animate(container.value, { 
+      opacity: [0, 1],
+      y: [20, 0]
+    }, { 
+      duration: 0.5,
+      easing: [.23,1,.32,1]
+    })
+
+    return () => {
+      animate(container.value, { 
+        opacity: [1, 0],
+        y: [0, 20]
+      }, { duration: 0.3 })
+    }
+  })
+
+  // Implement press gesture
+  for (const walk of props.walks) {
+    if (cardRefs.value[walk.id]) {
+      press(cardRefs.value[walk.id], (element) => {
+        handleCardPress(walk.id, true)
+        return () => {
+          handleCardPress(walk.id, false)
+        }
+      })
+    }
+  }
+
+  nextTick(() => {
+    const cards = document.querySelectorAll('.card-wrapper')
+    cards.forEach((card, index) => {
+      animate(
+        card,
+        { 
+          opacity: [0, 1],
+          y: [20, 0],
+          scale: [0.95, 1]
+        },
+        { 
+          duration: 0.5,
+          delay: index * 0.1,
+          easing: [.23, 1, .32, 1]
+        }
+      )
+    })
+  })
+})
+
+// Add scroll handling for parallax effect
+onMounted(() => {
+  // Setup scroll listener on dynamicScroller DOM element
+  nextTick(() => {
+    if (dynamicScroller.value?.$el) {
+      dynamicScroller.value.$el.addEventListener('scroll', handleScroll, { passive: true })
+    }
+    // Force recalculation after initial render
+    if (dynamicScroller.value && typeof dynamicScroller.value.updateSize === 'function') {
+      dynamicScroller.value.updateSize()
+    }
+  })
+})
+
+onBeforeUnmount(() => {
+  if (dynamicScroller.value?.$el) {
+    dynamicScroller.value.$el.removeEventListener('scroll', handleScroll)
+  }
+  if (resizeObserver) {
+    resizeObserver.disconnect()
+  }
+})
+
+// Debug logging for data state
+watch(() => props.walks, (newWalks) => {
+  console.debug('WalkList: props.walks updated:', {
+    length: newWalks?.length ?? 0,
+    hasInvalidItems: newWalks?.some(w => !w?.id || !w?.walk_name) ?? false
+  })
+}, { immediate: true, deep: true })
+
+// Added helper to reliably register card elements
+const setCardRef = (id) => (el) => {
+  cardRefs.value[id] = el
+}
+
+// Replace the problematic resize observer code with simpler initialization
+onMounted(() => {
+  if (!window.ResizeObserver) return
+  
+  resizeObserver = new ResizeObserver(() => {
+    if (dynamicScroller.value) {
+      const scroller = dynamicScroller.value
+      if (typeof scroller.updateSize === 'function') {
+        scroller.updateSize()
+      }
+    }
+  })
+  
+  if (container.value) {
+    resizeObserver.observe(container.value)
+  }
+})
+
+// Clean up old size observers and handlers
+onBeforeUnmount(() => {
+  if (resizeObserver) {
+    resizeObserver.disconnect()
+  }
+})
+
+// Add new refs for scroll animations
+const scrollItemRefs = ref({})
+let scrollObserver = null
+
+// Add ref to track cleanup functions
+const inViewCleanupFns = ref(new Map())
+
+// Replace the entire setScrollItemRef implementation with this version
+const setScrollItemRef = (el, id) => {
+  if (!el || typeof el !== 'object') return
+
+  // Use WeakMap instead of reactive refs to store animation states
+  if (!animationState.has(el)) {
+    // Set initial styles without triggering reactivity
+    el.style.setProperty('opacity', '0.01')
+    el.style.setProperty('transform', 'translateY(20px) scale(0.95)')
+    
+    const cleanup = inView(el, (element) => {
+      if (!element || !element.isConnected || animationState.has(element)) return
+      
+      // Mark as animated
+      animationState.set(element, true)
+      
+      // Run animation outside Vue's reactivity system
+      requestAnimationFrame(() => {
+        animate(
+          element,
+          { 
+            opacity: [0, 1],
+            y: [20, 0],
+            scale: [0.95, 1]
+          },
+          { 
+            duration: 0.6,
+            easing: [.23, 1, .32, 1],
+            delay: 0.15
+          }
+        )
+      })
+    }, { 
+      root: dynamicScroller.value?.$el,
+      amount: 0.3,
+      margin: '50px',
+      once: true // Only trigger once per element
+    })
+
+    // Store cleanup in WeakMap to avoid reactive updates
+    if (inViewCleanupFns.value) {
+      inViewCleanupFns.value.set(id, cleanup)
+    }
+  }
+}
+
+// Update cleanup on unmount
+onBeforeUnmount(() => {
+  // Clean up all inView observers
+  inViewCleanupFns.value.forEach(cleanup => cleanup())
+  inViewCleanupFns.value.clear()
+  
+  // ...existing cleanup code...
+})
+
 </script>
 
 <style>
-/* Only keeping styles that might be needed for other purposes */
-.walk-list-leave-active {
-  position: absolute;
+.card-wrapper {
+  opacity: 0.01;
+  transform: translateY(20px) scale(0.95);
+  will-change: transform, opacity;
+  transition: none; /* Ensure no CSS transitions interfere */
+  contain: content; /* Add content containment */
+}
+
+.card-wrapper.animated {
+  opacity: 1;
+  transform: none;
 }
 </style>

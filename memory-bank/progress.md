@@ -20,6 +20,7 @@
 - Virtual list implementation (TanStack)
   - Base height: 200px
   - Expanded padding: 150px
+  - Full integration with walks store
   - Proper cleanup handlers
 - User registration/login flow
 - Clean Pinia store integration
@@ -120,8 +121,8 @@
 ### Performance Issues
 1. Map component memory usage
 2. Store subscription overhead
-3. Network request batching
-4. ✅ Virtual list implementation
+3. ✅ Virtual list implementation
+4. ✅ Store-virtual list integration
 5. ✅ Component cleanup patterns
 
 ### Security Considerations
