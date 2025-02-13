@@ -1,5 +1,5 @@
 <template>
-  <div class="h-screen w-screen overflow-hidden flex flex-col relative">
+  <div class="h-screen w-screen overflow-hidden flex flex-col relative bg-surface">
     <Loading ref="loadingComponent" />
 
     <div class="relative h-full w-full flex">
@@ -8,26 +8,36 @@
         <div
           v-if="showSidebar && !isMobile"
           ref="sidebarRef"
-          class="md:flex flex-col fixed inset-y-0 left-0 z-10 transform-gpu m3-navigation-rail hardware-accelerated h-full"
+          class="m3-navigation-rail"
           :class="[{ 'is-expanded': isExpanded }]"
         >
-          <!-- Navigation buttons (icons only when collapsed; icon+label when expanded) -->
-          <nav class="m3-rail-items flex flex-col items-center py-4 gap-3">
-            <!-- Toggle/Menu button -->
+          <div class="m3-rail-header">
+            <!-- Menu button - simplified -->
             <button 
-              class="m3-rail-item" 
+              class="m3-rail-item"
               @click="toggleExpanded"
             >
               <div class="m3-state-layer">
                 <iconify-icon 
-                  :icon="isExpanded ? 'mdi:chevron-left' : 'mdi:menu'" 
+                  icon="mdi:menu" 
                   class="text-[24px]"
                 />
               </div>
-              <span v-if="isExpanded" class="m3-rail-label">Menu</span>
             </button>
 
-            <!-- Navigation destinations -->
+            <!-- FAB -->
+            <button 
+              class="m3-rail-fab"
+              @click="handleFabClick"
+            >
+              <iconify-icon icon="mdi:hiking" class="text-[36px]" />
+              <span class="m3-rail-fab-text" v-if="isExpanded">WalkQuest</span>
+              <span class="sr-only">WalkQuest Home</span>
+            </button>
+          </div>
+
+          <!-- Navigation items -->
+          <nav class="m3-rail-items">
             <button 
               class="m3-rail-item" 
               :class="{ 'is-active': !showRoutesDrawer }"
@@ -39,8 +49,8 @@
               <span v-if="isExpanded" class="m3-rail-label">Explore</span>
             </button>
 
-            <!-- Walks List Integration -->
-            <div class="m3-walks-section" :class="{ 'is-expanded': isExpanded }">
+            <!-- Walks List -->
+            <div class="m3-walks-section">
               <WalkList
                 :error="error"
                 :walks="availableWalks"
@@ -59,6 +69,7 @@
       <Transition :css="false" @enter="onDrawerEnter" @leave="onDrawerLeave">
         <div
           v-if="uiStore?.mobileMenuOpen && isMobile"
+          ref="drawerRef"
           class="fixed inset-0 z-20 m3-navigation-drawer transform-gpu"
           @click.self="uiStore?.setMobileMenuOpen(false)"
         >
@@ -88,36 +99,28 @@
         </div>
       </Transition>
 
-      <!-- Updated standalone toggle button -->
-      <button
-        v-if="!showSidebar && !isMobile"
-        @click="toggleSidebar"
-        class="fixed top-4 left-4 z-20 material-fab"
-      >
-        <span class="sr-only">Open sidebar</span>
-        <iconify-icon icon="mdi:hiking" class="text-xl" />
-      </button>
-
       <!-- Map container with updated left margin -->
       <div
-        class="flex-1 relative map-container hardware-accelerated"
+        class="m3-content-container hardware-accelerated"
         :style="mapContainerStyle"
         ref="mapContainerRef"
       >
-        <div class="absolute inset-0">
+        <div class="m3-surface-container hardware-accelerated">
           <MapView
             ref="mapComponent"
             :mapbox-token="mapboxToken"
             :config="mapConfig"
             @map-loaded="handleMapLoaded"
             @map-error="handleMapError"
+            class="hardware-accelerated"
           />
           <!-- Mobile toggle button -->
           <Transition :css="false" @enter="onMobileButtonEnter" @leave="onMobileButtonLeave">
             <button
               v-if="isMobile && !uiStore?.mobileMenuOpen"
+              ref="mobileButtonRef"
               @click="uiStore?.setMobileMenuOpen(true)"
-              class="absolute top-4 left-4 z-10 p-3 bg-white rounded-full shadow-lg"
+              class="m3-fab-mobile"
             >
               <i class="icon-menu"></i>
               <span class="sr-only">Open menu</span>
@@ -132,7 +135,7 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { animate } from 'motion'
+import { animate, inView } from 'motion'
 import { useElementVisibility } from '@vueuse/core'
 import { useUiStore } from '../stores/ui'
 import { useWalksStore } from '../stores/walks'
@@ -168,6 +171,8 @@ const uiStore = useUiStore()
 const loadingComponent = ref(null)
 const mapComponent = ref(null)
 const sidebarRef = ref(null)
+const drawerRef = ref(null)
+const mobileButtonRef = ref(null)
 const mapContainerRef = ref(null)
 const expandedWalkIds = ref([])
 const isExpanded = ref(localStorage.getItem('sidebarExpanded') === 'true')
@@ -262,67 +267,100 @@ watch([isExpanded, showSidebar], ([newExpanded, newVisible]) => {
   }
 }, { immediate: true })
 
-// Updated sidebar animation functions
+// Updated sidebar animation functions with MD3 motion specs
 async function onSidebarEnter(el, onComplete) {
-  await animate(el, {
-    x: ['-100%', '0%']
+  const animation = animate(el, {
+    x: ['-100%', '0%'],
+    opacity: [0.5, 1]
   }, {
-    duration: 0.3,
-    easing: 'var(--spring-regular)'
+    duration: 0.5,
+    easing: [0.2, 0, 0, 1], // MD3 emphasized easing
   })
+
+  await animation.finished
   onComplete()
 }
 
 async function onSidebarLeave(el, onComplete) {
-  await animate(el, {
-    x: ['0%', '-100%']
+  const animation = animate(el, {
+    x: ['0%', '-100%'],
+    opacity: [1, 0.5]
   }, {
     duration: 0.3,
-    easing: 'var(--spring-regular)'
+    easing: [0.4, 0, 1, 1], // MD3 emphasized-decelerate
   })
+
+  await animation.finished
   onComplete()
 }
 
 async function onMobileButtonEnter(el, onComplete) {
-  await animate(el, {
+  const animation = animate(el, {
     opacity: [0, 1],
-    scale: [0.8, 1]
+    scale: [0.8, 1],
+    y: ['10%', '0%']
   }, {
-    duration: 0.3,
-    easing: [.23,1,.32,1]
+    duration: 0.4,
+    easing: [0.2, 0, 0, 1], // MD3 emphasized
   })
+
+  await animation.finished
   onComplete()
 }
 
 async function onMobileButtonLeave(el, onComplete) {
-  await animate(el, {
+  const animation = animate(el, {
     opacity: [1, 0],
-    scale: [1, 0.8]
+    scale: [1, 0.8],
+    y: ['0%', '10%']
   }, {
-    duration: 0.2
+    duration: 0.3,
+    easing: [0.4, 0, 1, 1], // MD3 emphasized-decelerate
   })
+
+  await animation.finished
   onComplete()
 }
 
 async function onDrawerEnter(el, onComplete) {
-  await animate(el, {
-    opacity: [0, 1],
-    x: ['-100%', '0%'],
-  }, {
-    duration: 0.3,
-    easing: 'var(--spring-regular)'
-  })
+  await Promise.all([
+    // Animate drawer backdrop
+    animate(el, {
+      opacity: [0, 1],
+    }, {
+      duration: 0.3,
+      easing: [0.4, 0, 0.2, 1], // MD3 standard
+    }).finished,
+    // Animate drawer content
+    animate(el.firstElementChild, {
+      x: ['-100%', '0%'],
+      opacity: [0.5, 1]
+    }, {
+      duration: 0.5,
+      easing: [0.2, 0, 0, 1], // MD3 emphasized
+    }).finished
+  ])
   onComplete()
 }
 
 async function onDrawerLeave(el, onComplete) {
-  await animate(el, {
-    opacity: [1, 0],
-    x: ['0%', '-100%'],
-  }, {
-    duration: 0.3,
-    easing: 'var(--spring-regular)'
-  })
+  await Promise.all([
+    // Animate drawer backdrop
+    animate(el, {
+      opacity: [1, 0],
+    }, {
+      duration: 0.2,
+      easing: [0.4, 0, 1, 1], // MD3 emphasized-decelerate
+    }).finished,
+    // Animate drawer content
+    animate(el.firstElementChild, {
+      x: ['0%', '-100%'],
+      opacity: [1, 0.5]
+    }, {
+      duration: 0.3,
+      easing: [0.4, 0, 1, 1], // MD3 emphasized-decelerate
+    }).finished
+  ])
   onComplete()
 }
 
@@ -401,6 +439,16 @@ const toggleSidebar = () => {
   uiStore?.toggleSidebar()
 }
 
+const handleFabClick = async () => {
+  // Navigate home
+  await router.push({ name: 'home' })
+  // Expand the sidebar if it's not already expanded
+  if (!isExpanded.value) {
+    isExpanded.value = true
+    localStorage.setItem('sidebarExpanded', 'true')
+  }
+}
+
 // Window resize handling
 let resizeTimeout
 const handleResize = () => {
@@ -447,10 +495,13 @@ watch(showSidebar, (visible) => {
 })
 
 const mapContainerStyle = computed(() => ({
-  marginLeft: showSidebar.value && !isMobile.value 
-    ? `${isExpanded.value ? 360 : 80}px` 
-    : '0px',
-  transition: 'margin-left var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized)'
+  transform: showSidebar.value && !isMobile.value 
+    ? `translate3d(${isExpanded.value ? '412px' : '80px'}, 0, 0)` 
+    : 'translate3d(0, 0, 0)',
+  width: showSidebar.value && !isMobile.value
+    ? `calc(100% - ${isExpanded.value ? '412px' : '80px'})`
+    : '100%',
+  transition: 'transform 300ms cubic-bezier(0.2, 0, 0, 1), width 300ms cubic-bezier(0.2, 0, 0, 1)'
 }))
 
 onMounted(async () => {
@@ -530,6 +581,28 @@ onBeforeUnmount(() => {
   --md-sys-color-on-tertiary-container: 0, 107, 47;
   --md-sys-color-error-container: 252, 224, 220;
   --md-sys-color-on-error-container: 147, 0, 10;
+  --md-sys-elevation-3: 0 4px 8px 3px rgba(0, 0, 0, 0.15),
+    0px 1px 3px 0px rgba(0, 0, 0, 0.3);
+  --md-sys-elevation-4: 0 6px 10px 4px rgba(0, 0, 0, 0.15),
+    0px 2px 3px 0px rgba(0, 0, 0, 0.3);
+  --md-sys-color-primary-container: 232, 222, 248;  /* Your theme color */
+  --md-sys-color-on-primary-container: 29, 25, 43;  /* Your theme color */
+  --md-sys-color-surface-tint: 103, 80, 164;  /* Your theme color */
+  --md-sys-state-pressed-state-layer-opacity: 0.12;
+  --md-sys-typescale-label-medium-size: 12px;
+  --md-sys-typescale-label-medium-line-height: 16px;
+  --md-sys-typescale-label-medium-weight: 500;
+  --md-sys-typescale-label-medium-weight-prominent: 600;
+  --md-sys-typescale-label-medium-tracking: 0.5px;
+  --md-sys-motion-easing-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --md-sys-motion-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --md-sys-motion-easing-emphasized-decelerate: cubic-bezier(0.4, 0, 1, 1);
+  --md-sys-motion-easing-emphasized-accelerate: cubic-bezier(0, 0, 0.2, 1);
+  --md-sys-motion-duration-short1: 100ms;
+  --md-sys-motion-duration-short2: 200ms;
+  --md-sys-motion-duration-medium1: 300ms;
+  --md-sys-motion-duration-medium2: 400ms;
+  --md-sys-motion-duration-long1: 500ms;
 }
 
 .m3-navigation-rail {
@@ -538,20 +611,161 @@ onBeforeUnmount(() => {
   left: 0;
   bottom: 0;
   width: 80px;
-  background-color: rgb(var(--md-sys-color-surface));
-  border-right: 1px solid rgb(var(--md-sys-color-outline-variant) / 0.2);
-  transition: width 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  background: rgb(var(--md-sys-color-surface));
   display: flex;
   flex-direction: column;
   z-index: 30;
-  padding: 12px 0;  /* Add vertical padding */
+  transition: width var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+  border-right: 1px solid rgb(var(--md-sys-color-outline-variant) / 0.08);
+  border-radius: 0; /* MD3: no corner radius */
+  padding-right: 0;
+  padding-left: 0; /* Remove left padding */
+}
+
+.m3-rail-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  position: relative;
+}
+
+.m3-rail-fab {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: rgb(var(--md-sys-color-primary-container));
+  color: rgb(var(--md-sys-color-primary));
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  width: auto;
+  justify-content: flex-start;
+  min-width: 56px;
+  transition: all var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized);
+  box-shadow: var(--md-sys-elevation-0);
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+/* Primary surface tint layer */
+.m3-rail-fab::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgb(var(--md-sys-color-primary-container) / 0.08);
+  pointer-events: none;
+}
+
+.m3-rail-fab:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--md-sys-elevation-4);
+  background: rgb(var(--md-sys-color-primary) / 0.92);
+  transition-duration: var(--md-sys-motion-duration-short2);
+}
+
+.m3-rail-fab:active {
+  transform: translateY(0);
+  box-shadow: var(--md-sys-elevation-1);
+  background: rgb(var(--md-sys-color-primary) / 0.85);
+}
+
+.m3-rail-fab:active::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgb(var(--md-sys-color-on-primary));
+  opacity: var(--md-sys-state-pressed-state-layer-opacity);
+  pointer-events: none;
+}
+
+.m3-rail-fab iconify-icon {
+  font-size: 36px;
+  width: 36px;
+  height: 36px;
+  color: currentColor;
+  position: relative;
+  z-index: 1;
+  transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.m3-rail-fab:hover iconify-icon {
+  transform: scale(1.1);
+}
+
+.m3-rail-fab-text {
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+  color: currentColor;
+  opacity: 0;
+  transform: translateX(-20px);
+  transition: opacity 200ms ease, transform 300ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.m3-navigation-rail.is-expanded .m3-rail-fab-text {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.m3-rail-items {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 12px;
+  gap: 4px;
+  flex: 1;
+  overflow: hidden;
+}
+
+.m3-rail-item {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center; /* Center icon even when expanded */
+  position: relative;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+  transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Remove padding and justification changes when expanded */
+.m3-navigation-rail.is-expanded .m3-rail-item {
+  width: 56px; /* Keep same width */
+  padding: 0; /* Remove padding */
+  justify-content: center; /* Keep centered */
+}
+
+.m3-navigation-rail.is-expanded {
+  width: 412px;
+}
+
+.m3-navigation-rail.is-expanded .m3-rail-item {
+  width: 100%;
+  padding: 0 16px;
+  justify-content: flex-start;
+}
+
+.m3-rail-label {
+  margin-left: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0;
+  transition: opacity 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.m3-navigation-rail.is-expanded .m3-rail-label {
+  opacity: 1;
 }
 
 .m3-rail-items {
   display: flex;
   flex-direction: column;
   height: 100%; /* Fill available height */
-  padding: 4px 12px;  /* Add padding around items */
+  padding: 4px 8px;  /* Add padding around items */
   gap: 4px;  /* Add gap between items */
 }
 
@@ -792,12 +1006,18 @@ onBeforeUnmount(() => {
 }
 
 .m3-rail-label {
-  font-size: 14px;
-  line-height: 20px;
-  font-weight: 500;
-  white-space: nowrap;
-  position: relative;
-  z-index: 1;
+  font-family: var(--md-sys-typescale-label-medium-font);
+  font-size: var(--md-sys-typescale-label-medium-size);
+  line-height: var(--md-sys-typescale-label-medium-line-height);
+  font-weight: var(--md-sys-typescale-label-medium-weight);
+  letter-spacing: var(--md-sys-typescale-label-medium-tracking);
+  color: rgb(var(--md-sys-color-on-surface-variant)); /* MD3: inactive label color */
+  margin-top: 4px;
+}
+
+.m3-rail-item.is-active .m3-rail-label {
+  color: rgb(var(--md-sys-color-on-surface)); /* MD3: active label color */
+  font-weight: var(--md-sys-typescale-label-medium-weight-prominent);
 }
 
 .m3-walks-section {
@@ -807,7 +1027,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   background: rgb(var(--md-sys-color-surface));
-  transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 300ms cubic-bezier(0.4, 0, 0.2, 1); /* Only transition width */
   overflow: hidden; /* Contain the scrolling content */
   min-height: 0; /* Allow flex child to shrink */
   padding-top: 8px;  /* Add top spacing */
@@ -880,5 +1100,95 @@ onBeforeUnmount(() => {
 
 .vue-recycle-scroller__item-wrapper {
   min-height: 100%;
+}
+
+/* New style for the overlay menu expand button */
+.collapsed-expand-button {
+  background: rgba(0, 0, 0, 0.2);
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.collapsed-expand-button:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* Updated map container styles */
+.m3-content-container {
+  flex: 1;
+  position: relative;
+  padding: 0; /* Removed previous padding-left: 84px */
+  display: flex;
+  background: rgb(var(--md-sys-color-surface));
+  transform-origin: left center;
+  will-change: transform;
+  box-sizing: border-box;
+  width: 100%;
+  transform: none;
+}
+
+.m3-surface-container {
+  flex: 1;
+  position: relative;
+  background: rgb(var(--md-sys-color-surface));
+  border-radius: 0;
+  overflow: hidden;
+  transform: translateZ(0);
+  transition: none;
+  height: 100%;
+}
+
+.m3-navigation-rail.is-expanded ~ .m3-content-container {
+  margin-left: 0;
+}
+
+/* Remove old map container styles */
+.map-container {
+  display: none;
+}
+
+/* Hardware acceleration and anti-flash styles */
+.hardware-accelerated {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000;
+  will-change: transform;
+}
+
+/* Fix content container layout */
+.m3-content-container {
+  flex: 1;
+  position: relative;
+  padding: 4px;
+  display: flex;
+  background: rgb(var(--md-sys-color-surface));
+  transform-origin: left center;
+  will-change: transform;
+  box-sizing: border-box; /* Ensure padding is included in width */
+  width: 100%; /* Take full width */
+  transition: padding var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+  transform: none; /* Remove transform */
+}
+
+.m3-surface-container {
+  flex: 1;
+  position: relative;
+  background: rgb(var(--md-sys-color-surface));
+  border-radius: 12px;
+  overflow: hidden;
+  transform: translateZ(0);
+  transition: none;
+  height: 100%; /* Ensure full height */
+}
+
+/* Clean up unused styles */
+.map-container {
+  display: none;
 }
 </style>
