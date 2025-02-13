@@ -34,7 +34,11 @@
         :style="{ minHeight: '200px', visibility: 'visible' }"
       >
         <template #default="{ item: walk, index, active }">
-          <DynamicScrollerItem :item="walk" :active="active" :size-dependencies="[walk.walk_name, walk.difficulty, walk.duration, walk.highlights]" class="card-item">
+          <DynamicScrollerItem 
+            :item="walk" 
+            :active="active" 
+            :size-dependencies="[walk.walk_name, walk.difficulty, walk.duration, walk.highlights, isFavorite(walk)]" 
+            class="card-item">
             <div 
               class="card-wrapper"
               :class="{ 'animated': active }"
@@ -42,8 +46,9 @@
               :data-walk-id="walk.id"
             >
               <!-- Updated: Added hover and press event listeners -->
+              <!-- Ensure the parent div has position: relative -->
               <div
-                class="card-content cursor-pointer group"
+                class="card-content relative cursor-pointer group hover:bg-blue-500 hover:text-white hover:shadow-lg transition-all duration-300"
                 :ref="setCardRef(walk.id)"
                 @click="handleWalkClick(walk)"
                 @mouseover="handleCardHover(walk.id, true)"
@@ -53,40 +58,67 @@
               >
                 <!-- Content wrapper -->
                 <div class="p-4 space-y-3">
-                  <h3 class="text-lg font-semibold group-hover:text-blue-600 transition-colors">
-                    {{ walk.walk_name }}
-                  </h3>
-
-                  <!-- Interactive badges -->
+                  <!-- New flex container for header -->
+                  <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-semibold group-hover:text-blue-600 transition-colors">
+                      {{ walk.walk_name }}
+                    </h3>
+                    <button
+                      @click.stop="toggleFavorite(walk)"
+                      class="p-2 rounded-full z-10 transition-all duration-300 hover:bg-red-50 hover:scale-125 active:scale-95"
+                    >
+                      <iconify-icon
+                        :icon="isFavorite(walk) ? 'mdi:heart' : 'mdi:heart-outline'"
+                        class="w-5 h-5"
+                        :class="isFavorite(walk) ? 'text-red-500' : 'text-gray-400'"
+                      />
+                    </button>
+                  </div>
+                  <!-- Updated Interactive badges to use available fields -->
                   <div class="flex gap-2">
-                    <span
-                      v-if="walk.difficulty"
-                      class="px-2 py-1 text-xs font-bold rounded-full bg-gray-100 text-gray-700 group-hover:bg-blue-50 group-hover:text-blue-700 transition-colors"
-                    >
-                      {{ walk.difficulty }}
+                    <span class="px-2 py-1 text-xs font-bold rounded-full bg-gray-100 text-gray-700 group-hover:bg-blue-50 group-hover:text-blue-700 transition-colors">
+                      {{ walk.steepness_level || 'Difficulty' }}
                     </span>
-                    <span
-                      v-if="walk.duration"
-                      class="px-2 py-1 text-xs font-bold rounded-full bg-gray-100 text-gray-700 group-hover:bg-blue-50 group-hover:text-blue-700 transition-colors"
-                    >
-                      {{ walk.duration }}
+                    <span class="px-2 py-1 text-xs font-bold rounded-full bg-gray-100 text-gray-700 group-hover:bg-blue-50 group-hover:text-blue-700 transition-colors">
+                      {{ walk.distance ? convertToMiles(walk.distance) + ' mi' : 'Distance' }}
                     </span>
+                  </div>
+
+                  <!-- Updated features container -->
+                  <div class="flex gap-2 flex-wrap">
+                    <span class="px-2 py-1 text-xs font-bold rounded-full bg-blue-100 text-blue-700 flex items-center">
+                      <iconify-icon icon="mdi:shoe-print" class="mr-1" /> 
+                      {{ walk.footwear_category || 'No footwear info' }}
+                    </span>
+                    <template v-if="walk.has_bus_access">
+                      <span class="px-2 py-1 text-xs font-bold rounded-full bg-blue-100 text-blue-700 flex items-center">
+                        <iconify-icon icon="mdi:bus" class="mr-1" />
+                        Bus Access
+                      </span>
+                    </template>
+                    <template v-if="walk.has_cafe">
+                      <span class="px-2 py-1 text-xs font-bold rounded-full bg-blue-100 text-blue-700 flex items-center">
+                        <iconify-icon icon="mdi:coffee" class="mr-1" />
+                        Cafe
+                      </span>
+                    </template>
+                    <template v-if="walk.has_pub">
+                      <span class="px-2 py-1 text-xs font-bold rounded-full bg-blue-100 text-blue-700 flex items-center">
+                        <iconify-icon icon="mdi:glass-mug" class="mr-1" />
+                        Pub
+                      </span>
+                    </template>
+                    <template v-if="walk.has_stiles">
+                      <span class="px-2 py-1 text-xs font-bold rounded-full bg-blue-100 text-blue-700 flex items-center">
+                        <iconify-icon icon="mdi:stairs" class="mr-1" />
+                        Stiles
+                      </span>
+                    </template>
                   </div>
 
                   <p class="text-sm text-gray-600 group-hover:text-gray-800 transition-colors">
                     {{ walk.highlights }}
                   </p>
-
-                  <button
-                    @click.stop="toggleFavorite(walk)"
-                    class="absolute top-3 right-3 p-2 rounded-full transition-all duration-300 hover:bg-red-50 hover:scale-125 active:scale-95"
-                  >
-                    <iconify-icon
-                      :icon="isFavorite(walk) ? 'mdi:heart' : 'mdi:heart-outline'"
-                      class="w-5 h-5"
-                      :class="isFavorite(walk) ? 'text-red-500' : 'text-gray-400'"
-                    />
-                  </button>
                 </div>
               </div>
             </div>
@@ -303,9 +335,10 @@ const handleCardHover = (walkId, isHovered) => {
   if (!walkId || !cardRefs.value[walkId]) return
   
   if (isHovered) {
+    // Updated hover effect with stronger shadow
     animate(cardRefs.value[walkId], {
       scale: 1.02,
-      boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)'
+      boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2), 0 8px 10px -6px rgba(0,0,0,0.2)'
     }, { 
       duration: 0.3,
       easing: [.23, 1, .32, 1]
@@ -313,7 +346,7 @@ const handleCardHover = (walkId, isHovered) => {
   } else {
     animate(cardRefs.value[walkId], {
       scale: 1,
-      boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)'
+      boxShadow: '0 1px 3px 0 rgba(0,0,0,0.2)'
     }, { 
       duration: 0.2,
       easing: [.23, 1, .32, 1]
@@ -707,11 +740,13 @@ onBeforeUnmount(() => {
   transform: translateY(20px) scale(0.95);
   will-change: transform, opacity;
   transition: none; /* Ensure no CSS transitions interfere */
-  contain: content; /* Add content containment */
+  /* Removed: contain: content; */
+  overflow: visible; /* Allow favorite button to be visible */
 }
 
 .card-wrapper.animated {
   opacity: 1;
   transform: none;
 }
+/* ...existing styles... */
 </style>
