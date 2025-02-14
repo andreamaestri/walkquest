@@ -8,11 +8,8 @@
       ref="scroller"
       class="scroller"
       :items="walks"
-      :min-item-size="isCompact ? 48 : 96"
-      :buffer="1000"
-      :key-field="'id'"
-      :emit-update="true"
-      @update="handleUpdate"
+      :min-item-size="isCompact ? 56 : 180"
+      key-field="id"
     >
       <template #default="{ item, index, active }">
         <DynamicScrollerItem
@@ -21,21 +18,23 @@
           :data-index="index"
           :size-dependencies="[
             item.walk_name,
-            item.steepness_level,
-            item.footwear_category,
+            item.related_categories?.length,
+            item.highlights,
             isCompact,
             selectedWalkId === item.id
           ]"
           :watch-size="true"
         >
-          <WalkCard
-            :walk="item"
-            :is-compact="isCompact"
-            :is-selected="selectedWalkId === item.id"
-            :is-expanded="expandedWalkIds.includes(item.id)"
-            @walk-selected="handleWalkSelection"
-            @walk-expanded="$emit('walk-expanded', { walkId: item.id, expanded: !expandedWalkIds.includes(item.id) })"
-          />
+          <div class="walk-card-wrapper">
+            <WalkCard
+              :walk="item"
+              :is-compact="isCompact"
+              :is-selected="selectedWalkId === item.id"
+              :is-expanded="expandedWalkIds.includes(item.id)"
+              @walk-selected="handleWalkSelection"
+              @walk-expanded="$emit('walk-expanded', { walkId: item.id, expanded: !expandedWalkIds.includes(item.id) })"
+            />
+          </div>
         </DynamicScrollerItem>
       </template>
     </DynamicScroller>
@@ -121,14 +120,15 @@ const handleUpdate = ({ continuous }) => {
 .vue-recycle-scroller__item-wrapper {
   display: flex;
   flex-direction: column;
-  width: 100%;
+  width: 100%; 
 }
 
 .vue-recycle-scroller__item-view {
-  display: flex;
   width: 100%;
-  padding: 2px 8px;
-  margin-bottom: 2px;
+  display: flex;
+  justify-content: center; /* Center the wrapper */
+  padding: 0;
+  margin: 0;
 }
 
 /* Hide scrollbar on compact mode */
@@ -164,5 +164,12 @@ const handleUpdate = ({ continuous }) => {
   background: rgb(var(--md-sys-color-error-container) / 0.12);
   margin: 8px;
   border-radius: 12px;
+}
+
+.walk-card-wrapper {
+  width: 380px; /* Fixed width for all cards */
+  margin: 0 auto; /* Center the cards */
+  padding: 4px 0; /* Remove horizontal padding */
+  box-sizing: border-box;
 }
 </style>

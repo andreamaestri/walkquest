@@ -20,7 +20,7 @@
               <div class="m3-state-layer">
                 <iconify-icon 
                   icon="mdi:menu" 
-                  class="text-[24px]"
+                  class="m3-rail-icon text-[24px]"
                 />
               </div>
             </button>
@@ -109,18 +109,18 @@
 
       <!-- Map container with updated left margin -->
       <div
-        class="m3-content-container hardware-accelerated"
+        class="m3-content-container hardware-accelerated pointer-events-auto"
         :style="mapContainerStyle"
         ref="mapContainerRef"
       >
-        <div class="m3-surface-container hardware-accelerated">
+        <div class="m3-surface-container hardware-accelerated pointer-events-auto">
           <MapView
             ref="mapComponent"
             :mapbox-token="mapboxToken"
             :config="mapConfig"
             @map-loaded="handleMapLoaded"
             @map-error="handleMapError"
-            class="hardware-accelerated"
+            class="hardware-accelerated pointer-events-auto"
           />
           <!-- Mobile toggle button -->
           <Transition :css="false" @enter="onMobileButtonEnter" @leave="onMobileButtonLeave">
@@ -196,6 +196,9 @@ const mapContainerVisible = useElementVisibility(mapContainerRef)
 
 // Add a ref for animation tracking
 let expandAnimation = null
+
+// Added to define showRoutesDrawer and avoid Vue warn
+const showRoutesDrawer = ref(false)
 
 // Updated toggleExpanded with sidebar width and inner elements animation
 const toggleExpanded = () => {
@@ -723,6 +726,67 @@ onBeforeUnmount(() => {
   --sidebar-width: 80px;
 }
 
+/* Updated navigation styles for consistent padding and width */
+.m3-navigation-rail {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  background: rgb(var(--md-sys-color-surface));
+  z-index: 100; /* Increased z-index to be above map */
+  border-right: 1px solid rgb(var(--md-sys-color-outline-variant) / 0.08);
+  overflow: hidden;
+  will-change: width;
+  transition: width 0.3s cubic-bezier(0.3, 0, 0.2, 1);
+}
+
+.m3-rail-header {
+  padding: 12px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.m3-rail-items {
+  padding: 4px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  width: 100%;
+  overflow: hidden;
+}
+
+.m3-walks-section {
+  background: rgb(var(--md-sys-color-surface));
+  padding: 0px;
+}
+
+/* When expanded, maintain consistent widths */
+.m3-navigation-rail.is-expanded {
+  width: 412px;
+}
+
+.m3-navigation-rail.is-expanded .m3-rail-items {
+  padding: 4px 12px;
+}
+
+.m3-rail-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .m3-navigation-rail {
   position: fixed;
   top: 0;
@@ -732,7 +796,9 @@ onBeforeUnmount(() => {
   background: rgb(var(--md-sys-color-surface));
   display: flex;
   flex-direction: column;
-  z-index: 30;
+  justify-content: center; /* Center children vertically */
+  align-items: center; /* Center children horizontally */
+  z-index: 100; /* Increased z-index to be above map */
   border-right: 1px solid rgb(var(--md-sys-color-outline-variant) / 0.08);
   border-radius: 0; /* MD3: no corner radius */
   padding-right: 0;
@@ -749,6 +815,7 @@ onBeforeUnmount(() => {
   gap: 12px;
   padding: 12px 0;
   position: relative;
+  width: 100%; /* Ensure full width */
 }
 
 .m3-rail-fab {
@@ -842,6 +909,8 @@ onBeforeUnmount(() => {
   gap: 4px;
   flex: 1;
   overflow: hidden;
+  align-items: center; /* Center items horizontally */
+  width: 100%; /* Ensure full width */
 }
 
 .m3-rail-item {
@@ -1253,27 +1322,37 @@ onBeforeUnmount(() => {
 .m3-content-container {
   flex: 1;
   position: relative;
-  padding: 4px;
+  padding: 4px; /* Increased padding for better visual */
+  border-radius: 6px; /* Increased radius to match MD3 spec */
   display: flex;
   background: rgb(var(--md-sys-color-surface));
   transform-origin: left center;
   will-change: transform;
   box-sizing: border-box; 
-  width: 100%; 
+  width: calc(100% - 80px); /* Adjust width to account for navigation */
+  margin-left: 80px; /* Match navigation width */
+  z-index: 1; /* Lower z-index than navigation */
   transform: none;
   overflow: hidden;
-  contain: strict;             /* Isolate container for performance */
-  will-change: transform, opacity; /* Optimize for animations */
+  contain: strict;
+  will-change: transform, opacity;
+  pointer-events: auto !important; /* Ensure map interaction works */
+}
+
+.m3-content-container.with-expanded-nav {
+  margin-left: 412px;
+  width: calc(100% - 412px);
 }
 
 .m3-surface-container {
   flex: 1;
   position: relative;
   background: rgb(var(--md-sys-color-surface));
-  border-radius: 0;
+  border-radius: 12px; 
   overflow: hidden;
   height: 100%;
   contain: layout;
+  pointer-events: auto !important; /* Ensure map interaction works */
 }
 
 /* Optimize MapView canvas rendering */
@@ -1311,7 +1390,9 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center; /* Center contents horizontally */
   gap: 4px;
+  width: 100%;
 }
 
 .m3-rail-icon-container {
@@ -1337,6 +1418,7 @@ onBeforeUnmount(() => {
   letter-spacing: 0.5px;
   text-align: center;
   color: inherit;
+  margin: 0; /* Remove margin that was affecting centering */
   opacity: 1 !important; /* Force label visibility */
 }
 
@@ -1358,18 +1440,28 @@ onBeforeUnmount(() => {
 
 .m3-navigation-rail.is-expanded .m3-rail-content {
   flex-direction: row;
-  width: 100%;
+  justify-content: flex-start; /* Left align when expanded */
+  padding: 0 12px;
   gap: 12px;
-  padding: 0 4px;
 }
 
 .m3-navigation-rail.is-expanded .m3-rail-label {
-  margin-left: 4px;
+  margin-left: 4px; /* Small margin only when expanded */
 }
 
 .m3-rail-icon-wrapper {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* Disable pointer events on full-screen absolute overlays */
+div.absolute.inset-0 {
+  /* pointer-events: none !important; */ /* Remove or comment out this line */
+}
+
+/* Ensure MapBox controls are clickable */
+.mapboxgl-control-container {
+  pointer-events: auto !important;
 }
 </style>
