@@ -35,12 +35,36 @@
             </div>
           </button>
 
+          <!-- New Location Search Button -->
+          <button class="m3-rail-item" @click="toggleLocationSearch">
+            <div class="m3-rail-content">
+              <div class="m3-rail-icon-container">
+                <iconify-icon icon="mdi:map-search" class="m3-rail-icon" />
+              </div>
+              <span class="m3-rail-label">Find Nearby</span>
+            </div>
+          </button>
+
           <!-- Updated Walks List with transition -->
           <Transition :css="false" @enter="onWalksSectionEnter" @leave="onWalksSectionLeave">
             <div v-if="isExpanded" class="m3-walks-section">
-              <WalkList :error="error" :walks="availableWalks" :selected-walk-id="selectedWalkId"
-                :expanded-walk-ids="expandedWalkIds" :is-compact="!isExpanded" @walk-selected="handleWalkSelection"
-                @walk-expanded="handleWalkExpanded" />
+              <!-- Location Search Panel -->
+              <Transition :css="false" @enter="onPanelEnter" @leave="onPanelLeave">
+                <div v-if="showLocationSearch" class="m3-location-panel">
+                  <LocationSearch @location-selected="handleLocationSelected" />
+                </div>
+              </Transition>
+
+              <WalkList 
+                v-model="searchQuery"
+                :walks="availableWalks"
+                :selected-walk-id="selectedWalkId"
+                :expanded-walk-ids="expandedWalkIds"
+                :is-compact="!isExpanded"
+                @walk-selected="handleWalkSelection"
+                @walk-expanded="handleWalkExpanded"
+                @filtered-walks="updateDisplayedWalks"
+              />
             </div>
           </Transition>
         </nav>
@@ -75,8 +99,160 @@
       <div class="m3-content-container hardware-accelerated pointer-events-auto" :style="mapContainerStyle"
         ref="mapContainerRef">
         <div class="m3-surface-container hardware-accelerated pointer-events-auto">
-          <MapView ref="mapComponent" :mapbox-token="mapboxToken" :config="mapConfig" @map-loaded="handleMapLoaded"
-            @map-error="handleMapError" class="hardware-accelerated pointer-events-auto" />
+          <StoreLocator
+            :items="walks"
+            :item-zoom-level="14"
+            :access-token="mapboxToken"
+            :mapbox-map="mapConfig"
+            :classes="{
+              root: 'flex h-full w-full',
+              region: {
+                map: 'w-full h-full',
+                list: 'hidden' // Hide the list region completely
+              }
+            }"
+            @select-item="handleItemSelect"
+            @map-created="handleMapCreated"
+            class="hardware-accelerated pointer-events-auto">
+
+            <!-- Remove the list slot since we're using WalkList elsewhere -->
+            
+            <!-- Custom Markers -->
+            <template #markers>
+              <template v-for="item in displayMarkers" :key="item.walk.id">
+                <MapboxMarker
+                  :lng-lat="[item.walk.lng, item.walk.lat]"
+                  :popup-offset="[0, -15]"
+                  :element="item.type === 'point' ? null : undefined"
+                  :color="item.type === 'point' ? '#4A90E2' : null"
+                  :scale="item.type === 'point' ? 0.7 : 1"
+                  :aria-label="`${item.walk.title}, ${item.walk.difficulty} difficulty, ${item.walk.duration} duration`"
+                  class="map-marker"
+                  :class="{ 
+                    'is-detailed': item.type === 'marker',
+                    'is-simple': item.type === 'point',
+                    active: selectedWalkId === item.walk.id,
+                    nearby: locationStore.nearbyWalks.some(nearby => nearby.id === item.walk.id)
+                  }"
+                  @click="handleWalkSelection(item.walk)"
+                >
+                  <!-- Only render custom content for detailed markers -->
+                  <div v-if="item.type === 'marker'" class="marker-content p-2 bg-white rounded-lg shadow-md">
+                    <h4 class="text-sm font-medium">{{ item.walk.title }}</h4>
+                    <div class="flex items-center gap-1 text-xs mt-1">
+                      <iconify-icon icon="mdi:flag" class="text-primary" />
+                      <span>{{ item.walk.difficulty }}</span>
+                    </div>
+                  </div>
+
+                  <template #popup>
+                    <div class="p-3">
+                      <h3 class="text-lg font-semibold mb-2">{{ item.walk.title }}</h3>
+                      <div class="space-y-2">
+                        <div class="flex items-center gap-2">
+                          <iconify-icon icon="mdi:map-marker" />
+                          <span>{{ item.walk.location }}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                          <iconify-icon icon="mdi:clock-outline" />
+                          <span>{{ item.walk.duration }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+                </MapboxMarker>
+              </template>
+            </template>
+
+            <!-- Add Distance Radius Circle -->
+            <template #before-markers>
+              <template v-if="locationStore.userLocation && locationStore.searchRadius">
+                <MapboxLayer
+                  type="circle"
+                  :paint="{
+                    'circle-color': '#4A90E2',
+                    'circle-opacity': 0.1,
+                    'circle-radius': locationStore.searchRadius / 2
+                  }"
+                  :source="{
+                    type: 'geojson',
+                    data: {
+                      type: 'Feature',
+                      geometry: {
+                        type: 'Point',
+                        coordinates: [
+                          locationStore.userLocation.longitude,
+                          locationStore.userLocation.latitude
+                        ]
+                      }
+                    }
+                  }"
+                />
+              </template>
+            </template>
+
+            <template #before-map>
+              <div class="sr-only">
+                Interactive map showing walk locations. Use arrow keys to navigate between markers.
+              </div>
+            </template>
+
+            <!-- Item Panel -->
+            <template #panel="{ item, close }">
+              <div class="p-4 max-w-sm" role="dialog" aria-labelledby="walk-title">
+                <h3 id="walk-title" class="text-lg font-semibold mb-2">{{ item.title }}</h3>
+                <div class="flex items-center gap-2 mb-2">
+                  <iconify-icon icon="mdi:map-marker" aria-hidden="true" />
+                  <span>{{ item.location }}</span>
+                </div>
+              </div>
+            </template>
+
+            <!-- MapboxMap Controls -->
+            <MapboxNavigationControl position="top-left" />
+            <MapboxCluster
+              :radius="50"
+              :max-zoom="13"
+              :min-zoom="8"
+              :cluster-properties="{
+                sum: ['+', ['get', 'point_count']]
+              }"
+              :clusters-layout="{ visibility: 'visible' }"
+              :clusters-paint="{
+                'circle-color': [
+                  'step',
+                  ['get', 'point_count'],
+                  'rgba(var(--md-sys-color-primary-rgb), 0.5)',
+                  10,
+                  'rgba(var(--md-sys-color-primary-rgb), 0.7)',
+                  30,
+                  'rgba(var(--md-sys-color-primary-rgb), 0.9)'
+                ],
+                'circle-radius': [
+                  'step',
+                  ['get', 'point_count'],
+                  20,
+                  10,
+                  30,
+                  30,
+                  40
+                ],
+                'circle-stroke-width': 3,
+                'circle-stroke-color': 'rgba(var(--md-sys-color-on-primary-container-rgb), 1)',
+                'circle-stroke-opacity': 0.5
+              }"
+              :clusters-text-layout="{
+                'text-field': '{point_count_abbreviated}',
+                'text-font': ['Roboto Medium', 'Arial Unicode MS Bold'],
+                'text-size': 12,
+                'text-offset': [0, 0],
+                'text-anchor': 'center'
+              }"
+              :clusters-text-paint="{ 'text-color': '#ffffff' }"
+              :data="geojsonData"
+              @mb-click="handleClusterClick"
+            />
+          </StoreLocator>
           <!-- Mobile toggle button -->
           <Transition :css="false" @enter="onMobileButtonEnter" @leave="onMobileButtonLeave">
             <button v-if="isMobile && !uiStore?.mobileMenuOpen" ref="mobileButtonRef"
@@ -85,6 +261,34 @@
               <span class="sr-only">Open menu</span>
             </button>
           </Transition>
+        </div>
+      </div>
+
+      <!-- Mobile location search bottom sheet -->
+      <BottomSheet v-model="showMobileLocationSearch" v-if="isMobile">
+        <LocationSearch 
+          @location-selected="handleLocationSelected" 
+          class="pb-safe-area-inset-bottom"
+        />
+      </BottomSheet>
+
+      <!-- Mobile navigation bar -->
+      <div v-if="isMobile" class="fixed bottom-0 left-0 right-0 bg-surface z-40 shadow-lg">
+        <div class="flex justify-around items-center h-16 px-4">
+          <button class="m3-nav-button" @click="handleWalkSelection(null)">
+            <iconify-icon icon="mdi:compass-outline" class="text-2xl" />
+            <span class="text-xs">Explore</span>
+          </button>
+          
+          <button class="m3-nav-button" @click="showMobileLocationSearch = true">
+            <iconify-icon icon="mdi:map-search" class="text-2xl" />
+            <span class="text-xs">Find Nearby</span>
+          </button>
+          
+          <button class="m3-nav-button" @click="uiStore?.setMobileMenuOpen(true)">
+            <iconify-icon icon="mdi:menu" class="text-2xl" />
+            <span class="text-xs">Menu</span>
+          </button>
         </div>
       </div>
     </div>
@@ -106,11 +310,15 @@ import { useElementVisibility } from "@vueuse/core";
 import { useUiStore } from "../stores/ui";
 import { useWalksStore } from "../stores/walks";
 import { DynamicScroller, DynamicScrollerItem } from "vue-virtual-scroller";
+import { StoreLocator, MapboxNavigationControl, MapboxMarker, MapboxMap, MapboxCluster } from '@studiometa/vue-mapbox-gl';
 import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
 import Loading from "./Loading.vue";
-import MapView from "./MapView.vue";
 import WalkList from "./WalkList.vue";
 import WalkCard from "./WalkCard.vue";
+import { useLocationStore } from '../stores/locationStore';
+import LocationSearch from './LocationSearch.vue';
+import BottomSheet from './BottomSheet.vue'
+import { useMap } from '../composables/useMap'
 
 // Props definition
 const props = defineProps({
@@ -132,6 +340,7 @@ const props = defineProps({
 const router = useRouter();
 const walksStore = useWalksStore();
 const uiStore = useUiStore();
+const locationStore = useLocationStore();
 
 // Component refs and state
 const loadingComponent = ref(null);
@@ -142,6 +351,32 @@ const mobileButtonRef = ref(null);
 const mapContainerRef = ref(null);
 const expandedWalkIds = ref([]);
 const isExpanded = ref(localStorage.getItem("sidebarExpanded") === "true");
+const showLocationSearch = ref(false);
+const showMobileLocationSearch = ref(false);
+const mapReady = ref(false);
+const currentZoom = ref(0); // Track current zoom level
+const markerThresholdZoom = 13; // Increased threshold for better visibility
+
+// Add Cornwall bounds constants
+const CORNWALL_BOUNDS = [
+  [-5.7, 49.9], // Southwest coordinates
+  [-4.2, 50.9]  // Northeast coordinates
+];
+
+// Add Cornwall center
+const CORNWALL_CENTER = [-4.95, 50.4];
+
+// Update StoreLocator configuration
+const mapConfig = computed(() => ({
+  mapStyle: 'mapbox://styles/andreamaestri/cm79fegfl000z01sdhl4u32jv?optimize=true',
+  cooperativeGestures: true,
+  keyboard: true,
+  maxBounds: CORNWALL_BOUNDS,
+  center: CORNWALL_CENTER,
+  zoom: 9,
+  minZoom: 1,
+  maxZoom: 16
+}));
 
 // Computed properties
 const error = computed(() => uiStore?.error);
@@ -150,6 +385,16 @@ const showSidebar = computed(() => uiStore?.showSidebar);
 const isMobile = computed(() => uiStore?.isMobile);
 const selectedWalkId = computed(() => props.walkId);
 const availableWalks = computed(() => walksStore.walks);
+const walks = computed(() => 
+  walksStore.walks.map(walk => ({
+    id: walk.id,
+    lat: walk.latitude,
+    lng: walk.longitude,
+    title: walk.title,
+    location: walk.location,
+    ...walk
+  }))
+);
 const mapContainerVisible = useElementVisibility(mapContainerRef);
 
 // Add a ref for animation tracking
@@ -157,6 +402,31 @@ let expandAnimation = null;
 
 // Added to define showRoutesDrawer and avoid Vue warn
 const showRoutesDrawer = ref(false);
+
+// Add new computed property for filtered walks
+const filteredWalks = computed(() => {
+  let results = availableWalks.value;
+
+  if (searchQuery.value?.trim()) {
+    const query = searchQuery.value.toLowerCase().trim();
+    results = results.filter(walk => {
+      const text = [
+        walk.title, 
+        walk.location, 
+        walk.description
+      ].filter(Boolean).join(' ').toLowerCase();
+      return text.includes(query);
+    });
+  }
+
+  return results;
+});
+
+// NEW: Lift search query state
+const searchQuery = ref('');
+
+// Add ref for filtered results
+const filteredResults = ref([]);
 
 // Updated toggleExpanded with sidebar width and inner elements animation
 const toggleExpanded = () => {
@@ -466,6 +736,39 @@ async function onWalksSectionLeave(el, onComplete) {
   onComplete();
 }
 
+// Add new animation functions
+async function onPanelEnter(el, onComplete) {
+  await animate(
+    el,
+    {
+      opacity: [0, 1],
+      height: [0, el.scrollHeight],
+      scale: [0.95, 1],
+    },
+    {
+      duration: 0.2,
+      easing: [0.3, 0, 0.2, 1],
+    }
+  ).finished;
+  onComplete();
+}
+
+async function onPanelLeave(el, onComplete) {
+  await animate(
+    el,
+    {
+      opacity: [1, 0],
+      height: [el.scrollHeight, 0],
+      scale: [1, 0.95],
+    },
+    {
+      duration: 0.15,
+      easing: [0.3, 0, 0.2, 1],
+    }
+  ).finished;
+  onComplete();
+}
+
 // Route update handling using composition API
 watch(
   () => props.walkId,
@@ -529,13 +832,58 @@ watch(
   { immediate: true }
 );
 
-const handleMapLoaded = (map) => {
+const handleMapCreated = (map) => {
   uiStore?.setMapLoading(false);
+  // Add keyboard event listeners for accessibility
+  map.getCanvas().setAttribute('tabindex', '0');
+  map.getCanvas().addEventListener('keydown', handleMapKeyboard);
+
+  // Set map instance in useMap composable
+  setMapInstance(map);
+
+  // Get initial zoom level
+  currentZoom.value = map.getZoom();
+
+  // Update zoom level on map zoom
+  map.on('zoom', () => {
+    currentZoom.value = map.getZoom();
+  });
+};
+ 
+// Handle map keyboard navigation
+const handleMapKeyboard = (e) => {
+  const KEYBOARD_OFFSET = 50; // pixels to pan per key press
+  
+  if (!e.target.mapInstance) return;
+  const map = e.target.mapInstance;
+  
+  switch(e.key) {
+    case 'ArrowRight':
+      map.panBy([KEYBOARD_OFFSET, 0]);
+      break;
+    case 'ArrowLeft':
+      map.panBy([-KEYBOARD_OFFSET, 0]);
+      break;
+    case 'ArrowUp':
+      map.panBy([0, -KEYBOARD_OFFSET]);
+      break;
+    case 'ArrowDown':
+      map.panBy([0, KEYBOARD_OFFSET]);
+      break;
+  }
 };
 
-const handleMapError = (error) => {
-  uiStore?.setError(error.message);
-  uiStore?.setMapLoading(false);
+// Computed property to determine which markers to display
+const displayMarkers = computed(() => {
+  return filteredResults.value.map(walk => ({
+    type: currentZoom.value >= markerThresholdZoom ? 'marker' : 'point',
+    walk: walk
+  }));
+});
+
+const handleItemSelect = async (item) => {
+  console.log("StoreLocator item selected:", item);
+  await handleWalkSelection(item);
 };
 
 const handleWalkExpanded = ({ walkId, expanded }) => {
@@ -567,6 +915,16 @@ const handleFabClick = async () => {
   if (!isExpanded.value) {
     isExpanded.value = true;
     localStorage.setItem("sidebarExpanded", "true");
+  }
+};
+
+const toggleLocationSearch = () => {
+  showLocationSearch.value = !showLocationSearch.value;
+};
+
+const handleLocationSelected = async (location) => {
+  if (location) {
+    await locationStore.findNearbyWalks();
   }
 };
 
@@ -620,10 +978,29 @@ watch(showSidebar, (visible) => {
 });
 
 const mapContainerStyle = computed(() => ({
+  flex: "1 1 auto",
   width: "100%",
-  marginLeft: "0",
-  // Removed inline transition property to avoid conflict with Motion animations
-}));
+  height: "100%",
+  marginLeft: "0" // ensures the map container fills its parent
+}))
+
+// Add handler for filtered walks
+const updateDisplayedWalks = (walks) => {
+  filteredResults.value = walks;
+};
+
+// Update search query watcher
+watch(searchQuery, (newQuery) => {
+  // If search is cleared, reset filtered results to all walks
+  if (!newQuery?.trim()) {
+    filteredResults.value = availableWalks.value;
+  }
+});
+
+// Initialize filtered results
+onMounted(() => {
+  filteredResults.value = availableWalks.value;
+});
 
 onMounted(async () => {
   try {
@@ -657,1136 +1034,86 @@ onBeforeUnmount(() => {
 </script>
 
 <style>
-.sidebar-content {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  width: 100%;
-  overflow: hidden;
-  position: relative;
-  contain: strict;
-}
+@import '../../css/material3.css';
 
-.sidebar-content.is-expanded {
-  width: 360px;
-}
-
-:root {
-  --md-sys-color-surface: 255, 255, 255;
-  --md-sys-color-surface-container: 246, 248, 250;
-  --md-sys-color-on-surface: 28, 27, 31;
-  --md-sys-color-on-surface-variant: 73, 69, 79;
-  --md-sys-color-primary: 103, 80, 164;
-  --md-sys-elevation-1: 0px 1px 3px 1px rgba(0, 0, 0, 0.15),
-    0px 1px 2px 0px rgba(0, 0, 0, 0.3);
-  --md-sys-elevation-2: 0px 2px 6px 2px rgba(0, 0, 0, 0.15),
-    0px 1px 2px 0px rgba(0, 0, 0, 0.3);
-  --md-sys-color-surface-container-highest: 255, 255, 255;
-  --md-sys-motion-easing-emphasized: cubic-bezier(0.4, 0, 0.2, 1);
-  --md-sys-motion-duration-medium: 300ms;
-  --md-sys-color-surface-container-low: 247, 242, 255;
-  --md-sys-color-outline-variant: 196, 199, 197;
-  --md-elevation-level2: 0 2px 6px 2px rgba(0, 0, 0, 0.15),
-    0 1px 2px 0px rgba(0, 0, 0, 0.3);
-  --md-elevation-level3: 0px 4px 8px 3px rgba(0, 0, 0, 0.15),
-    0px 1px 3px 0px rgba(0, 0, 0, 0.3);
-  --md-sys-color-surface-container-lowest: 255, 255, 255;
-  --md-sys-color-surface-container-low: 248, 248, 248;
-  --md-sys-color-surface-container: 241, 241, 241;
-  --md-sys-color-surface-container-high: 235, 235, 235;
-  --md-sys-color-surface-container-highest: 231, 231, 231;
-  --md-sys-color-secondary-container: 232, 222, 248;
-  --md-sys-color-on-secondary-container: 29, 25, 43;
-  --md-sys-color-outline: 121, 116, 126;
-  --md-sys-motion-easing-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
-  --md-sys-motion-easing-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
-  --md-sys-color-tertiary-container: 234, 247, 237;
-  --md-sys-color-on-tertiary-container: 0, 107, 47;
-  --md-sys-color-error-container: 252, 224, 220;
-  --md-sys-color-on-error-container: 147, 0, 10;
-  --md-sys-elevation-3: 0 4px 8px 3px rgba(0, 0, 0, 0.15),
-    0px 1px 3px 0px rgba(0, 0, 0, 0.3);
-  --md-sys-elevation-4: 0 6px 10px 4px rgba(0, 0, 0, 0.15),
-    0px 2px 3px 0px rgba(0, 0, 0, 0.3);
-  --md-sys-color-primary-container: 232, 222, 248;
-  /* Your theme color */
-  --md-sys-color-on-primary-container: 29, 25, 43;
-  /* Your theme color */
-  --md-sys-color-surface-tint: 103, 80, 164;
-  /* Your theme color */
-  --md-sys-state-pressed-state-layer-opacity: 0.12;
-  --md-sys-typescale-label-medium-size: 12px;
-  --md-sys-typescale-label-medium-line-height: 16px;
-  --md-sys-typescale-label-medium-weight: 500;
-  --md-sys-typescale-label-medium-weight-prominent: 600;
-  --md-sys-typescale-label-medium-tracking: 0.5px;
-  --md-sys-motion-easing-standard: cubic-bezier(0.4, 0, 0.2, 1);
-  --md-sys-motion-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
-  --md-sys-motion-easing-emphasized-decelerate: cubic-bezier(0.4, 0, 1, 1);
-  --md-sys-motion-easing-emphasized-accelerate: cubic-bezier(0, 0, 0.2, 1);
-  --md-sys-motion-duration-short1: 100ms;
-  --md-sys-motion-duration-short2: 200ms;
-  --md-sys-motion-duration-medium1: 300ms;
-  --md-sys-motion-duration-medium2: 400ms;
-  --md-sys-motion-duration-long1: 500ms;
-  --sidebar-width: 80px;
-}
-
-/* Updated navigation styles for consistent padding and width */
-.m3-navigation-rail {
-  position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: 80px;
-  display: flex;
-  flex-direction: column;
-  background: rgb(var(--md-sys-color-surface));
-  z-index: 100;
-  /* Increased z-index to be above map */
-  border-right: 1px solid rgb(var(--md-sys-color-outline-variant) / 0.08);
-  overflow: hidden;
-  will-change: width;
-  transition: width 0.3s cubic-bezier(0.3, 0, 0.2, 1);
-}
-
-.m3-rail-header {
-  padding: 12px 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-}
-
-/* Update rail items container for proper vertical centering */
-.m3-rail-items {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  /* Center items vertically */
-  gap: 4px;
-  padding: 4px 4px;
-  height: calc(100vh - 140px);
-  /* Account for header height */
-  min-height: 0;
-}
-
-/* Update individual rail item styles */
-.m3-rail-item {
-  width: 56px;
-  height: 48px;
-  margin: 0;
-  /* Remove margin to prevent spacing issues */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 16px;
-  position: relative;
-}
-
-/* Ensure expanded state maintains vertical alignment */
-.m3-navigation-rail.is-expanded {
-  width: 412px;
-}
-
-.m3-navigation-rail.is-expanded .m3-rail-items {
-  align-items: stretch;
-  padding: 4px 12px;
-}
-
-.m3-navigation-rail.is-expanded .m3-rail-item {
-  width: 100%;
-  padding: 0 12px;
-}
-
-/* Menu button specific positioning */
-.menu-button {
-  width: 56px !important;
-  margin: 0 auto !important;
-}
-
-.m3-state-layer {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  border-radius: inherit;
-}
-
-.m3-rail-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  /* Center contents horizontally */
-  gap: 4px;
-  width: 100%;
-}
-
-.m3-rail-icon-container {
-  width: 56px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 16px;
-  transition: background-color 0.15s cubic-bezier(0.3, 0, 0.2, 1);
-}
-
-.m3-rail-icon {
-  font-size: 24px;
-  width: 24px;
-  height: 24px;
-}
-
-.m3-rail-label {
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 500;
-  letter-spacing: 0.5px;
-  text-align: center;
-  color: inherit;
-  margin: 0;
-  /* Remove margin that was affecting centering */
-  opacity: 1 !important;
-  /* Force label visibility */
-  /* Remove any transform offset */
-  transform: none !important;
-}
-
-/* Active state */
-.m3-rail-item.is-active {
-  color: rgb(var(--md-sys-color-on-secondary-container));
-}
-
-.m3-rail-item.is-active .m3-rail-icon-container {
-  background-color: rgb(var(--md-sys-color-secondary-container));
-}
-
-/* Expanded state */
-.m3-navigation-rail.is-expanded .m3-rail-item {
-  width: 100%;
-  height: 56px;
-  padding: 0 12px;
-}
-
-.m3-navigation-rail.is-expanded .m3-rail-content {
-  flex-direction: row;
-  justify-content: flex-start;
-  /* Left align when expanded */
-  padding: 0 12px;
-  gap: 12px;
-}
-
-.m3-navigation-rail.is-expanded .m3-rail-label {
-  margin-left: 4px;
-  /* Small margin only when expanded */
-}
-
-.m3-rail-icon-wrapper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.m3-navigation-rail {
-  position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: 80px;
-  background: rgb(var(--md-sys-color-surface));
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  /* Center children vertically */
-  align-items: center;
-  /* Center children horizontally */
-  z-index: 100;
-  /* Increased z-index to be above map */
-  border-right: 1px solid rgb(var(--md-sys-color-outline-variant) / 0.08);
-  border-radius: 0;
-  /* MD3: no corner radius */
-  padding-right: 0;
-  padding-left: 0;
-  /* Remove left padding */
-  will-change: width;
-  transition: width 0.3s cubic-bezier(0.3, 0, 0.2, 1);
-  background: rgb(var(--md-sys-color-surface));
-}
-
-.m3-rail-header {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 0;
-  position: relative;
-  width: 100%;
-  /* Ensure full width */
-}
-
-.m3-rail-fab {
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
-  background: #d0bcff;
-  color: #21005d;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 0 12px;
-  width: auto;
-  justify-content: flex-start;
-  min-width: 56px;
-  transition: all var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized);
-  box-shadow: var(--md-sys-elevation-0);
-  position: relative;
-  overflow: hidden;
+/* Update marker styles */
+.map-marker {
   cursor: pointer;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1),
-    opacity 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: all 0.2s ease-out;
 }
 
-/* Primary surface tint layer */
-.m3-rail-fab::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: rgb(var(--md-sys-color-primary-container) / 0.08);
-  pointer-events: none;
+.map-marker:hover {
+  transform: scale(1.05);
 }
 
-.m3-rail-fab:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--md-sys-elevation-4);
-  background: rgb(var(--md-sys-color-primary) / 0.92);
-  transition-duration: var(--md-sys-motion-duration-short2);
+.map-marker.is-simple {
+  cursor: pointer;
 }
 
-.m3-rail-fab:active {
-  transform: translateY(0);
-  box-shadow: var(--md-sys-elevation-1);
-  background: rgb(var(--md-sys-color-primary) / 0.85);
+.map-marker.is-detailed {
+  z-index: 2;
 }
 
-.m3-rail-fab:active::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: rgb(var(--md-sys-color-on-primary));
-  opacity: var(--md-sys-state-pressed-state-layer-opacity);
-  pointer-events: none;
+.map-marker.is-detailed .marker-content {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  padding: 8px;
+  min-width: 120px;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
 }
 
-.m3-rail-fab iconify-icon {
-  font-size: 36px;
+.map-marker.active {
+  z-index: 3;
+}
+
+.map-marker.active .marker-content {
+  background-color: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+
+.map-marker.nearby .marker-content {
+  border: 2px solid var(--md-sys-color-primary);
+}
+
+/* Cluster styles */
+.cluster-marker {
+  background-color: white;
+  border: 2px solid var(--md-sys-color-primary);
+  border-radius: 50%;
+  color: var(--md-sys-color-primary);
   width: 36px;
   height: 36px;
-  color: currentColor;
-  position: relative;
-  z-index: 1;
-  transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.m3-rail-fab:hover iconify-icon {
-  transform: scale(1.1);
-}
-
-.m3-rail-fab-text {
-  font-size: 16px;
-  font-weight: 500;
-  letter-spacing: 0.1px;
-  color: currentColor;
-  opacity: 0;
-  transform: translateX(-20px);
-  transition: opacity 200ms ease, transform 300ms cubic-bezier(0.2, 0, 0, 1);
-}
-
-.m3-navigation-rail.is-expanded .m3-rail-fab-text {
-  opacity: 1;
-  transform: translateX(0);
-}
-
-.m3-rail-items {
-  display: flex;
-  flex-direction: column;
-  padding: 4px 12px;
-  gap: 4px;
-  flex: 1;
-  overflow: hidden;
-  align-items: center;
-  /* Center items horizontally */
-  width: 100%;
-  /* Ensure full width */
-}
-
-.m3-rail-item {
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Center icon even when expanded */
-  position: relative;
-  color: rgb(var(--md-sys-color-on-surface-variant));
-  transition: all 0.15s cubic-bezier(0.3, 0, 0.2, 1);
-  opacity: 1;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-}
-
-/* Remove padding and justification changes when expanded */
-.m3-navigation-rail.is-expanded .m3-rail-item {
-  width: 56px;
-  /* Keep same width */
-  padding: 0;
-  /* Remove padding */
-  justify-content: center;
-  /* Keep centered */
-}
-
-.m3-navigation-rail.is-expanded {
-  width: 412px;
-}
-
-.m3-navigation-rail.is-expanded .m3-rail-item {
-  width: 100%;
-  padding: 0 16px;
-  justify-content: flex-start;
-}
-
-.m3-rail-label {
-  margin-left: 12px;
+  font-weight: 600;
   font-size: 14px;
-  font-weight: 500;
-  opacity: 1;
-  transition: opacity 200ms cubic-bezier(0.2, 0, 0, 1);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: all 0.2s ease-out;
 }
 
-.m3-rail-items {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  /* Fill available height */
-  padding: 4px 8px;
-  /* Add padding around items */
-  gap: 4px;
-  /* Add gap between items */
+.cluster-marker:hover {
+  transform: scale(1.1);
+  background-color: var(--md-sys-color-primary);
+  color: white;
 }
 
-.m3-rail-item {
-  width: 56px;
-  /* MD3 spec: container for active indicator */
-  height: 56px;
-  /* MD3 spec: item height */
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  color: rgb(var(--md-sys-color-on-surface-variant));
-  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* When expanded, adjust the item layout */
-.m3-navigation-rail.is-expanded {
-  width: 412px;
-  /* Updated to MD3 spec width */
-}
-
-.m3-navigation-rail.is-expanded .m3-rail-item {
-  width: 100%;
-  padding: 0 12px;
-  /* MD3 spec: padding from edge */
-}
-
-.m3-navigation-rail.is-expanded .m3-state-layer {
-  width: 100%;
-  padding: 0 16px;
-  justify-content: flex-start;
-}
-
-.m3-rail-label {
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 500;
-  letter-spacing: 0.5px;
-  color: inherit;
-  text-align: center;
-  transition: opacity 0.3s cubic-bezier(0.32, 0.72, 0, 1),
-    transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
-}
-
-/* Badge styles per MD3 spec */
-.m3-badge {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  min-width: 6px;
-  height: 6px;
-  border-radius: 3px;
-  background-color: rgb(var(--md-sys-color-error));
-}
-
-.m3-badge.large {
-  min-width: 16px;
-  height: 16px;
+/* Improved marker styles */
+.marker-content {
+  background: white;
   border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  color: rgb(var(--md-sys-color-on-error));
-}
-
-/* Update menu icon size */
-.m3-rail-item iconify-icon {
-  font-size: 24px;
-  /* MD3 spec: icon size */
-  width: 24px;
-  height: 24px;
-}
-
-.m3-rail-header {
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  margin-bottom: 8px;
-}
-
-.m3-navigation-fab {
-  position: absolute;
-  top: 12px;
-  right: 0;
-  transform: translateX(50%);
-  width: 40px;
-  height: 40px;
-  border-radius: 20px;
-  background: rgb(var(--md-sys-color-surface-container-highest));
-  color: rgb(var(--md-sys-color-on-surface));
-  display: grid;
-  place-items: center;
-  box-shadow: var(--md-sys-elevation-1);
-  transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.m3-navigation-fab:hover {
-  background: rgb(var(--md-sys-color-surface-container-highest) / 0.92);
-  box-shadow: var(--md-sys-elevation-2);
-}
-
-.m3-navigation-fab.is-expanded {
-  transform: translateX(50%) rotate(180deg);
-}
-
-.m3-navigation-drawer {
-  display: none;
-}
-
-.m3-drawer-content {
-  width: 412px;
-  /* Updated to MD3 spec width */
-  height: 100%;
-  background-color: rgb(var(--md-sys-color-surface));
-  box-shadow: var(--md-sys-elevation-2);
-  overflow: hidden;
-}
-
-.m3-label-medium {
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 500;
-  letter-spacing: 0.5px;
-  color: rgb(var(--md-sys-color-on-surface-variant));
-}
-
-.m3-headline-small {
-  font-size: 24px;
-  line-height: 32px;
-  font-weight: 400;
-  letter-spacing: 0;
-  color: rgb(var(--md-sys-color-on-surface));
-}
-
-.m3-icon-button {
-  width: 40px;
-  height: 40px;
-  border-radius: 20px;
-  display: grid;
-  place-items: center;
-  color: rgb(var(--md-sys-color-on-surface));
-  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-}
-
-.m3-state-layer-container {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 20px;
-}
-
-.m3-state-layer {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  display: grid;
-  place-items: center;
-  border-radius: inherit;
-}
-
-.m3-state-layer::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  transition: background-color 0.2s cubic-bezier(0.2, 0.95, 0.3, 1);
-  pointer-events: none;
-}
-
-.m3-icon-button:hover .m3-state-layer::before {
-  background-color: rgb(var(--md-sys-color-primary) / 0.08);
-}
-
-.m3-icon-button:active .m3-state-layer::before {
-  background-color: rgb(var(--md-sys-color-primary) / 0.12);
-}
-
-.material-fab {
-  position: fixed;
-  left: 12px;
-  top: 12px;
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
-  background-color: rgb(var(--md-sys-color-primary));
-  color: rgb(var(--md-sys-color-surface));
-  box-shadow: var(--md-sys-elevation-1);
-  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.material-fab:hover {
-  box-shadow: var(--md-sys-elevation-2);
-  background-color: rgb(var(--md-sys-color-primary) / 0.92);
-}
-
-.material-fab:active {
-  box-shadow: var(--md-sys-elevation-1);
-  background-color: rgb(var(--md-sys-color-primary) / 0.88);
-}
-
-.bg-surface {
-  background-color: rgb(var(--md-sys-color-surface));
-}
-
-.m3-rail-item {
-  position: relative;
-  width: 56px;
-  height: 48px;
-  margin: 4px auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 16px;
-  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.m3-rail-content {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-}
-
-/* Update expanded state styles */
-.m3-navigation-rail.is-expanded .m3-rail-item {
-  width: 100%;
-  justify-content: flex-start;
-  padding: 0 16px;
-  margin: 4px 0;
-}
-
-.m3-navigation-rail.is-expanded .m3-rail-content {
-  justify-content: flex-start;
-  gap: 12px;
-}
-
-.m3-rail-label {
-  font-size: var(--md-sys-typescale-label-medium-size);
-  line-height: var(--md-sys-typescale-label-medium-line-height);
-  font-weight: var(--md-sys-typescale-label-medium-weight);
-  letter-spacing: var(--md-sys-typescale-label-medium-tracking);
-  color: inherit;
-  text-align: center;
-  margin-top: 4px;
-  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* State layer centering */
-.m3-state-layer {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  border-radius: inherit;
-}
-
-.m3-navigation-rail.is-expanded .m3-state-layer {
-  justify-content: flex-start;
-  padding: 0;
-}
-
-/* Menu button specific overrides */
-.menu-button {
-  width: 56px !important;
-  margin: 4px auto !important;
-}
-
-.menu-button .m3-state-layer {
-  justify-content: center !important;
-  padding: 0 !important;
-}
-
-.m3-rail-item .m3-state-layer {
-  display: grid;
-  place-items: center;
-}
-
-.m3-rail-item .m3-state-layer {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  /* added centering */
-  padding: 0 4px;
-  border-radius: 16px;
-  position: relative;
-}
-
-.m3-rail-item.is-active {
-  color: rgb(var(--md-sys-color-primary));
-}
-
-.m3-rail-item.is-active .m3-state-layer::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background-color: rgb(var(--md-sys-color-secondary-container));
-}
-
-.m3-rail-label {
-  font-family: var(--md-sys-typescale-label-medium-font);
-  font-size: var(--md-sys-typescale-label-medium-size);
-  line-height: var(--md-sys-typescale-label-medium-line-height);
-  font-weight: var(--md-sys-typescale-label-medium-weight);
-  letter-spacing: var(--md-sys-typescale-label-medium-tracking);
-  color: rgb(var(--md-sys-color-on-surface-variant));
-  /* MD3: inactive label color */
-  margin-top: 4px;
-}
-
-.m3-rail-item.is-active .m3-rail-label {
-  color: rgb(var(--md-sys-color-on-surface));
-  /* MD3: active label color */
-  font-weight: var(--md-sys-typescale-label-medium-weight-prominent);
-}
-
-.m3-walks-section {
-  flex: 1;
-  width: 100%;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  background: rgb(var(--md-sys-color-surface));
-  overflow: hidden;
-  min-height: 0;
-  padding-top: 8px;
-  will-change: transform, opacity, height;
-  transform-origin: top;
-}
-
-.m3-walks-section .walk-list-container {
-  flex: 1;
-  min-height: 0;
-  height: 100%;
-  position: relative;
-  overflow: hidden;
-}
-
-.m3-walks-section .scroller {
-  position: absolute !important;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-}
-
-/* Map container styles */
-.map-container {
-  background: rgb(var(--md-sys-color-surface-container-lowest, 255, 255, 255));
-  border-radius: 28px;
-  margin: 24px;
-  overflow: hidden;
-}
-
-.map-container>div {
-  border-radius: 24px;
-  overflow: hidden;
-  margin: 8px;
-}
-
-/* Update map container margins based on rail state */
-.map-container {
-  transition: margin 300ms cubic-bezier(0.4, 0, 0.2, 1);
-  margin-left: calc(80px + 24px);
-  /* Collapsed rail width + margin */
-}
-
-.m3-navigation-rail.is-expanded~.map-container {
-  margin-left: calc(360px + 24px);
-  /* Expanded rail width + margin */
-}
-
-/* Ensure proper spacing when rail is expanded */
-.map-container.with-expanded-rail {
-  margin-left: 376px;
-  /* 360px rail width + 16px margin */
-}
-
-/* Update transitions */
-.map-container {
-  transition: margin var(--md-sys-motion-duration-medium) var(--md-sys-motion-easing-emphasized);
-}
-
-/* Remove the separate routes drawer styles since we're integrating it into the rail */
-.m3-routes-drawer,
-.m3-routes-drawer-content,
-.m3-routes-drawer-header,
-.m3-routes-drawer-body {
-  display: none;
-}
-
-/* Ensure virtual scroll container fills remaining space */
-.vue-recycle-scroller {
-  height: 100% !important;
-  min-height: 0;
-  contain: strict;
-}
-
-.vue-recycle-scroller__item-wrapper {
-  min-height: 100%;
-}
-
-/* New style for the overlay menu expand button */
-.collapsed-expand-button {
-  background: rgba(0, 0, 0, 0.2);
-  border: none;
-  border-radius: 50%;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.collapsed-expand-button:hover {
-  background: rgba(0, 0, 0, 0.3);
-}
-
-/* Updated map container styles */
-.m3-content-container {
-  flex: 1;
-  position: relative;
-  padding: 4px;
-  /* Increased padding for better visual */
-  border-radius: 6px;
-  /* Increased radius to match MD3 spec */
-  display: flex;
-  background: rgb(var(--md-sys-color-surface));
-  transform-origin: left center;
-  will-change: transform;
-  box-sizing: border-box;
-  width: calc(100% - 80px);
-  /* Adjust width to account for navigation */
-  margin-left: 80px;
-  /* Match navigation width */
-  z-index: 1;
-  /* Lower z-index than navigation */
-  transform: none;
-  overflow: hidden;
-  contain: strict;
-  will-change: transform, opacity;
-  pointer-events: auto !important;
-  /* Ensure map interaction works */
-}
-
-.m3-content-container.with-expanded-nav {
-  margin-left: 412px;
-  width: calc(100% - 412px);
-}
-
-.m3-surface-container {
-  flex: 1;
-  position: relative;
-  background: rgb(var(--md-sys-color-surface));
-  border-radius: 12px;
-  overflow: hidden;
-  height: 100%;
-  contain: layout;
-  pointer-events: auto !important;
-  /* Ensure map interaction works */
-}
-
-/* Optimize MapView canvas rendering */
-.m3-surface-container canvas {
-  will-change: transform, opacity;
-}
-
-/* Clean up unused styles */
-.map-container {
-  display: none;
-}
-
-/* Ensure Mapbox logo appears above the navigation bar */
-.mapboxgl-ctrl-logo {
-  position: relative;
-  left: calc(var(--sidebar-width) + 4px);
-  transition: left 0.3s cubic-bezier(0.3, 0, 0.2, 1);
-  z-index: 50;
-}
-
-/* Updated rail item styles for MD3 spec */
-.m3-rail-item {
-  position: relative;
-  width: 80px;
-  height: 72px;
-  /* MD3 spec height */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 12px 0;
-  color: rgb(var(--md-sys-color-on-surface-variant));
-  transition: all 0.15s cubic-bezier(0.3, 0, 0.2, 1);
-}
-
-.m3-rail-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  /* Center contents horizontally */
-  gap: 4px;
-  width: 100%;
-}
-
-.m3-rail-icon-container {
-  width: 56px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 16px;
-  transition: background-color 0.15s cubic-bezier(0.3, 0, 0.2, 1);
-}
-
-.m3-rail-icon {
-  font-size: 24px;
-  width: 24px;
-  height: 24px;
-}
-
-.m3-rail-label {
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 500;
-  letter-spacing: 0.5px;
-  text-align: center;
-  color: inherit;
-  margin: 0;
-  /* Remove margin that was affecting centering */
-  opacity: 1 !important;
-  /* Force label visibility */
-  /* Remove any transform offset */
-  transform: none !important;
-}
-
-/* Active state */
-.m3-rail-item.is-active {
-  color: rgb(var(--md-sys-color-on-secondary-container));
-}
-
-.m3-rail-item.is-active .m3-rail-icon-container {
-  background-color: rgb(var(--md-sys-color-secondary-container));
-}
-
-/* Expanded state */
-.m3-navigation-rail.is-expanded .m3-rail-item {
-  width: 100%;
-  height: 56px;
-  padding: 0 12px;
-}
-
-.m3-navigation-rail.is-expanded .m3-rail-content {
-  flex-direction: row;
-  justify-content: flex-start;
-  /* Left align when expanded */
-  padding: 0 12px;
-  gap: 12px;
-}
-
-.m3-navigation-rail.is-expanded .m3-rail-label {
-  margin-left: 4px;
-  /* Small margin only when expanded */
-}
-
-.m3-rail-icon-wrapper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Disable pointer events on full-screen absolute overlays */
-div.absolute.inset-0 {
-  /* pointer-events: none !important; */
-  /* Remove or comment out this line */
-}
-
-/* Ensure MapBox controls are clickable */
-.mapboxgl-control-container {
-  pointer-events: auto !important;
-}
-
-/* Updated menu button styles */
-.m3-rail-item.menu-button {
-  width: 56px;
-  height: 48px;
-  margin: 4px auto;
-  position: relative;
-  display: grid;
-  place-items: center;
-  border-radius: 16px;
-  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.menu-button .m3-state-layer {
-  width: 100%;
-  height: 100%;
-  display: grid;
-  place-items: center;
-  position: relative;
-  border-radius: inherit;
-}
-
-.menu-button .m3-state-layer::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background-color: transparent;
-  transition: background-color 200ms cubic-bezier(0.2, 0, 0, 1);
-}
-
-.menu-button:hover .m3-state-layer::before {
-  background-color: rgb(var(--md-sys-color-on-surface-variant) / 0.08);
-}
-
-.menu-button:active .m3-state-layer::before {
-  background-color: rgb(var(--md-sys-color-on-surface-variant) / 0.12);
-}
-
-.menu-button .m3-icon-wrapper {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  place-items: center;
-}
-
-.menu-button .m3-rail-icon {
-  font-size: 24px;
-  width: 24px;
-  height: 24px;
-  color: rgb(var(--md-sys-color-on-surface-variant));
-}
-
-/* Ensure the menu button stays centered even when rail is expanded */
-.m3-navigation-rail.is-expanded .menu-button {
-  width: 56px;
-  margin: 4px auto;
-}
-
-.m3-navigation-rail.is-expanded .menu-button .m3-state-layer {
-  justify-content: center;
-  padding: 0;
-}
-
-/* Consolidate rail items container styles - remove duplicates and standardize */
-.m3-rail-items {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: calc(100vh - 140px);
-  min-height: 0;
-  padding: 4px;
-  gap: 4px;
-  contain: content;
-}
-
-/* Clean up button styles - remove duplicates and ensure consistent sizing */
-.m3-rail-item {
-  width: 56px;
-  height: 48px;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  place-items: center;
-  position: relative;
-  border-radius: 16px;
-  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Menu button specific adjustments */
-.menu-button {
-  width: 56px !important;
-  height: 48px !important;
-  margin: 0 !important;
-  padding: 0 !important;
-}
-
-/* State layer centering fixes */
-.m3-state-layer {
-  width: 100%;
-  height: 100%;
-  display: grid;
-  place-items: center;
-  position: relative;
-  border-radius: inherit;
-}
-
-/* Remove any transform that might affect centering */
-.m3-rail-icon,
-.m3-rail-label {
-  transform: none !important;
+  padding: 8px 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  border: 1px solid rgba(0,0,0,0.1);
+  min-width: 140px;
+  transform: translateY(-50%);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.marker-content:hover {
+  transform: translateY(-50%) scale(1.05);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 </style>

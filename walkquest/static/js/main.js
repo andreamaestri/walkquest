@@ -10,6 +10,7 @@ import "iconify-icon"
 
 // Import required CSS
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
+import 'mapbox-gl/dist/mapbox-gl.css'
 
 // Create Pinia instance first
 const pinia = createPinia()

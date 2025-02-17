@@ -77,6 +77,54 @@ export const useWalksStore = defineStore('walks', () => {
     }
   }
 
+  const loadWalksInArea = async (bounds, options = {}) => {
+    const {
+      limit = 50,
+      offset = 0,
+      forceRefresh = false
+    } = options
+
+    // Check cache first unless force refresh is requested
+    if (!forceRefresh) {
+      const cachedWalks = await locationCache.getCachedWalksInArea(bounds)
+      if (cachedWalks) {
+        // Merge with existing walks to avoid duplicates
+        walks.value = [...new Map([...walks.value, ...cachedWalks].map(walk => [walk.id, walk])).values()]
+        return cachedWalks
+      }
+    }
+
+    try {
+      loading.value = true
+      // TODO: Implement API call
+      // const response = await fetch(`/api/walks/in-area?` + new URLSearchParams({
+      //   north: bounds.north,
+      //   south: bounds.south,
+      //   east: bounds.east,
+      //   west: bounds.west,
+      //   limit,
+      //   offset
+      // }))
+      // const newWalks = await response.json()
+      
+      // For now, simulate pagination of existing walks
+      const newWalks = walks.value.slice(offset, offset + limit)
+      
+      // Cache the results
+      await locationCache.cacheWalksInArea(bounds, newWalks)
+      
+      // Merge with existing walks
+      walks.value = [...new Map([...walks.value, ...newWalks].map(walk => [walk.id, walk])).values()]
+      
+      return newWalks
+    } catch (error) {
+      console.error('Error loading walks in area:', error)
+      throw error
+    } finally {
+      loading.value = false
+    }
+  }
+
   // Computed
   const getWalkById = computed(() => {
     return (id) => walks.value.find(w => w.id === id)
@@ -96,6 +144,7 @@ export const useWalksStore = defineStore('walks', () => {
     setLoading,
     isPendingFavorite,
     toggleFavorite,
+    loadWalksInArea,
     
     // Computed
     getWalkById

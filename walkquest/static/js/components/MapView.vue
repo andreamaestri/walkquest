@@ -4,13 +4,21 @@
     class="absolute inset-0"
   >
     <MapboxMap
+      ref="mapComponent"
       :access-token="mapboxToken"
       :map-style="mapStyle"
-      :initial-options="{ center: [-4.85, 50.4], zoom: 9.5, bounds: bounds }"
+      :initial-options="{
+        center: [-4.85, 50.4],
+        zoom: 9.5,
+        bounds,
+        cooperativeGestures: true,
+        keyboard: true
+      }"
       class="w-full h-full"
-      @load="handleMapLoaded"
-      @error="handleMapError"
+      @mb-created="handleMapLoaded"
+      @mb-error="handleMapError"
     >
+      <!-- Map Controls -->
       <template #controls>
         <MapboxNavigationControl position="top-left" />
         <MapboxGeolocateControl 
@@ -22,12 +30,32 @@
           <button 
             @click="toggleFullscreen"
             class="bg-white border border-gray-300 rounded p-2 shadow-sm hover:bg-gray-50 transition-colors"
+            aria-label="Toggle fullscreen"
           >
             <span class="sr-only">Toggle fullscreen</span>
             <i :class="isFullscreen ? 'icon-compress' : 'icon-expand'"></i>
           </button>
         </div>
       </template>
+
+      <!-- Loading State -->
+      <template #loader>
+        <div class="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center">
+          <div class="loading-spinner"></div>
+          <span class="sr-only">Loading map...</span>
+        </div>
+      </template>
+
+      <!-- Geocoder -->
+      <MapboxGeocoder
+        :zoom="14"
+        :marker="false"
+        placeholder="Search for locations..."
+        @mb-result="handleGeocodeResult"
+      />
+
+      <!-- Map Content -->
+      <slot></slot>
     </MapboxMap>
   </div>
 </template>
@@ -36,8 +64,13 @@
 import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { useUiStore } from '../stores/ui'
 import { useWalksStore } from '../stores/walks'
-import { MapboxMap, MapboxNavigationControl, MapboxGeolocateControl } from '@studiometa/vue-mapbox-gl'
-import 'mapbox-gl/dist/mapbox-gl.css'
+import { 
+  MapboxMap, 
+  MapboxNavigationControl, 
+  MapboxGeolocateControl,
+  MapboxGeocoder 
+} from '@studiometa/vue-mapbox-gl'
+import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css'
 
 const props = defineProps({
   mapboxToken: {
@@ -47,7 +80,9 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['map-loaded', 'map-error'])
-const map = ref(null)
+
+// Component refs and state
+const mapComponent = ref(null)
 const uiStore = useUiStore()
 const walksStore = useWalksStore()
 
@@ -59,11 +94,10 @@ const mapStyle = computed(() => 'mapbox://styles/mapbox/streets-v11')
 // Default bounds for Cornwall
 const bounds = [-5.5, 49.9, -4.2, 50.9]
 
-// Map event handler updated to accept the map instance as parameter
-const handleMapLoaded = (mapInstance) => {
-  map.value = mapInstance
+// Map event handlers
+const handleMapLoaded = (map) => {
   uiStore.setMapLoading(false)
-  emit('map-loaded', map.value)
+  emit('map-loaded', map)
 }
 
 const handleMapError = (error) => {
@@ -72,13 +106,23 @@ const handleMapError = (error) => {
   emit('map-error', error)
 }
 
+const handleGeocodeResult = (result) => {
+  if (result && result.geometry) {
+    mapComponent.value?.flyTo({
+      center: result.geometry.coordinates,
+      zoom: 14,
+      duration: 1500
+    })
+  }
+}
+
 // Methods
 const toggleFullscreen = () => {
   uiStore.toggleFullscreen()
 }
 
 const updateMapView = (walk) => {
-  if (!map.value || !walk?.longitude || !walk?.latitude) return
+  if (!mapComponent.value || !walk?.longitude || !walk?.latitude) return
 
   const isMobile = window.innerWidth < 768
   const offset = [
@@ -86,7 +130,7 @@ const updateMapView = (walk) => {
     0
   ]
   
-  map.value.flyTo({
+  mapComponent.value.flyTo({
     center: [walk.longitude, walk.latitude],
     zoom: isMobile ? 13 : 14,
     offset,
@@ -102,11 +146,11 @@ watch(() => walksStore.selectedWalk, (walk) => {
   }
 })
 
-// Watch for sidebar changes
+// Watch for sidebar changes to update map padding
 watch([showSidebar, () => window.innerWidth], () => {
-  if (map.value) {
+  if (mapComponent.value) {
     const isMobile = window.innerWidth < 768
-    map.value.easeTo({
+    mapComponent.value.easeTo({
       padding: {
         top: 50,
         bottom: 50,
@@ -117,53 +161,25 @@ watch([showSidebar, () => window.innerWidth], () => {
   }
 }, { immediate: true })
 
-// Cleanup on unmount
-onBeforeUnmount(() => {
-  if (map.value) {
-    map.value.remove()
-    map.value = null
-  }
-})
-
 // Methods exposed to parent
 defineExpose({
-  map,
+  mapComponent,
   updateMapView
 })
 </script>
 
 <style>
-.map-container {
-  width: 100%;
-  height: 100vh;
-  position: absolute;
-  top: 0;
-  left: 0;
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 
-.map-container .mapboxgl-map {
-  width: 100% !important;
-  height: 100% !important;
-}
-
-.map-container.fullscreen {
-  position: fixed;
-  z-index: 9999;
-}
-
-.map-controls {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  z-index: 1;
-}
-
-.map-control-button {
-  background-color: white;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  padding: 0.5rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  cursor: pointer;
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 </style>
