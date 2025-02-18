@@ -33,6 +33,7 @@ from django.db.models import Count
 from django.db.models import QuerySet
 from django.http import HttpResponse
 from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.cache import cache_page
@@ -413,6 +414,59 @@ class WalkListView(ListView):
             return {}
 
 
+class WalkDetailView(View):
+    """View for individual walk details."""
+    model = Walk
+    template_name = "walks/detail.html"
+
+    def get(self, request, id):
+        """Handle GET request for walk details."""
+        try:
+            walk = get_object_or_404(
+                Walk.objects.select_related('adventure')
+                .prefetch_related('features', 'categories', 'related_categories'),
+                id=id
+            )
+
+            # Prepare walk data
+            walk_data = {
+                "id": str(walk.id),
+                "walk_name": walk.walk_name,
+                "highlights": walk.highlights,
+                "distance": float(walk.distance) if walk.distance else None,
+                "steepness_level": walk.steepness_level,
+                "latitude": float(walk.latitude),
+                "longitude": float(walk.longitude),
+                "features": [{'name': f.name, 'slug': f.slug} for f in walk.features.all()],
+                "categories": [{'name': c.name, 'slug': c.slug} for c in walk.categories.all()],
+                "related_categories": [{'name': rc.name, 'slug': rc.slug} for rc in walk.related_categories.all()],
+                "has_pub": bool(walk.has_pub),
+                "has_cafe": bool(walk.has_cafe),
+                "has_bus_access": bool(walk.has_bus_access),
+                "has_stiles": bool(walk.has_stiles),
+                "os_explorer_reference": walk.os_explorer_reference,
+                "points_of_interest": walk.points_of_interest,
+                "trail_considerations": walk.trail_considerations,
+                "rewritten_trail_considerations": walk.rewritten_trail_considerations,
+                "footwear_category": walk.footwear_category,
+                "recommended_footwear": walk.recommended_footwear,
+                "created_at": walk.created_at.isoformat() if walk.created_at else None,
+                "updated_at": walk.updated_at.isoformat() if walk.updated_at else None
+            }
+
+            if request.headers.get("HX-Request"):
+                return JsonResponse(walk_data)
+
+            return JsonResponse(walk_data)
+
+        except Exception as e:
+            logger.exception(f"Error fetching walk details for ID {id}: {str(e)}")
+            return JsonResponse(
+                {"error": "Failed to fetch walk details"},
+                status=500
+            )
+
+
 def walk_features_autocomplete(request):
     """Autocomplete view for walk features."""
     return autocomplete(
@@ -440,7 +494,7 @@ class WalkGeometryView(View):
             if not geometry_data:
                 walk = Walk.objects.get(id=walk_id)
 
-                if not walk.geometry:
+                if not walk.route_geometry:
                     return HttpResponse(
                         '{"error": "No geometry data available"}',
                         content_type=self.CONTENT_TYPE,
@@ -449,7 +503,7 @@ class WalkGeometryView(View):
 
                 geometry_data = {
                     "type": "Feature",
-                    "geometry": walk.geometry,
+                    "geometry": walk.route_geometry,
                     "properties": {
                         "walk_id": str(walk.id),
                         "walk_name": walk.walk_name,

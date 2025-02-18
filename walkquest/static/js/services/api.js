@@ -35,20 +35,17 @@ const normalizeWalkData = (data) => {
     highlights: walk.highlights || '',
     steepness_level: walk.steepness_level || 'Unknown',
     pubs_list: Array.isArray(walk.pubs_list) ? walk.pubs_list : [],
-    isExpanded: walk.isExpanded || false // Added isExpanded property
+    isExpanded: walk.isExpanded || false
   });
   
-  // If it's already an array, process it
   if (Array.isArray(data)) {
     return data.map(walk => normalizeWalk(walk));
   }
   
-  // If it's a single walk object
   if (data.id) {
     return [normalizeWalk(data)];
   }
   
-  // If it has a walks property
   if (data.walks) {
     return normalizeWalkData(data.walks);
   }
@@ -59,30 +56,35 @@ const normalizeWalkData = (data) => {
 // API Methods
 const filterWalks = async (params = {}) => {
   try {
-    console.log('Fetching walks with params:', params);
-    const response = await api.get('walks/walks', {
-      searchParams: params
-    }).json();
-    
-    console.log('Raw API Response:', response);
-    
-    const normalizedWalks = normalizeWalkData(response);
-    if (!Array.isArray(normalizedWalks)) {
-      throw new Error('Invalid walks data received');
+    console.log('Fetching walks with params:', params)
+    const response = await fetch('/api/walks', {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json'
+      }
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
     }
-    
-    console.log('Normalized walks:', normalizedWalks);
-    
-    return { walks: normalizedWalks };
+
+    const data = await response.json()
+    console.log('Raw API Response:', data)
+
+    // Ensure we return an array of walks
+    const walks = Array.isArray(data) ? data : (data.walks || [])
+    console.log('Processed walks:', walks)
+
+    return { walks }
   } catch (error) {
-    console.error('API filterWalks error:', error);
-    throw new Error(`Failed to fetch walks: ${error.message}`);
+    console.error('Error fetching walks:', error)
+    throw error
   }
-};
+}
 
 const search = async (query) => {
   try {
-    const response = await api.get('walks/walks', {
+    const response = await api.get('walks', {
       searchParams: { search: query }
     }).json();
     
@@ -96,8 +98,8 @@ const search = async (query) => {
 
 const filter = async (categories) => {
   try {
-    const response = await api.post('walks/filter/', {
-      json: { tag: categories }
+    const response = await api.get('walks', {
+      searchParams: { categories: categories.join(',') }
     }).json();
     
     const normalizedWalks = normalizeWalkData(response);
@@ -110,25 +112,43 @@ const filter = async (categories) => {
 
 const getGeometry = async (walkId) => {
   try {
-    if (!walkId) throw new Error('Walk ID is required');
-    
-    const response = await api.get(`walks/geometry/${walkId}/`).json();
-    return response;
+    const response = await fetch(`/api/walks/${walkId}/geometry`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
   } catch (error) {
-    console.error('API getGeometry error:', error);
-    throw new Error(`Failed to fetch geometry: ${error.message}`);
+    console.error('Error fetching route geometry:', error);
+    throw error;
   }
 };
 
 const getFeatures = async () => {
   try {
-    const response = await api.get('walks/features/autocomplete/').json();
+    const response = await api.get('filters').json();
     return response;
   } catch (error) {
     console.error('API getFeatures error:', error);
     throw new Error(`Failed to fetch features: ${error.message}`);
   }
 };
+
+// Single export of all methods
+export {
+  filterWalks,
+  search,
+  filter,
+  getGeometry,
+  getFeatures
+}
 
 // Export the API object
 export const WalksAPI = {
@@ -137,16 +157,7 @@ export const WalksAPI = {
   filter,
   getGeometry,
   getFeatures
-};
-
-// Named exports for individual methods
-export {
-  filterWalks,
-  search,
-  filter,
-  getGeometry,
-  getFeatures
-};
+}
 
 // Default export
-export default WalksAPI;
+export default WalksAPI

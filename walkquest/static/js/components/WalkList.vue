@@ -1,104 +1,129 @@
 <template>
   <div class="walk-list-container" :class="{ 'is-compact': isCompact }" ref="listContainer">
-    <SearchView
-      v-model="searchQuery"
-      placeholder="Search walks..."
-    >
-      <template #meta>
-        <div class="filter-status" role="status" aria-live="polite">
-          <span class="result-count">
-            {{ filteredWalks.length }} {{ filteredWalks.length === 1 ? 'walk' : 'walks' }} found
-          </span>
-        </div>
-      </template>
-    </SearchView>
-
-    <div v-if="error" class="m3-error-message" role="alert">
-      {{ error }}
+    <div class="search-wrapper" :class="{ 'location-mode': searchStore.searchMode === 'locations' }">
+      <Transition name="search-mode" mode="out-in">
+        <SearchView
+          v-if="searchStore.searchMode === 'walks'"
+          :key="searchStore.searchMode"
+          v-model:search-mode="searchMode"
+          @location-selected="handleLocationSelected"
+          @walk-selected="handleWalkSelection"
+        />
+      </Transition>
     </div>
 
-    <DynamicScroller
-      v-else
-      ref="scroller"
-      class="scroller"
-      :items="filteredWalks"
-      :min-item-size="isCompact ? 56 : 180"
-      key-field="id"
-      :buffer="500"
-      :emit-update="true"
-      @update="handleScrollerUpdate"
-      role="list"
-      aria-label="List of walks"
-    >
-      <template #default="{ item, index, active }">
-        <DynamicScrollerItem
-          :item="item"
-          :active="active"
-          :data-index="index"
-          :size-dependencies="[
-            item.walk_name,
-            item.location,
-            item.description,
-            item.related_categories?.length,
-            isCompact,
-            selectedWalkId === item.id,
-            searchQuery
-          ]"
-          :watch-data="false"
-          :emit-resize="true"
-          @resize="handleScrollerUpdate"
-          role="listitem"
-        >
-          <div class="walk-card-wrapper">
-            <WalkCard
-              :walk="item"
-              :is-compact="isCompact"
-              :is-selected="selectedWalkId === item.id"
-              :is-expanded="expandedWalkIds.includes(item.id)"
-              @walk-selected="handleWalkSelection"
-              @walk-expanded="$emit('walk-expanded', { walkId: item.id, expanded: !expandedWalkIds.includes(item.id) })"
-            />
-          </div>
-        </DynamicScrollerItem>
-      </template>
-      
-      <template #empty>
-        <div class="p-4 text-center text-on-surface-variant" role="status">
-          No walks found matching your search
+    <div v-if="searchStore.error" class="error-message" role="alert">
+      {{ searchStore.error }}
+    </div>
+
+    <div class="walks-section" :class="{ 'location-mode': searchStore.searchMode === 'locations' }">
+      <div v-if="searchStore.searchMode === 'locations' && locationStore.userLocation" class="location-info">
+        <div class="selected-location">
+          <iconify-icon icon="material-symbols:location-on" />
+          <span>{{ locationStore.userLocation.place_name }}</span>
         </div>
-      </template>
-    </DynamicScroller>
+        <button class="clear-location" @click="clearFilters">
+          <iconify-icon icon="material-symbols:close" />
+          Clear location
+        </button>
+      </div>
+
+      <DynamicScroller
+        ref="scroller"
+        class="scroller"
+        :items="filteredResults"
+        :min-item-size="isCompact ? 56 : 180"
+        key-field="id"
+        :buffer="500"
+        :emit-update="true"
+        @update="handleScrollerUpdate"
+        role="list"
+        aria-label="List of walks"
+      >
+        <template #default="{ item, index, active }">
+          <DynamicScrollerItem
+            :item="item"
+            :active="active"
+            :data-index="index"
+            :size-dependencies="[
+              item.walk_name,
+              item.location,
+              item.description,
+              item.related_categories?.length,
+              isCompact,
+              selectedWalkId === item.id
+            ]"
+            :watch-data="false"
+            :emit-resize="true"
+            @resize="handleScrollerUpdate"
+            role="listitem"
+          >
+            <div class="walk-card-wrapper">
+              <WalkCard
+                :walk="item"
+                :is-compact="isCompact"
+                :is-selected="selectedWalkId === item.id"
+                @walk-selected="handleWalkSelection"
+              >
+                <template v-if="searchStore.searchMode === 'locations'" #meta>
+                  <div class="distance-badge" :title="'Distance from selected location'">
+                    <iconify-icon icon="mdi:map-marker-distance" />
+                    {{ locationStore.getFormattedDistance(item.id) }}
+                  </div>
+                </template>
+              </WalkCard>
+            </div>
+          </DynamicScrollerItem>
+        </template>
+      </DynamicScroller>
+
+      <div 
+        v-if="searchStore.searchMode === 'locations' && !locationStore.userLocation || (!filteredResults.length && !searchStore.error)" 
+        class="empty-state"
+        role="status"
+      >
+        <template v-if="searchStore.searchMode === 'locations'">
+          <div v-if="locationStore.userLocation && !locationStore.nearbyWalks.length" class="empty-message">
+            <iconify-icon icon="mdi:map-marker-off" class="empty-icon" />
+            <span>No walks found near this location</span>
+          </div>
+          <div v-else class="empty-message">
+            <iconify-icon icon="mdi:map-marker-search" class="empty-icon" />
+            <span>Search for a location to find nearby walks</span>
+          </div>
+        </template>
+        <template v-else>
+          <div v-if="searchStore.searchQuery" class="empty-message">
+            <iconify-icon icon="mdi:magnify-close" class="empty-icon" />
+            <span>No walks found matching your search</span>
+          </div>
+          <div v-else class="empty-message">
+            <iconify-icon icon="mdi:hiking" class="empty-icon" />
+            <span>No walks available</span>
+          </div>
+        </template>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, toRef, nextTick } from 'vue'
+import { computed, ref, nextTick, watch } from 'vue'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import { useMap } from '../composables/useMap'
 import WalkCard from './WalkCard.vue'
-import { useDebounceFn } from '@vueuse/core'
 import SearchView from './SearchView.vue'
+import { useLocationStore } from '../stores/locationStore'
+import { useSearchStore } from '../stores/searchStore'
 
 const props = defineProps({
-  modelValue: {
-    type: String,
-    default: ''
-  },
   walks: {
     type: Array,
     required: true,
   },
-  error: {
-    type: String,
-    default: null,
-  },
   selectedWalkId: {
     type: [String, Number],
     default: null,
-  },
-  expandedWalkIds: {
-    type: Array,
-    default: () => [],
   },
   isCompact: {
     type: Boolean,
@@ -106,25 +131,55 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:modelValue', 'walk-selected', 'walk-expanded', 'filtered-walks'])
+const emit = defineEmits(['walk-selected', 'location-selected'])
 
 const scroller = ref(null)
-
-// Use toRef for v-model binding
-const searchQuery = computed({
-  get: () => props.modelValue,
-  set: (value) => emit('update:modelValue', value)
-})
-
+const searchStore = useSearchStore()
+const locationStore = useLocationStore()
 const { flyToLocation } = useMap()
 
-const updateScrollerDebounced = useDebounceFn(() => {
-  if (scroller.value?.updateSize) {
-    nextTick(async () => {
-      await scroller.value.updateSize()
-    })
+const filteredWalks = computed(() => {
+  const query = searchStore.searchQuery?.toLowerCase().trim()
+  if (!query) return props.walks
+
+  return props.walks.filter(walk => {
+    const searchableText = [
+      walk.walk_name,
+      walk.title,
+      walk.location,
+      walk.description
+    ].filter(Boolean).join(' ').toLowerCase()
+    
+    return searchableText.includes(query)
+  })
+})
+
+const filteredResults = computed(() => {
+  if (searchStore.searchMode === 'locations') {
+    return locationStore.nearbyWalks
   }
-}, 100)
+  return filteredWalks.value
+})
+
+const searchMode = ref('walks')
+
+const handleLocationSelected = async (location) => {
+  await searchStore.handleLocationSelected(location)
+  emit('location-selected', location)
+}
+
+const handleSearchModeChange = (mode) => {
+  searchStore.setSearchMode(mode)
+  // Clear any existing search when switching modes
+  clearFilters()
+  // Focus the search input after mode change
+  nextTick(() => {
+    const searchInput = document.querySelector('.search-input')
+    if (searchInput) {
+      searchInput.focus()
+    }
+  })
+}
 
 const handleScrollerUpdate = () => {
   if (scroller.value?.updateSize) {
@@ -133,39 +188,6 @@ const handleScrollerUpdate = () => {
     })
   }
 }
-
-// Update filtered walks to handle both field name variations
-const filteredWalks = computed(() => {
-  if (!searchQuery.value?.trim()) return props.walks;
-  
-  const query = searchQuery.value.toLowerCase().trim();
-  return props.walks.filter(walk => {
-    const searchableText = [
-      walk.walk_name || walk.title, // Handle both field names
-      walk.location,
-      walk.description,
-      ...(walk.related_categories || []).map(cat => cat.name)
-    ].filter(Boolean).join(' ').toLowerCase();
-    
-    return searchableText.includes(query);
-  });
-})
-
-// Watch for changes in search query to emit updates
-watch(searchQuery, (newQuery) => {
-  emit('update:modelValue', newQuery);
-});
-
-// Watch filtered results to emit updates
-watch(filteredWalks, (newResults) => {
-  emit('filtered-walks', newResults);
-});
-
-watch(filteredWalks, () => {
-  nextTick(() => {
-    handleScrollerUpdate()
-  })
-})
 
 const handleWalkSelection = async (walk) => {
   if (walk?.latitude && walk?.longitude) {
@@ -178,37 +200,249 @@ const handleWalkSelection = async (walk) => {
   emit('walk-selected', walk)
 }
 
-const clearFilters = () => {
-  searchQuery.value = ''
-  handleScrollerUpdate()
+// Watch filtered results to update scroller
+watch(filteredWalks, () => {
+  nextTick(() => {
+    handleScrollerUpdate()
+  })
+})
+
+// Update the search mode watcher
+watch(searchMode, (newMode) => {
+  handleSearchModeChange(newMode)
+})
+
+// Add watcher for search results to update scroller
+watch(
+  filteredResults,
+  () => {
+    nextTick(() => {
+      if (scroller.value?.updateSize) {
+        scroller.value.updateSize()
+      }
+    })
+  }
+)
+
+// Add these computed properties after the existing ones
+const showFilterStatus = computed(() => {
+  return searchStore.searchQuery || hasFilters.value || maxDistance.value
+})
+
+const hasFilters = computed(() => {
+  return searchStore.searchMode === 'locations' && locationStore.userLocation
+})
+
+const maxDistance = computed(() => {
+  return searchStore.searchMode === 'locations' ? locationStore.searchRadius : null
+})
+
+const resultCountText = computed(() => {
+  const count = filteredResults.value.length
+  return `${count} ${count === 1 ? 'walk' : 'walks'} found`
+})
+
+// Add this helper method
+const formatDistance = (distance) => {
+  if (!distance) return ''
+  return `${distance / 1000}km radius`
 }
 
+const clearFilters = () => {
+  searchStore.clearSearch()
+  locationStore.clearLocation()
+}
+
+// Add transition handling for search mode changes
+watch(() => searchStore.searchMode, (newMode) => {
+  // Reset scroll position when changing modes
+  nextTick(() => {
+    if (scroller.value?.$el) {
+      scroller.value.$el.scrollTop = 0
+    }
+  })
+})
 </script>
 
 <style scoped>
 .walk-list-container {
-  position: relative;
-  height: 100%;
   display: flex;
   flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.search-wrapper {
+  flex-shrink: 0;
+  padding: 8px;
+  background: rgb(var(--md-sys-color-surface));
+  z-index: 1;
+}
+
+.walks-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
 }
 
 .scroller {
   flex: 1;
   overflow-y: auto;
-  position: relative;
+  overflow-x: hidden;
+  height: 100%;
+  padding: 0;
 }
 
-.filter-status {
+.walk-card-wrapper {
+  padding: 4px 0;
+}
+
+.location-info {
+  padding: 8px 16px;
+  background: rgb(var(--md-sys-color-surface-container));
+  border-bottom: 1px solid rgb(var(--md-sys-color-outline-variant));
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.selected-location {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  font-size: 14px;
+  gap: 8px;
+  color: rgb(var(--md-sys-color-on-surface));
+  font-size: 0.875rem;
+}
+
+.selected-location iconify-icon {
+  color: rgb(var(--md-sys-color-primary));
+  font-size: 18px;
+}
+
+.clear-location {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 16px;
+  background: rgb(var(--md-sys-color-surface-container-highest));
+  color: rgb(var(--md-sys-color-on-surface-variant));
+  font-size: 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.clear-location:hover {
+  background: rgb(var(--md-sys-color-surface-container-high));
+  color: rgb(var(--md-sys-color-on-surface));
+}
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
   color: rgb(var(--md-sys-color-on-surface-variant));
 }
 
-.result-count {
-  font-weight: 500;
+.empty-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.empty-icon {
+  font-size: 48px;
+  opacity: 0.5;
+}
+
+.error-message {
+  padding: 16px;
+  margin: 8px;
+  background: rgb(var(--md-sys-color-error-container));
+  color: rgb(var(--md-sys-color-on-error-container));
+  border-radius: 8px;
+  font-size: 0.875rem;
+}
+
+.distance-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: rgb(var(--md-sys-color-primary));
+  font-size: 0.875rem;
+}
+
+.distance-badge iconify-icon {
+  font-size: 16px;
+}
+
+/* Compact mode adjustments */
+.walk-list-container.is-compact .walk-card-wrapper {
+  padding: 2px 0;
+}
+
+.walk-list-container.is-compact .search-wrapper {
+  padding: 4px;
+}
+
+/* Location mode adjustments */
+.search-wrapper.location-mode {
+  padding: 8px 16px;
+}
+
+.walks-section.location-mode {
+  padding-top: 0;
+}
+
+.search-mode-enter-active,
+.search-mode-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.search-mode-enter-from,
+.search-mode-leave-to {
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+.search-mode-enter-to,
+.search-mode-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.filter-status {
+  margin-top: 12px;
+  padding: 8px 16px;
+  border-radius: 16px;
+  background: rgb(var(--md-sys-color-surface-container));
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.location-mode .filter-status {
+  background: rgb(var(--md-sys-color-surface));
+}
+
+.filter-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+  font-size: 0.875rem;
 }
 
 .clear-filters {
@@ -216,24 +450,21 @@ const clearFilters = () => {
   align-items: center;
   gap: 4px;
   padding: 4px 8px;
-  border-radius: 16px;
   border: none;
-  background: rgb(var(--md-sys-color-surface-container-highest));
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  border-radius: 8px;
+  background: transparent;
+  color: rgb(var(--md-sys-color-primary));
+  font-size: 0.875rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease;
 }
 
 .clear-filters:hover {
-  background: rgb(var(--md-sys-color-surface-container-highest) / 0.8);
+  background: rgb(var(--md-sys-color-primary) / 0.08);
 }
 
-.search-container {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: rgb(var(--md-sys-color-surface));
-  width: 100%;
-  padding: 1rem;
+.results-count {
+  color: rgb(var(--md-sys-color-on-surface-variant));
+  font-size: 0.875rem;
 }
 </style>

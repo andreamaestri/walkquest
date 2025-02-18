@@ -80,15 +80,18 @@
   left: 0;
   bottom: 0;
   width: 80px;
+  background: rgb(var(--md-sys-color-surface));
   display: flex;
   flex-direction: column;
-  background: rgb(var(--md-sys-color-surface));
   z-index: 100;
-  /* Increased z-index to be above map */
   border-right: 1px solid rgb(var(--md-sys-color-outline-variant) / 0.08);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   will-change: width;
-  transition: width 0.3s cubic-bezier(0.3, 0, 0.2, 1);
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  transition: width var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized);
+  contain: layout style;
 }
 
 .m3-rail-header {
@@ -99,32 +102,37 @@
   gap: 12px;
 }
 
-/* Update rail items container for proper vertical centering */
+/* Update rail items spacing */
 .m3-rail-items {
-  flex: 1;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  /* Center items vertically */
-  gap: 4px;
-  padding: 4px 4px;
-  height: calc(100vh - 140px);
-  /* Account for header height */
-  min-height: 0;
+  width: 100%;
+  padding: 4px;
+  gap: 2px;
+  contain: content;
 }
 
 /* Update individual rail item styles */
 .m3-rail-item {
   width: 56px;
-  height: 48px;
+  height: 36px;
   margin: 0;
-  /* Remove margin to prevent spacing issues */
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 16px;
   position: relative;
+  border-radius: 12px;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, background-color;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 /* Ensure expanded state maintains vertical alignment */
@@ -139,64 +147,58 @@
 
 .m3-navigation-rail.is-expanded .m3-rail-item {
   width: 100%;
-  padding: 0 12px;
+  padding: 0 8px;
+  justify-content: flex-start;
 }
 
 /* Menu button specific positioning */
 .menu-button {
   width: 56px !important;
-  margin: 0 auto !important;
+  height: 40px !important;
+  margin: 2px auto !important;
 }
 
 .m3-state-layer {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
+  position: absolute;
+  inset: 0;
   border-radius: inherit;
+  transition: background-color 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
 }
 
 .m3-rail-content {
+  position: relative;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  /* Center contents horizontally */
-  gap: 4px;
+  gap: 6px;
   width: 100%;
+  height: 100%;
+  padding: 0 6px;
 }
 
 .m3-rail-icon-container {
-  width: 56px;
-  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 16px;
-  transition: background-color 0.15s cubic-bezier(0.3, 0, 0.2, 1);
+  width: 20px;
+  height: 20px;
+  position: relative;
+  flex-shrink: 0;
 }
 
 .m3-rail-icon {
-  font-size: 24px;
-  width: 24px;
-  height: 24px;
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  color: currentColor;
 }
 
 .m3-rail-label {
-  font-size: 12px;
-  line-height: 16px;
+  font-size: 13px;
   font-weight: 500;
-  letter-spacing: 0.5px;
-  text-align: center;
-  color: inherit;
-  margin: 0;
-  /* Remove margin that was affecting centering */
-  opacity: 1 !important;
-  /* Force label visibility */
-  /* Remove any transform offset */
-  transform: none !important;
+  color: currentColor;
+  opacity: 0;
+  white-space: nowrap;
 }
 
 /* Active state */
@@ -204,28 +206,27 @@
   color: rgb(var(--md-sys-color-on-secondary-container));
 }
 
-.m3-rail-item.is-active .m3-rail-icon-container {
+.m3-rail-item.is-active .m3-state-layer {
   background-color: rgb(var(--md-sys-color-secondary-container));
+}
+
+.m3-rail-item.is-active .m3-rail-label {
+  color: rgb(var(--md-sys-color-on-secondary-container));
+  font-weight: 600;
 }
 
 /* Expanded state */
 .m3-navigation-rail.is-expanded .m3-rail-item {
   width: 100%;
-  height: 56px;
-  padding: 0 12px;
-}
-
-.m3-navigation-rail.is-expanded .m3-rail-content {
-  flex-direction: row;
+  height: 40px; /* Reduced from 56px */
+  padding: 0 12px; /* Reduced from 16px */
+  margin: 2px 0; /* Reduced from 4px */
   justify-content: flex-start;
-  /* Left align when expanded */
-  padding: 0 12px;
-  gap: 12px;
 }
 
 .m3-navigation-rail.is-expanded .m3-rail-label {
-  margin-left: 4px;
-  /* Small margin only when expanded */
+  opacity: 1;
+  transform: translateX(0);
 }
 
 .m3-rail-icon-wrapper {
@@ -234,105 +235,44 @@
   justify-content: center;
 }
 
-.m3-navigation-rail {
-  position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: 80px;
-  background: rgb(var(--md-sys-color-surface));
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  /* Center children vertically */
-  align-items: center;
-  /* Center children horizontally */
-  z-index: 100;
-  /* Increased z-index to be above map */
-  border-right: 1px solid rgb(var(--md-sys-color-outline-variant) / 0.08);
-  border-radius: 0;
-  /* MD3: no corner radius */
-  padding-right: 0;
-  padding-left: 0;
-  /* Remove left padding */
-  will-change: width;
-  transition: width 0.3s cubic-bezier(0.3, 0, 0.2, 1);
-  background: rgb(var(--md-sys-color-surface));
-}
-
-.m3-rail-header {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 0;
-  position: relative;
-  width: 100%;
-  /* Ensure full width */
-}
-
 .m3-rail-fab {
   width: 56px;
   height: 56px;
+  margin: 8px auto;
   border-radius: 16px;
-  background: #d0bcff;
-  color: #21005d;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 0 12px;
-  width: auto;
-  justify-content: flex-start;
-  min-width: 56px;
-  transition: all var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized);
-  box-shadow: var(--md-sys-elevation-0);
+  background: rgb(var(--md-sys-color-primary-container));
+  color: rgb(var(--md-sys-color-on-primary-container));
+  border: none;
+  cursor: pointer;
   position: relative;
   overflow: hidden;
-  cursor: pointer;
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, box-shadow;
   transform: translateZ(0);
   backface-visibility: hidden;
-  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1),
-    opacity 0.3s cubic-bezier(0.32, 0.72, 0, 1);
-}
-
-/* Primary surface tint layer */
-.m3-rail-fab::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: rgb(var(--md-sys-color-primary-container) / 0.08);
-  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 0 16px;
 }
 
 .m3-rail-fab:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--md-sys-elevation-4);
-  background: rgb(var(--md-sys-color-primary) / 0.92);
-  transition-duration: var(--md-sys-motion-duration-short2);
+  background: rgb(var(--md-sys-color-primary-container) / 0.92);
+  transform: translateY(-1px);
+  box-shadow: var(--md-sys-elevation-2);
 }
 
 .m3-rail-fab:active {
+  background: rgb(var(--md-sys-color-primary-container) / 0.85);
   transform: translateY(0);
   box-shadow: var(--md-sys-elevation-1);
-  background: rgb(var(--md-sys-color-primary) / 0.85);
-}
-
-.m3-rail-fab:active::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: rgb(var(--md-sys-color-on-primary));
-  opacity: var(--md-sys-state-pressed-state-layer-opacity);
-  pointer-events: none;
 }
 
 .m3-rail-fab iconify-icon {
-  font-size: 36px;
-  width: 36px;
-  height: 36px;
-  color: currentColor;
-  position: relative;
-  z-index: 1;
+  font-size: 24px;
+  width: 24px;
+  height: 24px;
   transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -341,13 +281,16 @@
 }
 
 .m3-rail-fab-text {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 500;
-  letter-spacing: 0.1px;
-  color: currentColor;
   opacity: 0;
-  transform: translateX(-20px);
-  transition: opacity 200ms ease, transform 300ms cubic-bezier(0.2, 0, 0, 1);
+  transform: translateX(-8px);
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.m3-navigation-rail.is-expanded .m3-rail-fab {
+  width: calc(100% - 32px);
 }
 
 .m3-navigation-rail.is-expanded .m3-rail-fab-text {
@@ -405,10 +348,9 @@
 }
 
 .m3-rail-label {
-  margin-left: 12px;
   font-size: 14px;
   font-weight: 500;
-  opacity: 1;
+  opacity: 1!important;
   transition: opacity 200ms cubic-bezier(0.2, 0, 0, 1);
 }
 
@@ -855,46 +797,56 @@
 
 /* Updated map container styles */
 .m3-content-container {
-  flex: 1 1 auto;
-  overflow: auto;
-  position: relative;
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 80px;
   display: flex;
   background: rgb(var(--md-sys-color-surface));
-  box-sizing: border-box;
-  width: calc(100% - 80px);
-  margin-left: 80px;
-  z-index: 1;
-  contain: strict;
-  height: 100vh;
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  transition: left var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized);
+  contain: layout size style;
 }
 
 /* Update expanded state */
 .m3-content-container.with-expanded-nav {
-  margin-left: 412px;
-  width: calc(100% - 412px);
+  left: 412px;
 }
 
 .m3-surface-container {
-  position: relative;
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  inset: 0;
   background: rgb(var(--md-sys-color-surface));
   overflow: hidden;
-  contain: layout;
+  contain: layout size style;
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 /* StoreLocator map and list regions */
-.m3-surface-container :deep(.store-locator-map) {
+.m3-surface-container .store-locator-map {
   width: 100% !important;
   height: 100% !important;
   flex: 1 1 auto;
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  transition: transform var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized);
 }
 
-.m3-surface-container :deep(.store-locator-list) {
+.m3-surface-container .store-locator-list {
   width: 360px;
   flex: 0 0 360px;
   height: 100%;
   overflow: hidden;
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  transition: transform var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized);
 }
 
 /* Clean up old map container styles */
@@ -904,8 +856,12 @@
 
 /* Update Mapbox specific styles */
 .mapboxgl-map {
-  width: 100% !important;
-  height: 100% !important;
+  position: absolute !important;
+  inset: 0 !important;
+  contain: layout size style;
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .mapboxgl-canvas {
@@ -1022,50 +978,108 @@ div.absolute.inset-0 {
   padding: 0;
 }
 
-/* Consolidate rail items container styles - remove duplicates and standardize */
+/* Consolidate rail items container styles - more compact */
 .m3-rail-items {
-  flex: 1;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   width: 100%;
-  height: calc(100vh - 140px);
-  min-height: 0;
   padding: 4px;
-  gap: 4px;
+  gap: 2px;
   contain: content;
 }
 
-/* Clean up button styles - remove duplicates and ensure consistent sizing */
+/* Clean up button styles - more compact */
 .m3-rail-item {
   width: 56px;
-  height: 48px;
+  height: 36px;
   margin: 0;
   padding: 0;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   position: relative;
-  border-radius: 16px;
+  border-radius: 12px;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+  border: none;
+  background: transparent;
+  cursor: pointer;
   transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, background-color;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.m3-rail-content {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 100%;
+  padding: 0 6px;
+}
+
+.m3-rail-icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.m3-rail-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  color: currentColor;
+}
+
+.m3-rail-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: currentColor;
+  opacity: 0;
+  white-space: nowrap;
+}
+
+/* Expanded state adjustments */
+.m3-navigation-rail.is-expanded .m3-rail-item {
+  width: 100%;
+  padding: 0 8px;
+  justify-content: flex-start;
+}
+
+.m3-navigation-rail.is-expanded .m3-rail-label {
+  opacity: 1;
+}
+
+/* Active state */
+.m3-rail-item.is-active {
+  color: rgb(var(--md-sys-color-on-secondary-container));
+}
+
+.m3-rail-item.is-active .m3-state-layer {
+  background-color: rgb(var(--md-sys-color-secondary-container));
 }
 
 /* Menu button specific adjustments */
 .menu-button {
   width: 56px !important;
-  height: 48px !important;
-  margin: 0 !important;
-  padding: 0 !important;
+  height: 40px !important;
+  margin: 2px auto !important;
 }
 
 /* State layer centering fixes */
 .m3-state-layer {
-  width: 100%;
-  height: 100%;
-  display: grid;
-  place-items: center;
-  position: relative;
+  position: absolute;
+  inset: 0;
   border-radius: inherit;
+  transition: background-color 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
 }
 
 /* Remove any transform that might affect centering */
@@ -1073,87 +1087,471 @@ div.absolute.inset-0 {
 .m3-rail-label {
   transform: none !important;
 }
-.map-marker {
+
+/* Improved marker styles with better anti-aliasing */
+.mapboxgl-marker {
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
+  shape-rendering: crispEdges;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-.map-marker:hover {
-  transform: scale(1.1);
-  z-index: 1;
+.mapboxgl-marker svg {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
 }
 
-.map-marker.active {
-  transform: scale(1.2);
+.mapboxgl-marker svg path {
+  fill: rgb(var(--md-sys-color-primary));
+  paint-order: fill;
+  shape-rendering: geometricPrecision;
+}
+
+.mapboxgl-marker[aria-selected="true"] {
   z-index: 2;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.16));
 }
 
-.marker-content {
-  min-width: 120px;
-  border: 2px solid var(--md-sys-color-primary);
-  background: var(--md-sys-color-surface);
-  color: var(--md-sys-color-on-surface);
-  box-shadow: var(--md-sys-elevation-2);
+.mapboxgl-marker[aria-selected="true"] svg path {
+  fill: rgb(var(--md-sys-color-error));
 }
 
-.map-marker.active .marker-content {
-  background: var(--md-sys-color-primary-container);
-  color: var(--md-sys-color-on-primary-container);
-  border-color: var(--md-sys-color-primary);
+/* Popup styles */
+.mapboxgl-popup {
+  max-width: 300px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
 }
 
-.marker-content:focus-visible {
-  outline: 2px solid var(--md-sys-color-primary);
+.mapboxgl-popup-content {
+  padding: 12px;
+  border-radius: 12px;
+  background: rgb(var(--md-sys-color-surface-container));
+  border: 1px solid rgb(var(--md-sys-color-outline-variant));
+}
+
+.map-tooltip {
+  padding: 8px;
+  color: rgb(var(--md-sys-color-on-surface));
+}
+
+.map-tooltip-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.map-tooltip-header {
+  margin-bottom: 4px;
+}
+
+.map-tooltip-title {
+  font-size: 1rem;
+  font-weight: 500;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.map-tooltip-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.map-tooltip-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  background: rgb(var(--md-sys-color-surface-container-highest));
+  color: rgb(var(--md-sys-color-on-surface-variant));
+}
+
+.map-tooltip-badge.difficulty {
+  background: rgb(var(--md-sys-color-secondary-container));
+  color: rgb(var(--md-sys-color-on-secondary-container));
+}
+
+.map-tooltip-badge iconify-icon {
+  font-size: 16px;
+}
+
+/* Skip hidden elements in tab order */
+[aria-hidden="true"] {
+  display: none !important;
+}
+
+/* Use visibility for temporary hiding instead of aria-hidden */
+.temporarily-hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Ensure proper focus indication for all interactive elements */
+:focus-visible {
+  outline: 2px solid rgb(var(--md-sys-color-primary));
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Marker Animation with proper accessibility */
+@keyframes markerPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Ensure proper focus management for navigation elements */
+.m3-rail-item:focus-visible {
+  outline: 2px solid rgb(var(--md-sys-color-primary));
   outline-offset: 2px;
 }
 
-/* Add new rule for mapboxgl-map */
-.mapboxgl-map {
+.m3-rail-item[aria-selected="true"] {
+  background-color: rgb(var(--md-sys-color-secondary-container));
+  color: rgb(var(--md-sys-color-on-secondary-container));
+}
+
+/* Navigation Rail Animation Styles */
+.m3-navigation-rail {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 80px;
+  background: rgb(var(--md-sys-color-surface));
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+  border-right: 1px solid rgb(var(--md-sys-color-outline-variant) / 0.08);
+  overflow-x: hidden;
+  overflow-y: auto;
+  will-change: width;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  transition: width var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized);
+  contain: layout style;
+}
+
+.m3-navigation-rail.is-expanded {
+  width: 412px;
+}
+
+.m3-rail-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 0;
+  width: 100%;
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  transition: transform var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized),
+              opacity var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized);
+}
+
+.m3-navigation-rail.is-expanded .m3-rail-content {
+  flex-direction: row;
+  align-items: center;
+  padding: 12px 16px;
+}
+
+.m3-rail-label, 
+.m3-rail-fab-text {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  white-space: nowrap;
+  transition: transform var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized),
+              opacity var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized);
+}
+
+.m3-content-container {
+  position: relative;
+  flex: 1;
+  will-change: margin-left;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  transition: margin-left var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized);
+}
+
+/* Update map container transitions */
+.m3-surface-container {
+  position: absolute;
+  inset: 0;
+  background: rgb(var(--md-sys-color-surface));
+  overflow: hidden;
+  contain: layout size style;
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* StoreLocator map and list regions */
+.m3-surface-container .store-locator-map {
   width: 100% !important;
   height: 100% !important;
+  flex: 1 1 auto;
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  transition: transform var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized);
 }
 
-/* Update map marker animations */
-.map-marker {
-  transition: transform 0.2s ease;
+.m3-surface-container .store-locator-list {
+  width: 360px;
+  flex: 0 0 360px;
+  height: 100%;
+  overflow: hidden;
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  transition: transform var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized);
 }
 
-.map-marker:hover {
-  transform: scale(1.05);
+/* Ensure smooth map transitions */
+.mapboxgl-canvas {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  transition: transform var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized);
 }
 
-.map-marker.active {
-  transform: scale(1.1);
+/* Add smooth transitions for the rail items */
+.m3-rail-items {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  transition: all var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized);
 }
 
-.user-location-marker {
+.m3-rail-item {
+  width: 56px;
+  height: 48px;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 16px;
+  transition: all var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized);
 }
 
-.pulse {
+.m3-navigation-rail.is-expanded .m3-rail-item {
+  width: 100%;
+  padding: 0 16px;
+  justify-content: flex-start;
+}
+
+/* Smooth icon transitions */
+.m3-rail-icon {
+  transition: transform var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized);
+}
+
+/* State layer transitions */
+.m3-state-layer {
+  transition: background-color var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized);
+}
+
+.m3-state-layer::before {
+  transition: opacity var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized),
+              background-color var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized);
+}
+
+/* Base layout container */
+.h-screen.w-screen {
+  overflow: hidden;
+  contain: layout size;
+  position: relative;
+}
+
+/* Content Container - Updated to use transform instead of margin */
+.m3-content-container {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 80px;
+  display: flex;
+  background: rgb(var(--md-sys-color-surface));
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  transition: left var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized);
+  contain: layout size style;
+}
+
+/* Surface Container - Improved containment */
+.m3-surface-container {
   position: absolute;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: rgba(var(--md-sys-color-primary-rgb), 0.2);
-  animation: pulse 2s infinite;
+  inset: 0;
+  background: rgb(var(--md-sys-color-surface));
+  overflow: hidden;
+  contain: layout size style;
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
-@keyframes pulse {
-  0% {
-    transform: scale(0.8);
-    opacity: 1;
-  }
-  70% {
-    transform: scale(2);
-    opacity: 0;
-  }
-  100% {
-    transform: scale(0.8);
-    opacity: 0;
-  }
+/* Map Container - Ensure proper rendering */
+.mapboxgl-map {
+  position: absolute !important;
+  inset: 0 !important;
+  contain: layout size style;
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Expanded States */
+.m3-navigation-rail.is-expanded {
+  width: 412px;
+}
+
+.m3-navigation-rail.is-expanded ~ .m3-content-container {
+  left: 412px;
+}
+
+/* Ensure proper stacking context */
+.m3-navigation-rail,
+.m3-content-container,
+.m3-surface-container,
+.mapboxgl-map {
+  isolation: isolate;
+}
+
+/* Prevent any unwanted margin/padding influence */
+.m3-content-container,
+.m3-surface-container,
+.mapboxgl-map {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Hardware acceleration for all animated elements */
+.m3-rail-content,
+.m3-rail-label,
+.m3-rail-fab-text,
+.m3-rail-item,
+.m3-rail-icon {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: layout style;
+}
+
+.mapboxgl-marker {
+  cursor: pointer;
+}
+
+.mapboxgl-marker:hover {
+  z-index: 1;
+}
+
+.mapboxgl-marker[aria-selected="true"] {
+  z-index: 2;
+}
+
+.mapboxgl-marker svg path {
+  fill: rgb(var(--md-sys-color-primary));
+}
+
+.mapboxgl-marker[aria-selected="true"] svg path {
+  fill: rgb(var(--md-sys-color-error));
+}
+
+/* Adjust related styles for better consistency */
+.m3-rail-content {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 100%;
+  padding: 0 6px;
+}
+
+.m3-navigation-rail.is-expanded .m3-rail-content {
+  justify-content: flex-start;
+  padding: 0 6px;
+}
+
+/* Navigation Rail Layout */
+.m3-navigation-rail {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: rgb(var(--md-sys-color-surface));
+}
+
+.m3-rail-header {
+  flex: 0 0 auto;
+  padding: 8px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Fix for rail items to prevent them from taking all space */
+.m3-rail-items {
+  flex: 0 0 auto;
+  height: auto;
+  min-height: fit-content;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  padding: 4px;
+  gap: 2px;
+}
+
+/* Ensure content area takes remaining space */
+.m3-rail-content-area {
+  flex: 1 1 0%;
+  min-height: 0;
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+  position: relative;
+  margin-top: 4px;
+}
+
+/* Location Panel */
+.m3-location-panel {
+  flex: 0 0 auto;
+  padding: 8px;
+  background: rgb(var(--md-sys-color-surface-container));
+  border-bottom: 1px solid rgb(var(--md-sys-color-outline-variant));
+}
+
+/* Walks List */
+.m3-walks-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Ensure proper nesting of flex containers */
+.h-full.flex.flex-col {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
 }

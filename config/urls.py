@@ -25,7 +25,7 @@ urlpatterns = [
     path("walks/", include(('walkquest.walks.urls', 'walks'), namespace='walks')),
     # Media files
     *static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT),
-    path("api/walks/", api.urls),
+    path("api/", api.urls),
     path("__reload__/", include("django_browser_reload.urls")),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 

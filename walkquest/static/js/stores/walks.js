@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { useUiStore } from './ui'
-import { WalksAPI } from '../services/api'
+import { WalksAPI } from '../services/api'  // Updated import path
+import { filterWalks } from '../services/api'
 
 export const useWalksStore = defineStore('walks', () => {
   const uiStore = useUiStore()
@@ -9,46 +10,46 @@ export const useWalksStore = defineStore('walks', () => {
   // State
   const walks = ref([])
   const selectedWalk = ref(null)
+  const pendingFavorites = ref(new Set())
+  const error = ref(null)
   const loading = ref(false)
-  const pendingFavorites = ref(new Set()) // Track pending favorite operations
-  
+
   // Actions
   const loadWalks = async () => {
-    if (loading.value) return walks.value
-    
     try {
       loading.value = true
-      uiStore.setLoadingState('walks', true)
+      error.value = null
+      console.log('Fetching walks...')
+      const response = await filterWalks()
       
-      const { walks: loadedWalks } = await WalksAPI.filterWalks()
-      // Ensure each walk has a stable ID for virtual scroll
-      walks.value = loadedWalks?.map(walk => ({
-        ...walk,
-        id: walk.id.toString() // Ensure ID is a string for consistency
-      })) || []
+      console.log('API Response:', response)
       
-      return walks.value
-    } catch (error) {
-      console.error('Failed to load walks:', error)
-      uiStore.setError('Failed to load walks. Please try again.')
-      return []
+      if (response && Array.isArray(response.walks)) {
+        walks.value = response.walks.map(walk => ({
+          ...walk,
+          title: walk.title || walk.walk_name || 'Unnamed Walk',
+          location: walk.location || 'Unknown Location'
+        }))
+        console.log('Walks loaded:', walks.value)
+      } else {
+        console.error('Invalid response format:', response)
+        throw new Error('Invalid response format')
+      }
+    } catch (err) {
+      console.error('Error loading walks:', err)
+      error.value = err.message
+      walks.value = []
     } finally {
       loading.value = false
-      uiStore.setLoadingState('walks', false)
     }
   }
-  
-  const setWalks = (newWalks) => {
-    walks.value = newWalks
-  }
-  
-  const setSelectedWalk = (walk) => {
+
+  function setSelectedWalk(walk) {
     selectedWalk.value = walk
   }
-  
-  const setLoading = (state) => {
-    loading.value = state
-    uiStore.setLoadingState('walks', state)
+
+  const getWalkById = (id) => {
+    return walks.value.find(walk => walk.id === id)
   }
 
   const isPendingFavorite = (walkId) => {
@@ -95,7 +96,6 @@ export const useWalksStore = defineStore('walks', () => {
     }
 
     try {
-      loading.value = true
       // TODO: Implement API call
       // const response = await fetch(`/api/walks/in-area?` + new URLSearchParams({
       //   north: bounds.north,
@@ -120,33 +120,23 @@ export const useWalksStore = defineStore('walks', () => {
     } catch (error) {
       console.error('Error loading walks in area:', error)
       throw error
-    } finally {
-      loading.value = false
     }
   }
 
-  // Computed
-  const getWalkById = computed(() => {
-    return (id) => walks.value.find(w => w.id === id)
-  })
-  
   return {
     // State
     walks,
     selectedWalk,
-    loading,
     pendingFavorites,
+    error,
+    loading,
     
     // Actions
     loadWalks,
-    setWalks,
     setSelectedWalk,
-    setLoading,
+    getWalkById,
     isPendingFavorite,
     toggleFavorite,
-    loadWalksInArea,
-    
-    // Computed
-    getWalkById
+    loadWalksInArea
   }
 })

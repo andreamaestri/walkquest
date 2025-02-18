@@ -1,74 +1,56 @@
 <template>
-  <article
-    class="md3-card"
+  <div 
+    class="walk-card"
     :class="{
-      'md3-card--selected': isSelected,
-      'md3-card--compact': isCompact
+      'is-selected': isSelected,
+      'is-compact': isCompact
     }"
-    @click="handleClick"
+    @click="$emit('walk-selected', walk)"
   >
-    <!-- Compact View -->
-    <div v-if="isCompact" class="md3-card__compact">
-      <iconify-icon
-        icon="mdi:map-marker-path"
-        class="md3-icon md3-icon--large"
-        :class="{ 'md3-icon--primary': isSelected }"
-      />
-      <div class="md3-card__indicator" :class="{ 'md3-card__indicator--active': isSelected }" />
-    </div>
-
-    <!-- Standard View -->
-    <div v-else class="md3-card__content">
-      <header class="md3-card__header">
-        <div class="md3-card__title">
-          <h3 class="md3-headline">{{ walk.walk_name }}</h3>
+    <div class="walk-content">
+      <div class="walk-info">
+        <h3 class="walk-title">{{ walk.walk_name || walk.title }}</h3>
+        <div class="walk-meta">
+          <span class="location">
+            <iconify-icon icon="mdi:map-marker" />
+            {{ walk.location }}
+          </span>
+          <slot name="meta"></slot>
         </div>
-        <span :class="['md3-badge', getBadgeInfo(walk.steepness_level)?.color]">
-          {{ difficultyText }}
-        </span>
-      </header>
-      <div class="categories">
-        <span 
-          v-for="(cat, index) in firstCategories" 
-          :key="index"
-          class="badge"
-          :style="getCategoryStyle(cat)">
-          {{ cat.name }}
-        </span>
-        <span 
-          v-if="moreCount > 0" 
-          class="badge more-badge">
-          +{{ moreCount }}
-        </span>
       </div>
-      <footer class="md3-card__footer">
-        <div class="md3-card__metrics">
-          <span class="md3-label flex items-center gap-1">
+      
+      <div class="walk-details">
+        <div class="badges">
+          <div class="badge difficulty" :class="difficultyClass">
+            <iconify-icon icon="mdi:flag" />
+            <span>{{ difficultyText }}</span>
+          </div>
+          <div class="badge distance">
             <iconify-icon icon="mdi:map-marker-distance" />
-            {{ formatDistance(walk.distance) }}
-          </span>
-          <span class="md3-label flex items-center gap-1">
+            <span>{{ formatDistance(walk.distance) }}</span>
+          </div>
+          <div class="badge duration">
             <iconify-icon icon="mdi:clock-outline" />
-            {{ formatDuration(walk.duration) }}
+            <span>{{ formatDuration(walk.duration) }}</span>
+          </div>
+        </div>
+        
+        <div class="walk-categories" v-if="walk.related_categories?.length">
+          <span 
+            v-for="category in firstCategories" 
+            :key="category.id"
+            class="category-tag"
+            :style="getCategoryStyle(category)"
+          >
+            {{ category.name }}
+          </span>
+          <span v-if="moreCount > 0" class="more-count">
+            +{{ moreCount }} more
           </span>
         </div>
-        <button
-          @click.stop="handleFavorite"
-          class="md3-button-text"
-          :class="{
-            'md3-button-text--favorited': walk.is_favorite,
-            'md3-button-text--disabled': isPendingFavorite
-          }"
-          :disabled="isPendingFavorite"
-        >
-          <iconify-icon
-            :icon="walk.is_favorite ? 'mdi:heart' : 'mdi:heart-outline'"
-            :class="{ 'animate-bounce': isPendingFavorite }"
-          />
-        </button>
-      </footer>
+      </div>
     </div>
-  </article>
+  </div>
 </template>
 
 <script setup>
@@ -85,24 +67,16 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
-  isExpanded: {
-    type: Boolean,
-    default: false
-  },
   isCompact: {
     type: Boolean,
     default: false
   }
 })
 
-const emit = defineEmits(['walk-selected', 'walk-expanded'])
+const emit = defineEmits(['walk-selected'])
 const walksStore = useWalksStore()
 
 const isPendingFavorite = computed(() => walksStore.isPendingFavorite(props.walk.id))
-
-const handleClick = () => {
-  emit('walk-selected', props.walk)
-}
 
 const handleFavorite = async () => {
   try {
@@ -112,22 +86,58 @@ const handleFavorite = async () => {
   }
 }
 
-const formatDistance = (distance) => `${distance.toFixed(1)} km`
-
 const formatDuration = (duration) => {
   if (duration == null) return ''
-  const minutes = parseFloat(duration)
-  if (isNaN(minutes)) return ''
+  const minutes = Number.parseFloat(duration)
+  if (Number.isNaN(minutes)) return ''
   const hours = Math.floor(minutes / 60)
   const mins = Math.round(minutes % 60)
   return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`
 }
 
+const formatDistance = (distance) => {
+  if (!distance) return ''
+  // Convert km to miles (1 km = 0.621371 miles)
+  const miles = (Number.parseFloat(distance) * 0.621371).toFixed(1)
+  return `${miles} miles`
+}
+
 const difficultyText = computed(() => {
-  const level = Number(props.walk.steepness_level)
-  if (level <= 2) return 'Easy'
-  else if (level <= 4) return 'Medium'
-  return 'Hard'
+  console.log('Steepness level:', props.walk.steepness_level) // Debug log
+  const level = props.walk.steepness_level?.toUpperCase()
+  if (!level) return 'Unknown'
+  
+  switch (level) {
+    case 'NOVICE WANDERER':
+      return 'Easy'
+    case "GREY'S PATHFINDER":
+    case 'TRAIL RANGER':
+      return 'Medium'
+    case "WARDEN'S ASCENT":
+    case 'MASTER WAYFARER':
+      return 'Hard'
+    default:
+      console.log('Unmatched level:', level) // Debug log
+      return 'Unknown'
+  }
+})
+
+const difficultyClass = computed(() => {
+  const level = props.walk.steepness_level?.toUpperCase()
+  if (!level) return 'medium'
+  
+  switch (level) {
+    case 'NOVICE WANDERER':
+      return 'easy'
+    case "GREY'S PATHFINDER":
+    case 'TRAIL RANGER':
+      return 'medium'
+    case "WARDEN'S ASCENT":
+    case 'MASTER WAYFARER':
+      return 'hard'
+    default:
+      return 'medium'
+  }
 })
 
 const firstCategories = computed(() => {
@@ -144,208 +154,163 @@ const moreCount = computed(() => {
 })
 
 const getCategoryStyle = (cat) => {
-  if (cat.slug === 'circular-walks')
+  if (cat.slug === 'circular-walks') {
     return { backgroundColor: 'rgb(233,221,255)', color: 'rgb(77,61,117)' }
-  else if (cat.slug === 'coastal-walks')
+  }
+  if (cat.slug === 'coastal-walks') {
     return { backgroundColor: 'rgb(232,222,248)', color: 'rgb(74,68,88)' }
-  else if (cat.slug === 'pub-walks')
+  }
+  if (cat.slug === 'pub-walks') {
     return { backgroundColor: 'rgb(255,217,227)', color: 'rgb(99,59,72)' }
-  else 
-    return { backgroundColor: '#eee', color: '#333' }
+  }
+  return { backgroundColor: '#eee', color: '#333' }
 }
 </script>
 
 <style scoped>
-/* MD3 Card Container without positioning */
-.md3-card {
-  width: 100%; /* Fill wrapper width */
-  background: rgb(var(--md-sys-color-surface-container));
-  border-radius: 12px; 
-  box-shadow: 0 1px 3px rgba(var(--md-sys-color-on-surface), 0.1);
-  transition: background-color 200ms ease, box-shadow 200ms ease;
+.walk-card {
+  background: rgb(var(--md-sys-color-surface-container-low));
+  border-radius: 16px;
+  margin: 4px 8px;
+  overflow: hidden;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--md-sys-elevation-1);
   cursor: pointer;
+}
+
+.walk-card:hover {
+  background: rgb(var(--md-sys-color-surface-container));
+  box-shadow: var(--md-sys-elevation-2);
+  transform: translateY(-1px);
+}
+
+.walk-card.is-selected {
+  background: rgb(var(--md-sys-color-surface-container-highest));
+  border: 1px solid rgb(var(--md-sys-color-primary));
+}
+
+.walk-content {
   padding: 16px;
 }
-.md3-card:hover {
-  background-color: rgb(var(--md-sys-color-surface-container-highest) / 0.95);
-}
-.md3-card--selected {
-  background-color: rgb(var(--md-sys-color-secondary-container));
-  border: 1px solid rgb(var(--md-sys-color-primary));
-  box-shadow: 0 4px 8px rgba(var(--md-sys-color-on-surface), 0.2);
+
+.walk-info {
+  margin-bottom: 12px;
 }
 
-/* Compact Style Adjustments */
-.md3-card--compact {
-  min-height: 56px;
-  height: 56px;
-  padding: 0 16px;
-  background: transparent;
-  box-shadow: none;
-  border-radius: 0;
-}
-.md3-card__compact {
-  /* Removed position: relative; */
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-/* Icon Styles */
-.md3-icon {
-  font-size: 24px;
-}
-.md3-icon--primary {
-  color: rgb(var(--md-sys-color-primary));
-}
-
-/* Indicator for Compact Mode */
-.md3-card__indicator {
-  /* Positioning removed; use inline layout margin if needed */
-  width: 3px;
-  height: 24px;
-  border-radius: 0 4px 4px 0;
-  background: transparent;
-  transition: all 300ms ease;
-}
-.md3-card__indicator--active {
-  background: rgb(var(--md-sys-color-primary));
-  height: 32px;
-}
-
-/* Content Layout */
-.md3-card__content {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-/* Header */
-.md3-card__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 4px 0;
-}
-.md3-card__title {
-  flex: 1;
-  min-width: 0;
-  padding-right: 12px; /* Increased spacing between title and badge */
-}
-.md3-headline {
-  font-size: 16px;
-  line-height: 24px;
+.walk-title {
+  font-size: 1rem;
   font-weight: 500;
   color: rgb(var(--md-sys-color-on-surface));
-  margin: 0;
-  white-space: normal;
-  overflow: visible;
-  text-overflow: unset;
+  margin: 0 0 4px 0;
+  line-height: 1.5;
 }
 
-/* Badge */
-.md3-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 0 12px;
-  height: 24px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 500;
-  background: linear-gradient(135deg, rgba(var(--md-sys-color-primary), 0.1), rgba(var(--md-sys-color-primary), 0.05));
-  border: 1px solid rgba(var(--md-sys-color-primary), 0.3);
-  transition: background 200ms ease, transform 200ms ease;
-}
-.md3-badge:hover {
-  background: linear-gradient(135deg, rgba(var(--md-sys-color-primary), 0.2), rgba(var(--md-sys-color-primary), 0.1));
-  transform: scale(1.05);
-}
-
-/* Body Text */
-.md3-body {
-  font-size: 14px;
-  line-height: 20px;
-  color: rgb(var(--md-sys-color-on-surface-variant));
-  margin-top: 8px;
-}
-
-/* Footer Layout */
-.md3-card__footer {
+.walk-meta {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-top: 8px;
-  padding: 4px;
-  position: relative; /* Create stacking context */
-  z-index: 1; /* Ensure footer is above other content */
-}
-.md3-card__metrics {
-  display: flex;
-  gap: 16px;
+  gap: 12px;
+  font-size: 0.875rem;
   color: rgb(var(--md-sys-color-on-surface-variant));
-}
-.md3-label {
-  font-size: 14px;
-  line-height: 20px;
-  font-weight: 500;
+  line-height: 1.25;
 }
 
-/* Button Text */
-.md3-button-text {
-  display: inline-flex;
+.location {
+  display: flex;
   align-items: center;
-  justify-content: center;
   gap: 4px;
-  min-width: 40px;
-  height: 40px;
-  padding: 0 12px;
-  border-radius: 20px;
-  font-size: 14px;
-  font-weight: 500;
+}
+
+.location iconify-icon {
   color: rgb(var(--md-sys-color-primary));
-  transition: background 200ms ease;
-  /* Remove position: relative */
-  /* Remove z-index */
-  cursor: pointer;
-  border: none;
-  background: transparent;
-}
-.md3-button-text:hover {
-  background: rgb(var(--md-sys-color-primary) / 0.08);
-}
-.md3-button-text:active {
-  background: rgb(var(--md-sys-color-primary) / 0.12);
-}
-.md3-button-text--favorited {
-  color: rgb(var(--md-sys-color-error));
-}
-.md3-button-text--disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  font-size: 16px;
 }
 
-/* Bounce Animation for Pending State */
-@keyframes bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-3px); }
-}
-.animate-bounce {
-  animation: bounce 1s infinite;
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
-/* Minimal badge styling */
 .badge {
-  display: inline-block;
-  padding: 2px 6px;
-  border-radius: 12px;
-  font-size: 12px;
-  margin-right: 4px;
-  text-transform: capitalize;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: rgb(var(--md-sys-color-surface-container-highest));
+}
+
+.badge iconify-icon {
+  font-size: 18px;
+}
+
+.badge.difficulty {
+  background: rgb(var(--md-sys-color-secondary-container));
+  color: rgb(var(--md-sys-color-on-secondary-container));
+}
+
+.badge.difficulty.easy {
+  background: rgb(var(--md-sys-color-tertiary-container));
+  color: rgb(var(--md-sys-color-on-tertiary-container));
+}
+
+.badge.difficulty.medium {
+  background: rgb(var(--md-sys-color-secondary-container));
+  color: rgb(var(--md-sys-color-on-secondary-container));
+}
+
+.badge.difficulty.hard {
+  background: rgb(var(--md-sys-color-error-container));
+  color: rgb(var(--md-sys-color-on-error-container));
+}
+
+.walk-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.category-tag {
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 0.75rem;
   font-weight: 500;
 }
 
-.more-badge {
-  background-color: #ddd;
-  color: #333;
+.more-count {
+  font-size: 0.75rem;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+  padding: 4px 8px;
+}
+
+/* Compact mode */
+.walk-card.is-compact {
+  margin: 2px 8px;
+  border-radius: 8px;
+}
+
+.walk-card.is-compact .walk-content {
+  padding: 12px;
+}
+
+.walk-card.is-compact .walk-title {
+  font-size: 0.875rem;
+}
+
+.walk-card.is-compact .walk-meta {
+  font-size: 0.75rem;
+}
+
+.walk-card.is-compact .badges {
+  margin-bottom: 8px;
+}
+
+.walk-card.is-compact .badge {
+  padding: 2px 8px;
+  font-size: 0.75rem;
 }
 </style>

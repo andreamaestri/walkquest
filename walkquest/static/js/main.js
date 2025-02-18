@@ -7,6 +7,7 @@ import Navigation from './components/Navigation.vue'
 import { DynamicScroller, DynamicScrollerItem, RecycleScroller } from 'vue-virtual-scroller'
 import { useUiStore } from './stores/ui'
 import "iconify-icon"
+import { StoreLocator, MapboxMarker, MapboxNavigationControl, MapboxCluster, MapboxLayer } from '@studiometa/vue-mapbox-gl'
 
 // Import required CSS
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
@@ -18,6 +19,16 @@ const pinia = createPinia()
 // Create main Vue app
 const app = createApp(App)
 
+// Register custom elements BEFORE component registration
+app.config.compilerOptions.isCustomElement = tag => [
+  'iconify-icon',
+  'mapbox-gl',
+  'mapbox-map',
+  'mapbox-marker',
+  'mapbox-navigation-control',
+  'mapbox-cluster'
+].includes(tag)
+
 // Install plugins for main app
 app.use(pinia)
 app.use(router)
@@ -26,6 +37,13 @@ app.use(router)
 app.component('DynamicScroller', DynamicScroller)
 app.component('DynamicScrollerItem', DynamicScrollerItem)
 app.component('RecycleScroller', RecycleScroller)
+
+// Register Mapbox components globally
+app.component('StoreLocator', StoreLocator)
+app.component('MapboxMarker', MapboxMarker)
+app.component('MapboxNavigationControl', MapboxNavigationControl)
+app.component('MapboxCluster', MapboxCluster)
+app.component('MapboxLayer', MapboxLayer)
 
 // Get configuration from the embedded script tags
 const configScript = document.getElementById('config-data')

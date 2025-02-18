@@ -2,7 +2,7 @@ async function filterWalks() {
   try {
     console.debug("api.js: Starting fetchWalks");
     console.time("fetchWalks");
-    const response = await ky.get("http://localhost:8000/api/walks/walks?").json();
+    const response = await ky.get("/api/walks").json();
     console.timeEnd("fetchWalks");
     console.debug("api.js: Fetch finished with response:", response);
     // ...existing code to normalize walks...

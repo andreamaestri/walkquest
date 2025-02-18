@@ -6,17 +6,16 @@ class ApiService {
     // Any initialization logic
   }
   static async filterWalks(params) {
-    const response = await fetch('/api/walks/filter', {
-      method: 'POST',
+    const response = await fetch('/api/walks', {
+      method: 'GET',
       headers: {
         'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(params)
+      }
     });
     return response.json();
   }
   static async getWalkGeometry(walkId, zoom) {
-    const response = await fetch(`/api/walks/${walkId}/geometry?zoom=${zoom}`);
+    const response = await fetch(`/api/walks/${walkId}/geometry`);
     return response.json();
   }
 }

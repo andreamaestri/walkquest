@@ -6,16 +6,16 @@ from .views import (
     WalkSearchView,
     WalkFilterView,
     WalkGeometryView,
-    walk_features_autocomplete
+    WalkDetailView,
 )
 
 app_name = "walks"
 
 urlpatterns = [
     path("", HomePageView.as_view(), name="home"),
-    path("api/list/", WalkListView.as_view(), name="list"),
-    path("api/search/", WalkSearchView.as_view(), name="search"),
-    path("api/filter/", WalkFilterView.as_view(), name="filter"),
-    path("api/geometry/<str:walk_id>/", WalkGeometryView.as_view(), name="geometry"),
-    path("api/features/autocomplete/", walk_features_autocomplete, name="features-autocomplete"),
+    path("", WalkListView.as_view(), name="list"),
+    path("search/", WalkSearchView.as_view(), name="search"),
+    path("<uuid:id>/", WalkDetailView.as_view(), name="detail"),
+    path("<uuid:id>/geometry/", WalkGeometryView.as_view(), name="geometry"),
+    path("filters/", WalkFilterView.as_view(), name="filter"),
 ]

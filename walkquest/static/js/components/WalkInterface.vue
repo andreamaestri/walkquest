@@ -1,73 +1,102 @@
 <template>
   <div class="h-screen w-screen overflow-hidden flex flex-col relative bg-surface">
-    <Loading ref="loadingComponent" />
-
     <div class="relative h-full w-full flex">
       <!-- Navigation Rail for desktop with simplified animation -->
-      <div v-if="showSidebar && !isMobile" ref="sidebarRef" class="m3-navigation-rail"
-        :class="[{ 'is-expanded': isExpanded }]">
-        <div class="m3-rail-header">
-          <!-- Menu button - centered and properly styled -->
-          <button class="m3-rail-item menu-button" @click="toggleExpanded">
-            <div class="m3-state-layer">
-              <div class="m3-icon-wrapper">
-                <iconify-icon icon="mdi:menu" class="m3-rail-icon text-[24px]" />
-              </div>
-            </div>
-          </button>
-
-          <!-- FAB -->
-          <button class="m3-rail-fab" @click="handleFabClick">
-            <iconify-icon icon="mdi:hiking" class="text-[36px]" />
-            <span class="m3-rail-fab-text" v-if="isExpanded">WalkQuest</span>
-            <span class="sr-only">WalkQuest Home</span>
-          </button>
-        </div>
-
-        <!-- Navigation items -->
-        <nav class="m3-rail-items">
-          <button class="m3-rail-item" :class="{ 'is-active': !showRoutesDrawer }" @click="handleWalkSelection(null)">
-            <div class="m3-rail-content">
-              <div class="m3-rail-icon-container">
-                <iconify-icon icon="mdi:compass-outline" class="m3-rail-icon" />
-              </div>
-              <span class="m3-rail-label">Explore</span>
-            </div>
-          </button>
-
-          <!-- New Location Search Button -->
-          <button class="m3-rail-item" @click="toggleLocationSearch">
-            <div class="m3-rail-content">
-              <div class="m3-rail-icon-container">
-                <iconify-icon icon="mdi:map-search" class="m3-rail-icon" />
-              </div>
-              <span class="m3-rail-label">Find Nearby</span>
-            </div>
-          </button>
-
-          <!-- Updated Walks List with transition -->
-          <Transition :css="false" @enter="onWalksSectionEnter" @leave="onWalksSectionLeave">
-            <div v-if="isExpanded" class="m3-walks-section">
-              <!-- Location Search Panel -->
-              <Transition :css="false" @enter="onPanelEnter" @leave="onPanelLeave">
-                <div v-if="showLocationSearch" class="m3-location-panel">
-                  <LocationSearch @location-selected="handleLocationSelected" />
+      <div 
+        v-if="showNavigationRail" 
+        ref="sidebarRef" 
+        class="m3-navigation-rail"
+        :class="[{ 'is-expanded': isExpanded }]"
+      >
+        <Transition name="fade" mode="out-in">
+          <!-- Normal Navigation Rail Content -->
+          <div v-if="!selectedWalkId" key="nav" class="h-full flex flex-col">
+            <div class="m3-rail-header">
+              <!-- Menu button - centered and properly styled -->
+              <button class="m3-rail-item menu-button" @click="toggleExpanded">
+                <div class="m3-state-layer">
+                  <iconify-icon icon="mdi:menu" class="m3-rail-icon text-[24px]" />
                 </div>
-              </Transition>
+              </button>
 
-              <WalkList 
-                v-model="searchQuery"
-                :walks="availableWalks"
-                :selected-walk-id="selectedWalkId"
-                :expanded-walk-ids="expandedWalkIds"
-                :is-compact="!isExpanded"
-                @walk-selected="handleWalkSelection"
-                @walk-expanded="handleWalkExpanded"
-                @filtered-walks="updateDisplayedWalks"
+              <!-- FAB -->
+              <button class="m3-rail-fab" @click="handleFabClick">
+                <iconify-icon icon="mdi:hiking" class="text-[36px]" />
+                <span class="m3-rail-fab-text" v-if="isExpanded">WalkQuest</span>
+                <span class="sr-only">WalkQuest Home</span>
+              </button>
+            </div>
+
+            <!-- Navigation items -->
+            <nav class="m3-rail-items">
+              <button class="m3-rail-item" :class="{ 'is-active': !showRoutesDrawer }" @click="handleWalkSelection(null)">
+                <div class="m3-rail-content">
+                  <div class="m3-rail-icon-container">
+                    <iconify-icon icon="mdi:compass-outline" class="m3-rail-icon" />
+                  </div>
+                  <span class="m3-rail-label">Explore</span>
+                </div>
+              </button>
+
+              <!-- New Location Search Button -->
+              <button class="m3-rail-item" @click="searchStore.setSearchMode('locations')">
+                <div class="m3-rail-content">
+                  <div class="m3-rail-icon-container">
+                    <iconify-icon icon="mdi:map-search" class="m3-rail-icon" />
+                  </div>
+                  <span class="m3-rail-label">Find Nearby</span>
+                </div>
+              </button>
+            </nav>
+
+            <!-- Main Content Area -->
+            <div class="m3-rail-content-area">
+              <!-- Location Search Panel -->
+              <div v-if="searchStore.searchMode === 'locations'" class="m3-location-panel">
+                <LocationSearch @location-selected="handleLocationSelected" />
+              </div>
+
+              <!-- Walk List -->
+              <div class="m3-walks-list">
+                <WalkList 
+                  v-model="searchQuery"
+                  :walks="availableWalks"
+                  :selected-walk-id="selectedWalkId"
+                  :expanded-walk-ids="expandedWalkIds"
+                  :is-compact="!isExpanded"
+                  @walk-selected="handleWalkSelection"
+                  @walk-expanded="handleWalkExpanded"
+                  @filtered-walks="updateDisplayedWalks"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Walk Detail View -->
+          <div v-else key="detail" class="h-full flex flex-col">
+            <div class="m3-detail-header">
+              <button class="m3-icon-button" @click="handleBackClick">
+                <div class="m3-state-layer">
+                  <iconify-icon icon="material-symbols:arrow-back-rounded" class="text-[24px]" />
+                </div>
+              </button>
+              <h2 class="m3-title-large">{{ selectedWalk?.title || selectedWalk?.walk_name }}</h2>
+            </div>
+            <div class="m3-walk-detail">
+              <WalkCard 
+                :walk="selectedWalk"
+                :expanded="true"
+                class="m3-elevated-card"
+              />
+              <WalkRoute
+                v-if="selectedWalk"
+                :walk-id="selectedWalk.id"
+                :walk-title="selectedWalk.title || selectedWalk.walk_name"
+                :initial-route-data="selectedWalk.routeData"
               />
             </div>
-          </Transition>
-        </nav>
+          </div>
+        </Transition>
       </div>
 
       <!-- Navigation Drawer for mobile -->
@@ -98,161 +127,104 @@
       <!-- Map container with updated left margin -->
       <div class="m3-content-container hardware-accelerated pointer-events-auto" :style="mapContainerStyle"
         ref="mapContainerRef">
-        <div class="m3-surface-container hardware-accelerated pointer-events-auto">
-          <StoreLocator
-            :items="walks"
-            :item-zoom-level="14"
+        <div class="m3-surface-container hardware-accelerated pointer-events-auto h-full">
+          <MapboxMap
+            ref="mapComponent"
             :access-token="mapboxToken"
-            :mapbox-map="mapConfig"
-            :classes="{
-              root: 'flex h-full w-full',
-              region: {
-                map: 'w-full h-full',
-                list: 'hidden' // Hide the list region completely
-              }
+            :map-style="'mapbox://styles/andreamaestri/cm79fegfl000z01sdhl4u32jv'"
+            :center="CORNWALL_CENTER"
+            :zoom="9"
+            :min-zoom="1"
+            :max-zoom="35"
+            :max-bounds="CORNWALL_BOUNDS"
+            :cooperative-gestures="true"
+            :keyboard="true"
+            :bearing-snap="7"
+            :pitch-with-rotate="true"
+            :drag-rotate="true"
+            :touch-zoom-rotate="{ around: 'center' }"
+            :touch-pitch="true"
+            :min-pitch="0"
+            :max-pitch="85"
+            :scroll-zoom="{ 
+              smooth: true, 
+              speed: 0.5,
+              around: 'center'
             }"
-            @select-item="handleItemSelect"
-            @map-created="handleMapCreated"
-            class="hardware-accelerated pointer-events-auto">
-
-            <!-- Remove the list slot since we're using WalkList elsewhere -->
+            :drag-pan="{
+              smooth: true,
+              inertia: true,
+              maxSpeed: 1400,
+              linearity: 0.3,
+              deceleration: 2500
+            }"
+            class="h-full w-full absolute inset-0"
+            @mb-created="handleMapCreated">
             
             <!-- Custom Markers -->
-            <template #markers>
-              <template v-for="item in displayMarkers" :key="item.walk.id">
-                <MapboxMarker
-                  :lng-lat="[item.walk.lng, item.walk.lat]"
-                  :popup-offset="[0, -15]"
-                  :element="item.type === 'point' ? null : undefined"
-                  :color="item.type === 'point' ? '#4A90E2' : null"
-                  :scale="item.type === 'point' ? 0.7 : 1"
-                  :aria-label="`${item.walk.title}, ${item.walk.difficulty} difficulty, ${item.walk.duration} duration`"
-                  class="map-marker"
-                  :class="{ 
-                    'is-detailed': item.type === 'marker',
-                    'is-simple': item.type === 'point',
-                    active: selectedWalkId === item.walk.id,
-                    nearby: locationStore.nearbyWalks.some(nearby => nearby.id === item.walk.id)
-                  }"
-                  @click="handleWalkSelection(item.walk)"
-                >
-                  <!-- Only render custom content for detailed markers -->
-                  <div v-if="item.type === 'marker'" class="marker-content p-2 bg-white rounded-lg shadow-md">
-                    <h4 class="text-sm font-medium">{{ item.walk.title }}</h4>
-                    <div class="flex items-center gap-1 text-xs mt-1">
-                      <iconify-icon icon="mdi:flag" class="text-primary" />
-                      <span>{{ item.walk.difficulty }}</span>
-                    </div>
-                  </div>
-
-                  <template #popup>
-                    <div class="p-3">
-                      <h3 class="text-lg font-semibold mb-2">{{ item.walk.title }}</h3>
-                      <div class="space-y-2">
-                        <div class="flex items-center gap-2">
-                          <iconify-icon icon="mdi:map-marker" />
-                          <span>{{ item.walk.location }}</span>
+            <template v-for="walk in walks" :key="walk.id">
+              <MapboxMarker
+                :lng-lat="[Number(walk.longitude) || Number(walk.lng), Number(walk.latitude) || Number(walk.lat)]"
+                :popup="true"
+                :aria-selected="selectedWalkId === walk.id"
+                @click="handleWalkSelection(walk)"
+              >
+                <!-- Popup Template -->
+                <template #popup>
+                  <div class="map-tooltip">
+                    <div class="map-tooltip-content">
+                      <div class="map-tooltip-header">
+                        <h3 class="map-tooltip-title">{{ walk.title || walk.walk_name }}</h3>
+                      </div>
+                      <div class="map-tooltip-badges">
+                        <div class="map-tooltip-badge difficulty" :class="walk.steepness_level?.toLowerCase()">
+                          <iconify-icon icon="material-symbols:flag-rounded" />
+                          {{ walk.steepness_level }}
                         </div>
-                        <div class="flex items-center gap-2">
-                          <iconify-icon icon="mdi:clock-outline" />
-                          <span>{{ item.walk.duration }}</span>
+                        <div class="map-tooltip-badge">
+                          <iconify-icon icon="material-symbols:distance" />
+                          {{ walk.distance }} km
                         </div>
                       </div>
                     </div>
-                  </template>
-                </MapboxMarker>
-              </template>
+                  </div>
+                </template>
+              </MapboxMarker>
             </template>
 
             <!-- Add Distance Radius Circle -->
-            <template #before-markers>
-              <template v-if="locationStore.userLocation && locationStore.searchRadius">
-                <MapboxLayer
-                  type="circle"
-                  :paint="{
-                    'circle-color': '#4A90E2',
-                    'circle-opacity': 0.1,
-                    'circle-radius': locationStore.searchRadius / 2
-                  }"
-                  :source="{
-                    type: 'geojson',
-                    data: {
-                      type: 'Feature',
-                      geometry: {
-                        type: 'Point',
-                        coordinates: [
-                          locationStore.userLocation.longitude,
-                          locationStore.userLocation.latitude
-                        ]
-                      }
+            <template v-if="locationStore.userLocation && locationStore.searchRadius">
+              <MapboxLayer
+                type="circle"
+                :paint="{
+                  'circle-color': '#4A90E2',
+                  'circle-opacity': 0.1,
+                  'circle-radius': locationStore.searchRadius / 2
+                }"
+                :source="{
+                  type: 'geojson',
+                  data: {
+                    type: 'Feature',
+                    geometry: {
+                      type: 'Point',
+                      coordinates: [
+                        locationStore.userLocation.longitude,
+                        locationStore.userLocation.latitude
+                      ]
                     }
-                  }"
-                />
-              </template>
+                  }
+                }"
+              />
             </template>
 
-            <template #before-map>
-              <div class="sr-only">
-                Interactive map showing walk locations. Use arrow keys to navigate between markers.
-              </div>
-            </template>
-
-            <!-- Item Panel -->
-            <template #panel="{ item, close }">
-              <div class="p-4 max-w-sm" role="dialog" aria-labelledby="walk-title">
-                <h3 id="walk-title" class="text-lg font-semibold mb-2">{{ item.title }}</h3>
-                <div class="flex items-center gap-2 mb-2">
-                  <iconify-icon icon="mdi:map-marker" aria-hidden="true" />
-                  <span>{{ item.location }}</span>
-                </div>
-              </div>
-            </template>
+            <!-- Accessibility Description -->
+            <div class="sr-only">
+              Interactive map showing walk locations. Use arrow keys to navigate between markers.
+            </div>
 
             <!-- MapboxMap Controls -->
             <MapboxNavigationControl position="top-left" />
-            <MapboxCluster
-              :radius="50"
-              :max-zoom="13"
-              :min-zoom="8"
-              :cluster-properties="{
-                sum: ['+', ['get', 'point_count']]
-              }"
-              :clusters-layout="{ visibility: 'visible' }"
-              :clusters-paint="{
-                'circle-color': [
-                  'step',
-                  ['get', 'point_count'],
-                  'rgba(var(--md-sys-color-primary-rgb), 0.5)',
-                  10,
-                  'rgba(var(--md-sys-color-primary-rgb), 0.7)',
-                  30,
-                  'rgba(var(--md-sys-color-primary-rgb), 0.9)'
-                ],
-                'circle-radius': [
-                  'step',
-                  ['get', 'point_count'],
-                  20,
-                  10,
-                  30,
-                  30,
-                  40
-                ],
-                'circle-stroke-width': 3,
-                'circle-stroke-color': 'rgba(var(--md-sys-color-on-primary-container-rgb), 1)',
-                'circle-stroke-opacity': 0.5
-              }"
-              :clusters-text-layout="{
-                'text-field': '{point_count_abbreviated}',
-                'text-font': ['Roboto Medium', 'Arial Unicode MS Bold'],
-                'text-size': 12,
-                'text-offset': [0, 0],
-                'text-anchor': 'center'
-              }"
-              :clusters-text-paint="{ 'text-color': '#ffffff' }"
-              :data="geojsonData"
-              @mb-click="handleClusterClick"
-            />
-          </StoreLocator>
+          </MapboxMap>
           <!-- Mobile toggle button -->
           <Transition :css="false" @enter="onMobileButtonEnter" @leave="onMobileButtonLeave">
             <button v-if="isMobile && !uiStore?.mobileMenuOpen" ref="mobileButtonRef"
@@ -265,22 +237,37 @@
       </div>
 
       <!-- Mobile location search bottom sheet -->
-      <BottomSheet v-model="showMobileLocationSearch" v-if="isMobile">
-        <LocationSearch 
-          @location-selected="handleLocationSelected" 
-          class="pb-safe-area-inset-bottom"
-        />
+      <BottomSheet 
+        v-if="isMobile"
+        v-model="isLocationSearchVisible"
+        class="pb-safe-area-inset-bottom"
+      >
+        <div class="p-4">
+          <SearchView
+            v-model="searchStore.searchQuery"
+            :search-mode="'locations'"
+            @location-selected="handleLocationSelected"
+          />
+        </div>
       </BottomSheet>
 
       <!-- Mobile navigation bar -->
       <div v-if="isMobile" class="fixed bottom-0 left-0 right-0 bg-surface z-40 shadow-lg">
         <div class="flex justify-around items-center h-16 px-4">
-          <button class="m3-nav-button" @click="handleWalkSelection(null)">
+          <button 
+            class="m3-nav-button" 
+            :class="{ 'active': searchStore.searchMode === 'walks' }"
+            @click="searchStore.setSearchMode('walks')"
+          >
             <iconify-icon icon="mdi:compass-outline" class="text-2xl" />
             <span class="text-xs">Explore</span>
           </button>
           
-          <button class="m3-nav-button" @click="showMobileLocationSearch = true">
+          <button 
+            class="m3-nav-button" 
+            :class="{ 'active': searchStore.searchMode === 'locations' }"
+            @click="searchStore.setSearchMode('locations')"
+          >
             <iconify-icon icon="mdi:map-search" class="text-2xl" />
             <span class="text-xs">Find Nearby</span>
           </button>
@@ -296,29 +283,29 @@
 </template>
 
 <script setup>
-import {
-  ref,
-  computed,
-  onMounted,
-  onBeforeUnmount,
-  nextTick,
-  watch,
-} from "vue";
-import { useRouter } from "vue-router";
-import { animate, inView } from "motion";
-import { useElementVisibility } from "@vueuse/core";
-import { useUiStore } from "../stores/ui";
-import { useWalksStore } from "../stores/walks";
-import { DynamicScroller, DynamicScrollerItem } from "vue-virtual-scroller";
-import { StoreLocator, MapboxNavigationControl, MapboxMarker, MapboxMap, MapboxCluster } from '@studiometa/vue-mapbox-gl';
-import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
-import Loading from "./Loading.vue";
-import WalkList from "./WalkList.vue";
-import WalkCard from "./WalkCard.vue";
-import { useLocationStore } from '../stores/locationStore';
-import LocationSearch from './LocationSearch.vue';
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from "vue"
+import { useRouter, useRoute } from "vue-router"
+import { animate } from "motion"
+import { useElementVisibility } from "@vueuse/core"
+import { useUiStore } from "../stores/ui"
+import { useWalksStore } from "../stores/walks"
+import { DynamicScroller, DynamicScrollerItem } from "vue-virtual-scroller"
+import mapboxgl from 'mapbox-gl'
+import { MapboxMap, MapboxNavigationControl, MapboxMarker, MapboxLayer } from '@studiometa/vue-mapbox-gl'
+import "vue-virtual-scroller/dist/vue-virtual-scroller.css"
+import WalkList from "./WalkList.vue"
+import WalkCard from "./WalkCard.vue"
+import { useLocationStore } from '../stores/locationStore'
 import BottomSheet from './BottomSheet.vue'
 import { useMap } from '../composables/useMap'
+import { useSearchStore } from '../stores/searchStore'
+import SearchView from './SearchView.vue'
+import LocationSearch from './LocationSearch.vue'
+import WalkRoute from './WalkRoute.vue'
+import { getGeometry } from '../services/api'
+
+// Extract setMapInstance from useMap
+const { setMapInstance, flyToLocation } = useMap()
 
 // Props definition
 const props = defineProps({
@@ -336,35 +323,60 @@ const props = defineProps({
   },
 });
 
-// Store initialization
-const router = useRouter();
-const walksStore = useWalksStore();
-const uiStore = useUiStore();
-const locationStore = useLocationStore();
+// Initialize stores
+const router = useRouter()
+const route = useRoute()
+const walksStore = useWalksStore()
+const uiStore = useUiStore()
+const locationStore = useLocationStore()
+const searchStore = useSearchStore()
+
+// Initialize UI store with defaults
+uiStore.$patch({
+  error: null,
+  mobileMenuOpen: false,
+  fullscreen: false,
+  showSidebar: !uiStore.isMobile,
+  loadingStates: {
+    walks: false,
+    map: false,
+    path: false,
+    search: false,
+    location: false
+  }
+})
+
+// Initialize search store
+searchStore.$patch({
+  searchQuery: '',
+  searchMode: 'walks',
+  error: null,
+  isLoading: false,
+  searchHistory: []
+})
 
 // Component refs and state
-const loadingComponent = ref(null);
-const mapComponent = ref(null);
-const sidebarRef = ref(null);
-const drawerRef = ref(null);
-const mobileButtonRef = ref(null);
-const mapContainerRef = ref(null);
-const expandedWalkIds = ref([]);
-const isExpanded = ref(localStorage.getItem("sidebarExpanded") === "true");
-const showLocationSearch = ref(false);
-const showMobileLocationSearch = ref(false);
-const mapReady = ref(false);
-const currentZoom = ref(0); // Track current zoom level
-const markerThresholdZoom = 13; // Increased threshold for better visibility
+const mapComponent = ref(null)
+const sidebarRef = ref(null)
+const drawerRef = ref(null)
+const mobileButtonRef = ref(null)
+const mapContainerRef = ref(null)
+const expandedWalkIds = ref([])
+const isExpanded = ref(localStorage.getItem("sidebarExpanded") === "true")
+const mapReady = ref(false)
+const currentZoom = ref(8)
+const markerThresholdZoom = 13
+const mapContainerVisible = useElementVisibility(mapContainerRef)
+const mapRef = ref(null)
 
 // Add Cornwall bounds constants
 const CORNWALL_BOUNDS = [
   [-5.7, 49.9], // Southwest coordinates
   [-4.2, 50.9]  // Northeast coordinates
-];
+]
 
 // Add Cornwall center
-const CORNWALL_CENTER = [-4.95, 50.4];
+const CORNWALL_CENTER = [-4.95, 50.4]
 
 // Update StoreLocator configuration
 const mapConfig = computed(() => ({
@@ -375,144 +387,255 @@ const mapConfig = computed(() => ({
   center: CORNWALL_CENTER,
   zoom: 9,
   minZoom: 1,
-  maxZoom: 16
-}));
+  maxZoom: 35,
+  terrain: null, // Remove terrain configuration
+  controls: {
+    navigation: true,
+    scale: true,
+    attribution: true
+  }
+}))
 
 // Computed properties
-const error = computed(() => uiStore?.error);
-const isFullscreen = computed(() => uiStore?.fullscreen);
-const showSidebar = computed(() => uiStore?.showSidebar);
-const isMobile = computed(() => uiStore?.isMobile);
-const selectedWalkId = computed(() => props.walkId);
-const availableWalks = computed(() => walksStore.walks);
-const walks = computed(() => 
-  walksStore.walks.map(walk => ({
+const error = computed(() => uiStore?.error)
+const isFullscreen = computed(() => uiStore?.fullscreen)
+const showSidebar = computed(() => uiStore?.showSidebar)
+const isMobile = computed(() => uiStore?.isMobile)
+const selectedWalkId = computed(() => props.walkId)
+const availableWalks = computed(() => walksStore.walks)
+const walks = computed(() => {
+  if (!Array.isArray(walksStore.walks)) return []
+  return walksStore.walks.map(walk => ({
     id: walk.id,
     lat: walk.latitude,
     lng: walk.longitude,
-    title: walk.title,
+    title: walk.title || walk.walk_name,  // Normalize title
     location: walk.location,
     ...walk
   }))
-);
-const mapContainerVisible = useElementVisibility(mapContainerRef);
-
-// Add a ref for animation tracking
-let expandAnimation = null;
+})
 
 // Added to define showRoutesDrawer and avoid Vue warn
-const showRoutesDrawer = ref(false);
+const showRoutesDrawer = ref(false)
 
 // Add new computed property for filtered walks
 const filteredWalks = computed(() => {
-  let results = availableWalks.value;
+  let results = availableWalks.value
 
   if (searchQuery.value?.trim()) {
-    const query = searchQuery.value.toLowerCase().trim();
+    const query = searchQuery.value.toLowerCase().trim()
     results = results.filter(walk => {
       const text = [
         walk.title, 
         walk.location, 
         walk.description
-      ].filter(Boolean).join(' ').toLowerCase();
-      return text.includes(query);
-    });
+      ].filter(Boolean).join(' ').toLowerCase()
+      return text.includes(query)
+    })
   }
 
-  return results;
-});
+  return results
+})
 
 // NEW: Lift search query state
-const searchQuery = ref('');
+const searchQuery = computed({
+  get: () => searchStore.searchQuery,
+  set: (value) => searchStore.setSearchQuery(value)
+})
 
 // Add ref for filtered results
-const filteredResults = ref([]);
+const filteredResults = ref([])
 
-// Updated toggleExpanded with sidebar width and inner elements animation
+// Update the location search visibility computed property
+const isLocationSearchVisible = computed({
+  get: () => searchStore.searchMode === 'locations',
+  set: (value) => {
+    searchStore.setSearchMode(value ? 'locations' : 'walks')
+  }
+})
+
+// Updated toggleExpanded with smoother animations
 const toggleExpanded = () => {
-  isExpanded.value = !isExpanded.value;
-  localStorage.setItem("sidebarExpanded", isExpanded.value);
+  isExpanded.value = !isExpanded.value
+  localStorage.setItem("sidebarExpanded", isExpanded.value)
 
   if (sidebarRef.value) {
-    // Snappier width animation
+    // Animate the sidebar width with easing
     animate(
       sidebarRef.value,
-      { width: isExpanded.value ? "412px" : "80px" },
+      { 
+        width: isExpanded.value ? "412px" : "80px",
+      },
       {
-        duration: 0.3, // Faster duration
-        easing: [0.3, 0, 0.2, 1], // Sharper easing
+        duration: 0.3,
+        easing: [0.32, 0.72, 0, 1], // Custom easing for smooth motion
       }
-    );
+    )
 
-    // Quick item animations
-    const items = sidebarRef.value.querySelectorAll(".m3-rail-item");
-    items.forEach((item, i) => {
+    // Animate the content opacity and translation
+    const contentElements = sidebarRef.value.querySelectorAll(".m3-rail-content")
+    contentElements.forEach((content, i) => {
       animate(
-        item,
+        content,
         {
-          scale: [0.95, 1],
-          opacity: [0.9, 1],
+          opacity: isExpanded.value ? [0, 1] : [1, 0],
+          transform: isExpanded.value 
+            ? ['translateX(-20px)', 'translateX(0)']
+            : ['translateX(0)', 'translateX(-20px)']
         },
         {
           duration: 0.2,
-          delay: i * 0.02, // Tighter stagger
-          easing: [0.3, 0, 0.2, 1],
+          delay: isExpanded.value ? 0.1 + (i * 0.02) : 0,
+          easing: [0.32, 0.72, 0, 1]
         }
-      );
-    });
+      )
+    })
 
-    // Snappy label animations
-    const labels = sidebarRef.value.querySelectorAll(
-      ".m3-rail-label, .m3-rail-fab-text"
-    );
+    // Animate labels separately for smoother text transitions
+    const labels = sidebarRef.value.querySelectorAll(".m3-rail-label, .m3-rail-fab-text")
     labels.forEach((label, i) => {
       animate(
         label,
         {
           opacity: isExpanded.value ? [0, 1] : [1, 0],
-          x: isExpanded.value ? [-12, 0] : [0, -12],
+          transform: isExpanded.value 
+            ? ['translateX(-12px)', 'translateX(0)']
+            : ['translateX(0)', 'translateX(-12px)']
         },
         {
-          duration: 0.15, // Very quick
-          delay: i * 0.015 + (isExpanded.value ? 0.05 : 0), // Minimal delay
-          easing: [0.3, 0, 0.2, 1],
+          duration: 0.2,
+          delay: isExpanded.value ? 0.15 + (i * 0.02) : 0,
+          easing: [0.32, 0.72, 0, 1]
         }
-      );
-    });
+      )
+    })
   }
 
-  // Update sidebar width for Mapbox logo
+  // Update map container width smoothly
+  if (mapContainerRef.value) {
+    animate(
+      mapContainerRef.value,
+      { 
+        marginLeft: isExpanded.value ? "412px" : "80px" 
+      },
+      {
+        duration: 0.3,
+        easing: [0.32, 0.72, 0, 1]
+      }
+    ).finished.then(() => {
+      // Trigger map resize after animation completes
+      if (mapComponent.value?.map) {
+        mapComponent.value.map.resize()
+      }
+    })
+  }
+
+  // Update sidebar width for Mapbox logo with transition
   document.documentElement.style.setProperty(
     "--sidebar-width",
     isExpanded.value ? "412px" : "80px"
-  );
-};
+  )
+}
 
 // Watch for expansion state changes
 watch(isExpanded, (newValue) => {
   nextTick(() => {
-    const scroller = document.querySelector(".m3-scroller");
+    const scroller = document.querySelector(".m3-scroller")
     if (scroller) {
-      scroller.style.opacity = "0";
+      scroller.style.opacity = "0"
       setTimeout(() => {
-        scroller.style.opacity = "1";
-      }, 300);
+        scroller.style.opacity = "1"
+      }, 300)
     }
-  });
-});
+  })
+})
 
 const handleWalkSelection = async (walk) => {
-  console.log("Walk selection handler called:", walk?.id);
   if (walk) {
-    await router.push({ name: "walk-detail", params: { id: walk.id } });
+    await router.push({ 
+      name: 'walk-detail',
+      params: { id: walk.id }
+    })
+    
+    if (!isExpanded.value) {
+      isExpanded.value = true
+      localStorage.setItem("sidebarExpanded", "true")
+    }
+
+    // Load and display the route
+    try {
+      const routeData = await getGeometry(walk.id)
+      
+      // Wait for map and source to be ready
+      if (mapRef.value && mapRef.value.getSource('active-route')) {
+        console.log('Setting route data:', routeData); // Debug log
+
+        // Ensure the data is in the correct GeoJSON format
+        const geoJsonData = {
+          type: 'Feature',
+          properties: {},
+          geometry: {
+            type: 'LineString',
+            coordinates: routeData.geometry.coordinates
+          }
+        };
+
+        // Update the source data
+        mapRef.value.getSource('active-route').setData(geoJsonData);
+
+        // Calculate bounds
+        if (routeData.geometry.coordinates.length > 0) {
+          const bounds = new mapboxgl.LngLatBounds();
+          
+          // Extend bounds with all coordinates
+          for (const coord of routeData.geometry.coordinates) {
+            bounds.extend(coord);
+          }
+
+          // Fit map to route bounds
+          mapRef.value.fitBounds(bounds, {
+            padding: 50,
+            pitch: 45,
+            bearing: 0,
+            duration: 1500
+          });
+        }
+      } else {
+        console.error('Map or source not ready');
+      }
+    } catch (err) {
+      console.error('Error loading route:', err)
+      uiStore?.setError('Failed to load route data')
+    }
   } else {
-    await router.push({ name: "home" });
+    await router.push({ name: "home" })
+    
+    // Clear route when deselecting
+    if (mapRef.value?.getSource('active-route')) {
+      mapRef.value.getSource('active-route').setData({
+        type: 'Feature',
+        properties: {},
+        geometry: {
+          type: 'LineString',
+          coordinates: []
+        }
+      });
+
+      // Reset map view
+      mapRef.value.flyTo({
+        center: CORNWALL_CENTER,
+        zoom: 9,
+        pitch: 0,
+        bearing: 0,
+        duration: 1500
+      });
+    }
   }
 
   if (isMobile.value) {
-    uiStore?.setMobileMenuOpen(false);
+    uiStore?.setMobileMenuOpen(false)
   }
-};
+}
 
 // Watch effects
 watch(
@@ -520,22 +643,22 @@ watch(
   ([newExpanded, newVisible]) => {
     if (!newVisible || !newExpanded) {
       nextTick(() => {
-        const walkList = document.querySelector(".walk-list-container");
+        const walkList = document.querySelector(".walk-list-container")
         if (walkList) {
-          walkList.style.pointerEvents = "none";
+          walkList.style.pointerEvents = "none"
         }
-      });
+      })
     } else {
       setTimeout(() => {
-        const walkList = document.querySelector(".walk-list-container");
+        const walkList = document.querySelector(".walk-list-container")
         if (walkList) {
-          walkList.style.pointerEvents = "auto";
+          walkList.style.pointerEvents = "auto"
         }
-      }, 300);
+      }, 300)
     }
   },
   { immediate: true }
-);
+)
 
 // Ensure proper cleanup of items when visibility changes
 watch(
@@ -544,18 +667,18 @@ watch(
     if (!newVisible || !newExpanded) {
       // Wait for transition to start
       requestAnimationFrame(() => {
-        const scroller = document.querySelector(".vue-recycle-scroller");
+        const scroller = document.querySelector(".vue-recycle-scroller")
         if (scroller && scroller.__vueParentComponent?.ctx) {
-          const ctx = scroller.__vueParentComponent.ctx;
+          const ctx = scroller.__vueParentComponent.ctx
           if (typeof ctx.updateSize === "function") {
-            ctx.updateSize();
+            ctx.updateSize()
           }
         }
-      });
+      })
     }
   },
   { immediate: true }
-);
+)
 
 // Updated sidebar animation functions with MD3 motion specs
 async function onSidebarEnter(el, onComplete) {
@@ -590,19 +713,19 @@ async function onSidebarEnter(el, onComplete) {
           }
         ).finished
     ),
-  ]);
+  ])
 
-  onComplete();
+  onComplete()
 }
 
 async function onSidebarLeave(el, onComplete) {
-  const currentWidth = isExpanded.value ? "412px" : "80px";
+  const currentWidth = isExpanded.value ? "412px" : "80px"
   const widthAnim = animate(
     el,
     { width: [currentWidth, "80px"] },
     { duration: 0.4, easing: "spring(1, 80, 10, 0)" }
-  );
-  const innerEls = el.querySelectorAll(".m3-rail-item, .m3-rail-fab-text");
+  )
+  const innerEls = el.querySelectorAll(".m3-rail-item, .m3-rail-fab-text")
   const innerAnims = Array.from(innerEls).map(
     (child, i) =>
       animate(
@@ -613,9 +736,9 @@ async function onSidebarLeave(el, onComplete) {
         },
         { delay: i * 0.05, duration: 0.2, easing: "ease-in" }
       ).finished
-  );
-  await Promise.all([widthAnim.finished, ...innerAnims]);
-  onComplete();
+  )
+  await Promise.all([widthAnim.finished, ...innerAnims])
+  onComplete()
 }
 
 async function onMobileButtonEnter(el, onComplete) {
@@ -630,10 +753,10 @@ async function onMobileButtonEnter(el, onComplete) {
       duration: 0.4,
       easing: [0.2, 0, 0, 1], // MD3 emphasized
     }
-  );
+  )
 
-  await animation.finished;
-  onComplete();
+  await animation.finished
+  onComplete()
 }
 
 async function onMobileButtonLeave(el, onComplete) {
@@ -648,10 +771,10 @@ async function onMobileButtonLeave(el, onComplete) {
       duration: 0.3,
       easing: [0.4, 0, 1, 1], // MD3 emphasized-decelerate
     }
-  );
+  )
 
-  await animation.finished;
-  onComplete();
+  await animation.finished
+  onComplete()
 }
 
 async function onDrawerEnter(el, onComplete) {
@@ -674,9 +797,9 @@ async function onDrawerEnter(el, onComplete) {
         easing: [0.2, 0, 0, 1],
       }
     ).finished,
-  ]);
+  ])
 
-  onComplete();
+  onComplete()
 }
 
 async function onDrawerLeave(el, onComplete) {
@@ -696,9 +819,9 @@ async function onDrawerLeave(el, onComplete) {
         easing: [0.4, 0, 1, 1],
       }
     ).finished,
-  ]);
+  ])
 
-  onComplete();
+  onComplete()
 }
 
 // Add new animation functions for walks section
@@ -714,9 +837,9 @@ async function onWalksSectionEnter(el, onComplete) {
       duration: 0.2,
       easing: [0.3, 0, 0.2, 1],
     }
-  ).finished;
+  ).finished
 
-  onComplete();
+  onComplete()
 }
 
 async function onWalksSectionLeave(el, onComplete) {
@@ -731,9 +854,9 @@ async function onWalksSectionLeave(el, onComplete) {
       duration: 0.15,
       easing: [0.3, 0, 0.2, 1],
     }
-  ).finished;
+  ).finished
 
-  onComplete();
+  onComplete()
 }
 
 // Add new animation functions
@@ -749,8 +872,8 @@ async function onPanelEnter(el, onComplete) {
       duration: 0.2,
       easing: [0.3, 0, 0.2, 1],
     }
-  ).finished;
-  onComplete();
+  ).finished
+  onComplete()
 }
 
 async function onPanelLeave(el, onComplete) {
@@ -765,8 +888,8 @@ async function onPanelLeave(el, onComplete) {
       duration: 0.15,
       easing: [0.3, 0, 0.2, 1],
     }
-  ).finished;
-  onComplete();
+  ).finished
+  onComplete()
 }
 
 // Route update handling using composition API
@@ -774,208 +897,241 @@ watch(
   () => props.walkId,
   async (newId, oldId) => {
     if (newId !== oldId) {
-      const walk = walksStore.getWalkById(newId);
+      const walk = walksStore.getWalkById(newId)
       if (walk) {
-        walksStore.setSelectedWalk(walk);
+        walksStore.setSelectedWalk(walk)
       }
     }
   }
-);
+)
 
 // Methods
 const initializeData = async () => {
   try {
-    uiStore?.setLoading(true);
-    loadingComponent.value?.startLoading("Loading walks...");
-    console.debug("WalkInterface.vue: Starting data initialization");
+    uiStore?.setLoading(true)
+    console.debug("WalkInterface.vue: Starting data initialization")
 
-    await walksStore.loadWalks();
+    await walksStore.loadWalks()
     console.debug(
       "WalkInterface.vue: Walks loaded from store:",
       walksStore.walks
-    );
+    )
 
     // Ensure walks are loaded before showing the sidebar
-    await nextTick();
+    await nextTick()
 
     if (walksStore.walks.length && !isMobile.value) {
-      uiStore?.setSidebarVisibility(true);
+      uiStore?.setSidebarVisibility(true)
       console.debug(
         "WalkInterface.vue: Sidebar set visible, walks count:",
         walksStore.walks.length
-      );
+      )
 
       // Force a reflow to ensure proper rendering
-      await nextTick();
-      const walkList = document.querySelector(".walk-list");
+      await nextTick()
+      const walkList = document.querySelector(".walk-list")
       if (walkList) {
-        walkList.style.display = "none";
-        walkList.offsetHeight; // Force reflow
-        walkList.style.display = "";
+        walkList.style.display = "none"
+        walkList.offsetHeight // Force reflow
+        walkList.style.display = ""
       }
     }
   } catch (error) {
-    console.error("WalkInterface.vue: Data initialization failed:", error);
-    uiStore?.setError(error.message);
+    console.error("WalkInterface.vue: Data initialization failed:", error)
+    uiStore?.setError(error.message)
   } finally {
-    uiStore?.setLoading(false);
-    loadingComponent.value?.stopLoading();
-    console.debug("WalkInterface.vue: Loading stopped");
+    uiStore?.setLoading(false)
+    console.debug("WalkInterface.vue: Loading stopped")
   }
-};
+}
 
 watch(
   availableWalks,
   (newVal) => {
-    console.debug("WalkInterface.vue: availableWalks updated:", newVal);
+    console.debug("WalkInterface.vue: availableWalks updated:", newVal)
   },
   { immediate: true }
-);
+)
 
 const handleMapCreated = (map) => {
-  uiStore?.setMapLoading(false);
-  // Add keyboard event listeners for accessibility
-  map.getCanvas().setAttribute('tabindex', '0');
-  map.getCanvas().addEventListener('keydown', handleMapKeyboard);
-
-  // Set map instance in useMap composable
-  setMapInstance(map);
-
+  mapRef.value = map
+  setMapInstance(map)
+  
   // Get initial zoom level
-  currentZoom.value = map.getZoom();
+  currentZoom.value = map.getZoom()
+  
+  // Add source and layer for route display
+  map.on('load', () => {
+    // Add empty route source with proper GeoJSON structure
+    map.addSource('active-route', {
+      'type': 'geojson',
+      'data': {
+        'type': 'Feature',
+        'properties': {},
+        'geometry': {
+          'type': 'LineString',
+          'coordinates': []
+        }
+      }
+    });
 
-  // Update zoom level on map zoom
-  map.on('zoom', () => {
-    currentZoom.value = map.getZoom();
-  });
-};
- 
+    // Add route layer with proper styling
+    map.addLayer({
+      'id': 'active-route',
+      'type': 'line',
+      'source': 'active-route',
+      'layout': {
+        'line-join': 'round',
+        'line-cap': 'round'
+      },
+      'paint': {
+        'line-color': 'rgb(var(--md-sys-color-primary))',
+        'line-width': 4
+      }
+    });
+
+    // Enable map interactions after load
+    map.dragPan.enable()
+    map.scrollZoom.enable()
+  })
+  
+  map.on('zoom', handleMapZoom)
+}
+
 // Handle map keyboard navigation
 const handleMapKeyboard = (e) => {
-  const KEYBOARD_OFFSET = 50; // pixels to pan per key press
+  const KEYBOARD_OFFSET = 50 // pixels to pan per key press
   
-  if (!e.target.mapInstance) return;
-  const map = e.target.mapInstance;
+  if (!e.target.mapInstance) return
+  const map = e.target.mapInstance
   
   switch(e.key) {
     case 'ArrowRight':
-      map.panBy([KEYBOARD_OFFSET, 0]);
-      break;
+      map.panBy([KEYBOARD_OFFSET, 0])
+      break
     case 'ArrowLeft':
-      map.panBy([-KEYBOARD_OFFSET, 0]);
-      break;
+      map.panBy([-KEYBOARD_OFFSET, 0])
+      break
     case 'ArrowUp':
-      map.panBy([0, -KEYBOARD_OFFSET]);
-      break;
+      map.panBy([0, -KEYBOARD_OFFSET])
+      break
     case 'ArrowDown':
-      map.panBy([0, KEYBOARD_OFFSET]);
-      break;
+      map.panBy([0, KEYBOARD_OFFSET])
+      break
   }
-};
+}
 
-// Computed property to determine which markers to display
+// Update displayMarkers computed property
 const displayMarkers = computed(() => {
-  return filteredResults.value.map(walk => ({
-    type: currentZoom.value >= markerThresholdZoom ? 'marker' : 'point',
-    walk: walk
-  }));
-});
+  if (!walks.value) return []
+  
+  return walks.value.map(walk => ({
+    walk,
+    type: currentZoom.value >= markerThresholdZoom ? 'marker' : 'point'
+  })).filter(item => 
+    // Only show detailed markers when zoomed in
+    currentZoom.value >= markerThresholdZoom ? item.type === 'marker' : item.type === 'point'
+  )
+})
 
-const handleItemSelect = async (item) => {
-  console.log("StoreLocator item selected:", item);
-  await handleWalkSelection(item);
-};
+// Add marker classes helper
+const markerClasses = (item) => ({
+  'marker-selected': selectedWalkId.value === item.walk.id,
+  'marker-detailed': item.type === 'marker',
+  'marker-point': item.type === 'point'
+})
 
 const handleWalkExpanded = ({ walkId, expanded }) => {
   console.debug("WalkInterface.vue: Walk expansion toggled:", {
     walkId,
     expanded,
-  });
+  })
 
   expandedWalkIds.value = expanded
     ? [...new Set([...expandedWalkIds.value, walkId])]
-    : expandedWalkIds.value.filter((id) => id !== walkId);
+    : expandedWalkIds.value.filter((id) => id !== walkId)
 
   console.debug(
     "WalkInterface.vue: Updated expandedWalkIds:",
     expandedWalkIds.value
-  );
+  )
 
-  localStorage.setItem("expandedWalks", JSON.stringify(expandedWalkIds.value));
-};
+  localStorage.setItem("expandedWalks", JSON.stringify(expandedWalkIds.value))
+}
 
 const toggleSidebar = () => {
-  uiStore?.toggleSidebar();
-};
+  uiStore?.toggleSidebar()
+}
 
 const handleFabClick = async () => {
   // Navigate home
-  await router.push({ name: "home" });
+  await router.push({ name: "home" })
   // Expand the sidebar if it's not already expanded
   if (!isExpanded.value) {
-    isExpanded.value = true;
-    localStorage.setItem("sidebarExpanded", "true");
+    isExpanded.value = true
+    localStorage.setItem("sidebarExpanded", "true")
   }
-};
-
-const toggleLocationSearch = () => {
-  showLocationSearch.value = !showLocationSearch.value;
-};
+}
 
 const handleLocationSelected = async (location) => {
-  if (location) {
-    await locationStore.findNearbyWalks();
-  }
-};
+  if (!location?.center) return
+  
+  await searchStore.handleLocationSelected(location)
+  await flyToLocation({
+    center: location.center,
+    zoom: 14,
+    pitch: 45
+  })
+}
 
 // Window resize handling
-let resizeTimeout;
+let resizeTimeout
 const handleResize = () => {
-  clearTimeout(resizeTimeout);
+  clearTimeout(resizeTimeout)
   resizeTimeout = setTimeout(() => {
     if (mapComponent.value?.map?.map) {
-      mapComponent.value.map.map.resize();
+      mapComponent.value.map.map.resize()
     }
-  }, 250);
-};
+  }, 250)
+}
 
 // Watch for changes in walk data
 watch(
   () => walksStore.walks,
   (newWalks) => {
-    console.log("Store walks updated:", newWalks?.length);
+    console.log("Store walks updated:", newWalks?.length)
     if (newWalks?.length > 0 && !showSidebar.value && !isMobile.value) {
       nextTick(() => {
-        uiStore?.setSidebarVisibility(true);
-      });
+        uiStore?.setSidebarVisibility(true)
+      })
     }
   },
   { deep: true, immediate: true }
-);
+)
 
 // Add dimension logging
 const logContainerDimensions = () => {
-  const sidebar = document.querySelector(".sidebar");
-  const content = document.querySelector(".sidebar-content");
+  const sidebar = document.querySelector(".sidebar")
+  const content = document.querySelector(".sidebar-content")
 
   console.debug("WalkInterface dimensions:", {
     sidebar: sidebar?.getBoundingClientRect(),
     content: content?.getBoundingClientRect(),
-  });
-};
+  })
+}
 
 // Watch for sidebar visibility
 watch(showSidebar, (visible) => {
-  console.log("Sidebar visibility changed:", visible);
+  console.log("Sidebar visibility changed:", visible)
   if (visible) {
     nextTick(() => {
-      logContainerDimensions();
+      logContainerDimensions()
       if (mapComponent.value?.map?.map) {
-        mapComponent.value.map.map.resize();
+        mapComponent.value.map.map.resize()
       }
-    });
+    })
   }
-});
+})
 
 const mapContainerStyle = computed(() => ({
   flex: "1 1 auto",
@@ -986,134 +1142,318 @@ const mapContainerStyle = computed(() => ({
 
 // Add handler for filtered walks
 const updateDisplayedWalks = (walks) => {
-  filteredResults.value = walks;
-};
+  filteredResults.value = walks
+}
 
 // Update search query watcher
 watch(searchQuery, (newQuery) => {
   // If search is cleared, reset filtered results to all walks
   if (!newQuery?.trim()) {
-    filteredResults.value = availableWalks.value;
+    filteredResults.value = availableWalks.value
   }
-});
+})
 
 // Initialize filtered results
 onMounted(() => {
-  filteredResults.value = availableWalks.value;
-});
+  filteredResults.value = availableWalks.value
+})
 
-onMounted(async () => {
+const { initializeResponsiveState } = uiStore
+
+// Update initialization sequence
+const initializeInterface = async () => {
   try {
-    const savedExpandedIds = JSON.parse(
-      localStorage.getItem("expandedWalks") || "[]"
-    );
-    if (Array.isArray(savedExpandedIds)) {
-      expandedWalkIds.value = savedExpandedIds;
+    const cleanup = initializeResponsiveState()
+    await walksStore.loadWalks()
+    
+    if (walksStore.walks.length && !isMobile.value) {
+      uiStore.setSidebarVisibility(true)
     }
-  } catch (e) {
-    console.error("Failed to load saved expanded states:", e);
+    
+    if (props.walkId) {
+      const walk = walksStore.getWalkById(props.walkId)
+      if (walk) {
+        await handleWalkSelection(walk)
+      }
+    }
+  } catch (error) {
+    console.error("Failed to initialize:", error)
+    uiStore.setError(error.message)
   }
+}
 
-  window.addEventListener("resize", handleResize);
-  await initializeData();
+onMounted(initializeInterface)
 
-  const walkList = document.querySelector(".walk-list-container");
-  if (walkList) {
-    console.log("Initial walk list styles:", {
-      pointerEvents: window.getComputedStyle(walkList).pointerEvents,
-      transform: window.getComputedStyle(walkList).transform,
-      zIndex: window.getComputedStyle(walkList).zIndex,
-    });
+// Update computed properties
+const showNavigationRail = computed(() => 
+  !isMobile.value && showSidebar.value && !isFullscreen.value
+)
+
+const handleMapZoom = (e) => {
+  currentZoom.value = e.target.getZoom()
+}
+
+// Add to your existing setup
+onMounted(() => {
+  if (mapRef.value) {
+    mapRef.value.on('zoom', handleMapZoom)
   }
-});
+})
 
-onBeforeUnmount(() => {
-  window.removeEventListener("resize", handleResize);
-  clearTimeout(resizeTimeout);
-});
+// Add geojsonData computed property
+const geojsonData = computed(() => ({
+  type: 'FeatureCollection',
+  features: walks.value.map(walk => ({
+    type: 'Feature',
+    geometry: {
+      type: 'Point',
+      coordinates: [walk.longitude || walk.lng, walk.latitude || walk.lat]
+    },
+    properties: {
+      id: walk.id,
+      title: walk.title || walk.walk_name,
+      difficulty: walk.difficulty,
+      duration: walk.duration
+    }
+  }))
+}))
+
+// Add cluster click handler
+const handleClusterClick = (e) => {
+  const features = e.target.queryRenderedFeatures(e.point, {
+    layers: ['clusters']
+  })
+
+  const clusterId = features[0].properties.cluster_id
+  e.target.getSource('walks').getClusterExpansionZoom(
+    clusterId,
+    (err, zoom) => {
+      if (err) return
+
+      e.target.easeTo({
+        center: features[0].geometry.coordinates,
+        zoom: zoom
+      })
+    }
+  )
+}
+
+// Add computed for selected walk
+const selectedWalk = computed(() => {
+  if (!selectedWalkId.value) return null
+  return walks.value.find(walk => walk.id === selectedWalkId.value)
+})
+
+// Add back button handler
+const handleBackClick = async () => {
+  if (mapComponent.value?.map) {
+    mapComponent.value.map.flyTo({
+      center: CORNWALL_CENTER,
+      zoom: 9,
+      pitch: 0,
+      bearing: 0,
+      duration: 1500,
+      essential: true
+    })
+  }
+  await router.push({ name: 'home' })
+}
+
+// Add watch for route changes to handle direct URL access
+watch(
+  () => route.params.id,
+  async (newId) => {
+    if (newId) {
+      const walk = walks.value.find(w => w.id === newId)
+      if (walk) {
+        await handleWalkSelection(walk)
+      }
+    }
+  },
+  { immediate: true }
+)
+
 </script>
 
 <style>
 @import '../../css/material3.css';
 
-/* Update marker styles */
-.map-marker {
-  cursor: pointer;
-  transition: all 0.2s ease-out;
+/* Navigation Rail Styles */
+.m3-navigation-rail {
+  display: flex;
+  flex-direction: column;
+  width: 80px;
+  height: 100%;
+  background: rgb(var(--md-sys-color-surface-container));
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  z-index: 10;
+  border-right: 1px solid rgb(var(--md-sys-color-outline-variant));
 }
 
-.map-marker:hover {
-  transform: scale(1.05);
+.m3-navigation-rail.is-expanded {
+  width: 412px;
 }
 
-.map-marker.is-simple {
-  cursor: pointer;
+.m3-rail-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 0;
+  gap: 4px;
+  flex-shrink: 0;
 }
 
-.map-marker.is-detailed {
-  z-index: 2;
-}
-
-.map-marker.is-detailed .marker-content {
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  padding: 8px;
-  min-width: 120px;
-  transform: translate(-50%, -50%);
-  pointer-events: auto;
-}
-
-.map-marker.active {
-  z-index: 3;
-}
-
-.map-marker.active .marker-content {
-  background-color: var(--md-sys-color-primary-container);
-  color: var(--md-sys-color-on-primary-container);
-}
-
-.map-marker.nearby .marker-content {
-  border: 2px solid var(--md-sys-color-primary);
-}
-
-/* Cluster styles */
-.cluster-marker {
-  background-color: white;
-  border: 2px solid var(--md-sys-color-primary);
-  border-radius: 50%;
-  color: var(--md-sys-color-primary);
-  width: 36px;
-  height: 36px;
+.m3-rail-fab {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 600;
-  font-size: 14px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  transition: all 0.2s ease-out;
+  gap: 12px;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: rgb(var(--md-sys-color-primary-container));
+  color: rgb(var(--md-sys-color-on-primary-container));
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin: 4px 0;
 }
 
-.cluster-marker:hover {
-  transform: scale(1.1);
-  background-color: var(--md-sys-color-primary);
-  color: white;
+.m3-rail-fab:hover {
+  background: rgb(var(--md-sys-color-primary-container-hover));
 }
 
-/* Improved marker styles */
-.marker-content {
-  background: white;
-  border-radius: 8px;
-  padding: 8px 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  border: 1px solid rgba(0,0,0,0.1);
-  min-width: 140px;
-  transform: translateY(-50%);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+.m3-rail-fab-text {
+  font-size: 1rem;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s ease;
 }
 
-.marker-content:hover {
-  transform: translateY(-50%) scale(1.05);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+.is-expanded .m3-rail-fab {
+  width: 90%;
+  margin: 4px 16px;
+}
+
+.is-expanded .m3-rail-fab-text {
+  opacity: 1;
+}
+
+.m3-rail-items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+  flex-shrink: 0;
+}
+
+.m3-rail-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  width: 100%;
+  border-radius: 16px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0 12px;
+}
+
+.m3-rail-item:hover {
+  background: rgb(var(--md-sys-color-surface-container-highest));
+}
+
+.m3-rail-item.is-active {
+  background: rgb(var(--md-sys-color-secondary-container));
+  color: rgb(var(--md-sys-color-on-secondary-container));
+}
+
+.m3-rail-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.m3-rail-icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.m3-rail-icon {
+  font-size: 24px;
+}
+
+.m3-rail-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.is-expanded .m3-rail-label {
+  opacity: 1;
+}
+
+.m3-rail-content-area {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Location Panel */
+.m3-location-panel {
+  padding: 8px;
+  background: rgb(var(--md-sys-color-surface-container));
+  border-bottom: 1px solid rgb(var(--md-sys-color-outline-variant));
+}
+
+/* Walks List */
+.m3-walks-list {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Detail View */
+.m3-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: rgb(var(--md-sys-color-surface-container));
+  border-bottom: 1px solid rgb(var(--md-sys-color-outline-variant));
+}
+
+.m3-title-large {
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: rgb(var(--md-sys-color-on-surface));
+  margin: 0;
+  line-height: 1.4;
+}
+
+.m3-walk-detail {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+}
+
+.m3-elevated-card {
+  background: rgb(var(--md-sys-color-surface-container));
+  border-radius: 16px;
+  box-shadow: var(--md-sys-elevation-1);
+  margin-bottom: 16px;
 }
 </style>

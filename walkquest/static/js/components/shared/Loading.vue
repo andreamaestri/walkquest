@@ -69,10 +69,11 @@ defineExpose({
   gap: 16px;
 }
 
+/* Updated styles for a polished MD3 loading indicator */
 .m3-circular-progress {
   width: 48px;
   height: 48px;
-  animation: rotate 1.4s linear infinite;
+  animation: rotate 0.9s linear infinite; /* Faster, smoother rotation */
 }
 
 .m3-circular-progress-svg {
@@ -88,7 +89,7 @@ defineExpose({
   stroke: rgb(var(--md-sys-color-primary));
   stroke-dasharray: 126;
   stroke-dashoffset: 126;
-  animation: progress 1.4s ease-in-out infinite;
+  animation: progress 0.9s cubic-bezier(0.4, 0.0, 0.2, 1) infinite; /* Refined easing */
 }
 
 .m3-loading-message {
@@ -110,7 +111,7 @@ defineExpose({
     stroke-dashoffset: 126;
   }
   50% {
-    stroke-dashoffset: 32;
+    stroke-dashoffset: 34;  /* Smoother sweep */
   }
   100% {
     stroke-dashoffset: 126;

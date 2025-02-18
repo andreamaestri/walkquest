@@ -1,63 +1,80 @@
 <template>
-  <div>
-    <div v-if="isLoading || error" class="loading-overlay">
-      <div v-if="isLoading" class="loading-content">
-        <div class="loading-spinner"></div>
-        <p v-if="message" class="loading-message">{{ message }}</p>
+  <div class="loading-overlay" role="alert" aria-live="polite">
+    <div class="loading-content">
+      <div class="loading-spinner">
+        <iconify-icon icon="mdi:loading" class="animate-spin text-4xl" />
       </div>
-      <div v-if="error" class="error-message">
-        {{ error }}
+      <div v-if="message" class="loading-message">
+        {{ message }}
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onBeforeUnmount, watch } from 'vue'
+import { ref, watch } from 'vue'
+import { useUiStore } from '../stores/ui'
 
-const isLoading = ref(false)
-const error = ref(null)
+const uiStore = useUiStore()
 const message = ref('')
-const timeoutId = ref(null)
 
 const startLoading = (msg = '') => {
-  isLoading.value = true
   message.value = msg
-  error.value = null
 }
 
-const stopLoading = (err = null) => {
-  isLoading.value = false
-  error.value = err
+const stopLoading = () => {
+  message.value = ''
 }
 
-const handleError = (err) => {
-  console.error('Loading error:', err)
-  error.value = err?.message || 'An unexpected error occurred'
-  stopLoading(error.value)
-}
-
-// Watch for loading state changes
-watch(isLoading, (value) => {
-  if (!value) {
-    timeoutId.value = setTimeout(() => {
-      error.value = null
-      message.value = ''
-    }, 300)
-  }
-})
-
-// Cleanup on component destruction
-onBeforeUnmount(() => {
-  if (timeoutId.value) {
-    clearTimeout(timeoutId.value)
-  }
-})
-
-// Expose methods for parent components
 defineExpose({
   startLoading,
-  stopLoading,
-  handleError
+  stopLoading
 })
+
+// Watch loading states to provide specific feedback
+watch(() => uiStore.loadingStates, (states) => {
+  if (states.walks) {
+    startLoading('Loading walks...')
+  } else if (states.location) {
+    startLoading('Finding nearby walks...')
+  } else if (states.map) {
+    startLoading('Loading map...')
+  } else if (states.search) {
+    startLoading('Searching...')
+  } else {
+    stopLoading()
+  }
+}, { deep: true })
 </script>
+
+<style scoped>
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgb(var(--md-sys-color-surface) / 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+  border-radius: 16px;
+  background: rgb(var(--md-sys-color-surface-container));
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.loading-spinner {
+  color: rgb(var(--md-sys-color-primary));
+}
+
+.loading-message {
+  color: rgb(var(--md-sys-color-on-surface));
+  font-size: 1rem;
+}
+</style>

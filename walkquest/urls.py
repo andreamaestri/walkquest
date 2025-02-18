@@ -5,6 +5,7 @@ from django.urls import include
 from django.urls import path
 from django.views import defaults as default_views
 from django.views.generic import TemplateView
+from . import views
 
 urlpatterns = [
     # Django Admin
@@ -20,6 +21,8 @@ urlpatterns = [
 
     # Walks app URLs (includes both regular views and API)
     path("walks/", include("walkquest.walks.urls", namespace="walks")),
+    path('walks/<uuid:id>', views.index, name='walk-detail'),
+    path('api/walks/<uuid:id>/geometry', views.walk_geometry, name='walk-geometry'),
     *static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT),
 ]
 

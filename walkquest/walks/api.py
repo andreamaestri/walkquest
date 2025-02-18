@@ -49,20 +49,19 @@ api = NinjaAPI(
 )
 router = Router()
 
-@api.get("/")
+@router.get("/", response=dict)
 def api_root(request):
     """API root endpoint that returns available endpoints"""
     return {
         "version": "1.0.0",
         "endpoints": {
             "walks": "/walks",
-            "walks_detail": "/walks/{walk_id}",
-            "walks_geometry": "/walks/{walk_id}/geometry",
-            "walks_favorite": "/walks/{walk_id}/favorite",
-            "walks_filters": "/walks/filters",
+            "walk_detail": "/walks/{id}",
+            "walk_geometry": "/walks/{id}/geometry",
+            "walk_favorite": "/walks/{id}/favorite",
+            "filters": "/filters",
             "tags": "/tags",
-            "config": "/config",
-            "docs": "/docs"
+            "config": "/config"
         }
     }
 
@@ -140,8 +139,8 @@ def list_walks(
         print(f"Error in list_walks: {e}")
         return []
 
-@router.get("/walks/{walk_id}", response=WalkOutSchema)
-def get_walk(request: HttpRequest, walk_id: UUID):
+@router.get("/walks/{id}", response=WalkOutSchema)
+def get_walk(request: HttpRequest, id: UUID):
     """Get a single walk"""
     try:
         walk = Walk.objects.prefetch_related(
@@ -155,7 +154,7 @@ def get_walk(request: HttpRequest, walk_id: UUID):
                     user=request.user
                 )
             ) if request.user.is_authenticated else Value(False)
-        ).get(id=walk_id)
+        ).get(id=id)
 
         # pubs_list handling removed (not used)
         formatted_pubs = []
@@ -189,18 +188,18 @@ def get_walk(request: HttpRequest, walk_id: UUID):
         )
         return walk_data
     except Walk.DoesNotExist:
-        print(f"Walk with ID {walk_id} does not exist.")
+        print(f"Walk with ID {id} does not exist.")
         return JsonResponse({'error': 'Walk matching query does not exist.'}, status=404)
 
 # Removed unused marker endpoints: /walks/markers and /walks/markers/geojson
 
-@router.post("/walks/{walk_id}/favorite")
-def toggle_favorite(request: HttpRequest, walk_id: UUID):
+@router.post("/walks/{id}/favorite")
+def toggle_favorite(request: HttpRequest, id: UUID):
     """Toggle favorite status for a walk"""
     if not request.user.is_authenticated:
         return {"status": "error", "message": "Authentication required"}
     
-    walk = get_object_or_404(Walk, id=walk_id)
+    walk = get_object_or_404(Walk, id=id)
     if walk.favorites.filter(id=request.user.id).exists():
         walk.favorites.remove(request.user)
         is_favorite = False
@@ -210,7 +209,7 @@ def toggle_favorite(request: HttpRequest, walk_id: UUID):
 
     return {
         "status": "success",
-        "walk_id": str(walk_id),
+        "walk_id": str(id),
         "is_favorite": is_favorite
     }
 
@@ -227,7 +226,7 @@ class MarkerSchema(Schema):
     longitude: float
 
 # List tags
-@api.get("/tags", response=List[TagResponseSchema])
+@router.get("/tags", response=List[TagResponseSchema])
 def list_tags(request):
     """Get all walk tags with usage counts"""
     tags = []
@@ -295,8 +294,8 @@ def get_config(request):
         }
     }
 
-@router.get("/walks/filters")
-def get_walk_filters(request):
+@router.get("/filters")
+def get_filters(request):
     """Get available filter options"""
     return {
         "difficulties": [choice[0] for choice in Walk.DIFFICULTY_CHOICES],
@@ -304,5 +303,45 @@ def get_walk_filters(request):
         "categories": list(WalkCategoryTag.objects.values('name', 'slug')),
         "features": list(WalkFeatureTag.objects.values('name', 'slug')),
     }
+
+class GeometrySchema(Schema):
+    type: str = "Feature"
+    geometry: dict
+    properties: dict
+
+@router.get("/walks/{id}/geometry", response=GeometrySchema)
+def get_walk_geometry(request: HttpRequest, id: UUID):
+    """Get GeoJSON geometry for a walk route"""
+    try:
+        walk = get_object_or_404(Walk.objects.only(
+            'id', 
+            'walk_name',
+            'distance',
+            'route_geometry'
+        ), id=id)
+        
+        # Convert the geometry to GeoJSON
+        if walk.route_geometry:
+            geojson = orjson.loads(walk.route_geometry.geojson)
+            
+            # Create a GeoJSON Feature
+            feature = {
+                "type": "Feature",
+                "geometry": geojson,
+                "properties": {
+                    "id": str(walk.id),
+                    "name": walk.walk_name,
+                    "distance": float(walk.distance) if walk.distance else 0
+                }
+            }
+            
+            return feature
+            
+    except Exception as e:
+        print(f"Error fetching geometry for walk {id}: {e}")
+        return JsonResponse(
+            {"error": "Failed to fetch route geometry"}, 
+            status=404
+        )
 
 api.add_router("/", router)

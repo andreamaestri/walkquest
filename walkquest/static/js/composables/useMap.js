@@ -1,33 +1,27 @@
 import { ref } from 'vue'
 
-const mapInstance = ref(null)
+let mapInstance = null
 
 export function useMap() {
   const setMapInstance = (map) => {
-    mapInstance.value = map
+    mapInstance = map
   }
 
-  const flyToLocation = async ({ center, zoom = 14, pitch = 45 }) => {
-    if (!mapInstance.value) return
-
-    return new Promise((resolve) => {
-      mapInstance.value.flyTo({
-        center,
-        zoom,
-        pitch,
-        duration: 2000,
-        essential: true
-      })
-
-      mapInstance.value.once('moveend', () => {
-        resolve()
-      })
+  const flyToLocation = async ({ center, zoom, pitch = 0 }) => {
+    if (!mapInstance) return
+    
+    await mapInstance.flyTo({
+      center,
+      zoom,
+      pitch,
+      duration: 1000,
+      essential: true
     })
   }
 
   return {
+    mapInstance: ref(mapInstance),
     setMapInstance,
-    flyToLocation,
-    mapInstance
+    flyToLocation
   }
 }
