@@ -493,58 +493,78 @@ const loading = ref(false)
 
 // Update handleWalkSelection with simpler GeoJSON handling
 const handleWalkSelection = async (walk) => {
+  const resetSelection = () => {
+    routeData.value = null
+    updateAllMarkerColors(null)
+  }
+
   if (!walk) {
-    routeData.value = null;
-    updateAllMarkerColors(null); // Reset all markers
-    return;
+    resetSelection()
+    return
   }
 
   try {
-    loading.value = true;
-    console.log("🚶‍♂️ Fetching geometry for walk:", walk.id);
+    loading.value = true
+    console.log("🚶‍♂️ Fetching geometry for walk:", walk.id)
 
     // Update all markers with new selection
-    updateAllMarkerColors(walk.id);
+    updateAllMarkerColors(walk.id)
 
     // Close the marker's popup so it doesn't activate when selecting the card
-    const marker = markerRefs.value.get(walk.id);
-    if (marker && marker.getPopup) {
-      const popup = marker.getPopup();
-      if (popup) popup.remove();
+    const marker = markerRefs.value.get(walk.id)
+    if (marker?.getPopup) {
+      marker.getPopup()?.remove()
     }
 
-    const response = await fetch(`/api/walks/${walk.id}/geometry`)
-    if (!response.ok) {
-      throw new Error(`Failed to fetch route geometry: ${response.statusText}`)
-    }
+    // Fetch route geometry with timeout
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10s timeout
 
-    const data = await response.json()
-
-    if (!isValidGeoJSON(data)) {
-      throw new Error('Invalid GeoJSON data structure received')
-    }
-
-    // Store the raw GeoJSON response
-    routeData.value = {
-      type: "Feature",
-      geometry: data.geometry || {},
-      properties: {
-        ...data.properties,
-        id: walk.id,
-        name: walk.title || walk.walk_name
-      }
-    }
-
-    // Update map view if we have geometry
-    if (data.geometry) {
-      mapRef.value?.flyTo({
-        padding: { top: 100, bottom: 100, left: 100, right: 100 },
-        pitch: 45,
-        bearing: 0,
-        essential: false,
-        maxZoom: 5
+    try {
+      const response = await fetch(`/api/walks/${walk.id}/geometry`, {
+        signal: controller.signal
       })
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch route geometry: ${response.status} ${response.statusText}`)
+      }
+
+      const data = await response.json()
+
+      if (!isValidGeoJSON(data)) {
+        throw new Error('Invalid GeoJSON data structure received')
+      }
+
+      // Store the raw GeoJSON response
+      routeData.value = {
+        type: "Feature",
+        geometry: data.geometry || {},
+        properties: {
+          ...data.properties,
+          id: walk.id,
+          name: walk.title || walk.walk_name
+        }
+      }
+
+      // Update map view if we have geometry
+      if (data.geometry?.coordinates?.length) {
+        mapRef.value?.flyTo({
+          padding: { top: 100, bottom: 100, left: 100, right: 100 },
+          pitch: 45,
+          bearing: 0,
+          essential: false,
+          maxZoom: 5
+        })
+      }
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        throw new Error('Request timed out fetching route geometry')
+      }
+      throw error
+    } finally {
+      clearTimeout(timeoutId)
     }
+
 
   } catch (error) {
     console.error("❌ Error loading route:", error)
@@ -557,39 +577,27 @@ const handleWalkSelection = async (walk) => {
 
 // Watch effects
 watch(
-  [isExpanded, showSidebar],
+  [isExpanded, showSidebar], 
   ([newExpanded, newVisible]) => {
-    if (!newVisible || !newExpanded) {
+    requestAnimationFrame(() => {
+      // Handle pointer events
       const walkList = document.querySelector(".walk-list-container")
       if (walkList) {
-        walkList.style.pointerEvents = "none"
+        walkList.style.pointerEvents = !newVisible || !newExpanded ? "none" : "auto"
       }
-    } else {
-      const walkList = document.querySelector(".walk-list-container")
-      if (walkList) {
-        walkList.style.pointerEvents = "auto"
-      }
-    }
-  },
-  { immediate: true }
-)
 
-// Ensure proper cleanup of items when visibility changes
-watch(
-  [isExpanded, showSidebar],
-  ([newExpanded, newVisible]) => {
-    if (!newVisible || !newExpanded) {
-      // Wait for transition to start
-      requestAnimationFrame(() => {
-        const scroller = document.querySelector(".vue-recycle-scroller")
-        if (scroller && scroller.__vueParentComponent?.ctx) {
-          const ctx = scroller.__vueParentComponent.ctx
-          if (typeof ctx.updateSize === "function") {
-            ctx.updateSize()
-          }
-        }
-      })
-    }
+      // Handle scroller updates
+      const scroller = document.querySelector(".vue-recycle-scroller")
+      const scrollerCtx = scroller?.__vueParentComponent?.ctx
+      
+      // Only update scroller size when closing
+      if ((!newVisible || !newExpanded) && scrollerCtx?.updateSize) {
+        scrollerCtx.updateSize()
+      }
+      
+      // Force reflow to ensure proper transitions
+      scroller?.offsetHeight
+    })
   },
   { immediate: true }
 )
@@ -1145,37 +1153,23 @@ onBeforeUnmount(() => {
   mapComponent.value = null
 })
 
-// Add virtual rendering computed property
-const visibleWalks = computed(() => {
-  if (!mapRef.value || walks.value.length === 0) return [];
-
-  const bounds = mapRef.value.getBounds();
-  const padding = 0.1; // 10% padding around viewport
-
-  // Calculate extended bounds
-  const sw = bounds.getSouthWest();
-  const ne = bounds.getNorthEast();
-  const minLng = sw.lng - padding;
-  const minLat = sw.lat - padding;
-  const maxLng = ne.lng + padding;
-  const maxLat = ne.lat + padding;
-
-  return walks.value.filter(walk => {
-    const lng = Number(walk.longitude) || Number(walk.lng);
-    const lat = Number(walk.latitude) || Number(walk.lat);
-    return lng >= minLng && lng <= maxLng && lat >= minLat && maxLat;
-  });
-});
-
 // Add handler for map movement
-const updateVisibleMarkers = () => {
-  // Force recomputation of visibleWalks
+const updateVisibleMarkers = debounce(() => {
   if (mapRef.value) {
-    const bounds = mapRef.value.getBounds();
-    // Trigger reactive update
-    visibleWalks.value;
+    try {
+      const bounds = mapRef.value.getBounds()
+      // Only trigger reactive update if map is ready and we have bounds
+      if (bounds && mapLoaded.value) {
+        // Force recomputation 
+        visibleWalks.value
+      }
+    } catch (error) {
+      console.error('Error updating visible markers:', error)
+      // Don't throw - silently recover from map errors
+      return
+    }
   }
-}
+}, 100) // Debounce map updates
 // Add a computed property to validate route data
 const validRouteData = computed(() => {
   if (!routeData.value) return null
@@ -1243,22 +1237,28 @@ onBeforeUnmount(() => {
 })
 // Improved animation logic for irregular linestrings
 const dashArraySequence = [
-  [0, 4, 3],
-  [0.2, 4, 2.8],
-  [0.4, 4, 2.6],
-  [0.6, 4, 2.4],
-  [0.8, 4, 2.2],
-  [1, 4, 2],
-  [1.2, 4, 1.8],
-  [1.4, 4, 1.6],
-  [1.6, 4, 1.4],
-  [1.8, 4, 1.2],
-  [2, 4, 1],
-  [2.2, 4, 0.8],
-  [2.4, 4, 0.6],
-  [2.6, 4, 0.4],
-  [2.8, 4, 0.2],
-  [3, 4, 0]
+  [0, 4, 3],      // 1. Start - Dash is present
+  [0.2, 4, 2.8],  // 2.
+  [0.4, 4, 2.6],  // 3.
+  [0.6, 4, 2.4],  // 4.
+  [0.8, 4, 2.2],  // 5.
+  [1, 4, 2],      // 6.
+  [1.2, 4, 1.8],  // 7.
+  [1.4, 4, 1.6],  // 8.
+  [1.6, 4, 1.4],  // 9.
+  [1.8, 4, 1.2],  // 10.
+  [2, 4, 1],      // 11.
+  [2.2, 4, 0.8],  // 12.
+  [2.4, 4, 0.6],  // 13.
+  [2.6, 4, 0.4],  // 14.
+  [2.8, 4, 0.2],  // 15.
+  [3, 4, 0],      // 16. Dash disappears
+  [2.5, 4, 0.5],  // 17. Start bringing dash back, offset decreasing
+  [2, 4, 1],      // 18.
+  [1.5, 4, 1.5],  // 19.
+  [1, 4, 2],      // 20.
+  [0.5, 4, 2.5],  // 21.
+  [0, 4, 3]       // 22. Back to the start - Smooth loop point!
 ];
 
 let animationFrame = null;
@@ -1266,25 +1266,24 @@ let animationFrame = null;
 const animateDashArray = (timestamp) => {
   if (!mapRef.value) return;
 
-  // Define total animation cycle (in ms)
-  const animationDuration = 200;
-  // Calculate progress as a value between 0 and 1
+  const animationDuration = 5000;
   const progress = (timestamp % animationDuration) / animationDuration;
 
-  // Determine current position in the dash sequence (wrap around)
   const dashSeqLength = dashArraySequence.length;
   const targetIndex = progress * dashSeqLength;
-  const lowerIdx = Math.floor(targetIndex) % dashSeqLength;
-  const upperIdx = (lowerIdx + 1) % dashSeqLength;
+  const lowerIdx = Math.floor(targetIndex);
   const fraction = targetIndex - lowerIdx;
 
+  // Adjusted Indexing for Circularity:
+  const currentIdx = lowerIdx % dashSeqLength; // Ensure index wraps around
+  const nextIdx = (lowerIdx + 1) % dashSeqLength; // Ensure next index wraps around
+
   // Interpolate between two consecutive dash array values
-  const interpolatedDashArray = dashArraySequence[lowerIdx].map((value, i) => {
-    const nextValue = dashArraySequence[upperIdx][i];
+  const interpolatedDashArray = dashArraySequence[currentIdx].map((value, i) => {
+    const nextValue = dashArraySequence[nextIdx][i];
     return value + (nextValue - value) * fraction;
   });
 
-  // Update the dash array paint property for smooth animation
   mapRef.value.setPaintProperty(
     MAP_LAYER.ROUTE_ANIMATED,
     'line-dasharray',
@@ -1336,6 +1335,129 @@ const updateAllMarkerColors = (selectedId = null) => {
 
 // Add ref to store marker references
 const markerRefs = ref(new Map());
+
+// Add spatial index structure
+const spatialIndex = ref(new Map())
+
+// Consolidated watcher for sidebar state
+watch(
+  [isExpanded, showSidebar],
+  ([newExpanded, newVisible]) => {
+    // Handle pointer events
+    const walkList = document.querySelector(".walk-list-container")
+    if (walkList) {
+      walkList.style.pointerEvents = !newVisible || !newExpanded ? "none" : "auto"
+    }
+
+    // Handle scroller updates
+    if (!newVisible || !newExpanded) {
+      requestAnimationFrame(() => {
+        const scroller = document.querySelector(".vue-recycle-scroller")
+        if (scroller?.__vueParentComponent?.ctx?.updateSize) {
+          scroller.__vueParentComponent.ctx.updateSize()
+        }
+      })
+    }
+  },
+  { immediate: true }
+)
+
+// Optimized visible walks computation with spatial indexing
+const updateSpatialIndex = () => {
+  const newIndex = new Map()
+  const cellSize = 0.1 // roughly 11km at equator
+
+  walks.value.forEach(walk => {
+    const lng = Number(walk.longitude) || Number(walk.lng)
+    const lat = Number(walk.latitude) || Number(walk.lat)
+    
+    // Get grid cell coordinates
+    const cellX = Math.floor(lng / cellSize)
+    const cellY = Math.floor(lat / cellSize)
+    
+    // Create cell key
+    const key = `${cellX}:${cellY}`
+    
+    if (!newIndex.has(key)) {
+      newIndex.set(key, [])
+    }
+    newIndex.get(key).push(walk)
+  })
+  
+  spatialIndex.value = newIndex
+}
+
+// Update spatial index when walks change
+watch(() => walks.value, updateSpatialIndex, { immediate: true })
+
+// Optimized visibleWalks computed
+const visibleWalks = computed(() => {
+  if (!mapRef.value || !spatialIndex.value.size) return []
+
+  const bounds = mapRef.value.getBounds()
+  const sw = bounds.getSouthWest()
+  const ne = bounds.getNorthEast()
+  const cellSize = 0.1
+
+  // Get cell ranges
+  const minCellX = Math.floor(sw.lng / cellSize)
+  const maxCellX = Math.floor(ne.lng / cellSize)
+  const minCellY = Math.floor(sw.lat / cellSize)
+  const maxCellY = Math.floor(ne.lat / cellSize)
+
+  // Collect walks from relevant cells
+  const visible = new Set()
+  
+  for (let x = minCellX; x <= maxCellX; x++) {
+    for (let y = minCellY; y <= maxCellY; y++) {
+      const key = `${x}:${y}`
+      const cellWalks = spatialIndex.value.get(key)
+      if (cellWalks) {
+        cellWalks.forEach(walk => visible.add(walk))
+      }
+    }
+  }
+
+  return Array.from(visible)
+})
+
+// Consolidated cleanup
+onBeforeUnmount(() => {
+  // 1. Clean up animations
+  if (animationFrame) {
+    cancelAnimationFrame(animationFrame)
+    animationFrame = null
+  }
+
+  // 2. Clean up event listeners
+  const cleanupEvents = () => {
+    window.removeEventListener('resize', handleResize)
+    
+    if (!mapRef.value) return
+    
+    // Map event handlers
+    const mapEvents = ['mousemove', 'mouseleave', 'styledata']
+    mapEvents.forEach(event => {
+      mapRef.value.off(event, MAP_LAYER.ROUTE)
+    })
+  }
+  cleanupEvents()
+
+  // 3. Reset state
+  routeData.value = null
+  loading.value = false
+  mapLoaded.value = false
+
+  // 4. Clear collections
+  markerRefs.value.clear()
+  spatialIndex.value.clear()
+
+  // 5. Clear refs after cleanup
+  if (mapRef.value) {
+    mapRef.value = null
+    mapComponent.value = null
+  }
+})
 
 </script>
 

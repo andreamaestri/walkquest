@@ -904,11 +904,6 @@
   justify-content: center;
 }
 
-/* Disable pointer events on full-screen absolute overlays */
-div.absolute.inset-0 {
-  /* pointer-events: none !important; */
-  /* Remove or comment out this line */
-}
 
 /* Ensure MapBox controls are clickable */
 .mapboxgl-control-container {
@@ -1101,10 +1096,6 @@ div.absolute.inset-0 {
   border: 1px solid rgb(var(--md-sys-color-outline-variant));
 }
 
-/* Skip hidden elements in tab order */
-[aria-hidden="true"] {
-  display: none !important;
-}
 
 /* Use visibility for temporary hiding instead of aria-hidden */
 .temporarily-hidden {
