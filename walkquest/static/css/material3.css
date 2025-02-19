@@ -858,7 +858,7 @@
 .mapboxgl-map {
   position: absolute !important;
   inset: 0 !important;
-  contain: layout size style;
+  contain: layout size style paint;
   will-change: transform;
   transform: translateZ(0);
   backface-visibility: hidden;
@@ -1088,34 +1088,6 @@ div.absolute.inset-0 {
   transform: none !important;
 }
 
-/* Improved marker styles with better anti-aliasing */
-.mapboxgl-marker {
-  cursor: pointer;
-  shape-rendering: crispEdges;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-.mapboxgl-marker svg {
-  image-rendering: -webkit-optimize-contrast;
-  image-rendering: crisp-edges;
-}
-
-.mapboxgl-marker svg path {
-  fill: rgb(var(--md-sys-color-primary));
-  paint-order: fill;
-  shape-rendering: geometricPrecision;
-}
-
-.mapboxgl-marker[aria-selected="true"] {
-  z-index: 2;
-  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.16));
-}
-
-.mapboxgl-marker[aria-selected="true"] svg path {
-  fill: rgb(var(--md-sys-color-error));
-}
-
 /* Popup styles */
 .mapboxgl-popup {
   max-width: 300px;
@@ -1127,54 +1099,6 @@ div.absolute.inset-0 {
   border-radius: 12px;
   background: rgb(var(--md-sys-color-surface-container));
   border: 1px solid rgb(var(--md-sys-color-outline-variant));
-}
-
-.map-tooltip {
-  padding: 8px;
-  color: rgb(var(--md-sys-color-on-surface));
-}
-
-.map-tooltip-content {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.map-tooltip-header {
-  margin-bottom: 4px;
-}
-
-.map-tooltip-title {
-  font-size: 1rem;
-  font-weight: 500;
-  margin: 0;
-  line-height: 1.4;
-}
-
-.map-tooltip-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.map-tooltip-badge {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  border-radius: 8px;
-  font-size: 0.75rem;
-  background: rgb(var(--md-sys-color-surface-container-highest));
-  color: rgb(var(--md-sys-color-on-surface-variant));
-}
-
-.map-tooltip-badge.difficulty {
-  background: rgb(var(--md-sys-color-secondary-container));
-  color: rgb(var(--md-sys-color-on-secondary-container));
-}
-
-.map-tooltip-badge iconify-icon {
-  font-size: 16px;
 }
 
 /* Skip hidden elements in tab order */
@@ -1193,19 +1117,6 @@ div.absolute.inset-0 {
   outline: 2px solid rgb(var(--md-sys-color-primary));
   outline-offset: 2px;
   border-radius: 4px;
-}
-
-/* Marker Animation with proper accessibility */
-@keyframes markerPulse {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.1);
-  }
-  100% {
-    transform: scale(1);
-  }
 }
 
 /* Ensure proper focus management for navigation elements */
@@ -1407,7 +1318,7 @@ div.absolute.inset-0 {
 .mapboxgl-map {
   position: absolute !important;
   inset: 0 !important;
-  contain: layout size style;
+  contain: layout size style paint;
   will-change: transform;
   transform: translateZ(0);
   backface-visibility: hidden;
@@ -1448,26 +1359,6 @@ div.absolute.inset-0 {
   transform: translateZ(0);
   backface-visibility: hidden;
   contain: layout style;
-}
-
-.mapboxgl-marker {
-  cursor: pointer;
-}
-
-.mapboxgl-marker:hover {
-  z-index: 1;
-}
-
-.mapboxgl-marker[aria-selected="true"] {
-  z-index: 2;
-}
-
-.mapboxgl-marker svg path {
-  fill: rgb(var(--md-sys-color-primary));
-}
-
-.mapboxgl-marker[aria-selected="true"] svg path {
-  fill: rgb(var(--md-sys-color-error));
 }
 
 /* Adjust related styles for better consistency */

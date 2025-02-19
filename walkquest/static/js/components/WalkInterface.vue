@@ -124,9 +124,8 @@
         </div>
       </Transition>
 
-      <!-- Map container with updated left margin -->
-      <div class="m3-content-container hardware-accelerated pointer-events-auto" :style="mapContainerStyle"
-        ref="mapContainerRef">
+      <!-- Map container -->
+      <div class="m3-content-container hardware-accelerated pointer-events-auto" :style="mapContainerStyle" ref="mapContainerRef">
         <div class="m3-surface-container hardware-accelerated pointer-events-auto h-full">
           <MapboxMap
             ref="mapComponent"
@@ -159,71 +158,77 @@
               deceleration: 2500
             }"
             class="h-full w-full absolute inset-0"
-            @mb-created="handleMapCreated">
+            @mb-created="handleMapCreated"
+            @mb-load="handleMapLoad"
+            @mb-moveend="updateVisibleMarkers">
             
-            <!-- Custom Markers -->
-            <template v-for="walk in walks" :key="walk.id">
-              <MapboxMarker
-                :lng-lat="[Number(walk.longitude) || Number(walk.lng), Number(walk.latitude) || Number(walk.lat)]"
-                :popup="true"
-                :aria-selected="selectedWalkId === walk.id"
-                @click="handleWalkSelection(walk)"
-              >
-                <!-- Popup Template -->
-                <template #popup>
-                  <div class="map-tooltip">
-                    <div class="map-tooltip-content">
-                      <div class="map-tooltip-header">
-                        <h3 class="map-tooltip-title">{{ walk.title || walk.walk_name }}</h3>
-                      </div>
-                      <div class="map-tooltip-badges">
-                        <div class="map-tooltip-badge difficulty" :class="walk.steepness_level?.toLowerCase()">
-                          <iconify-icon icon="material-symbols:flag-rounded" />
-                          {{ walk.steepness_level }}
-                        </div>
-                        <div class="map-tooltip-badge">
-                          <iconify-icon icon="material-symbols:distance" />
-                          {{ walk.distance }} km
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </template>
-              </MapboxMarker>
-            </template>
-
-            <!-- Add Distance Radius Circle -->
-            <template v-if="locationStore.userLocation && locationStore.searchRadius">
-              <MapboxLayer
-                type="circle"
-                :paint="{
-                  'circle-color': '#4A90E2',
-                  'circle-opacity': 0.1,
-                  'circle-radius': locationStore.searchRadius / 2
-                }"
-                :source="{
-                  type: 'geojson',
-                  data: {
-                    type: 'Feature',
-                    geometry: {
-                      type: 'Point',
-                      coordinates: [
-                        locationStore.userLocation.longitude,
-                        locationStore.userLocation.latitude
-                      ]
-                    }
-                  }
-                }"
-              />
-            </template>
-
-            <!-- Accessibility Description -->
-            <div class="sr-only">
-              Interactive map showing walk locations. Use arrow keys to navigate between markers.
+            <!-- Loading indicator -->
+            <div v-if="loading" class="absolute bottom-4 left-4 z-50 bg-surface-container-high rounded-full px-4 py-2 shadow-lg">
+              <div class="flex items-center gap-2">
+                <div class="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent"></div>
+                <span class="text-on-surface text-sm">Loading route...</span>
+              </div>
             </div>
+
+            <!-- Only render source and layer after map is loaded -->
+            <template v-if="mapLoaded && validRouteData">
+                <MapboxSource
+                  :id="MAP_SOURCE.ROUTE"
+                  :options="{
+                    type: 'geojson',
+                    data: validRouteData
+                  }"
+                />
+                <MapboxLayer
+                  :id="MAP_LAYER.ROUTE"
+                  :options="{
+                    type: 'line',
+                    source: MAP_SOURCE.ROUTE,
+                    layout: {
+                      'line-join': 'round',
+                      'line-cap': 'round',
+                      visibility: 'visible'
+                    },
+                    paint: {
+                      'line-color': [
+                        'case',
+                        ['boolean', ['feature-state', 'hover'], false],
+                        '#FF8A65',  // Hover color
+                        '#FF5722'   // Default color
+                      ],
+                      'line-width': [
+                        'interpolate',
+                        ['linear'],
+                        ['zoom'],
+                        10, 3,    // Width at zoom level 10
+                        15, 6     // Width at zoom level 15
+                      ],
+                      'line-opacity': 0.85,
+                      'line-dasharray': [0.8, 1.6],
+                      'line-blur': 0.5
+                    }
+                  }"
+                />
+                <!-- Debug overlay -->
+                <div class="absolute top-4 right-4 bg-white p-2 rounded shadow z-50">
+                  <p class="text-sm">Route coordinates: {{ validRouteData?.geometry?.coordinates?.length || 0 }}</p>
+                </div>
+              </template>
+            <!-- Markers -->
+            <MapboxMarker
+              v-for="walk in visibleWalks"
+              :key="walk.id"
+              :anchor="bottom"
+              :lng-lat="[Number(walk.longitude) || Number(walk.lng), Number(walk.latitude) || Number(walk.lat)]"
+              :popup="false"
+              :color="selectedWalkId === walk.id ? '#6750A4' : '#625B71'" 
+              :class="{ 'mapboxgl-marker-selected': selectedWalkId === walk.id }"
+              @click="handleWalkSelection(walk)"
+            />
 
             <!-- MapboxMap Controls -->
             <MapboxNavigationControl position="top-left" />
+
           </MapboxMap>
           <!-- Mobile toggle button -->
           <Transition :css="false" @enter="onMobileButtonEnter" @leave="onMobileButtonLeave">
@@ -290,8 +295,7 @@ import { useElementVisibility } from "@vueuse/core"
 import { useUiStore } from "../stores/ui"
 import { useWalksStore } from "../stores/walks"
 import { DynamicScroller, DynamicScrollerItem } from "vue-virtual-scroller"
-import mapboxgl from 'mapbox-gl'
-import { MapboxMap, MapboxNavigationControl, MapboxMarker, MapboxLayer } from '@studiometa/vue-mapbox-gl'
+import { MapboxMap, MapboxNavigationControl, MapboxMarker, MapboxLayer, MapboxSource } from '@studiometa/vue-mapbox-gl'
 import "vue-virtual-scroller/dist/vue-virtual-scroller.css"
 import WalkList from "./WalkList.vue"
 import WalkCard from "./WalkCard.vue"
@@ -303,6 +307,16 @@ import SearchView from './SearchView.vue'
 import LocationSearch from './LocationSearch.vue'
 import WalkRoute from './WalkRoute.vue'
 import { getGeometry } from '../services/api'
+import RouteLayer from './RouteLayer.vue'
+
+// NEW: Add debounce helper
+function debounce(fn, delay) {
+  let timer;
+  return function(...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), delay);
+  }
+}
 
 // Extract setMapInstance from useMap
 const { setMapInstance, flyToLocation } = useMap()
@@ -331,19 +345,13 @@ const uiStore = useUiStore()
 const locationStore = useLocationStore()
 const searchStore = useSearchStore()
 
-// Initialize UI store with defaults
+// Remove loading states from UI store initialization
 uiStore.$patch({
   error: null,
   mobileMenuOpen: false,
   fullscreen: false,
-  showSidebar: !uiStore.isMobile,
-  loadingStates: {
-    walks: false,
-    map: false,
-    path: false,
-    search: false,
-    location: false
-  }
+  showSidebar: !uiStore.isMobile
+  // Remove loadingStates object
 })
 
 // Initialize search store
@@ -365,9 +373,53 @@ const expandedWalkIds = ref([])
 const isExpanded = ref(localStorage.getItem("sidebarExpanded") === "true")
 const mapReady = ref(false)
 const currentZoom = ref(8)
-const markerThresholdZoom = 13
 const mapContainerVisible = useElementVisibility(mapContainerRef)
 const mapRef = ref(null)
+
+// Update route data ref with better typing and structure
+const routeData = ref({
+  type: "Feature",
+  properties: {},
+  geometry: {
+    type: "LineString",
+    coordinates: []
+  }
+})
+
+// Update function to validate simplified GeoJSON structure
+const isValidGeoJSON = (data) => {
+  return (
+    data &&
+    data.type === "Feature" &&
+    typeof data.geometry === "object" &&
+    typeof data.properties === "object"
+  )
+}
+
+// Add DEV mode test data
+if (import.meta.env.DEV) {
+  routeData.value = {
+    type: 'Feature',
+    properties: { id: 'test' },
+    geometry: {
+      type: 'LineString',
+      coordinates: [
+        [-4.95, 50.4],
+        [-4.96, 50.41],
+        [-4.97, 50.42]
+      ]
+    }
+  }
+  console.log("🧪 Test route data set")
+}
+
+// Add mapLoaded state
+const mapLoaded = ref(false)
+
+// Add handleMapLoad method
+const handleMapLoad = () => {
+  mapLoaded.value = true
+}
 
 // Add Cornwall bounds constants
 const CORNWALL_BOUNDS = [
@@ -381,19 +433,11 @@ const CORNWALL_CENTER = [-4.95, 50.4]
 // Update StoreLocator configuration
 const mapConfig = computed(() => ({
   mapStyle: 'mapbox://styles/andreamaestri/cm79fegfl000z01sdhl4u32jv?optimize=true',
-  cooperativeGestures: true,
-  keyboard: true,
   maxBounds: CORNWALL_BOUNDS,
   center: CORNWALL_CENTER,
   zoom: 9,
   minZoom: 1,
   maxZoom: 35,
-  terrain: null, // Remove terrain configuration
-  controls: {
-    navigation: true,
-    scale: true,
-    attribution: true
-  }
 }))
 
 // Computed properties
@@ -454,186 +498,60 @@ const isLocationSearchVisible = computed({
   }
 })
 
-// Updated toggleExpanded with smoother animations
-const toggleExpanded = () => {
-  isExpanded.value = !isExpanded.value
-  localStorage.setItem("sidebarExpanded", isExpanded.value)
+// Add loading state
+const loading = ref(false)
 
-  if (sidebarRef.value) {
-    // Animate the sidebar width with easing
-    animate(
-      sidebarRef.value,
-      { 
-        width: isExpanded.value ? "412px" : "80px",
-      },
-      {
-        duration: 0.3,
-        easing: [0.32, 0.72, 0, 1], // Custom easing for smooth motion
-      }
-    )
-
-    // Animate the content opacity and translation
-    const contentElements = sidebarRef.value.querySelectorAll(".m3-rail-content")
-    contentElements.forEach((content, i) => {
-      animate(
-        content,
-        {
-          opacity: isExpanded.value ? [0, 1] : [1, 0],
-          transform: isExpanded.value 
-            ? ['translateX(-20px)', 'translateX(0)']
-            : ['translateX(0)', 'translateX(-20px)']
-        },
-        {
-          duration: 0.2,
-          delay: isExpanded.value ? 0.1 + (i * 0.02) : 0,
-          easing: [0.32, 0.72, 0, 1]
-        }
-      )
-    })
-
-    // Animate labels separately for smoother text transitions
-    const labels = sidebarRef.value.querySelectorAll(".m3-rail-label, .m3-rail-fab-text")
-    labels.forEach((label, i) => {
-      animate(
-        label,
-        {
-          opacity: isExpanded.value ? [0, 1] : [1, 0],
-          transform: isExpanded.value 
-            ? ['translateX(-12px)', 'translateX(0)']
-            : ['translateX(0)', 'translateX(-12px)']
-        },
-        {
-          duration: 0.2,
-          delay: isExpanded.value ? 0.15 + (i * 0.02) : 0,
-          easing: [0.32, 0.72, 0, 1]
-        }
-      )
-    })
-  }
-
-  // Update map container width smoothly
-  if (mapContainerRef.value) {
-    animate(
-      mapContainerRef.value,
-      { 
-        marginLeft: isExpanded.value ? "412px" : "80px" 
-      },
-      {
-        duration: 0.3,
-        easing: [0.32, 0.72, 0, 1]
-      }
-    ).finished.then(() => {
-      // Trigger map resize after animation completes
-      if (mapComponent.value?.map) {
-        mapComponent.value.map.resize()
-      }
-    })
-  }
-
-  // Update sidebar width for Mapbox logo with transition
-  document.documentElement.style.setProperty(
-    "--sidebar-width",
-    isExpanded.value ? "412px" : "80px"
-  )
-}
-
-// Watch for expansion state changes
-watch(isExpanded, (newValue) => {
-  nextTick(() => {
-    const scroller = document.querySelector(".m3-scroller")
-    if (scroller) {
-      scroller.style.opacity = "0"
-      setTimeout(() => {
-        scroller.style.opacity = "1"
-      }, 300)
-    }
-  })
-})
-
+// Update handleWalkSelection with simpler GeoJSON handling
 const handleWalkSelection = async (walk) => {
-  if (walk) {
-    await router.push({ 
-      name: 'walk-detail',
-      params: { id: walk.id }
-    })
-    
-    if (!isExpanded.value) {
-      isExpanded.value = true
-      localStorage.setItem("sidebarExpanded", "true")
-    }
-
-    // Load and display the route
-    try {
-      const routeData = await getGeometry(walk.id)
-      
-      // Wait for map and source to be ready
-      if (mapRef.value && mapRef.value.getSource('active-route')) {
-        console.log('Setting route data:', routeData); // Debug log
-
-        // Ensure the data is in the correct GeoJSON format
-        const geoJsonData = {
-          type: 'Feature',
-          properties: {},
-          geometry: {
-            type: 'LineString',
-            coordinates: routeData.geometry.coordinates
-          }
-        };
-
-        // Update the source data
-        mapRef.value.getSource('active-route').setData(geoJsonData);
-
-        // Calculate bounds
-        if (routeData.geometry.coordinates.length > 0) {
-          const bounds = new mapboxgl.LngLatBounds();
-          
-          // Extend bounds with all coordinates
-          for (const coord of routeData.geometry.coordinates) {
-            bounds.extend(coord);
-          }
-
-          // Fit map to route bounds
-          mapRef.value.fitBounds(bounds, {
-            padding: 50,
-            pitch: 45,
-            bearing: 0,
-            duration: 1500
-          });
-        }
-      } else {
-        console.error('Map or source not ready');
-      }
-    } catch (err) {
-      console.error('Error loading route:', err)
-      uiStore?.setError('Failed to load route data')
-    }
-  } else {
-    await router.push({ name: "home" })
-    
-    // Clear route when deselecting
-    if (mapRef.value?.getSource('active-route')) {
-      mapRef.value.getSource('active-route').setData({
-        type: 'Feature',
-        properties: {},
-        geometry: {
-          type: 'LineString',
-          coordinates: []
-        }
-      });
-
-      // Reset map view
-      mapRef.value.flyTo({
-        center: CORNWALL_CENTER,
-        zoom: 9,
-        pitch: 0,
-        bearing: 0,
-        duration: 1500
-      });
-    }
+  if (!walk) {
+    routeData.value = null
+    return
   }
 
-  if (isMobile.value) {
-    uiStore?.setMobileMenuOpen(false)
+  try {
+    loading.value = true
+    console.log("🚶‍♂️ Fetching geometry for walk:", walk.id)
+
+    const response = await fetch(`/api/walks/${walk.id}/geometry`)
+    if (!response.ok) {
+      throw new Error(`Failed to fetch route geometry: ${response.statusText}`)
+    }
+
+    const data = await response.json()
+    
+    if (!isValidGeoJSON(data)) {
+      throw new Error('Invalid GeoJSON data structure received')
+    }
+
+    // Store the raw GeoJSON response
+    routeData.value = {
+      type: "Feature",
+      geometry: data.geometry || {},
+      properties: {
+        ...data.properties,
+        id: walk.id,
+        name: walk.title || walk.walk_name
+      }
+    }
+
+    // Update map view if we have geometry
+    if (data.geometry) {
+      mapRef.value?.flyTo({
+        padding: { top: 100, bottom: 100, left: 100, right: 100 },
+        pitch: 45,
+        bearing: 0,
+        duration: 2000,
+        essential: true,
+        maxZoom: 15
+      })
+    }
+
+  } catch (error) {
+    console.error("❌ Error loading route:", error)
+    uiStore?.setError(error.message)
+    routeData.value = null
+  } finally {
+    loading.value = false
   }
 }
 
@@ -642,19 +560,15 @@ watch(
   [isExpanded, showSidebar],
   ([newExpanded, newVisible]) => {
     if (!newVisible || !newExpanded) {
-      nextTick(() => {
-        const walkList = document.querySelector(".walk-list-container")
-        if (walkList) {
-          walkList.style.pointerEvents = "none"
-        }
-      })
+      const walkList = document.querySelector(".walk-list-container")
+      if (walkList) {
+        walkList.style.pointerEvents = "none"
+      }
     } else {
-      setTimeout(() => {
-        const walkList = document.querySelector(".walk-list-container")
-        if (walkList) {
-          walkList.style.pointerEvents = "auto"
-        }
-      }, 300)
+      const walkList = document.querySelector(".walk-list-container")
+      if (walkList) {
+        walkList.style.pointerEvents = "auto"
+      }
     }
   },
   { immediate: true }
@@ -908,7 +822,6 @@ watch(
 // Methods
 const initializeData = async () => {
   try {
-    uiStore?.setLoading(true)
     console.debug("WalkInterface.vue: Starting data initialization")
 
     await walksStore.loadWalks()
@@ -940,7 +853,6 @@ const initializeData = async () => {
     console.error("WalkInterface.vue: Data initialization failed:", error)
     uiStore?.setError(error.message)
   } finally {
-    uiStore?.setLoading(false)
     console.debug("WalkInterface.vue: Loading stopped")
   }
 }
@@ -953,50 +865,14 @@ watch(
   { immediate: true }
 )
 
+// Add more detailed logging in handleMapCreated
 const handleMapCreated = (map) => {
-  mapRef.value = map
-  setMapInstance(map)
-  
-  // Get initial zoom level
-  currentZoom.value = map.getZoom()
-  
-  // Add source and layer for route display
-  map.on('load', () => {
-    // Add empty route source with proper GeoJSON structure
-    map.addSource('active-route', {
-      'type': 'geojson',
-      'data': {
-        'type': 'Feature',
-        'properties': {},
-        'geometry': {
-          'type': 'LineString',
-          'coordinates': []
-        }
-      }
-    });
-
-    // Add route layer with proper styling
-    map.addLayer({
-      'id': 'active-route',
-      'type': 'line',
-      'source': 'active-route',
-      'layout': {
-        'line-join': 'round',
-        'line-cap': 'round'
-      },
-      'paint': {
-        'line-color': 'rgb(var(--md-sys-color-primary))',
-        'line-width': 4
-      }
-    });
-
-    // Enable map interactions after load
-    map.dragPan.enable()
-    map.scrollZoom.enable()
-  })
-  
-  map.on('zoom', handleMapZoom)
-}
+  console.log('Map created');
+  mapRef.value = map;
+  mapInstance.value = map;
+  setMapInstance(map);
+  currentZoom.value = map.getZoom();
+};
 
 // Handle map keyboard navigation
 const handleMapKeyboard = (e) => {
@@ -1020,26 +896,6 @@ const handleMapKeyboard = (e) => {
       break
   }
 }
-
-// Update displayMarkers computed property
-const displayMarkers = computed(() => {
-  if (!walks.value) return []
-  
-  return walks.value.map(walk => ({
-    walk,
-    type: currentZoom.value >= markerThresholdZoom ? 'marker' : 'point'
-  })).filter(item => 
-    // Only show detailed markers when zoomed in
-    currentZoom.value >= markerThresholdZoom ? item.type === 'marker' : item.type === 'point'
-  )
-})
-
-// Add marker classes helper
-const markerClasses = (item) => ({
-  'marker-selected': selectedWalkId.value === item.walk.id,
-  'marker-detailed': item.type === 'marker',
-  'marker-point': item.type === 'point'
-})
 
 const handleWalkExpanded = ({ walkId, expanded }) => {
   console.debug("WalkInterface.vue: Walk expansion toggled:", {
@@ -1073,6 +929,7 @@ const handleFabClick = async () => {
   }
 }
 
+// Update handleLocationSelected to use enhanced 3D flyTo options
 const handleLocationSelected = async (location) => {
   if (!location?.center) return
   
@@ -1080,20 +937,33 @@ const handleLocationSelected = async (location) => {
   await flyToLocation({
     center: location.center,
     zoom: 14,
-    pitch: 45
+    pitch: 60,           // increased pitch for a 3D view
+    bearing: 30,         // added bearing
+    offset: [0, -150],   // Adjusted offset
+    duration: 2000,      // increased duration for smoother transition
+    easing: (t) => t * (2 - t),  // ease-out easing function
+    essential: true
   })
 }
 
-// Window resize handling
-let resizeTimeout
-const handleResize = () => {
-  clearTimeout(resizeTimeout)
-  resizeTimeout = setTimeout(() => {
-    if (mapComponent.value?.map?.map) {
-      mapComponent.value.map.map.resize()
-    }
-  }, 250)
-}
+// Refactor handleResize using debounce instead of manual clearTimeout
+const handleResize = debounce(() => {
+  if (mapComponent.value?.map?.map) {
+    mapComponent.value.map.map.resize();
+  }
+}, 250);
+
+// Add window resize listener on mount and remove on unmount
+onMounted(() => {
+  // ...existing onMounted code...
+  window.addEventListener('resize', handleResize);
+  // ...existing onMounted code...
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize);
+  // ...existing onBeforeUnmount code...
+});
 
 // Watch for changes in walk data
 watch(
@@ -1145,13 +1015,16 @@ const updateDisplayedWalks = (walks) => {
   filteredResults.value = walks
 }
 
-// Update search query watcher
+// NEW: Debounce update for filtered results on search change
+const debouncedUpdateFilteredResults = debounce(() => {
+  filteredResults.value = availableWalks.value;
+}, 300);
+
 watch(searchQuery, (newQuery) => {
-  // If search is cleared, reset filtered results to all walks
   if (!newQuery?.trim()) {
-    filteredResults.value = availableWalks.value
+    debouncedUpdateFilteredResults();
   }
-})
+});
 
 // Initialize filtered results
 onMounted(() => {
@@ -1160,25 +1033,20 @@ onMounted(() => {
 
 const { initializeResponsiveState } = uiStore
 
-// Update initialization sequence
-const initializeInterface = async () => {
-  try {
-    const cleanup = initializeResponsiveState()
-    await walksStore.loadWalks()
+// Simplify initialization
+const initializeInterface = () => {
+  const cleanup = initializeResponsiveState()
+  walksStore.loadWalks()
     
-    if (walksStore.walks.length && !isMobile.value) {
-      uiStore.setSidebarVisibility(true)
-    }
+  if (walksStore.walks.length && !isMobile.value) {
+    uiStore.setSidebarVisibility(true)
+  }
     
-    if (props.walkId) {
-      const walk = walksStore.getWalkById(props.walkId)
-      if (walk) {
-        await handleWalkSelection(walk)
-      }
+  if (props.walkId) {
+    const walk = walksStore.getWalkById(props.walkId)
+    if (walk) {
+      handleWalkSelection(walk)
     }
-  } catch (error) {
-    console.error("Failed to initialize:", error)
-    uiStore.setError(error.message)
   }
 }
 
@@ -1189,71 +1057,16 @@ const showNavigationRail = computed(() =>
   !isMobile.value && showSidebar.value && !isFullscreen.value
 )
 
-const handleMapZoom = (e) => {
-  currentZoom.value = e.target.getZoom()
-}
-
-// Add to your existing setup
-onMounted(() => {
-  if (mapRef.value) {
-    mapRef.value.on('zoom', handleMapZoom)
-  }
-})
-
-// Add geojsonData computed property
-const geojsonData = computed(() => ({
-  type: 'FeatureCollection',
-  features: walks.value.map(walk => ({
-    type: 'Feature',
-    geometry: {
-      type: 'Point',
-      coordinates: [walk.longitude || walk.lng, walk.latitude || walk.lat]
-    },
-    properties: {
-      id: walk.id,
-      title: walk.title || walk.walk_name,
-      difficulty: walk.difficulty,
-      duration: walk.duration
-    }
-  }))
-}))
-
-// Add cluster click handler
-const handleClusterClick = (e) => {
-  const features = e.target.queryRenderedFeatures(e.point, {
-    layers: ['clusters']
-  })
-
-  const clusterId = features[0].properties.cluster_id
-  e.target.getSource('walks').getClusterExpansionZoom(
-    clusterId,
-    (err, zoom) => {
-      if (err) return
-
-      e.target.easeTo({
-        center: features[0].geometry.coordinates,
-        zoom: zoom
-      })
-    }
-  )
-}
-
 // Add computed for selected walk
 const selectedWalk = computed(() => {
   if (!selectedWalkId.value) return null
   return walks.value.find(walk => walk.id === selectedWalkId.value)
 })
 
-// Add back button handler
+// Update handleBackClick to use flyTo with optimized flight path parameters
 const handleBackClick = async () => {
   if (mapComponent.value?.map) {
     mapComponent.value.map.flyTo({
-      center: CORNWALL_CENTER,
-      zoom: 9,
-      pitch: 0,
-      bearing: 0,
-      duration: 1500,
-      essential: true
     })
   }
   await router.push({ name: 'home' })
@@ -1272,6 +1085,160 @@ watch(
   },
   { immediate: true }
 )
+
+// Optimize search filtering
+const searchResults = ref([])
+const searchThrottleMs = 150
+
+// Optimized search with throttle
+const performSearch = throttle((query) => {
+  if (!query?.trim()) {
+    searchResults.value = availableWalks.value
+    return
+  }
+
+  const searchTerms = query.toLowerCase().trim().split(/\s+/)
+  
+  searchResults.value = availableWalks.value.filter(walk => {
+    const text = [
+      walk.title,
+      walk.location,
+      walk.description,
+      walk.difficulty
+    ].filter(Boolean).join(' ').toLowerCase()
+    
+    return searchTerms.every(term => text.includes(term))
+  })
+}, searchThrottleMs)
+
+// Replace existing search watcher with optimized version
+watch(searchQuery, (newQuery) => {
+  performSearch(newQuery)
+}, { immediate: true })
+
+// Helper function for throttle
+function throttle(fn, delay) {
+  let lastCall = 0
+  return function (...args) {
+    const now = Date.now()
+    if (now - lastCall >= delay) {
+      fn.apply(this, args)
+      lastCall = now
+    }
+  }
+}
+
+// Update filtered results based on search results
+watch(searchResults, (results) => {
+  filteredResults.value = results
+})
+
+// Add cleanup
+onBeforeUnmount(() => {
+  // Clean up map event listeners
+  if (mapRef.value) {
+    mapRef.value.off('styledata')
+  }
+  
+  // Clear refs
+  mapRef.value = null
+  mapComponent.value = null
+})
+
+// Add virtual rendering computed property
+const visibleWalks = computed(() => {
+  if (!mapRef.value || walks.value.length === 0) return [];
+
+  const bounds = mapRef.value.getBounds();
+  const padding = 0.1; // 10% padding around viewport
+
+  // Calculate extended bounds
+  const sw = bounds.getSouthWest();
+  const ne = bounds.getNorthEast();
+  const minLng = sw.lng - padding;
+  const minLat = sw.lat - padding;
+  const maxLng = ne.lng + padding;
+  const maxLat = ne.lat + padding;
+
+  return walks.value.filter(walk => {
+    const lng = Number(walk.longitude) || Number(walk.lng);
+    const lat = Number(walk.latitude) || Number(walk.lat);
+    return lng >= minLng && lng <= maxLng && lat >= minLat && lat <= maxLat;
+  });
+});
+
+// Add handler for map movement
+const updateVisibleMarkers = () => {
+  // Force recomputation of visibleWalks
+  if (mapRef.value) {
+    const bounds = mapRef.value.getBounds();
+    // Trigger reactive update
+    visibleWalks.value;
+  }
+}
+// Add a computed property to validate route data
+const validRouteData = computed(() => {
+  if (!routeData.value) return null
+  
+  // Basic structure validation
+  if (!routeData.value.type || !routeData.value.geometry) {
+    console.error('Invalid route data structure:', routeData.value)
+    return null
+  }
+
+  return routeData.value
+})
+
+// Simplifying the route data watcher to focus on essential updates
+watch(routeData, (newData) => {
+  if (newData) {
+    console.log('Route data updated:', {
+      type: newData.type,
+      coordinates: newData.geometry?.coordinates?.length
+    })
+  }
+}, { deep: true })
+
+// Add constants for map source and layer IDs
+const MAP_SOURCE = {
+  ROUTE: 'walkquest-route-source'
+};
+
+const MAP_LAYER = {
+  ROUTE: 'walkquest-route-layer'
+};
+
+// Add map reference and initialization state
+const mapInstance = ref(null);
+
+// Add route hover effect handler
+const addRouteHoverEffect = () => {
+  if (!mapRef.value) return
+  
+  mapRef.value.on('mousemove', MAP_LAYER.ROUTE, (e) => {
+    if (e.features.length > 0) {
+      mapRef.value.setFeatureState(
+        { source: MAP_SOURCE.ROUTE, id: e.features[0].id },
+        { hover: true }
+      )
+    }
+  })
+
+  mapRef.value.on('mouseleave', MAP_LAYER.ROUTE, () => {
+    mapRef.value.setFeatureState(
+      { source: MAP_SOURCE.ROUTE },
+      { hover: false }
+    )
+  })
+}
+
+// Add cleanup for hover effects
+onBeforeUnmount(() => {
+  if (mapRef.value) {
+    mapRef.value.off('mousemove', MAP_LAYER.ROUTE)
+    mapRef.value.off('mouseleave', MAP_LAYER.ROUTE)
+  }
+})
 
 </script>
 

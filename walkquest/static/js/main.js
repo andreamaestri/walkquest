@@ -19,15 +19,11 @@ const pinia = createPinia()
 // Create main Vue app
 const app = createApp(App)
 
-// Register custom elements BEFORE component registration
-app.config.compilerOptions.isCustomElement = tag => [
-  'iconify-icon',
-  'mapbox-gl',
-  'mapbox-map',
-  'mapbox-marker',
-  'mapbox-navigation-control',
-  'mapbox-cluster'
-].includes(tag)
+// Update custom element check with improved conditions
+app.config.compilerOptions.isCustomElement = tag => {
+  return tag.startsWith('iconify-') ||
+    ['mapbox-gl','mapbox-map','mapbox-marker','mapbox-navigation-control','mapbox-cluster'].includes(tag)
+}
 
 // Install plugins for main app
 app.use(pinia)
