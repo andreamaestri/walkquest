@@ -14,7 +14,7 @@
       <div class="m3-state-layer">
         <div class="m3-rail-content">
           <div class="m3-rail-icon-container">
-            <iconify-icon 
+            <Icon 
               :icon="isExpanded ? 'material-symbols:menu-open' : 'material-symbols:menu'" 
               class="m3-rail-icon"
               width="24"
@@ -38,7 +38,7 @@
         <div class="m3-state-layer">
           <div class="m3-rail-content">
             <div class="m3-rail-icon-container">
-              <iconify-icon 
+              <Icon 
                 :icon="item.icon" 
                 class="m3-rail-icon"
                 width="24"
@@ -56,7 +56,7 @@
       @click="handleCreateWalk"
       aria-label="Create new walk"
     >
-      <iconify-icon icon="material-symbols:add" width="24" height="24" />
+      <Icon icon="material-symbols:add" width="24" height="24" />
       <span class="m3-rail-fab-text">Create Walk</span>
     </button>
   </nav>

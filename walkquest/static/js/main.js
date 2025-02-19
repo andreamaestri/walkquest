@@ -6,7 +6,7 @@ import App from './App.vue'
 import Navigation from './components/Navigation.vue'
 import { DynamicScroller, DynamicScrollerItem, RecycleScroller } from 'vue-virtual-scroller'
 import { useUiStore } from './stores/ui'
-import "iconify-icon"
+import { Icon } from "@iconify/vue";
 import { StoreLocator, MapboxMarker, MapboxNavigationControl, MapboxCluster, MapboxLayer } from '@studiometa/vue-mapbox-gl'
 
 // Import required CSS
@@ -24,6 +24,9 @@ app.config.compilerOptions.isCustomElement = tag => {
   return tag.startsWith('iconify-') ||
     ['mapbox-gl','mapbox-map','mapbox-marker','mapbox-navigation-control','mapbox-cluster'].includes(tag)
 }
+
+// Register IconifyIcon component globally
+app.component('Icon', IconifyIcon)
 
 // Install plugins for main app
 app.use(pinia)

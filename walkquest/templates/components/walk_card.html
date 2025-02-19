@@ -25,7 +25,7 @@
     <div x-show="isWalkLoading(walk.id)" 
          class="absolute right-2 top-2 text-primary-500"
          aria-live="polite">
-        <iconify-icon icon="line-md:loading-twotone-loop" class="w-4 h-4"></iconify-icon>
+        <Icon icon="line-md:loading-twotone-loop" class="w-4 h-4"></Icon>
     </div>
     <!-- Enhanced Header Section -->
     <div class="flex justify-between items-start gap-4 pb-4 border-b border-white/10">
@@ -43,11 +43,11 @@
             <!-- Enhanced Info Row -->
             <div class="flex flex-wrap items-center gap-3 text-sm md:text-base text-gray-600">
                 <span class="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-lg font-medium">
-                    <iconify-icon icon="mdi:map-marker-distance" class="w-5 h-5"></iconify-icon>
+                    <Icon icon="mdi:map-marker-distance" class="w-5 h-5"></Icon>
                     <span x-text="`${walk.distance?.toFixed(1) || 0} miles`"></span>
                 </span>
                 <span x-show="walk.steepness_level && showBadges" class="flex items-center gap-2 bg-gray-900/5 px-3 py-1.5 rounded-lg font-medium">
-                    <iconify-icon icon="mdi:mountain" class="w-5 h-5 text-primary-600"></iconify-icon>
+                    <Icon icon="mdi:mountain" class="w-5 h-5 text-primary-600"></Icon>
                     <span x-text="walk.steepness_level"></span>
                 </span>
             </div>
@@ -60,9 +60,9 @@
                        transform-gpu backface-visibility-hidden group/fav"
                 @click.stop="$dispatch('toggle-favorite', { walkId: walk.id })"
                 :aria-label="walk.is_favorite ? 'Remove from favorites' : 'Add to favorites'">
-            <iconify-icon icon="mdi:heart" class="w-6 h-6"
+            <Icon icon="mdi:heart" class="w-6 h-6"
                          :class="walk.is_favorite ? 'text-red-500' : 'text-gray-400 group-hover/fav:text-red-400'">
-            </iconify-icon>
+            </Icon>
         </button>
     </div>
    
@@ -117,7 +117,7 @@
               <!-- Description Card -->
               <div x-show="walk.highlights" class="md:col-span-2 lg:col-span-3 bg-white/25 backdrop-blur-sm p-6 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300">
                  <h3 class="text-lg font-medium mb-4 flex items-center gap-2 text-slate-800">
-                    <iconify-icon icon="mdi:text-box-outline" class="w-5 h-5 text-primary-600"></iconify-icon>
+                    <Icon icon="mdi:text-box-outline" class="w-5 h-5 text-primary-600"></Icon>
                     {% translate "Highlights" %}
                  </h3>
                  <div class="prose max-w-none leading-relaxed">
@@ -128,7 +128,7 @@
               <!-- Points of Interest -->
               <div x-show="walk.points_of_interest" class="md:col-span-2 bg-white/20 backdrop-blur-sm p-5 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 transform hover:scale-[1.02]">
                  <div class="flex items-center gap-2 text-slate-800 text-sm mb-3">
-                    <iconify-icon icon="mdi:star" class="w-5 h-5 text-primary-600"></iconify-icon>
+                    <Icon icon="mdi:star" class="w-5 h-5 text-primary-600"></Icon>
                     {% translate "Points of Interest" %}
                  </div>
                  <p class="text-slate-700 text-sm leading-relaxed" :class="{ 'line-clamp-none': isExpanded, 'line-clamp-3': !isExpanded }" x-text="walk.points_of_interest"></p>
@@ -140,7 +140,7 @@
                   <div class="pub-names-container flex flex-wrap gap-2">
                      <template x-for="(pub, index) in walk.pubs_list" :key="index">
                         <span class="pub-tag bg-blue-500 text-white px-3 py-1 rounded-md flex items-center gap-1">
-                            <iconify-icon icon="mdi:glass-mug-variant" class="w-5 h-5"></iconify-icon>
+                            <Icon icon="mdi:glass-mug-variant" class="w-5 h-5"></Icon>
                             <span x-text="pub.name || pub"></span>
                         </span>
                      </template>
@@ -150,7 +150,7 @@
               <!-- Trail Considerations -->
               <div x-show="walk.trail_considerations" class="md:col-span-2 lg:col-span-3 bg-white/20 backdrop-blur-sm p-5 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 transform hover:scale-[1.02]">
                  <div class="flex items-center gap-2 text-slate-800 text-sm mb-3">
-                    <iconify-icon icon="mdi:alert" class="w-5 h-5 text-primary-600"></iconify-icon>
+                    <Icon icon="mdi:alert" class="w-5 h-5 text-primary-600"></Icon>
                     {% translate "Trail Notes" %}
                  </div>
                  <p class="text-slate-700 text-sm leading-relaxed" x-text="walk.trail_considerations"></p>
@@ -164,38 +164,38 @@
         <div class="flex flex-wrap gap-3">
             <template x-if="walk.has_pub">
                 <span class="inline-flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-lg hover:bg-white/15 transition-colors duration-200">
-                    <iconify-icon icon="mdi:beer" class="w-5 h-5 text-primary-600"></iconify-icon>
+                    <Icon icon="mdi:beer" class="w-5 h-5 text-primary-600"></Icon>
                     {% translate "Pub Stop" %}
                 </span>
             </template>
             <template x-if="walk.has_cafe">
                 <span class="inline-flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-lg hover:bg-white/15 transition-colors duration-200">
-                    <iconify-icon icon="mdi:coffee" class="w-5 h-5 text-primary-600"></iconify-icon>
+                    <Icon icon="mdi:coffee" class="w-5 h-5 text-primary-600"></Icon>
                     {% translate "Café Stop" %}
                 </span>
             </template>
             <template x-if="walk.has_bus_access">
                 <span class="inline-flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-lg hover:bg-white/15 transition-colors duration-200">
-                    <iconify-icon icon="mdi:bus" class="w-5 h-5 text-primary-600"></iconify-icon>
+                    <Icon icon="mdi:bus" class="w-5 h-5 text-primary-600"></Icon>
                     {% translate "Bus Access" %}
                 </span>
             </template>
             <template x-if="walk.has_parking">
                 <span class="inline-flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-lg hover:bg-white/15 transition-colors duration-200">
-                    <iconify-icon icon="mdi:parking" class="w-5 h-5 text-primary-600"></iconify-icon>
+                    <Icon icon="mdi:parking" class="w-5 h-5 text-primary-600"></Icon>
                     {% translate "Parking" %}
                 </span>
             </template>
             <template x-if="walk.has_stiles">
                 <span class="inline-flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-lg hover:bg-white/15 transition-colors duration-200">
-                    <iconify-icon icon="fluent:steps-16-filled" class="w-5 h-5 text-primary-600"></iconify-icon>
+                    <Icon icon="fluent:steps-16-filled" class="w-5 h-5 text-primary-600"></Icon>
                     {% translate "Stiles" %}
                 </span>
             </template>
         </div>
         <template x-if="walk.footwear_category">
             <span class="inline-flex items-center gap-2 bg-gray-900/5 px-3 py-1.5 rounded-lg text-primary-700">
-                <iconify-icon icon="mdi:shoe-sneaker" class="w-5 h-5"></iconify-icon>
+                <Icon icon="mdi:shoe-sneaker" class="w-5 h-5"></Icon>
                 <span x-text="walk.footwear_category"></span>
             </span>
         </template>

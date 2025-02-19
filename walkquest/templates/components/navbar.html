@@ -10,7 +10,7 @@
                     <div class="flex items-center space-x-3">
                         <a href="{% url 'home' %}" 
                            class="flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary-500/10 border border-white/20 hover:bg-primary-500/15 hover:border-primary-500/30 transition-all duration-300 group">
-                            <iconify-icon icon="mdi:hiking" class="text-xl text-primary-600 transform transition-all duration-300 group-hover:scale-110 group-hover:rotate-6"></iconify-icon>
+                            <Icon icon="mdi:hiking" class="text-xl text-primary-600 transform transition-all duration-300 group-hover:scale-110 group-hover:rotate-6"></Icon>
                             <span class="text-base font-bold text-primary-600">WalkQuest</span>
                         </a>
                         <!-- Desktop Navigation -->
@@ -30,8 +30,8 @@
             <button @click="toggleMenu"
                     class="inline-flex items-center justify-center p-2 rounded-full text-primary-600 hover:bg-white/20 transition-all duration-300">
                 <span class="sr-only">{% translate "Open main menu" %}</span>
-                <iconify-icon x-show="!isOpen" icon="heroicons:bars-3" class="h-5 w-5"></iconify-icon>
-                <iconify-icon x-show="isOpen" icon="heroicons:x-mark" class="h-5 w-5"></iconify-icon>
+                <Icon x-show="!isOpen" icon="heroicons:bars-3" class="h-5 w-5"></Icon>
+                <Icon x-show="isOpen" icon="heroicons:x-mark" class="h-5 w-5"></Icon>
                 </svg>
             </button>
         </div>

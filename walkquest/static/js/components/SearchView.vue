@@ -11,7 +11,7 @@
           'location-mode': searchMode === 'locations'
         }">
           <div class="search-input-wrapper">
-            <iconify-icon 
+            <Icon 
               :icon="searchMode === 'locations' ? 'material-symbols:location-on' : 'material-symbols:search'" 
               class="search-icon"
               width="24" 
@@ -35,10 +35,10 @@
             
             <div class="input-actions">
               <div v-if="isLoading" class="loading-indicator">
-                <iconify-icon icon="eos-icons:loading" width="24" height="24" class="animate-spin" />
+                <Icon icon="eos-icons:loading" width="24" height="24" class="animate-spin" />
               </div>
               <button v-if="canClear" class="clear-button" @click="clearSearch" title="Clear search">
-                <iconify-icon icon="material-symbols:close" width="24" height="24" />
+                <Icon icon="material-symbols:close" width="24" height="24" />
               </button>
             </div>
           </div>
@@ -64,7 +64,7 @@
               @mousedown.prevent="selectSuggestion(suggestion)"
               @mouseover="selectedIndex = index"
             >
-              <iconify-icon icon="material-symbols:location-on" width="24" height="24" />
+              <Icon icon="material-symbols:location-on" width="24" height="24" />
               <div class="suggestion-content">
                 <span class="suggestion-title">{{ getSuggestionText(suggestion) }}</span>
               </div>
@@ -72,7 +72,7 @@
           </template>
           <div v-else-if="searchQuery && !isLoading" class="empty-state">
             <div class="suggestion-item">
-              <iconify-icon icon="material-symbols:search-off" width="24" height="24" />
+              <Icon icon="material-symbols:search-off" width="24" height="24" />
               <span>No locations found</span>
             </div>
           </div>
@@ -387,7 +387,7 @@ watch(() => props.searchMode, (newMode) => {
   background: rgb(var(--md-sys-color-surface-container-highest));
 }
 
-.suggestion-item iconify-icon {
+.suggestion-item Icon {
   color: rgb(var(--md-sys-color-primary));
   font-size: 20px;
 }

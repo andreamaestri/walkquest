@@ -19,11 +19,11 @@
     <div class="walks-section" :class="{ 'location-mode': searchStore.searchMode === 'locations' }">
       <div v-if="searchStore.searchMode === 'locations' && locationStore.userLocation" class="location-info">
         <div class="selected-location">
-          <iconify-icon icon="material-symbols:location-on" />
+          <Icon icon="material-symbols:location-on" />
           <span>{{ locationStore.userLocation.place_name }}</span>
         </div>
         <button class="clear-location" @click="clearFilters">
-          <iconify-icon icon="material-symbols:close" />
+          <Icon icon="material-symbols:close" />
           Clear location
         </button>
       </div>
@@ -67,7 +67,7 @@
               >
                 <template v-if="searchStore.searchMode === 'locations'" #meta>
                   <div class="distance-badge" :title="'Distance from selected location'">
-                    <iconify-icon icon="mdi:map-marker-distance" />
+                    <Icon icon="mdi:map-marker-distance" />
                     {{ locationStore.getFormattedDistance(item.id) }}
                   </div>
                 </template>
@@ -84,21 +84,21 @@
       >
         <template v-if="searchStore.searchMode === 'locations'">
           <div v-if="locationStore.userLocation && !locationStore.nearbyWalks.length" class="empty-message">
-            <iconify-icon icon="mdi:map-marker-off" class="empty-icon" />
+            <Icon icon="mdi:map-marker-off" class="empty-icon" />
             <span>No walks found near this location</span>
           </div>
           <div v-else class="empty-message">
-            <iconify-icon icon="mdi:map-marker-search" class="empty-icon" />
+            <Icon icon="mdi:map-marker-search" class="empty-icon" />
             <span>Search for a location to find nearby walks</span>
           </div>
         </template>
         <template v-else>
           <div v-if="searchStore.searchQuery" class="empty-message">
-            <iconify-icon icon="mdi:magnify-close" class="empty-icon" />
+            <Icon icon="mdi:magnify-close" class="empty-icon" />
             <span>No walks found matching your search</span>
           </div>
           <div v-else class="empty-message">
-            <iconify-icon icon="mdi:hiking" class="empty-icon" />
+            <Icon icon="mdi:hiking" class="empty-icon" />
             <span>No walks available</span>
           </div>
         </template>
@@ -318,7 +318,7 @@ watch(() => searchStore.searchMode, (newMode) => {
   font-size: 0.875rem;
 }
 
-.selected-location iconify-icon {
+.selected-location Icon {
   color: rgb(var(--md-sys-color-primary));
   font-size: 18px;
 }
@@ -379,7 +379,7 @@ watch(() => searchStore.searchMode, (newMode) => {
   font-size: 0.875rem;
 }
 
-.distance-badge iconify-icon {
+.distance-badge Icon {
   font-size: 16px;
 }
 

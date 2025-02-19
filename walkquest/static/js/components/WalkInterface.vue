@@ -2,12 +2,8 @@
   <div class="h-screen w-screen overflow-hidden flex flex-col relative bg-surface">
     <div class="relative h-full w-full flex">
       <!-- Navigation Rail for desktop with simplified animation -->
-      <div 
-        v-if="showNavigationRail" 
-        ref="sidebarRef" 
-        class="m3-navigation-rail"
-        :class="[{ 'is-expanded': isExpanded }]"
-      >
+      <div v-if="showNavigationRail" ref="sidebarRef" class="m3-navigation-rail"
+        :class="[{ 'is-expanded': isExpanded }]">
         <Transition name="fade" mode="out-in">
           <!-- Normal Navigation Rail Content -->
           <div v-if="!selectedWalkId" key="nav" class="h-full flex flex-col">
@@ -15,13 +11,13 @@
               <!-- Menu button - centered and properly styled -->
               <button class="m3-rail-item menu-button" @click="toggleExpanded">
                 <div class="m3-state-layer">
-                  <iconify-icon icon="mdi:menu" class="m3-rail-icon text-[24px]" />
+                  <Icon icon="mdi:menu" class="m3-rail-icon text-[24px]" />
                 </div>
               </button>
 
               <!-- FAB -->
               <button class="m3-rail-fab" @click="handleFabClick">
-                <iconify-icon icon="mdi:hiking" class="text-[36px]" />
+                <Icon icon="mdi:hiking" class="text-[36px]" />
                 <span class="m3-rail-fab-text" v-if="isExpanded">WalkQuest</span>
                 <span class="sr-only">WalkQuest Home</span>
               </button>
@@ -29,10 +25,11 @@
 
             <!-- Navigation items -->
             <nav class="m3-rail-items">
-              <button class="m3-rail-item" :class="{ 'is-active': !showRoutesDrawer }" @click="handleWalkSelection(null)">
+              <button class="m3-rail-item" :class="{ 'is-active': !showRoutesDrawer }"
+                @click="handleWalkSelection(null)">
                 <div class="m3-rail-content">
                   <div class="m3-rail-icon-container">
-                    <iconify-icon icon="mdi:compass-outline" class="m3-rail-icon" />
+                    <Icon icon="mdi:compass-outline" class="m3-rail-icon" />
                   </div>
                   <span class="m3-rail-label">Explore</span>
                 </div>
@@ -42,7 +39,7 @@
               <button class="m3-rail-item" @click="searchStore.setSearchMode('locations')">
                 <div class="m3-rail-content">
                   <div class="m3-rail-icon-container">
-                    <iconify-icon icon="mdi:map-search" class="m3-rail-icon" />
+                    <Icon icon="mdi:map-search" class="m3-rail-icon" />
                   </div>
                   <span class="m3-rail-label">Find Nearby</span>
                 </div>
@@ -58,16 +55,9 @@
 
               <!-- Walk List -->
               <div class="m3-walks-list">
-                <WalkList 
-                  v-model="searchQuery"
-                  :walks="availableWalks"
-                  :selected-walk-id="selectedWalkId"
-                  :expanded-walk-ids="expandedWalkIds"
-                  :is-compact="!isExpanded"
-                  @walk-selected="handleWalkSelection"
-                  @walk-expanded="handleWalkExpanded"
-                  @filtered-walks="updateDisplayedWalks"
-                />
+                <WalkList v-model="searchQuery" :walks="availableWalks" :selected-walk-id="selectedWalkId"
+                  :expanded-walk-ids="expandedWalkIds" :is-compact="!isExpanded" @walk-selected="handleWalkSelection"
+                  @walk-expanded="handleWalkExpanded" @filtered-walks="updateDisplayedWalks" />
               </div>
             </div>
           </div>
@@ -77,23 +67,16 @@
             <div class="m3-detail-header">
               <button class="m3-icon-button" @click="handleBackClick">
                 <div class="m3-state-layer">
-                  <iconify-icon icon="material-symbols:arrow-back-rounded" class="text-[24px]" />
+                  <Icon icon="material-symbols:arrow-back-rounded" class="text-[24px]" />
                 </div>
               </button>
               <h2 class="m3-title-large">{{ selectedWalk?.title || selectedWalk?.walk_name }}</h2>
             </div>
             <div class="m3-walk-detail">
-              <WalkCard 
-                :walk="selectedWalk"
-                :expanded="true"
-                class="m3-elevated-card"
-              />
-              <WalkRoute
-                v-if="selectedWalk"
-                :walk-id="selectedWalk.id"
+              <WalkCard :walk="selectedWalk" :expanded="true" class="m3-elevated-card" />
+              <WalkRoute v-if="selectedWalk" :walk-id="selectedWalk.id"
                 :walk-title="selectedWalk.title || selectedWalk.walk_name"
-                :initial-route-data="selectedWalk.routeData"
-              />
+                :initial-route-data="selectedWalk.routeData" />
             </div>
           </div>
         </Transition>
@@ -109,7 +92,7 @@
               <span class="m3-headline-small">WalkQuest</span>
               <button @click="uiStore?.setMobileMenuOpen(false)" class="m3-icon-button">
                 <div class="m3-state-layer">
-                  <iconify-icon icon="mdi:close" class="text-[24px]" />
+                  <Icon icon="mdi:close" class="text-[24px]" />
                 </div>
               </button>
             </div>
@@ -125,45 +108,29 @@
       </Transition>
 
       <!-- Map container -->
-      <div class="m3-content-container hardware-accelerated pointer-events-auto" :style="mapContainerStyle" ref="mapContainerRef">
+      <div class="m3-content-container hardware-accelerated pointer-events-auto" :style="mapContainerStyle"
+        ref="mapContainerRef">
         <div class="m3-surface-container hardware-accelerated pointer-events-auto h-full">
-          <MapboxMap
-            ref="mapComponent"
-            :access-token="mapboxToken"
-            :map-style="'mapbox://styles/andreamaestri/cm79fegfl000z01sdhl4u32jv'"
-            :center="CORNWALL_CENTER"
-            :zoom="9"
-            :min-zoom="1"
-            :max-zoom="35"
-            :max-bounds="CORNWALL_BOUNDS"
-            :cooperative-gestures="true"
-            :keyboard="true"
-            :bearing-snap="7"
-            :pitch-with-rotate="true"
-            :drag-rotate="true"
-            :touch-zoom-rotate="{ around: 'center' }"
-            :touch-pitch="true"
-            :min-pitch="0"
-            :max-pitch="85"
-            :scroll-zoom="{ 
-              smooth: true, 
+          <MapboxMap ref="mapComponent" :access-token="mapboxToken"
+            :map-style="'mapbox://styles/andreamaestri/cm79fegfl000z01sdhl4u32jv'" :center="CORNWALL_CENTER" :zoom="9"
+            :min-zoom="1" :max-zoom="35" :max-bounds="CORNWALL_BOUNDS" :cooperative-gestures="true" :keyboard="true"
+            :bearing-snap="7" :pitch-with-rotate="true" :drag-rotate="true" :touch-zoom-rotate="{ around: 'center' }"
+            :touch-pitch="true" :min-pitch="0" :max-pitch="85" :scroll-zoom="{
+              smooth: true,
               speed: 0.5,
               around: 'center'
-            }"
-            :drag-pan="{
+            }" :drag-pan="{
               smooth: true,
               inertia: true,
               maxSpeed: 1400,
               linearity: 0.3,
               deceleration: 2500
-            }"
-            class="h-full w-full absolute inset-0"
-            @mb-created="handleMapCreated"
-            @mb-load="handleMapLoad"
+            }" class="h-full w-full absolute inset-0" @mb-created="handleMapCreated" @mb-load="handleMapLoad"
             @mb-moveend="updateVisibleMarkers">
-            
+
             <!-- Loading indicator -->
-            <div v-if="loading" class="absolute bottom-4 left-4 z-50 bg-surface-container-high rounded-full px-4 py-2 shadow-lg">
+            <div v-if="loading"
+              class="absolute bottom-4 left-4 z-50 bg-surface-container-high rounded-full px-4 py-2 shadow-lg">
               <div class="flex items-center gap-2">
                 <div class="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent"></div>
                 <span class="text-on-surface text-sm">Loading route...</span>
@@ -171,63 +138,99 @@
             </div>
 
             <!-- Only render source and layer after map is loaded -->
-            <template v-if="mapLoaded && validRouteData">
-                <MapboxSource
-                  :id="MAP_SOURCE.ROUTE"
-                  :options="{
-                    type: 'geojson',
-                    data: validRouteData
-                  }"
-                />
-                <MapboxLayer
-                  :id="MAP_LAYER.ROUTE"
-                  :options="{
-                    type: 'line',
-                    source: MAP_SOURCE.ROUTE,
-                    layout: {
-                      'line-join': 'round',
-                      'line-cap': 'round',
-                      visibility: 'visible'
-                    },
-                    paint: {
-                      'line-color': [
-                        'case',
-                        ['boolean', ['feature-state', 'hover'], false],
-                        '#FF8A65',  // Hover color
-                        '#FF5722'   // Default color
-                      ],
-                      'line-width': [
-                        'interpolate',
-                        ['linear'],
-                        ['zoom'],
-                        10, 3,    // Width at zoom level 10
-                        15, 6     // Width at zoom level 15
-                      ],
-                      'line-opacity': 0.85,
-                      'line-dasharray': [0.8, 1.6],
-                      'line-blur': 0.5
-                    }
-                  }"
-                />
-                <!-- Debug overlay -->
-                <div class="absolute top-4 right-4 bg-white p-2 rounded shadow z-50">
-                  <p class="text-sm">Route coordinates: {{ validRouteData?.geometry?.coordinates?.length || 0 }}</p>
-                </div>
+            <template v-if="mapLoaded">
+              <!-- Route layers -->
+              <template v-if="validRouteData">
+                <MapboxSource :id="MAP_SOURCE.ROUTE" :options="{
+                  type: 'geojson',
+                  data: validRouteData
+                }" />
+                <!-- Glow effect layer (rendered first) -->
+                <MapboxLayer :id="MAP_LAYER.ROUTE_GLOW" :options="{
+                  type: 'line',
+                  source: MAP_SOURCE.ROUTE,
+                  layout: {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                  },
+                  paint: {
+                    'line-color': '#52ebff',
+                    'line-width': [
+                      'interpolate',
+                      ['linear'],
+                      ['zoom'],
+                      10, 12,
+                      15, 18
+                    ],
+                    'line-opacity': 0.6,
+                    'line-blur': 8
+                  }
+                }" />
+                <!-- Solid route base -->
+                <MapboxLayer :id="MAP_LAYER.ROUTE_BG" :options="{
+                  type: 'line',
+                  source: MAP_SOURCE.ROUTE,
+                  layout: {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                  },
+                  paint: {
+                    'line-color': '#52ebff',
+                    'line-width': [
+                      'interpolate',
+                      ['linear'],
+                      ['zoom'],
+                      10, 6,
+                      15, 10
+                    ],
+                    'line-opacity': 0.9
+                  }
+                }" />
+                <!-- Animated dashed overlay -->
+                <MapboxLayer :id="MAP_LAYER.ROUTE_ANIMATED" :options="{
+                  type: 'line',
+                  source: MAP_SOURCE.ROUTE,
+                  layout: {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                  },
+                  paint: {
+                    'line-color': '#ffffff',
+                    'line-width': [
+                      'interpolate',
+                      ['linear'],
+                      ['zoom'],
+                      10, 4,
+                      15, 8
+                    ],
+                    'line-opacity': 0.8,
+                    'line-dasharray': [0, 4, 3]
+                  }
+                }" />
               </template>
-            <!-- Markers -->
-            <MapboxMarker
-              v-for="walk in visibleWalks"
-              :key="walk.id"
-              :anchor="bottom"
-              :lng-lat="[Number(walk.longitude) || Number(walk.lng), Number(walk.latitude) || Number(walk.lat)]"
-              :popup="false"
-              :color="selectedWalkId === walk.id ? '#6750A4' : '#625B71'" 
-              :class="{ 'mapboxgl-marker-selected': selectedWalkId === walk.id }"
-              @click="handleWalkSelection(walk)"
-            />
 
-            <!-- MapboxMap Controls -->
-            <MapboxNavigationControl position="top-left" />
+              <!-- Walk markers -->
+              <template v-for="walk in visibleWalks" :key="walk.id">
+                <MapboxMarker
+                  ref="el => { if (el) markerRefs.value.set(walk.id, el) }"
+                  :lng-lat="[Number(walk.longitude) || Number(walk.lng), Number(walk.latitude) || Number(walk.lat)]"
+                  :popup="{
+                    offset: 25,
+                    anchor: 'bottom',
+                    closeButton: false
+                  }"
+                  @mb-added="marker => updateMarkerColor(marker, selectedWalkId === walk.id)"
+                  @click="handleWalkSelection(walk)"
+                >
+                  <template #popup>
+                    <div class="p-2">
+                      <h3 class="font-medium">{{ walk.title || walk.walk_name }}</h3>
+                      <p class="text-sm text-on-surface-variant">{{ walk.location }}</p>
+                    </div>
+                  </template>
+                </MapboxMarker>
+              </template>
+            </template>
 
           </MapboxMap>
           <!-- Mobile toggle button -->
@@ -242,43 +245,30 @@
       </div>
 
       <!-- Mobile location search bottom sheet -->
-      <BottomSheet 
-        v-if="isMobile"
-        v-model="isLocationSearchVisible"
-        class="pb-safe-area-inset-bottom"
-      >
+      <BottomSheet v-if="isMobile" v-model="isLocationSearchVisible" class="pb-safe-area-inset-bottom">
         <div class="p-4">
-          <SearchView
-            v-model="searchStore.searchQuery"
-            :search-mode="'locations'"
-            @location-selected="handleLocationSelected"
-          />
+          <SearchView v-model="searchStore.searchQuery" :search-mode="'locations'"
+            @location-selected="handleLocationSelected" />
         </div>
       </BottomSheet>
 
       <!-- Mobile navigation bar -->
       <div v-if="isMobile" class="fixed bottom-0 left-0 right-0 bg-surface z-40 shadow-lg">
         <div class="flex justify-around items-center h-16 px-4">
-          <button 
-            class="m3-nav-button" 
-            :class="{ 'active': searchStore.searchMode === 'walks' }"
-            @click="searchStore.setSearchMode('walks')"
-          >
-            <iconify-icon icon="mdi:compass-outline" class="text-2xl" />
+          <button class="m3-nav-button" :class="{ 'active': searchStore.searchMode === 'walks' }"
+            @click="searchStore.setSearchMode('walks')">
+            <Icon icon="mdi:compass-outline" class="text-2xl" />
             <span class="text-xs">Explore</span>
           </button>
-          
-          <button 
-            class="m3-nav-button" 
-            :class="{ 'active': searchStore.searchMode === 'locations' }"
-            @click="searchStore.setSearchMode('locations')"
-          >
-            <iconify-icon icon="mdi:map-search" class="text-2xl" />
+
+          <button class="m3-nav-button" :class="{ 'active': searchStore.searchMode === 'locations' }"
+            @click="searchStore.setSearchMode('locations')">
+            <Icon icon="mdi:map-search" class="text-2xl" />
             <span class="text-xs">Find Nearby</span>
           </button>
-          
+
           <button class="m3-nav-button" @click="uiStore?.setMobileMenuOpen(true)">
-            <iconify-icon icon="mdi:menu" class="text-2xl" />
+            <Icon icon="mdi:menu" class="text-2xl" />
             <span class="text-xs">Menu</span>
           </button>
         </div>
@@ -312,7 +302,7 @@ import RouteLayer from './RouteLayer.vue'
 // NEW: Add debounce helper
 function debounce(fn, delay) {
   let timer;
-  return function(...args) {
+  return function (...args) {
     clearTimeout(timer);
     timer = setTimeout(() => fn.apply(this, args), delay);
   }
@@ -470,8 +460,8 @@ const filteredWalks = computed(() => {
     const query = searchQuery.value.toLowerCase().trim()
     results = results.filter(walk => {
       const text = [
-        walk.title, 
-        walk.location, 
+        walk.title,
+        walk.location,
         walk.description
       ].filter(Boolean).join(' ').toLowerCase()
       return text.includes(query)
@@ -504,13 +494,24 @@ const loading = ref(false)
 // Update handleWalkSelection with simpler GeoJSON handling
 const handleWalkSelection = async (walk) => {
   if (!walk) {
-    routeData.value = null
-    return
+    routeData.value = null;
+    updateAllMarkerColors(null); // Reset all markers
+    return;
   }
 
   try {
-    loading.value = true
-    console.log("🚶‍♂️ Fetching geometry for walk:", walk.id)
+    loading.value = true;
+    console.log("🚶‍♂️ Fetching geometry for walk:", walk.id);
+
+    // Update all markers with new selection
+    updateAllMarkerColors(walk.id);
+
+    // Close the marker's popup so it doesn't activate when selecting the card
+    const marker = markerRefs.value.get(walk.id);
+    if (marker && marker.getPopup) {
+      const popup = marker.getPopup();
+      if (popup) popup.remove();
+    }
 
     const response = await fetch(`/api/walks/${walk.id}/geometry`)
     if (!response.ok) {
@@ -518,7 +519,7 @@ const handleWalkSelection = async (walk) => {
     }
 
     const data = await response.json()
-    
+
     if (!isValidGeoJSON(data)) {
       throw new Error('Invalid GeoJSON data structure received')
     }
@@ -540,9 +541,8 @@ const handleWalkSelection = async (walk) => {
         padding: { top: 100, bottom: 100, left: 100, right: 100 },
         pitch: 45,
         bearing: 0,
-        duration: 2000,
-        essential: true,
-        maxZoom: 15
+        essential: false,
+        maxZoom: 5
       })
     }
 
@@ -877,11 +877,11 @@ const handleMapCreated = (map) => {
 // Handle map keyboard navigation
 const handleMapKeyboard = (e) => {
   const KEYBOARD_OFFSET = 50 // pixels to pan per key press
-  
+
   if (!e.target.mapInstance) return
   const map = e.target.mapInstance
-  
-  switch(e.key) {
+
+  switch (e.key) {
     case 'ArrowRight':
       map.panBy([KEYBOARD_OFFSET, 0])
       break
@@ -932,7 +932,7 @@ const handleFabClick = async () => {
 // Update handleLocationSelected to use enhanced 3D flyTo options
 const handleLocationSelected = async (location) => {
   if (!location?.center) return
-  
+
   await searchStore.handleLocationSelected(location)
   await flyToLocation({
     center: location.center,
@@ -1037,11 +1037,11 @@ const { initializeResponsiveState } = uiStore
 const initializeInterface = () => {
   const cleanup = initializeResponsiveState()
   walksStore.loadWalks()
-    
+
   if (walksStore.walks.length && !isMobile.value) {
     uiStore.setSidebarVisibility(true)
   }
-    
+
   if (props.walkId) {
     const walk = walksStore.getWalkById(props.walkId)
     if (walk) {
@@ -1053,7 +1053,7 @@ const initializeInterface = () => {
 onMounted(initializeInterface)
 
 // Update computed properties
-const showNavigationRail = computed(() => 
+const showNavigationRail = computed(() =>
   !isMobile.value && showSidebar.value && !isFullscreen.value
 )
 
@@ -1098,7 +1098,7 @@ const performSearch = throttle((query) => {
   }
 
   const searchTerms = query.toLowerCase().trim().split(/\s+/)
-  
+
   searchResults.value = availableWalks.value.filter(walk => {
     const text = [
       walk.title,
@@ -1106,7 +1106,7 @@ const performSearch = throttle((query) => {
       walk.description,
       walk.difficulty
     ].filter(Boolean).join(' ').toLowerCase()
-    
+
     return searchTerms.every(term => text.includes(term))
   })
 }, searchThrottleMs)
@@ -1139,7 +1139,7 @@ onBeforeUnmount(() => {
   if (mapRef.value) {
     mapRef.value.off('styledata')
   }
-  
+
   // Clear refs
   mapRef.value = null
   mapComponent.value = null
@@ -1163,7 +1163,7 @@ const visibleWalks = computed(() => {
   return walks.value.filter(walk => {
     const lng = Number(walk.longitude) || Number(walk.lng);
     const lat = Number(walk.latitude) || Number(walk.lat);
-    return lng >= minLng && lng <= maxLng && lat >= minLat && lat <= maxLat;
+    return lng >= minLng && lng <= maxLng && lat >= minLat && maxLat;
   });
 });
 
@@ -1179,7 +1179,7 @@ const updateVisibleMarkers = () => {
 // Add a computed property to validate route data
 const validRouteData = computed(() => {
   if (!routeData.value) return null
-  
+
   // Basic structure validation
   if (!routeData.value.type || !routeData.value.geometry) {
     console.error('Invalid route data structure:', routeData.value)
@@ -1205,7 +1205,9 @@ const MAP_SOURCE = {
 };
 
 const MAP_LAYER = {
-  ROUTE: 'walkquest-route-layer'
+  ROUTE_GLOW: 'walkquest-route-glow',
+  ROUTE_BG: 'walkquest-route-bg',
+  ROUTE_ANIMATED: 'walkquest-route-animated'
 };
 
 // Add map reference and initialization state
@@ -1214,7 +1216,7 @@ const mapInstance = ref(null);
 // Add route hover effect handler
 const addRouteHoverEffect = () => {
   if (!mapRef.value) return
-  
+
   mapRef.value.on('mousemove', MAP_LAYER.ROUTE, (e) => {
     if (e.features.length > 0) {
       mapRef.value.setFeatureState(
@@ -1239,6 +1241,101 @@ onBeforeUnmount(() => {
     mapRef.value.off('mouseleave', MAP_LAYER.ROUTE)
   }
 })
+// Improved animation logic for irregular linestrings
+const dashArraySequence = [
+  [0, 4, 3],
+  [0.2, 4, 2.8],
+  [0.4, 4, 2.6],
+  [0.6, 4, 2.4],
+  [0.8, 4, 2.2],
+  [1, 4, 2],
+  [1.2, 4, 1.8],
+  [1.4, 4, 1.6],
+  [1.6, 4, 1.4],
+  [1.8, 4, 1.2],
+  [2, 4, 1],
+  [2.2, 4, 0.8],
+  [2.4, 4, 0.6],
+  [2.6, 4, 0.4],
+  [2.8, 4, 0.2],
+  [3, 4, 0]
+];
+
+let animationFrame = null;
+
+const animateDashArray = (timestamp) => {
+  if (!mapRef.value) return;
+
+  // Define total animation cycle (in ms)
+  const animationDuration = 200;
+  // Calculate progress as a value between 0 and 1
+  const progress = (timestamp % animationDuration) / animationDuration;
+
+  // Determine current position in the dash sequence (wrap around)
+  const dashSeqLength = dashArraySequence.length;
+  const targetIndex = progress * dashSeqLength;
+  const lowerIdx = Math.floor(targetIndex) % dashSeqLength;
+  const upperIdx = (lowerIdx + 1) % dashSeqLength;
+  const fraction = targetIndex - lowerIdx;
+
+  // Interpolate between two consecutive dash array values
+  const interpolatedDashArray = dashArraySequence[lowerIdx].map((value, i) => {
+    const nextValue = dashArraySequence[upperIdx][i];
+    return value + (nextValue - value) * fraction;
+  });
+
+  // Update the dash array paint property for smooth animation
+  mapRef.value.setPaintProperty(
+    MAP_LAYER.ROUTE_ANIMATED,
+    'line-dasharray',
+    interpolatedDashArray
+  );
+
+  animationFrame = requestAnimationFrame(animateDashArray);
+};
+
+// Start animation when map is loaded and valid route data exists
+watch([mapLoaded, validRouteData], ([isLoaded, hasRoute]) => {
+  if (animationFrame) {
+    cancelAnimationFrame(animationFrame);
+    animationFrame = null;
+  }
+  
+  if (isLoaded && hasRoute) {
+    nextTick(() => {
+      animationFrame = requestAnimationFrame(animateDashArray);
+    });
+  }
+}, { immediate: true });
+
+// Clean up animation on unmount
+onBeforeUnmount(() => {
+  if (animationFrame) {
+    cancelAnimationFrame(animationFrame);
+  }
+});
+
+// Replace all marker-related functions with these enhanced versions
+const updateMarkerColor = (marker, isSelected) => {
+  if (!marker) return;
+  const element = marker; // marker is already the correct element
+  const svg = element.querySelector('svg');
+  if (!svg) return;
+  // Select the first <path> regardless of its attributes
+  const targetPath = svg.querySelector('path');
+  if (targetPath) {
+    targetPath.style.fill = isSelected ? '#6750A4' : '#3FB1CE';
+  }
+};
+
+const updateAllMarkerColors = (selectedId = null) => {
+  markerRefs.value.forEach((marker, id) => {
+    updateMarkerColor(marker, id === selectedId);
+  });
+};
+
+// Add ref to store marker references
+const markerRefs = ref(new Map());
 
 </script>
 
@@ -1422,5 +1519,18 @@ onBeforeUnmount(() => {
   border-radius: 16px;
   box-shadow: var(--md-sys-elevation-1);
   margin-bottom: 16px;
+}
+
+/* Add theme color utility classes if not already present */
+.text-primary {
+  color: rgb(var(--md-sys-color-primary));
+}
+
+.text-primary-container {
+  color: rgb(var(--md-sys-color-primary-container));
+}
+
+.text-outline {
+  color: rgb(var(--md-sys-color-outline));
 }
 </style>

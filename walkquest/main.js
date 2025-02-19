@@ -1,12 +1,12 @@
 import { createApp } from 'vue'
 import App from './App.vue'
-import 'iconify-icon'
+import 'Icon'
 
 const app = createApp(App)
 
 // Configure custom elements
 app.config.compilerOptions.isCustomElement = (tag) => {
-  return ['iconify-icon'].includes(tag)
+  return ['Icon'].includes(tag)
 }
 
 app.mount('#app')

@@ -15,7 +15,7 @@
           
           <div class="input-actions">
             <div v-if="isLoading" class="loading-indicator">
-              <iconify-icon icon="mdi:loading" class="animate-spin" />
+              <Icon icon="mdi:loading" class="animate-spin" />
             </div>
             
             <button 
@@ -24,7 +24,7 @@
               class="clear-button"
               aria-label="Clear search"
             >
-              <iconify-icon icon="mdi:close" />
+              <Icon icon="mdi:close" />
             </button>
           </div>
         </div>
@@ -44,7 +44,7 @@
         role="option"
         @click="handleLocationSelect(suggestion)"
       >
-        <iconify-icon icon="mdi:map-marker" />
+        <Icon icon="mdi:map-marker" />
         <span>{{ suggestion.place_name }}</span>
       </button>
     </div>
@@ -55,7 +55,7 @@
       class="empty-state"
       role="status"
     >
-      <iconify-icon icon="mdi:map-marker-off" />
+      <Icon icon="mdi:map-marker-off" />
       <span>No locations found</span>
     </div>
   </div>

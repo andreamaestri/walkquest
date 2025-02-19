@@ -12,7 +12,7 @@
         <h3 class="walk-title">{{ walk.walk_name || walk.title }}</h3>
         <div class="walk-meta">
           <span class="location">
-            <iconify-icon icon="mdi:map-marker" />
+            <Icon icon="mdi:map-marker" />
             {{ walk.location }}
           </span>
           <slot name="meta"></slot>
@@ -22,15 +22,15 @@
       <div class="walk-details">
         <div class="badges">
           <div class="badge difficulty" :class="difficultyClass">
-            <iconify-icon icon="mdi:flag" />
+            <Icon icon="mdi:flag" />
             <span>{{ difficultyText }}</span>
           </div>
           <div class="badge distance">
-            <iconify-icon icon="mdi:map-marker-distance" />
+            <Icon icon="mdi:map-marker-distance" />
             <span>{{ formatDistance(walk.distance) }}</span>
           </div>
           <div class="badge duration">
-            <iconify-icon icon="mdi:clock-outline" />
+            <Icon icon="mdi:clock-outline" />
             <span>{{ formatDuration(walk.duration) }}</span>
           </div>
         </div>
@@ -220,7 +220,7 @@ const getCategoryStyle = (cat) => {
   gap: 4px;
 }
 
-.location iconify-icon {
+.location Icon {
   color: rgb(var(--md-sys-color-primary));
   font-size: 16px;
 }
@@ -243,7 +243,7 @@ const getCategoryStyle = (cat) => {
   background: rgb(var(--md-sys-color-surface-container-highest));
 }
 
-.badge iconify-icon {
+.badge Icon {
   font-size: 18px;
 }
 

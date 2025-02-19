@@ -2,7 +2,7 @@
   <div class="loading-overlay" role="alert" aria-live="polite">
     <div class="loading-content">
       <div class="loading-spinner">
-        <iconify-icon icon="mdi:loading" class="animate-spin text-4xl" />
+        <Icon icon="mdi:loading" class="animate-spin text-4xl" />
       </div>
       <div v-if="message" class="loading-message">
         {{ message }}

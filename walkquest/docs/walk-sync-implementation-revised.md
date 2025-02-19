@@ -148,15 +148,15 @@ onMounted(async () => {
   <div class="p-4 max-w-sm">
     <h3 class="text-lg font-semibold mb-2">{{ walk.title }}</h3>
     <div class="flex items-center gap-2 mb-2">
-      <iconify-icon icon="mdi:map-marker" />
+      <Icon icon="mdi:map-marker" />
       <span>{{ walk.location }}</span>
     </div>
     <div class="flex items-center gap-2 mb-2">
-      <iconify-icon icon="mdi:clock-outline" />
+      <Icon icon="mdi:clock-outline" />
       <span>{{ walk.duration }}</span>
     </div>
     <div class="flex items-center gap-2">
-      <iconify-icon icon="mdi:terrain" />
+      <Icon icon="mdi:terrain" />
       <span>{{ walk.difficulty }}</span>
     </div>
   </div>

@@ -4,7 +4,7 @@
       <div class="flex items-center justify-between h-16">
         <!-- Logo -->
         <router-link to="/" class="flex items-center space-x-2">
-          <iconify-icon icon="mdi:hiking" class="text-2xl text-primary-500"></iconify-icon>
+          <Icon icon="mdi:hiking" class="text-2xl text-primary-500"></Icon>
           <span class="font-semibold text-lg">WalkQuest</span>
         </router-link>
 
@@ -15,7 +15,7 @@
             @click="toggleMobileMenu"
             class="mobile-menu-button"
           >
-            <iconify-icon :icon="mobileMenuOpen ? 'mdi:close' : 'mdi:menu'" class="text-2xl"></iconify-icon>
+            <Icon :icon="mobileMenuOpen ? 'mdi:close' : 'mdi:menu'" class="text-2xl"></Icon>
           </button>
           
           <!-- Mobile menu panel -->

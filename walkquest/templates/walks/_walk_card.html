@@ -28,14 +28,14 @@
         <div class="flex flex-wrap gap-3 text-sm text-gray-600">
             <template x-if="walk.distance">
                 <span class="inline-flex items-center gap-1">
-                    <iconify-icon icon="mdi:map-marker-distance" class="w-5 h-5"></iconify-icon>
+                    <Icon icon="mdi:map-marker-distance" class="w-5 h-5"></Icon>
                     <span x-text="`${(walk.distance).toFixed(1)} miles`"></span>
                 </span>
             </template>
             
             <template x-if="walk.duration">
                 <span class="inline-flex items-center gap-1">
-                    <iconify-icon icon="mdi:clock-outline" class="w-5 h-5"></iconify-icon>
+                    <Icon icon="mdi:clock-outline" class="w-5 h-5"></Icon>
                     <span x-text="walk.duration"></span>
                 </span>
             </template>
@@ -47,7 +47,7 @@
                           'bg-yellow-100 text-yellow-800': walk.steepness_level === 'MODERATE',
                           'bg-red-100 text-red-800': walk.steepness_level === 'CHALLENGING'
                       }">
-                    <iconify-icon icon="mdi:hiking" class="w-4 h-4"></iconify-icon>
+                    <Icon icon="mdi:hiking" class="w-4 h-4"></Icon>
                     <span x-text="walk.steepness_level?.toLowerCase().replace(/_/g, ' ') || 'Novice'"></span>
                 </span>
             </template>

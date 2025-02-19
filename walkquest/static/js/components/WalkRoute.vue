@@ -6,22 +6,22 @@
     </div>
     
     <div v-else-if="error" class="m3-error-state">
-      <iconify-icon icon="mdi:alert" class="text-[24px]" />
+      <Icon icon="mdi:alert" class="text-[24px]" />
       <span>{{ error }}</span>
     </div>
 
     <div v-else-if="routeData" class="m3-route-container">
       <div class="m3-route-stats">
         <div class="m3-stat-item">
-          <iconify-icon icon="mdi:map-marker-distance" />
+          <Icon icon="mdi:map-marker-distance" />
           <span>{{ routeData.distance.toFixed(1) }} km</span>
         </div>
         <div class="m3-stat-item">
-          <iconify-icon icon="mdi:clock-outline" />
+          <Icon icon="mdi:clock-outline" />
           <span>{{ routeData.duration }} min</span>
         </div>
         <div class="m3-stat-item">
-          <iconify-icon icon="mdi:terrain" />
+          <Icon icon="mdi:terrain" />
           <span>{{ routeData.elevation_gain }}m gain</span>
         </div>
       </div>
