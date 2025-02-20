@@ -1343,7 +1343,7 @@
     gap: calc(var(--spacing) * 6);
   }
 }
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap');
 @layer base {
   :root {
     --animate-duration: 1s;
@@ -1364,10 +1364,10 @@
   }
   body {
     vertical-align: middle;
-    font-family: IBM Plex Sans Condensed;
+    font-family: Outfit;
   }
   * {
-    font-family: 'IBM Plex Sans Condensed', system-ui, sans-serif;
+    font-family: 'Outfit', system-ui, sans-serif;
   }
 }
 @property --tw-translate-x {

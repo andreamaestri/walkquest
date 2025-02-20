@@ -1,21 +1,5 @@
 <template>
   <div class="walk-list-container" :class="{ 'is-compact': isCompact }" ref="listContainer">
-    <div class="search-wrapper" :class="{ 'location-mode': searchStore.searchMode === 'locations' }">
-      <Transition name="search-mode" mode="out-in">
-        <SearchView
-          v-if="searchStore.searchMode === 'walks'"
-          :key="searchStore.searchMode"
-          v-model:search-mode="searchMode"
-          @location-selected="handleLocationSelected"
-          @walk-selected="handleWalkSelection"
-        />
-      </Transition>
-    </div>
-
-    <div v-if="searchStore.error" class="error-message" role="alert">
-      {{ searchStore.error }}
-    </div>
-
     <div class="walks-section" :class="{ 'location-mode': searchStore.searchMode === 'locations' }">
       <div v-if="searchStore.searchMode === 'locations' && locationStore.userLocation" class="location-info">
         <div class="selected-location">

@@ -1,262 +1,270 @@
 <template>
-  <div class="h-screen w-screen overflow-hidden flex flex-col relative bg-surface">
-    <div class="relative h-full w-full flex">
-      <!-- Navigation Rail for desktop with streamlined motion animation -->
-      <div v-if="showNavigationRail" ref="sidebarRef" class="m3-navigation-rail"
-        :class="[{ 'is-expanded': isExpanded }]">
-        <Transition @enter="onSidebarEnter" @leave="onSidebarLeave" mode="out-in">
-          <div class="h-full flex flex-col" :key="selectedWalkId ? 'drawer' : 'nav'">
-            <!-- Normal Navigation Rail Content -->
-            <template v-if="!selectedWalkId">
-              <div class="m3-rail-header">
-                <!-- Menu button - centered and properly styled -->
-                <button class="m3-rail-item menu-button" @click="toggleExpanded">
-                  <div class="m3-state-layer">
-                    <Icon icon="mdi:menu" class="m3-rail-icon text-[24px]" />
-                  </div>
-                </button>
-
-                <!-- FAB -->
-                <button class="m3-rail-fab" @click="handleFabClick">
-                  <Icon icon="mdi:hiking" class="text-[36px]" />
-                  <span class="m3-rail-fab-text" v-if="isExpanded">WalkQuest</span>
-                  <span class="sr-only">WalkQuest Home</span>
-                </button>
-              </div>
-
-              <!-- Navigation items -->
-              <nav class="m3-rail-items">
-                <button class="m3-rail-item" :class="{ 'is-active': !showRoutesDrawer }"
-                  @click="handleWalkSelection(null)">
-                  <div class="m3-rail-content">
-                    <div class="m3-rail-icon-container">
-                      <Icon icon="mdi:compass-outline" class="m3-rail-icon" />
-                    </div>
-                    <span class="m3-rail-label">Explore</span>
-                  </div>
-                </button>
-
-                <!-- New Location Search Button - Using helper -->
-                <button class="m3-rail-item" @click="setSearchMode('locations')">
-                  <div class="m3-rail-content">
-                    <div class="m3-rail-icon-container">
-                      <Icon icon="mdi:map-search" class="m3-rail-icon" />
-                    </div>
-                    <span class="m3-rail-label">Find Nearby</span>
-                  </div>
-                </button>
-              </nav>
-
-              <!-- Main Content Area - Using simplified computed -->
-              <div class="m3-rail-content-area">
-                <div v-if="searchStore.searchMode === 'locations'" class="m3-location-panel">
-                  <LocationSearch @location-selected="handleLocationSelected" />
-                </div>
-
-                <!-- Walk List with simplified props -->
-                <div class="m3-walks-list">
-                  <WalkList v-model="searchQuery" :walks="filteredWalks" :selected-walk-id="selectedWalkId"
-                    :expanded-walk-ids="expandedWalkIds" :is-compact="!isExpanded" @walk-selected="handleWalkSelection"
-                    @walk-expanded="handleWalkExpanded" />
-                </div>
-              </div>
-            </template>
-
-            <!-- Walk Drawer -->
-            <WalkDrawer v-else-if="selectedWalk && showDrawer" :walk="selectedWalk" @close="handleDrawerClose"
-              :enter-motion="{ duration: MD3_DURATION.medium1, easing: MD3_EASING.emphasizedDecelerate }"
-              :leave-motion="{ duration: MD3_DURATION.short3, easing: MD3_EASING.emphasizedAccelerate }"
-              style="position: absolute; top: 0; bottom: 0; right: 0; width: auto;" />
-          </div>
-        </Transition>
-      </div>
-
-      <!-- Navigation Drawer for mobile -->
-      <Transition :css="false" @enter="onDrawerEnter" @leave="onDrawerLeave">
-        <div v-if="uiStore?.mobileMenuOpen && isMobile" ref="drawerRef"
-          class="fixed inset-0 z-20 m3-navigation-drawer transform-gpu" @click.self="uiStore?.setMobileMenuOpen(false)">
-          <div class="m3-drawer-content h-full flex flex-col">
-            <!-- Drawer Header -->
-            <div class="px-6 py-4 flex justify-between items-center">
-              <span class="m3-headline-small">WalkQuest</span>
-              <button @click="uiStore?.setMobileMenuOpen(false)" class="m3-icon-button">
+  <div class="h-screen w-screen overflow-hidden flex relative bg-surface">
+    <!-- Sidebar for Desktop -->
+    <div v-if="showNavigationRail" ref="sidebarRef" class="m3-navigation-rail" :class="[{ 'is-expanded': isExpanded }]">
+      <Transition @enter="onSidebarEnter" @leave="onSidebarLeave" mode="out-in">
+        <div class="h-full flex flex-col" :key="selectedWalkId ? 'drawer' : 'nav'">
+          <!-- Normal Navigation Rail Content -->
+          <template v-if="!selectedWalkId">
+            <div class="m3-rail-header">
+              <!-- Menu button -->
+              <button class="m3-rail-item menu-button" @click="toggleExpanded">
                 <div class="m3-state-layer">
-                  <Icon icon="mdi:close" class="text-[24px]" />
+                  <Icon icon="mdi:menu" class="m3-rail-icon text-[24px]" />
                 </div>
               </button>
+              <!-- FAB -->
+              <button class="m3-rail-fab" @click="handleFabClick">
+                <Icon icon="mdi:hiking" class="text-[36px]" />
+                <span class="m3-rail-fab-text" v-if="isExpanded">WalkQuest</span>
+                <span class="sr-only">WalkQuest Home</span>
+              </button>
             </div>
-
-            <!-- Drawer Content -->
-            <div class="flex-1 overflow-hidden">
-              <WalkList :error="error" :walks="availableWalks" :selected-walk-id="selectedWalkId"
-                :expanded-walk-ids="expandedWalkIds" @walk-selected="handleWalkSelection"
-                @walk-expanded="handleWalkExpanded" />
+            <!-- Navigation items -->
+            <nav class="m3-rail-items">
+              <button class="m3-rail-item" :class="{ 'is-active': !showRoutesDrawer }" @click="handleWalkSelection(null)">
+                <div class="m3-rail-content">
+                  <div class="m3-rail-icon-container">
+                    <Icon icon="mdi:compass-outline" class="m3-rail-icon" />
+                  </div>
+                  <span class="m3-rail-label">Explore</span>
+                </div>
+              </button>
+              <!-- New Location Search Button -->
+              <button class="m3-rail-item" @click="setSearchMode('locations')">
+                <div class="m3-rail-content">
+                  <div class="m3-rail-icon-container">
+                    <Icon icon="mdi:map-search" class="m3-rail-icon" />
+                  </div>
+                  <span class="m3-rail-label">Find Nearby</span>
+                </div>
+              </button>
+            </nav>
+            <!-- Main Content Area inside the rail (for walk list) -->
+            <div class="m3-rail-content-area">
+              <div v-if="searchStore.searchMode === 'locations'" class="m3-location-panel">
+                <LocationSearch @location-selected="handleLocationSelected" />
+              </div>
+              <!-- Walk List -->
+              <div class="m3-walks-list">
+                <WalkList v-model="searchQuery" :walks="filteredWalks" :selected-walk-id="selectedWalkId"
+                  :expanded-walk-ids="expandedWalkIds" :is-compact="!isExpanded" @walk-selected="handleWalkSelection"
+                  @walk-expanded="handleWalkExpanded" />
+              </div>
             </div>
-          </div>
+          </template>
+          <!-- Walk Drawer -->
+          <WalkDrawer v-else-if="selectedWalk && showDrawer" :walk="selectedWalk" @close="handleDrawerClose"
+            :enter-motion="{ duration: MD3_DURATION.medium1, easing: MD3_EASING.emphasizedDecelerate }"
+            :leave-motion="{ duration: MD3_DURATION.short3, easing: MD3_EASING.emphasizedAccelerate }"
+            style="position: absolute; top: 0; bottom: 0; right: 0; width: auto;" />
         </div>
       </Transition>
+    </div>
 
-      <!-- Map container with simplified config -->
-      <div class="m3-content-container hardware-accelerated pointer-events-auto"
-        :class="{ 'drawer-open': isDrawerOpen }" :style="mapContainerStyle" ref="mapContainerRef">
-        <div class="m3-surface-container hardware-accelerated pointer-events-auto h-full">
-          <MapboxMap ref="mapComponent" :access-token="mapboxToken" :map-style="mergedMapConfig.mapStyle"
-            :max-bounds="mergedMapConfig.maxBounds" :center="mergedMapConfig.center" :zoom="mergedMapConfig.zoom"
-            :min-zoom="mergedMapConfig.minZoom" :max-zoom="mergedMapConfig.maxZoom" @mb-created="handleMapCreated"
-            @mb-load="handleMapLoad" @mb-moveend="updateVisibleMarkers" class="h-full w-full absolute inset-0">
-            <!-- Loading indicator -->
-            <div v-if="loading" class="absolute bottom-4 left-4 z-50 bg-white rounded-full px-4 py-2 shadow-lg">
-              <div class="flex items-center gap-2">
-                <div class="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent"></div>
-                <span class="text-on-surface text-sm">Loading route...</span>
+    <!-- Header with Search Bar (positioned absolutely) -->
+    <div class="fixed top-0 z-10 transition-all duration-300" 
+         :style="{
+           marginLeft: showNavigationRail 
+             ? (isExpanded ? '410px' : '72px') 
+             : '0px'
+         }">
+      <header class="py-3 bg-surface-variant">
+        <!-- Search Bar -->
+        <div class="transition-all duration-300"
+             :class="[
+               showNavigationRail 
+                 ? (isExpanded ? 'w-[calc(100vw-380px)]' : 'w-[calc(100vw-92px)]')
+                 : 'w-screen'
+             ]">
+          <SearchView 
+            v-model="searchQuery" 
+            :search-mode="searchStore.searchMode"
+            @location-selected="handleLocationSelected" 
+            class="md3-search-bar px-4" 
+          />
+        </div>
+      </header>
+    </div>
+
+    <!-- Navigation Drawer for mobile -->
+    <Transition :css="false" @enter="onDrawerEnter" @leave="onDrawerLeave">
+      <div v-if="uiStore?.mobileMenuOpen && isMobile" ref="drawerRef"
+        class="fixed inset-0 z-20 m3-navigation-drawer transform-gpu" @click.self="uiStore?.setMobileMenuOpen(false)">
+        <div class="m3-drawer-content h-full flex flex-col">
+          <!-- Drawer Header -->
+          <div class="px-6 py-4 flex justify-between items-center">
+            <span class="m3-headline-small">WalkQuest</span>
+            <button @click="uiStore?.setMobileMenuOpen(false)" class="m3-icon-button">
+              <div class="m3-state-layer">
+                <Icon icon="mdi:close" class="text-[24px]" />
               </div>
-            </div>
-
-            <!-- Route layers -->
-            <template v-if="validRouteData">
-              <MapboxSource :id="MAP_SOURCE.ROUTE" :options="{
-                type: 'geojson',
-                data: validRouteData
-              }" />
-              <MapboxLayer :id="MAP_LAYER.ROUTE_GLOW" :options="{
-                type: 'line',
-                source: MAP_SOURCE.ROUTE,
-                layout: {
-                  'line-join': 'round',
-                  'line-cap': 'round'
-                },
-                paint: {
-                  'line-color': '#52ebff',
-                  'line-width': ['interpolate', ['linear'], ['zoom'], 10, 12, 15, 18],
-                  'line-opacity': 0.6,
-                  'line-blur': 8
-                }
-              }" />
-              <MapboxLayer :id="MAP_LAYER.ROUTE_BG" :options="{
-                type: 'line',
-                source: MAP_SOURCE.ROUTE,
-                layout: {
-                  'line-join': 'round',
-                  'line-cap': 'round'
-                },
-                paint: {
-                  'line-color': 'black',
-                    'line-width': ['interpolate', ['linear'], ['zoom'], 6, 1, 8, 3],
-                  'line-opacity': 0.9
-                }
-              }" />
-              <MapboxLayer :id="MAP_LAYER.ROUTE_ANIMATED" :options="{
-                type: 'line',
-                source: MAP_SOURCE.ROUTE,
-                layout: {
-                  'line-join': 'round',
-                  'line-cap': 'round'
-                },
-                paint: {
-                  'line-color': '#ffffff',
-                  'line-width': ['interpolate', ['linear'], ['zoom'], 10, 4, 15, 8],
-                  'line-opacity': 0.05,
-                  'line-dasharray': [0, 4, 3]
-                }
-              }" @mb-layer-loaded="handleRouteLayerLoaded" />
-            </template>
-
-            <!-- Walk markers -->
-            <template v-if="mapLoaded && mapReady">
-              <template v-for="walk in visibleWalks" :key="`${walk.id}-${markerKey}`">
-                <MapboxMarker
-                  :lng-lat="[
-                    Number(walk.longitude) || Number(walk.lng),
-                    Number(walk.latitude) || Number(walk.lat)
-                  ]"
-                  :color="selectedWalkId === walk.id ? '#6750A4' : '#3FB1CE'"
-                  :popup="{
-                    offset: 25,
-                    anchor: 'bottom',
-                    closeButton: false
-                  }"
-                  @mounted="marker => handleMarkerMounted(marker, walk.id)"
-                  @click="() => handleMarkerClick(walk)"
-                >
-                  <template #popup>
-                    <div class="p-2">
-                      <h3 class="font-medium">{{ walk.title || walk.walk_name }}</h3>
-                      <p class="text-sm text-on-surface-variant">{{ walk.location }}</p>
-                    </div>
-                  </template>
-                </MapboxMarker>
-              </template>
-            </template>
-
-            <!-- Mobile toggle button -->
-            <Transition :css="false" @enter="onMobileButtonEnter" @leave="onMobileButtonLeave">
-              <button v-if="isMobile && !uiStore?.mobileMenuOpen" ref="mobileButtonRef"
-                @click="uiStore?.setMobileMenuOpen(true)" class="m3-fab-mobile">
-                <i class="icon-menu"></i>
-                <span class="sr-only">Open menu</span>
-              </button>
-            </Transition>
-          </MapboxMap>
+            </button>
+          </div>
+          <!-- Drawer Content -->
+          <div class="flex-1 overflow-hidden">
+            <WalkList :error="error" :walks="availableWalks" :selected-walk-id="selectedWalkId"
+              :expanded-walk-ids="expandedWalkIds" @walk-selected="handleWalkSelection"
+              @walk-expanded="handleWalkExpanded" />
+          </div>
         </div>
       </div>
+    </Transition>
 
-      <!-- Mobile location search bottom sheet -->
-      <BottomSheet v-if="isMobile" v-model="isLocationSearchVisible" class="pb-safe-area-inset-bottom">
-        <div class="p-4">
-          <SearchView v-model="searchStore.searchQuery" :search-mode="'locations'"
-            @location-selected="handleLocationSelected" />
-        </div>
-      </BottomSheet>
-
-      <!-- Mobile navigation bar -->
-      <div v-if="isMobile" class="fixed bottom-0 left-0 right-0 bg-surface z-40 shadow-lg">
-        <div class="flex justify-around items-center h-16 px-4">
-          <button class="m3-nav-button" :class="{ 'active': searchStore.searchMode === 'walks' }"
-            @click="searchStore.setSearchMode('walks')">
-            <Icon icon="mdi:compass-outline" class="text-2xl" />
-            <span class="text-xs">Explore</span>
-          </button>
-
-          <button class="m3-nav-button" :class="{ 'active': searchStore.searchMode === 'locations' }"
-            @click="searchStore.setSearchMode('locations')">
-            <Icon icon="mdi:map-search" class="text-2xl" />
-            <span class="text-xs">Find Nearby</span>
-          </button>
-
-          <button class="m3-nav-button" @click="uiStore?.setMobileMenuOpen(true)">
-            <Icon icon="mdi:menu" class="text-2xl" />
-            <span class="text-xs">Menu</span>
-          </button>
-        </div>
+    <!-- Map container with simplified config -->
+    <div class="m3-content-container hardware-accelerated pointer-events-auto"
+      :class="{ 'drawer-open': isDrawerOpen }" 
+      :style="[
+        mapContainerStyle,
+        { 'marginTop': '64px' } // Add top margin to account for header
+      ]" 
+      ref="mapContainerRef">
+      <div class="m3-surface-container hardware-accelerated pointer-events-auto absolute inset-0">
+        <MapboxMap ref="mapComponent" :access-token="mapboxToken" :map-style="mergedMapConfig.mapStyle"
+          :max-bounds="mergedMapConfig.maxBounds" :center="mergedMapConfig.center" :zoom="mergedMapConfig.zoom"
+          :min-zoom="mergedMapConfig.minZoom" :max-zoom="mergedMapConfig.maxZoom" @mb-created="handleMapCreated"
+          @mb-load="handleMapLoad" @mb-moveend="updateVisibleMarkers" class="h-full w-full absolute inset-0">
+          <!-- Loading indicator -->
+          <div v-if="loading" class="absolute bottom-4 left-4 z-50 bg-white rounded-full px-4 py-2 shadow-lg">
+            <div class="flex items-center gap-2">
+              <div class="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent"></div>
+              <span class="text-on-surface text-sm">Loading route...</span>
+            </div>
+          </div>
+          <!-- Route layers -->
+          <template v-if="validRouteData">
+            <MapboxSource :id="MAP_SOURCE.ROUTE" :options="{
+              type: 'geojson',
+              data: validRouteData
+            }" />
+            <MapboxLayer :id="MAP_LAYER.ROUTE_GLOW" :options="{
+              type: 'line',
+              source: MAP_SOURCE.ROUTE,
+              layout: {
+                'line-join': 'round',
+                'line-cap': 'round'
+              },
+              paint: {
+                'line-color': '#52ebff',
+                'line-width': ['interpolate', ['linear'], ['zoom'], 10, 12, 15, 18],
+                'line-opacity': 0.6,
+                'line-blur': 8
+              }
+            }" />
+            <MapboxLayer :id="MAP_LAYER.ROUTE_BG" :options="{
+              type: 'line',
+              source: MAP_SOURCE.ROUTE,
+              layout: {
+                'line-join': 'round',
+                'line-cap': 'round'
+              },
+              paint: {
+                'line-color': 'black',
+                'line-width': ['interpolate', ['linear'], ['zoom'], 6, 1, 8, 3],
+                'line-opacity': 0.9
+              }
+            }" />
+            <MapboxLayer :id="MAP_LAYER.ROUTE_ANIMATED" :options="{
+              type: 'line',
+              source: MAP_SOURCE.ROUTE,
+              layout: {
+                'line-join': 'round',
+                'line-cap': 'round'
+              },
+              paint: {
+                'line-color': '#ffffff',
+                'line-width': ['interpolate', ['linear'], ['zoom'], 10, 4, 15, 8],
+                'line-opacity': 0.05,
+                'line-dasharray': [0, 4, 3]
+              }
+            }" @mb-layer-loaded="handleRouteLayerLoaded" />
+          </template>
+          <!-- Walk markers -->
+          <template v-if="mapLoaded && mapReady">
+            <template v-for="walk in visibleWalks" :key="`${walk.id}-${markerKey}`">
+              <MapboxMarker :lng-lat="[
+                Number(walk.longitude) || Number(walk.lng),
+                Number(walk.latitude) || Number(walk.lat)
+              ]" :color="selectedWalkId === walk.id ? '#6750A4' : '#3FB1CE'" :popup="{
+                  offset: 25,
+                  anchor: 'bottom',
+                  closeButton: false
+                }" @mounted="marker => handleMarkerMounted(marker, walk.id)" @click="() => handleMarkerClick(walk)">
+                <template #popup>
+                  <div class="p-2">
+                    <h3 class="font-medium">{{ walk.title || walk.walk_name }}</h3>
+                    <p class="text-sm text-on-surface-variant">{{ walk.location }}</p>
+                  </div>
+                </template>
+              </MapboxMarker>
+            </template>
+          </template>
+          <!-- Mobile toggle button -->
+          <Transition :css="false" @enter="onMobileButtonEnter" @leave="onMobileButtonLeave">
+            <button v-if="isMobile && !uiStore?.mobileMenuOpen" ref="mobileButtonRef"
+              @click="uiStore?.setMobileMenuOpen(true)" class="m3-fab-mobile">
+              <i class="icon-menu"></i>
+              <span class="sr-only">Open menu</span>
+            </button>
+          </Transition>
+        </MapboxMap>
+      </div>
+    </div>
+    <!-- Mobile location search bottom sheet -->
+    <BottomSheet v-if="isMobile" v-model="isLocationSearchVisible" class="pb-safe-area-inset-bottom">
+      <div class="p-4">
+        <SearchView v-model="searchStore.searchQuery" :search-mode="'locations'"
+          @location-selected="handleLocationSelected" />
+      </div>
+    </BottomSheet>
+    <!-- Mobile navigation bar -->
+    <div v-if="isMobile" class="fixed bottom-0 left-0 right-0 bg-surface z-40 shadow-lg">
+      <div class="flex justify-around items-center h-16 px-4">
+        <button class="m3-nav-button" :class="{ 'active': searchStore.searchMode === 'walks' }"
+          @click="searchStore.setSearchMode('walks')">
+          <Icon icon="mdi:compass-outline" class="text-2xl" />
+          <span class="text-xs">Explore</span>
+        </button>
+        <button class="m3-nav-button" :class="{ 'active': searchStore.searchMode === 'locations' }"
+          @click="searchStore.setSearchMode('locations')">
+          <Icon icon="mdi:map-search" class="text-2xl" />
+          <span class="text-xs">Find Nearby</span>
+        </button>
+        <button class="m3-nav-button" @click="uiStore?.setMobileMenuOpen(true)">
+          <Icon icon="mdi:menu" class="text-2xl" />
+          <span class="text-xs">Menu</span>
+        </button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from "vue"
-import { useRouter, useRoute } from "vue-router"
-import { animate } from "motion"
-import { useElementVisibility } from "@vueuse/core"
-import { useUiStore } from "../stores/ui"
-import { useWalksStore } from "../stores/walks"
-import { DynamicScroller, DynamicScrollerItem } from "vue-virtual-scroller"
-import { MapboxMap, MapboxNavigationControl, MapboxMarker, MapboxLayer, MapboxSource } from '@studiometa/vue-mapbox-gl'
-import "vue-virtual-scroller/dist/vue-virtual-scroller.css"
-import WalkList from "./WalkList.vue"
-import WalkCard from "./WalkCard.vue"
-import { useLocationStore } from '../stores/locationStore'
-import BottomSheet from './BottomSheet.vue'
-import { useMap } from '../composables/useMap'
-import { useSearchStore } from '../stores/searchStore'
-import SearchView from './SearchView.vue'
-import LocationSearch from './LocationSearch.vue'
-import WalkRoute from './WalkRoute.vue'
-import { getGeometry } from '../services/api'
-import RouteLayer from './RouteLayer.vue'
-import WalkDrawer from "./WalkDrawer.vue"
-import { MD3_DURATION, MD3_EASING } from '../utils/motion'
-import { h, createApp } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch, h, createApp } from "vue";
+import { useRouter, useRoute } from "vue-router";
+import { animate } from "motion";
+import { useElementVisibility } from "@vueuse/core";
+import { DynamicScroller, DynamicScrollerItem } from "vue-virtual-scroller";
+import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
+import { MapboxMap, MapboxNavigationControl, MapboxMarker, MapboxLayer, MapboxSource } from '@studiometa/vue-mapbox-gl';
+
+import { useUiStore } from "../stores/ui";
+import { useWalksStore } from "../stores/walks";
+import { useLocationStore } from "../stores/locationStore";
+import { useSearchStore } from "../stores/searchStore";
+import { useMap } from "../composables/useMap";
+
+import WalkList from "./WalkList.vue";
+import WalkCard from "./WalkCard.vue";
+import BottomSheet from "./BottomSheet.vue";
+import SearchView from "./SearchView.vue";
+import LocationSearch from "./LocationSearch.vue";
+import WalkRoute from "./WalkRoute.vue";
+import RouteLayer from "./RouteLayer.vue";
+import WalkDrawer from "./WalkDrawer.vue";
+
+import { getGeometry } from "../services/api";
+import { MD3_DURATION, MD3_EASING } from "../utils/motion";
 
 // NEW: Add debounce helper
 function debounce(fn, delay) {
@@ -272,6 +280,11 @@ async function onDrawerEnter(el, onComplete) {
 
 async function onDrawerLeave(el, onComplete) {
   await animateElement(el, { type: 'exit', direction: 'vertical' }, onComplete)
+}
+
+const toggleExpanded = () => {
+  isExpanded.value = !isExpanded.value
+  localStorage.setItem("sidebarExpanded", isExpanded.value.toString())
 }
 // Extract setMapInstance from useMap
 const { setMapInstance, flyToLocation } = useMap()
@@ -841,10 +854,11 @@ watch(showSidebar, (visible) => {
 })
 
 const mapContainerStyle = computed(() => ({
-  flex: "1 1 auto",
-  width: "100%",
-  height: "100%",
-  marginLeft: "0" // ensures the map container fills its parent
+  position: 'absolute',
+  inset: '0',
+  width: '100vw',
+  height: '100vh',
+  marginLeft: '0' // Remove left margin to allow map to extend under sidebar
 }))
 
 // Add handler for filtered walks
@@ -1301,7 +1315,7 @@ const recreateMarkers = async (selectedWalkId = null) => {
 
   // Force template update by incrementing key
   markerKey.value++;
-  
+
   // Update template to show markers
   mapReady.value = true;
 };
@@ -1309,13 +1323,13 @@ const recreateMarkers = async (selectedWalkId = null) => {
 // Add these helper methods:
 const handleMarkerMounted = (marker, walkId) => {
   if (!marker) return;
-  
+
   // Clean up old marker if it exists
   const oldMarker = markerRefs.value.get(walkId);
   if (oldMarker?.remove) {
     oldMarker.remove();
   }
-  
+
   // Store new marker reference
   markerRefs.value.set(walkId, marker);
 };
@@ -1427,5 +1441,6 @@ onBeforeUnmount(cleanup)
 </script>
 
 <style>
+@import "tailwindcss";
 @import '../../css/material3.css';
 </style>

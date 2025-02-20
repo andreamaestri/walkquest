@@ -7,7 +7,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        'ibm': ['IBM Plex Sans Condensed', 'sans-serif'],
+        'outfit': ['Outfit', 'sans-serif'],
       },
     },
   },

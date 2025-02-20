@@ -257,7 +257,6 @@ watch(() => props.searchMode, (newMode) => {
   border-radius: 28px;
   padding: 4px 16px;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: var(--md-sys-elevation-1);
   will-change: transform, opacity;
   transform: translateZ(0);
   backface-visibility: hidden;
