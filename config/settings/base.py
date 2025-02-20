@@ -182,12 +182,16 @@ DJANGO_VITE = {
         "dev_server_port": 5173,
         "manifest_path": str(APPS_DIR / "static/dist/.vite/manifest.json"),
         "static_url_prefix": "dist/",
+        "ws_client_url": "@vite/client",
     }
 }
-# Add Vite output directory to STATICFILES_DIRS
+
 STATICFILES_DIRS = [
     str(APPS_DIR / "static"),
 ]
+
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_URL = "/static/"
 
 STATICFILES_FINDERS = [
     "django.contrib.staticfiles.finders.FileSystemFinder",
