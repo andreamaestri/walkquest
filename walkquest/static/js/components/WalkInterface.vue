@@ -140,8 +140,8 @@
                   'line-cap': 'round'
                 },
                 paint: {
-                  'line-color': '#52ebff',
-                  'line-width': ['interpolate', ['linear'], ['zoom'], 10, 6, 15, 10],
+                  'line-color': 'black',
+                    'line-width': ['interpolate', ['linear'], ['zoom'], 6, 1, 8, 3],
                   'line-opacity': 0.9
                 }
               }" />
@@ -155,7 +155,7 @@
                 paint: {
                   'line-color': '#ffffff',
                   'line-width': ['interpolate', ['linear'], ['zoom'], 10, 4, 15, 8],
-                  'line-opacity': 0.8,
+                  'line-opacity': 0.05,
                   'line-dasharray': [0, 4, 3]
                 }
               }" @mb-layer-loaded="handleRouteLayerLoaded" />
@@ -266,7 +266,13 @@ function debounce(fn, delay) {
     timer = setTimeout(() => fn.apply(this, args), delay);
   }
 }
+async function onDrawerEnter(el, onComplete) {
+  await animateElement(el, { type: 'entry', direction: 'vertical' }, onComplete)
+}
 
+async function onDrawerLeave(el, onComplete) {
+  await animateElement(el, { type: 'exit', direction: 'vertical' }, onComplete)
+}
 // Extract setMapInstance from useMap
 const { setMapInstance, flyToLocation } = useMap()
 
@@ -345,23 +351,6 @@ const isValidGeoJSON = (data) => {
     typeof data.geometry === "object" &&
     typeof data.properties === "object"
   )
-}
-
-// Add DEV mode test data
-if (import.meta.env.DEV) {
-  routeData.value = {
-    type: 'Feature',
-    properties: { id: 'test' },
-    geometry: {
-      type: 'LineString',
-      coordinates: [
-        [-4.95, 50.4],
-        [-4.96, 50.41],
-        [-4.97, 50.42]
-      ]
-    }
-  }
-  console.log("🧪 Test route data set")
 }
 
 // Add mapLoaded state
@@ -454,6 +443,18 @@ const loading = ref(false)
 
 // Add drawer visibility control
 const showDrawer = ref(false)
+
+const handleRouteLayerLoaded = () => {
+  // Start the route animation once the layer is loaded
+  if (mapRef.value && validRouteData.value) {
+    // Cancel any existing animation
+    if (animationFrame) {
+      cancelAnimationFrame(animationFrame);
+    }
+    // Start new animation
+    animationFrame = requestAnimationFrame(animateDashArray);
+  }
+};
 
 // Replace the handleWalkSelection function
 const handleWalkSelection = async (walk) => {
