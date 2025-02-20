@@ -169,13 +169,13 @@ MIDDLEWARE = [
 # STATIC
 # ------------------------------------------------------------------------------
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
-STATIC_ROOT = str(BASE_DIR / "staticfiles")
+STATIC_ROOT = BASE_DIR / "staticfiles"
 STATIC_URL = "/static/"
 STATICFILES_DIRS = [
-    str(APPS_DIR / "static"),
-    BASE_DIR / "node_modules",
-    str(APPS_DIR / "static/dist"),
+    BASE_DIR / "walkquest" / "static",
+    BASE_DIR / "walkquest" / "static" / "dist",
 ]
+
 
 # Django Vite Configuration
 DJANGO_VITE = {
@@ -194,7 +194,7 @@ DJANGO_VITE = {
         "dev_server_host": "localhost",
         "dev_server_port": 5173,
         "static_url_prefix": "dist/",
-        "manifest_path": str(APPS_DIR / "static/dist/manifest.json"),
+        "manifest_path": BASE_DIR / "walkquest" / "static" / "dist" / "manifest.json",
         "ws_client_url": "@vite/client",
     },
     "walkquest": {

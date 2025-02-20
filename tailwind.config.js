@@ -1,8 +1,8 @@
 /** @type {import('tailwindcss').Config} */
-export default {
+module.exports = {
   content: [
-    './walkquest/templates/**/*.html',     // All HTML templates in main templates
-    './walkquest/static/js/**/*.{js,vue}', // JavaScript and Vue files
+    "./walkquest/templates/**/*.html",
+    "./walkquest/static/**/*.{js,vue}",
   ],
   theme: {
     extend: {
