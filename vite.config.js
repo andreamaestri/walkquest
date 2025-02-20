@@ -8,7 +8,7 @@ export default defineConfig({
     vue(),
     tailwindcss(),
   ],
-  base: '/static/',
+  base: '/static/dist/',
   build: {
     manifest: true,
     outDir: resolve('./walkquest/static/dist'),
@@ -17,7 +17,6 @@ export default defineConfig({
         main: resolve(__dirname, 'walkquest/static/js/main.js'),
       }
     },
-    // Add these settings
     assetsDir: '',
     sourcemap: true,
     emptyOutDir: true

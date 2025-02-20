@@ -172,40 +172,22 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATIC_URL = "/static/"
 STATICFILES_DIRS = [
-    BASE_DIR / "walkquest" / "static",
-    BASE_DIR / "walkquest" / "static" / "dist",
+    str(APPS_DIR / "static"),
+    str(APPS_DIR / "static/dist"),
 ]
 
 
 # Django Vite Configuration
 DJANGO_VITE = {
-    "": {  # Fallback configuration for empty app name.
-        "dev_mode": DEBUG,
-        "dev_server_protocol": "http",
-        "dev_server_host": "localhost",
-        "dev_server_port": 5173,
-        "static_url_prefix": "",  # Adjust if needed
-        "manifest_path": str(Path(STATIC_ROOT) / "manifest.json"),
-        "ws_client_url": "@vite/client",
-    },
     "default": {
         "dev_mode": DEBUG,
         "dev_server_protocol": "http",
         "dev_server_host": "localhost",
         "dev_server_port": 5173,
         "static_url_prefix": "dist/",
-        "manifest_path": BASE_DIR / "walkquest" / "static" / "dist" / "manifest.json",
+        "manifest_path": str(APPS_DIR / "static/dist/manifest.json"),
         "ws_client_url": "@vite/client",
-    },
-    "walkquest": {
-        "dev_mode": DEBUG,
-        "dev_server_protocol": "http",
-        "dev_server_host": "localhost",
-        "dev_server_port": 5173,
-        "static_url_prefix": "",  # Adjust if needed
-        "manifest_path": str(Path(STATIC_ROOT) / "manifest.json"),
-        "ws_client_url": "@vite/client",
-    },
+    }
 }
 
 # Add Vite output directory to STATICFILES_DIRS
@@ -406,11 +388,11 @@ ICONIFY_COLLECTIONS = {
     "mdi": "https://api.iconify.design/mdi.json",
 }
 
-# http://whitenoise.evans.io/en/stable/django.html#WHITENOISE_IMMUTABLE_FILE_TEST
-
+# Whitenoise configuration
 def immutable_file_test(path, url):
-    # Match vite (rollup)-generated hashes, à la, `some_file-CSliV9zW.js`
-    return re.match(r"^.+[.-][0-9a-zA-Z_-]{8,12}\..+$", url)
+    """Test if a file should be treated as immutable."""
+    return bool(re.match(r"^.+[.-][0-9a-zA-Z_-]{8,12}\..+$", url))
 
 
 WHITENOISE_IMMUTABLE_FILE_TEST = immutable_file_test
+
