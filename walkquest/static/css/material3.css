@@ -1616,6 +1616,16 @@
   padding: 16px;
 }
 
+.m3-content-container {
+  right: 0; /* Default: no drawer */
+  transition: right var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized);
+}
+
+/* When the drawer is open, push the content to the left */
+.m3-content-container.drawer-open {
+  right: 412px; /* Adjust based on drawer width */
+}
+
 .m3-elevated-card {
   background: rgb(var(--md-sys-color-surface-container));
   border-radius: 16px;
