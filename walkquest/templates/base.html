@@ -10,18 +10,19 @@
             {{ api_config|safe }}
         </script>
         <title>{% block title %}WalkQuest{% endblock %}</title>
+        
+        <!-- Update favicon paths -->
         <link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/favicons/apple-touch-icon.png' %}">
         <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/favicons/favicon-32x32.png' %}">
         <link rel="icon" type="image/png" sizes="16x16" href="{% static 'images/favicons/favicon-16x16.png' %}">
-        <link rel="icon" type="image/svg+xml" href="{% static 'images/favicons/favicon.svg' %}">
-        <link rel="shortcut icon" href="{% static 'images/favicons/favicon.ico' %}">
-        <meta name="apple-mobile-web-app-title" content="WalkQuest">
         <link rel="manifest" href="{% static 'images/favicons/site.webmanifest' %}">
+        <link rel="shortcut icon" href="{% static 'images/favicons/favicon.ico' %}">
+        
         <!-- Mapbox CSS -->
         <link href="https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.css" rel="stylesheet">
         
         <!-- Critical CSS -->
-        <link href="{% static 'css/project.css' %}" rel="stylesheet">
+        <link href="{% static 'dist/css/project.css' %}" rel="stylesheet">
         
         {% if debug %}
             {% vite_hmr_client %}
