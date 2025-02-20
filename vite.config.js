@@ -13,9 +13,7 @@ export default defineConfig({
     manifest: true,
     outDir: resolve('./walkquest/static/dist'),
     rollupOptions: {
-      input: {
-        main: resolve(__dirname, 'walkquest/static/js/main.js'),
-      }
+      input: resolve(__dirname, 'walkquest/static/js/main.js'),
     },
     assetsDir: '',
     sourcemap: true,

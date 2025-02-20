@@ -173,7 +173,6 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 STATIC_URL = "/static/"
 STATICFILES_DIRS = [
     str(APPS_DIR / "static"),
-    str(APPS_DIR / "static/dist"),
 ]
 
 
@@ -184,12 +183,10 @@ DJANGO_VITE = {
         "dev_server_protocol": "http",
         "dev_server_host": "localhost",
         "dev_server_port": 5173,
-        "static_url_prefix": "dist/",
         "manifest_path": str(APPS_DIR / "static/dist/manifest.json"),
-        "ws_client_url": "@vite/client",
+        "static_url_prefix": "dist/",
     }
 }
-
 # Add Vite output directory to STATICFILES_DIRS
 STATICFILES_DIRS = [
     str(APPS_DIR / "static"),
