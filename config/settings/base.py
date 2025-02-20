@@ -171,9 +171,6 @@ MIDDLEWARE = [
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATIC_URL = "/static/"
-STATICFILES_DIRS = [
-    str(APPS_DIR / "static"),
-]
 
 
 # Django Vite Configuration
@@ -183,20 +180,19 @@ DJANGO_VITE = {
         "dev_server_protocol": "http",
         "dev_server_host": "localhost",
         "dev_server_port": 5173,
-        "manifest_path": str(APPS_DIR / "static/dist/manifest.json"),
+        "manifest_path": str(APPS_DIR / "static/dist/.vite/manifest.json"),
         "static_url_prefix": "dist/",
     }
 }
 # Add Vite output directory to STATICFILES_DIRS
 STATICFILES_DIRS = [
     str(APPS_DIR / "static"),
-    BASE_DIR / "node_modules",
-    str(APPS_DIR / "static/dist"),
 ]
+
 STATICFILES_FINDERS = [
     "django.contrib.staticfiles.finders.FileSystemFinder",
     "django.contrib.staticfiles.finders.AppDirectoriesFinder",
-
+    "compressor.finders.CompressorFinder",
 ]
 
 # Disable Django's static file handling in development
