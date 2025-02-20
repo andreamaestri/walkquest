@@ -22,12 +22,12 @@
         <link href="https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.css" rel="stylesheet">
         
         <!-- Critical CSS -->
-        <link href="{% static 'css/project.css' %}" rel="stylesheet">
+        <link href="{% static 'dist/css/project.css' %}" rel="stylesheet">
         
         {% if debug %}
             {% vite_hmr_client %}
         {% endif %}
-        {% vite_asset 'main' %}
+        {% vite_asset 'walkquest/static/js/main.js' %}
         {% block extra_head %}{% endblock %}
     </head>
     <body class="h-full overflow-hidden">

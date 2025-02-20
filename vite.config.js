@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'node:path';
-import tailwindcss from '@tailwindcss/vite'
+import tailwindcss from '@tailwindcss/vite';
 import vue from '@vitejs/plugin-vue';
 
 export default defineConfig({
@@ -13,7 +13,14 @@ export default defineConfig({
     manifest: true,
     outDir: resolve('./walkquest/static/dist'),
     rollupOptions: {
-      input: resolve(__dirname, 'walkquest/static/js/main.js'),
+      input: {
+        main: resolve(__dirname, 'walkquest/static/js/main.js')
+      },
+      output: {
+        entryFileNames: '[name].[hash].js',
+        chunkFileNames: '[name].[hash].js',
+        assetFileNames: '[name].[hash][extname]'
+      }
     },
     assetsDir: '',
     sourcemap: true,
