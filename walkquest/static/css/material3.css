@@ -1,3 +1,9 @@
+/*
+  This CSS file provides styles for a navigation rail, content container,
+  map, and other UI elements, adhering to Material Design 3 (M3) guidelines.
+  It's designed to be organized, readable, and optimized for performance.
+*/
+
 .sidebar-content {
   display: flex;
   flex-direction: column;
@@ -1436,4 +1442,196 @@
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+}
+
+/* Navigation Rail Styles */
+.m3-navigation-rail {
+  display: flex;
+  flex-direction: column;
+  width: 80px;
+  height: 100%;
+  background: rgb(var(--md-sys-color-surface-container));
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  z-index: 10;
+  border-right: 1px solid rgb(var(--md-sys-color-outline-variant));
+}
+
+.m3-navigation-rail.is-expanded {
+  width: 412px;
+}
+
+.m3-rail-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 0;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.m3-rail-fab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: rgb(var(--md-sys-color-primary-container));
+  color: rgb(var(--md-sys-color-on-primary-container));
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin: 4px 0;
+}
+
+.m3-rail-fab:hover {
+  background: rgb(var(--md-sys-color-primary-container-hover));
+}
+
+.m3-rail-fab-text {
+  font-size: 1rem;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.is-expanded .m3-rail-fab {
+  width: 90%;
+  margin: 4px 16px;
+}
+
+.is-expanded .m3-rail-fab-text {
+  opacity: 1;
+}
+
+.m3-rail-items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+  flex-shrink: 0;
+}
+
+.m3-rail-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  width: 100%;
+  border-radius: 16px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0 12px;
+}
+
+.m3-rail-item:hover {
+  background: rgb(var(--md-sys-color-surface-container-highest));
+}
+
+.m3-rail-item.is-active {
+  background: rgb(var(--md-sys-color-secondary-container));
+  color: rgb(var(--md-sys-color-on-secondary-container));
+}
+
+.m3-rail-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.m3-rail-icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.m3-rail-icon {
+  font-size: 24px;
+}
+
+.m3-rail-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.is-expanded .m3-rail-label {
+  opacity: 1;
+}
+
+.m3-rail-content-area {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Location Panel */
+.m3-location-panel {
+  padding: 8px;
+  background: rgb(var(--md-sys-color-surface-container));
+  border-bottom: 1px solid rgb(var(--md-sys-color-outline-variant));
+}
+
+/* Walks List */
+.m3-walks-list {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Detail View */
+.m3-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: rgb(var(--md-sys-color-surface-container));
+  border-bottom: 1px solid rgb(var(--md-sys-color-outline-variant));
+}
+
+.m3-title-large {
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: rgb(var(--md-sys-color-on-surface));
+  margin: 0;
+  line-height: 1.4;
+}
+
+.m3-walk-detail {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+}
+
+.m3-elevated-card {
+  background: rgb(var(--md-sys-color-surface-container));
+  border-radius: 16px;
+  box-shadow: var(--md-sys-elevation-1);
+  margin-bottom: 16px;
+}
+
+/* Add theme color utility classes if not already present */
+.text-primary {
+  color: rgb(var(--md-sys-color-primary));
+}
+
+.text-primary-container {
+  color: rgb(var(--md-sys-color-primary-container));
+}
+
+.text-outline {
+  color: rgb(var(--md-sys-color-outline));
 }

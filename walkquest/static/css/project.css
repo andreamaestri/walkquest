@@ -1,4 +1,5 @@
 /*! tailwindcss v4.0.0 | MIT License | https://tailwindcss.com */
+@import "tailwindcss";
 @tailwind base;
 @tailwind components;
 .pointer-events-auto {

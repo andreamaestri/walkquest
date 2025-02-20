@@ -10,13 +10,6 @@
     <div class="walk-content">
       <div class="walk-info">
         <h3 class="walk-title">{{ walk.walk_name || walk.title }}</h3>
-        <div class="walk-meta">
-          <span class="location">
-            <Icon icon="mdi:map-marker" />
-            {{ walk.location }}
-          </span>
-          <slot name="meta"></slot>
-        </div>
       </div>
       
       <div class="walk-details">

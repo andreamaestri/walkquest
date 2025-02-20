@@ -5,13 +5,8 @@ const routes = [
   {
     path: '/',
     name: 'home',
-    component: () => import('../components/WalkInterface.vue')
-  },
-  {
-    path: '/walks/:id',
-    name: 'walk-detail',
     component: () => import('../components/WalkInterface.vue'),
-    props: true
+    props: (route) => ({ walkId: route.query.walkId })
   }
 ]
 

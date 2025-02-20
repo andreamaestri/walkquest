@@ -1,83 +1,79 @@
 <template>
   <div class="h-screen w-screen overflow-hidden flex flex-col relative bg-surface">
     <div class="relative h-full w-full flex">
-      <!-- Navigation Rail for desktop with simplified animation -->
+      <!-- Navigation Rail for desktop with streamlined motion animation -->
       <div v-if="showNavigationRail" ref="sidebarRef" class="m3-navigation-rail"
         :class="[{ 'is-expanded': isExpanded }]">
-        <Transition name="fade" mode="out-in">
-          <!-- Normal Navigation Rail Content -->
-          <div v-if="!selectedWalkId" key="nav" class="h-full flex flex-col">
-            <div class="m3-rail-header">
-              <!-- Menu button - centered and properly styled -->
-              <button class="m3-rail-item menu-button" @click="toggleExpanded">
-                <div class="m3-state-layer">
-                  <Icon icon="mdi:menu" class="m3-rail-icon text-[24px]" />
-                </div>
-              </button>
-
-              <!-- FAB -->
-              <button class="m3-rail-fab" @click="handleFabClick">
-                <Icon icon="mdi:hiking" class="text-[36px]" />
-                <span class="m3-rail-fab-text" v-if="isExpanded">WalkQuest</span>
-                <span class="sr-only">WalkQuest Home</span>
-              </button>
-            </div>
-
-            <!-- Navigation items -->
-            <nav class="m3-rail-items">
-              <button class="m3-rail-item" :class="{ 'is-active': !showRoutesDrawer }"
-                @click="handleWalkSelection(null)">
-                <div class="m3-rail-content">
-                  <div class="m3-rail-icon-container">
-                    <Icon icon="mdi:compass-outline" class="m3-rail-icon" />
+        <Transition @enter="onSidebarEnter" @leave="onSidebarLeave" mode="out-in">
+          <div class="h-full flex flex-col" :key="selectedWalkId ? 'drawer' : 'nav'">
+            <!-- Normal Navigation Rail Content -->
+            <template v-if="!selectedWalkId">
+              <div class="m3-rail-header">
+                <!-- Menu button - centered and properly styled -->
+                <button class="m3-rail-item menu-button" @click="toggleExpanded">
+                  <div class="m3-state-layer">
+                    <Icon icon="mdi:menu" class="m3-rail-icon text-[24px]" />
                   </div>
-                  <span class="m3-rail-label">Explore</span>
-                </div>
-              </button>
+                </button>
 
-              <!-- New Location Search Button -->
-              <button class="m3-rail-item" @click="searchStore.setSearchMode('locations')">
-                <div class="m3-rail-content">
-                  <div class="m3-rail-icon-container">
-                    <Icon icon="mdi:map-search" class="m3-rail-icon" />
-                  </div>
-                  <span class="m3-rail-label">Find Nearby</span>
-                </div>
-              </button>
-            </nav>
-
-            <!-- Main Content Area -->
-            <div class="m3-rail-content-area">
-              <!-- Location Search Panel -->
-              <div v-if="searchStore.searchMode === 'locations'" class="m3-location-panel">
-                <LocationSearch @location-selected="handleLocationSelected" />
+                <!-- FAB -->
+                <button class="m3-rail-fab" @click="handleFabClick">
+                  <Icon icon="mdi:hiking" class="text-[36px]" />
+                  <span class="m3-rail-fab-text" v-if="isExpanded">WalkQuest</span>
+                  <span class="sr-only">WalkQuest Home</span>
+                </button>
               </div>
 
-              <!-- Walk List -->
-              <div class="m3-walks-list">
-                <WalkList v-model="searchQuery" :walks="availableWalks" :selected-walk-id="selectedWalkId"
-                  :expanded-walk-ids="expandedWalkIds" :is-compact="!isExpanded" @walk-selected="handleWalkSelection"
-                  @walk-expanded="handleWalkExpanded" @filtered-walks="updateDisplayedWalks" />
-              </div>
-            </div>
-          </div>
+              <!-- Navigation items -->
+              <nav class="m3-rail-items">
+                <button class="m3-rail-item" :class="{ 'is-active': !showRoutesDrawer }"
+                  @click="handleWalkSelection(null)">
+                  <div class="m3-rail-content">
+                    <div class="m3-rail-icon-container">
+                      <Icon icon="mdi:compass-outline" class="m3-rail-icon" />
+                    </div>
+                    <span class="m3-rail-label">Explore</span>
+                  </div>
+                </button>
 
-          <!-- Walk Detail View -->
-          <div v-else key="detail" class="h-full flex flex-col">
-            <div class="m3-detail-header">
-              <button class="m3-icon-button" @click="handleBackClick">
-                <div class="m3-state-layer">
-                  <Icon icon="material-symbols:arrow-back-rounded" class="text-[24px]" />
+                <!-- New Location Search Button - Using helper -->
+                <button class="m3-rail-item" @click="setSearchMode('locations')">
+                  <div class="m3-rail-content">
+                    <div class="m3-rail-icon-container">
+                      <Icon icon="mdi:map-search" class="m3-rail-icon" />
+                    </div>
+                    <span class="m3-rail-label">Find Nearby</span>
+                  </div>
+                </button>
+              </nav>
+
+              <!-- Main Content Area - Using simplified computed -->
+              <div class="m3-rail-content-area">
+                <div v-if="searchStore.searchMode === 'locations'" class="m3-location-panel">
+                  <LocationSearch @location-selected="handleLocationSelected" />
                 </div>
-              </button>
-              <h2 class="m3-title-large">{{ selectedWalk?.title || selectedWalk?.walk_name }}</h2>
-            </div>
-            <div class="m3-walk-detail">
-              <WalkCard :walk="selectedWalk" :expanded="true" class="m3-elevated-card" />
-              <WalkRoute v-if="selectedWalk" :walk-id="selectedWalk.id"
-                :walk-title="selectedWalk.title || selectedWalk.walk_name"
-                :initial-route-data="selectedWalk.routeData" />
-            </div>
+
+                <!-- Walk List with simplified props -->
+                <div class="m3-walks-list">
+                  <WalkList 
+                    v-model="searchQuery" 
+                    :walks="filteredWalks" 
+                    :selected-walk-id="selectedWalkId"
+                    :expanded-walk-ids="expandedWalkIds" 
+                    :is-compact="!isExpanded" 
+                    @walk-selected="handleWalkSelection"
+                    @walk-expanded="handleWalkExpanded" 
+                  />
+                </div>
+              </div>
+            </template>
+
+            <!-- Walk Drawer -->
+            <WalkDrawer 
+              v-if="selectedWalk" 
+              :walk="selectedWalk" 
+              @close="handleDrawerClose"
+            />
           </div>
         </Transition>
       </div>
@@ -107,30 +103,27 @@
         </div>
       </Transition>
 
-      <!-- Map container -->
+      <!-- Map container with simplified config -->
       <div class="m3-content-container hardware-accelerated pointer-events-auto" :style="mapContainerStyle"
         ref="mapContainerRef">
         <div class="m3-surface-container hardware-accelerated pointer-events-auto h-full">
-          <MapboxMap ref="mapComponent" :access-token="mapboxToken"
-            :map-style="'mapbox://styles/andreamaestri/cm79fegfl000z01sdhl4u32jv'" :center="CORNWALL_CENTER" :zoom="9"
-            :min-zoom="1" :max-zoom="35" :max-bounds="CORNWALL_BOUNDS" :cooperative-gestures="true" :keyboard="true"
-            :bearing-snap="7" :pitch-with-rotate="true" :drag-rotate="true" :touch-zoom-rotate="{ around: 'center' }"
-            :touch-pitch="true" :min-pitch="0" :max-pitch="85" :scroll-zoom="{
-              smooth: true,
-              speed: 0.5,
-              around: 'center'
-            }" :drag-pan="{
-              smooth: true,
-              inertia: true,
-              maxSpeed: 1400,
-              linearity: 0.3,
-              deceleration: 2500
-            }" class="h-full w-full absolute inset-0" @mb-created="handleMapCreated" @mb-load="handleMapLoad"
-            @mb-moveend="updateVisibleMarkers">
-
+          <MapboxMap 
+            ref="mapComponent" 
+            :access-token="mapboxToken"
+            :map-style="mergedMapConfig.mapStyle"
+            :max-bounds="mergedMapConfig.maxBounds"
+            :center="mergedMapConfig.center"
+            :zoom="mergedMapConfig.zoom"
+            :min-zoom="mergedMapConfig.minZoom"
+            :max-zoom="mergedMapConfig.maxZoom"
+            @mb-created="handleMapCreated" 
+            @mb-load="handleMapLoad"
+            @mb-moveend="updateVisibleMarkers"
+            class="h-full w-full absolute inset-0"
+          >
             <!-- Loading indicator -->
             <div v-if="loading"
-              class="absolute bottom-4 left-4 z-50 bg-surface-container-high rounded-full px-4 py-2 shadow-lg">
+              class="absolute bottom-4 left-4 z-50 bg-white rounded-full px-4 py-2 shadow-lg">
               <div class="flex items-center gap-2">
                 <div class="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent"></div>
                 <span class="text-on-surface text-sm">Loading route...</span>
@@ -280,7 +273,6 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from "vue"
 import { useRouter, useRoute } from "vue-router"
-import { animate } from "motion"
 import { useElementVisibility } from "@vueuse/core"
 import { useUiStore } from "../stores/ui"
 import { useWalksStore } from "../stores/walks"
@@ -298,6 +290,8 @@ import LocationSearch from './LocationSearch.vue'
 import WalkRoute from './WalkRoute.vue'
 import { getGeometry } from '../services/api'
 import RouteLayer from './RouteLayer.vue'
+import WalkDrawer from "./WalkDrawer.vue" // <-- new import
+import { MD3_EASING, MD3_DURATION, createMotion } from '../utils/motion.js'
 
 // NEW: Add debounce helper
 function debounce(fn, delay) {
@@ -320,13 +314,14 @@ const props = defineProps({
   mapConfig: {
     type: Object,
     default: () => ({}),
-  },
-  walkId: {
-    type: [String, Number],
-    default: null,
-  },
+  }
 });
 
+// Initialize stores
+const router = useRouter()
+const route = useRoute()
+const walksStore = useWalksStore()
+const uiStore = useUiStore()
 // Initialize stores
 const router = useRouter()
 const route = useRoute()
@@ -365,6 +360,12 @@ const mapReady = ref(false)
 const currentZoom = ref(8)
 const mapContainerVisible = useElementVisibility(mapContainerRef)
 const mapRef = ref(null)
+
+// Add toggleExpanded function
+const toggleExpanded = () => {
+  isExpanded.value = !isExpanded.value
+  localStorage.setItem("sidebarExpanded", String(isExpanded.value))
+}
 
 // Update route data ref with better typing and structure
 const routeData = ref({
@@ -420,14 +421,14 @@ const CORNWALL_BOUNDS = [
 // Add Cornwall center
 const CORNWALL_CENTER = [-4.95, 50.4]
 
-// Update StoreLocator configuration
-const mapConfig = computed(() => ({
-  mapStyle: 'mapbox://styles/andreamaestri/cm79fegfl000z01sdhl4u32jv?optimize=true',
-  maxBounds: CORNWALL_BOUNDS,
-  center: CORNWALL_CENTER,
-  zoom: 9,
-  minZoom: 1,
-  maxZoom: 35,
+// New: Merge default map values with the mapConfig prop
+const mergedMapConfig = computed(() => ({
+  mapStyle: props.mapConfig.mapStyle || 'mapbox://styles/andreamaestri/cm79fegfl000z01sdhl4u32jv?optimize=true',
+  maxBounds: props.mapConfig.maxBounds || CORNWALL_BOUNDS,
+  center: props.mapConfig.center || CORNWALL_CENTER,
+  zoom: props.mapConfig.zoom || 9,
+  minZoom: props.mapConfig.minZoom || 1,
+  maxZoom: props.mapConfig.maxZoom || 35,
 }))
 
 // Computed properties
@@ -491,88 +492,73 @@ const isLocationSearchVisible = computed({
 // Add loading state
 const loading = ref(false)
 
-// Update handleWalkSelection with simpler GeoJSON handling
+// Add drawer visibility control
+const showDrawer = ref(false)
+
+// Add computed for selected walk (move this up)
+const selectedWalk = computed(() => {
+  if (!selectedWalkId.value) return null
+  return walks.value.find(walk => walk.id === selectedWalkId.value)
+})
+
+// Replace the handleWalkSelection function
 const handleWalkSelection = async (walk) => {
-  const resetSelection = () => {
+  if (walk) {
+    // Update URL with selected walk
+    router.push({ 
+      query: { walkId: walk.id },
+      replace: true 
+    })
+    
+    try {
+      loading.value = true
+      // Update marker colors
+      updateAllMarkerColors(walk.id)
+
+      // Close any open marker popups
+      const marker = markerRefs.value.get(walk.id)
+      if (marker?.getPopup) {
+        marker.getPopup()?.remove()
+      }
+
+      // Fetch route geometry
+      const response = await fetch(`/api/walks/${walk.id}/geometry`)
+      if (!response.ok) throw new Error('Failed to fetch route')
+      
+      const data = await response.json()
+      if (isValidGeoJSON(data)) {
+        routeData.value = data
+      }
+    } catch (error) {
+      console.error('Error:', error)
+    } finally {
+      loading.value = false
+    }
+  } else {
+    // Clear selection  
+    router.push({ query: {}, replace: true })
     routeData.value = null
     updateAllMarkerColors(null)
   }
+}
 
-  if (!walk) {
-    resetSelection()
-    return
-  }
-
-  try {
-    loading.value = true
-    console.log("🚶‍♂️ Fetching geometry for walk:", walk.id)
-
-    // Update all markers with new selection
-    updateAllMarkerColors(walk.id)
-
-    // Close the marker's popup so it doesn't activate when selecting the card
-    const marker = markerRefs.value.get(walk.id)
-    if (marker?.getPopup) {
-      marker.getPopup()?.remove()
+// Add a watch for the route query
+watch(
+  () => route.query.walkId,
+  async (newWalkId) => {
+    if (newWalkId && !selectedWalk.value) {
+      const walk = walks.value.find(w => w.id === newWalkId)
+      if (walk) {
+        await handleWalkSelection(walk)
+      }
     }
+  },
+  { immediate: true }
+)
 
-    // Fetch route geometry with timeout
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10s timeout
-
-    try {
-      const response = await fetch(`/api/walks/${walk.id}/geometry`, {
-        signal: controller.signal
-      })
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch route geometry: ${response.status} ${response.statusText}`)
-      }
-
-      const data = await response.json()
-
-      if (!isValidGeoJSON(data)) {
-        throw new Error('Invalid GeoJSON data structure received')
-      }
-
-      // Store the raw GeoJSON response
-      routeData.value = {
-        type: "Feature",
-        geometry: data.geometry || {},
-        properties: {
-          ...data.properties,
-          id: walk.id,
-          name: walk.title || walk.walk_name
-        }
-      }
-
-      // Update map view if we have geometry
-      if (data.geometry?.coordinates?.length) {
-        mapRef.value?.flyTo({
-          padding: { top: 100, bottom: 100, left: 100, right: 100 },
-          pitch: 45,
-          bearing: 0,
-          essential: false,
-          maxZoom: 5
-        })
-      }
-    } catch (error) {
-      if (error.name === 'AbortError') {
-        throw new Error('Request timed out fetching route geometry')
-      }
-      throw error
-    } finally {
-      clearTimeout(timeoutId)
-    }
-
-
-  } catch (error) {
-    console.error("❌ Error loading route:", error)
-    uiStore?.setError(error.message)
-    routeData.value = null
-  } finally {
-    loading.value = false
-  }
+// Simplified drawer close handler
+const handleDrawerClose = () => {
+  handleWalkSelection(null)
 }
 
 // Watch effects
@@ -602,216 +588,93 @@ watch(
   { immediate: true }
 )
 
-// Updated sidebar animation functions with MD3 motion specs
-async function onSidebarEnter(el, onComplete) {
-  await Promise.all([
-    animate(
-      el,
-      {
-        x: [-16, 0],
-        opacity: [0.9, 1],
-        scale: [0.98, 1],
-      },
-      {
-        duration: 0.2,
-        easing: [0.3, 0, 0.2, 1],
-      }
-    ).finished,
-
-    // Quick staggered items
-    ...Array.from(el.querySelectorAll(".m3-rail-item, .m3-rail-fab")).map(
-      (item, i) =>
-        animate(
-          item,
-          {
-            opacity: [0, 1],
-            scale: [0.95, 1],
-            y: [8, 0],
-          },
-          {
-            duration: 0.15,
-            delay: i * 0.02,
-            easing: [0.3, 0, 0.2, 1],
-          }
-        ).finished
-    ),
-  ])
-
-  onComplete()
-}
-
-async function onSidebarLeave(el, onComplete) {
-  const currentWidth = isExpanded.value ? "412px" : "80px"
-  const widthAnim = animate(
-    el,
-    { width: [currentWidth, "80px"] },
-    { duration: 0.4, easing: "spring(1, 80, 10, 0)" }
-  )
-  const innerEls = el.querySelectorAll(".m3-rail-item, .m3-rail-fab-text")
-  const innerAnims = Array.from(innerEls).map(
-    (child, i) =>
-      animate(
-        child,
-        {
-          opacity: [1, 0],
-          transform: ["translateX(0px)", "translateX(-20px)"],
-        },
-        { delay: i * 0.05, duration: 0.2, easing: "ease-in" }
-      ).finished
-  )
-  await Promise.all([widthAnim.finished, ...innerAnims])
-  onComplete()
-}
-
-async function onMobileButtonEnter(el, onComplete) {
-  const animation = animate(
+// Replace all simple animation functions with enhanced MD3 versions
+const onSidebarEnter = (el, done) => {
+  animate(
     el,
     {
+      transform: ['translateX(-20px)', 'translateX(0)'],
       opacity: [0, 1],
-      scale: [0.8, 1],
-      y: ["10%", "0%"],
+      scale: [0.95, 1]
     },
-    {
-      duration: 0.4,
-      easing: [0.2, 0, 0, 1], // MD3 emphasized
-    }
-  )
-
-  await animation.finished
-  onComplete()
+    createMotion({
+      duration: MD3_DURATION.medium4,
+      easing: MD3_EASING.emphasizedDecelerate
+    })
+  ).finished.then(done)
 }
 
-async function onMobileButtonLeave(el, onComplete) {
-  const animation = animate(
+const onSidebarLeave = (el, done) => {
+  animate(
     el,
     {
+      transform: ['translateX(0)', 'translateX(-20px)'],
       opacity: [1, 0],
-      scale: [1, 0.8],
-      y: ["0%", "10%"],
+      scale: [1, 0.95]
     },
-    {
-      duration: 0.3,
-      easing: [0.4, 0, 1, 1], // MD3 emphasized-decelerate
-    }
-  )
-
-  await animation.finished
-  onComplete()
+    createMotion({
+      duration: MD3_DURATION.medium3,
+      easing: MD3_EASING.emphasizedAccelerate
+    })
+  ).finished.then(done)
 }
 
-async function onDrawerEnter(el, onComplete) {
-  const animations = await Promise.all([
-    // Animate backdrop
-    animate(
-      el,
-      { opacity: [0, 1] },
-      { duration: 0.3, easing: [0.4, 0, 0.2, 1] }
-    ).finished,
-    // Animate drawer
-    animate(
-      el.firstElementChild,
-      {
-        x: [-100, 0],
-        opacity: [0.5, 1],
-      },
-      {
-        duration: 0.5,
-        easing: [0.2, 0, 0, 1],
-      }
-    ).finished,
-  ])
-
-  onComplete()
-}
-
-async function onDrawerLeave(el, onComplete) {
-  const animations = await Promise.all([
-    // Animate backdrop
-    animate(el, { opacity: [1, 0] }, { duration: 0.2, easing: [0.4, 0, 1, 1] })
-      .finished,
-    // Animate drawer
-    animate(
-      el.firstElementChild,
-      {
-        x: [0, -100],
-        opacity: [1, 0.5],
-      },
-      {
-        duration: 0.3,
-        easing: [0.4, 0, 1, 1],
-      }
-    ).finished,
-  ])
-
-  onComplete()
-}
-
-// Add new animation functions for walks section
-async function onWalksSectionEnter(el, onComplete) {
-  await animate(
+const onDrawerEnter = (el, done) => {
+  animate(
     el,
     {
+      transform: ['translateX(100%)', 'translateX(0)'],
+      opacity: [0.5, 1]
+    },
+    createMotion({
+      duration: MD3_DURATION.medium4,
+      easing: MD3_EASING.emphasizedDecelerate
+    })
+  ).finished.then(done)
+}
+
+const onDrawerLeave = (el, done) => {
+  animate(
+    el,
+    {
+      transform: ['translateX(0)', 'translateX(100%)'],
+      opacity: [1, 0.5]
+    },
+    createMotion({
+      duration: MD3_DURATION.medium3,
+      easing: MD3_EASING.emphasizedAccelerate
+    })
+  ).finished.then(done)
+}
+
+const onMobileButtonEnter = (el, done) => {
+  animate(
+    el,
+    {
+      transform: ['translateY(20px)', 'translateY(0)'],
       opacity: [0, 1],
-      height: [0, el.scrollHeight],
-      scale: [0.95, 1],
+      scale: [0.9, 1]
     },
-    {
-      duration: 0.2,
-      easing: [0.3, 0, 0.2, 1],
-    }
-  ).finished
-
-  onComplete()
+    createMotion({
+      duration: MD3_DURATION.medium2,
+      easing: MD3_EASING.standardDecelerate
+    })
+  ).finished.then(done)
 }
 
-async function onWalksSectionLeave(el, onComplete) {
-  await animate(
+const onMobileButtonLeave = (el, done) => {
+  animate(
     el,
     {
+      transform: ['translateY(0)', 'translateY(20px)'],
       opacity: [1, 0],
-      height: [el.scrollHeight, 0],
-      scale: [1, 0.95],
+      scale: [1, 0.9]
     },
-    {
-      duration: 0.15,
-      easing: [0.3, 0, 0.2, 1],
-    }
-  ).finished
-
-  onComplete()
-}
-
-// Add new animation functions
-async function onPanelEnter(el, onComplete) {
-  await animate(
-    el,
-    {
-      opacity: [0, 1],
-      height: [0, el.scrollHeight],
-      scale: [0.95, 1],
-    },
-    {
-      duration: 0.2,
-      easing: [0.3, 0, 0.2, 1],
-    }
-  ).finished
-  onComplete()
-}
-
-async function onPanelLeave(el, onComplete) {
-  await animate(
-    el,
-    {
-      opacity: [1, 0],
-      height: [el.scrollHeight, 0],
-      scale: [1, 0.95],
-    },
-    {
-      duration: 0.15,
-      easing: [0.3, 0, 0.2, 1],
-    }
-  ).finished
-  onComplete()
+    createMotion({
+      duration: MD3_DURATION.medium2,
+      easing: MD3_EASING.standardAccelerate
+    })
+  ).finished.then(done)
 }
 
 // Route update handling using composition API
@@ -880,6 +743,8 @@ const handleMapCreated = (map) => {
   mapInstance.value = map;
   setMapInstance(map);
   currentZoom.value = map.getZoom();
+  // Listen to continuous map movement to update mapBounds
+  map.on('move', updateVisibleMarkers);
 };
 
 // Handle map keyboard navigation
@@ -937,22 +802,28 @@ const handleFabClick = async () => {
   }
 }
 
-// Update handleLocationSelected to use enhanced 3D flyTo options
-const handleLocationSelected = async (location) => {
-  if (!location?.center) return
-
-  await searchStore.handleLocationSelected(location)
-  await flyToLocation({
+// Add a helper to compute effective flyTo options for better centering
+const effectiveFlyToOptions = (location) => {
+  // Use a different offset on mobile vs desktop for improved centering
+  const defaultOffset = isMobile.value ? [0, 0] : [0, -100];
+  return {
     center: location.center,
-    zoom: 14,
-    pitch: 60,           // increased pitch for a 3D view
-    bearing: 30,         // added bearing
-    offset: [0, -150],   // Adjusted offset
-    duration: 2000,      // increased duration for smoother transition
-    easing: (t) => t * (2 - t),  // ease-out easing function
+    zoom: location.zoom || 14,
+    pitch: location.pitch !== undefined ? location.pitch : 60,
+    bearing: location.bearing !== undefined ? location.bearing : 30,
+    offset: location.offset || defaultOffset,
+    duration: location.duration || 2000,
+    easing: location.easing || ((t) => t * (2 - t)),
     essential: true
-  })
-}
+  };
+};
+
+// Modify handleLocationSelected to use the new flyTo options
+const handleLocationSelected = async (location) => {
+  if (!location?.center) return;
+  await searchStore.handleLocationSelected(location);
+  await flyToLocation(effectiveFlyToOptions(location));
+};
 
 // Refactor handleResize using debounce instead of manual clearTimeout
 const handleResize = debounce(() => {
@@ -1065,16 +936,18 @@ const showNavigationRail = computed(() =>
   !isMobile.value && showSidebar.value && !isFullscreen.value
 )
 
-// Add computed for selected walk
-const selectedWalk = computed(() => {
-  if (!selectedWalkId.value) return null
-  return walks.value.find(walk => walk.id === selectedWalkId.value)
-})
-
 // Update handleBackClick to use flyTo with optimized flight path parameters
 const handleBackClick = async () => {
   if (mapComponent.value?.map) {
     mapComponent.value.map.flyTo({
+      center: mergedMapConfig.value.center,
+      zoom: mergedMapConfig.value.zoom,
+      pitch: 0,
+      bearing: 0,
+      padding: { top: 100, bottom: 100, left: 100, right: 100 },
+      duration: 1200,
+      easing: (t) => (--t) * t * t + 1, // easeOutCubic
+      essential: true
     })
   }
   await router.push({ name: 'home' })
@@ -1157,12 +1030,7 @@ onBeforeUnmount(() => {
 const updateVisibleMarkers = debounce(() => {
   if (mapRef.value) {
     try {
-      const bounds = mapRef.value.getBounds()
-      // Only trigger reactive update if map is ready and we have bounds
-      if (bounds && mapLoaded.value) {
-        // Force recomputation 
-        visibleWalks.value
-      }
+      mapBounds.value = mapRef.value.getBounds()  // update reactive bounds
     } catch (error) {
       console.error('Error updating visible markers:', error)
       // Don't throw - silently recover from map errors
@@ -1339,7 +1207,7 @@ const markerRefs = ref(new Map());
 // Add spatial index structure
 const spatialIndex = ref(new Map())
 
-// Consolidated watcher for sidebar state
+// Consolidated sidebar state watcher
 watch(
   [isExpanded, showSidebar],
   ([newExpanded, newVisible]) => {
@@ -1390,36 +1258,60 @@ const updateSpatialIndex = () => {
 // Update spatial index when walks change
 watch(() => walks.value, updateSpatialIndex, { immediate: true })
 
-// Optimized visibleWalks computed
+// Add a ref at the top with your other refs (e.g., after spatialIndex definition)
+const previousVisibleWalks = ref(null)
+
+// Add a reactive ref for the map bounds (place near other refs)
+const mapBounds = ref(null)
+
+// Replace your existing visibleWalks computed property with the optimized version:
 const visibleWalks = computed(() => {
-  if (!mapRef.value || !spatialIndex.value.size) return []
-
-  const bounds = mapRef.value.getBounds()
-  const sw = bounds.getSouthWest()
-  const ne = bounds.getNorthEast()
-  const cellSize = 0.1
-
-  // Get cell ranges
-  const minCellX = Math.floor(sw.lng / cellSize)
-  const maxCellX = Math.floor(ne.lng / cellSize)
-  const minCellY = Math.floor(sw.lat / cellSize)
-  const maxCellY = Math.floor(ne.lat / cellSize)
-
-  // Collect walks from relevant cells
-  const visible = new Set()
+  // Use mapBounds as a dependency so that changes trigger recomputation.
+  if (!mapBounds.value || spatialIndex.value.size === 0) return walks.value;
   
+  const bounds = mapBounds.value;
+  const sw = bounds.getSouthWest();
+  const ne = bounds.getNorthEast();
+  const cellSize = 0.1;
+  
+  const minCellX = Math.floor(sw.lng / cellSize);
+  const maxCellX = Math.floor(ne.lng / cellSize);
+  const minCellY = Math.floor(sw.lat / cellSize);
+  const maxCellY = Math.floor(ne.lat / cellSize);
+  
+  const visibleSet = new Set();
   for (let x = minCellX; x <= maxCellX; x++) {
     for (let y = minCellY; y <= maxCellY; y++) {
-      const key = `${x}:${y}`
-      const cellWalks = spatialIndex.value.get(key)
+      const key = `${x}:${y}`;
+      const cellWalks = spatialIndex.value.get(key);
       if (cellWalks) {
-        cellWalks.forEach(walk => visible.add(walk))
+        cellWalks.forEach(walk => visibleSet.add(walk));
       }
     }
   }
+  
+  const currentVisibleWalks = Array.from(visibleSet);
+  
+  if (
+    previousVisibleWalks.value &&
+    areArraysShallowEqual(previousVisibleWalks.value, currentVisibleWalks)
+  ) {
+    return previousVisibleWalks.value;
+  } else {
+    previousVisibleWalks.value = currentVisibleWalks;
+    return currentVisibleWalks;
+  }
+});
 
-  return Array.from(visible)
-})
+// Add the helper function (place it among your other functions/methods)
+function areArraysShallowEqual(arrA, arrB) {
+  if (!arrA || !arrB || arrA.length !== arrB.length) return false;
+  const setB = new Set(arrB.map(walk => walk.id));
+  for (const walkA of arrA) {
+    if (!setB.has(walkA.id)) return false;
+  }
+  return true;
+}
 
 // Consolidated cleanup
 onBeforeUnmount(() => {
@@ -1459,200 +1351,66 @@ onBeforeUnmount(() => {
   }
 })
 
+// SearchStore helpers
+const setSearchMode = (mode) => searchStore.setSearchMode(mode)
+
+// Title normalization helper
+const getWalkTitle = (walk) => walk?.title || walk?.walk_name || ''
+
+// Map resize helper
+const resizeMap = () => {
+  if (mapComponent.value?.map?.map) {
+    mapComponent.value.map.map.resize()
+  }
+}
+
+
+// Simplified GeoJSON validation and handling
+const processRouteData = (data) => {
+  if (!data?.type || !data?.geometry?.coordinates) {
+    console.error('Invalid route data structure:', data)
+    return null
+  }
+  return data
+}
+
+// Consolidated cleanup function
+const cleanup = () => {
+  // 1. Clean up animations
+  if (animationFrame) {
+    cancelAnimationFrame(animationFrame)
+    animationFrame = null
+  }
+
+  // 2. Clean up event listeners
+  window.removeEventListener('resize', handleResize)
+  
+  if (mapRef.value) {
+    ['mousemove', 'mouseleave', 'styledata'].forEach(event => {
+      mapRef.value.off(event, MAP_LAYER.ROUTE)
+    })
+  }
+
+  // 3. Reset state
+  routeData.value = null
+  loading.value = false
+  mapLoaded.value = false
+
+  // 4. Clear collections
+  markerRefs.value.clear()
+  spatialIndex.value.clear()
+
+  // 5. Clear refs
+  mapRef.value = null
+  mapComponent.value = null
+}
+
+// Lifecycle hooks
+onMounted(initializeInterface)
+onBeforeUnmount(cleanup)
+
 </script>
 
 <style>
 @import '../../css/material3.css';
-
-/* Navigation Rail Styles */
-.m3-navigation-rail {
-  display: flex;
-  flex-direction: column;
-  width: 80px;
-  height: 100%;
-  background: rgb(var(--md-sys-color-surface-container));
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
-  z-index: 10;
-  border-right: 1px solid rgb(var(--md-sys-color-outline-variant));
-}
-
-.m3-navigation-rail.is-expanded {
-  width: 412px;
-}
-
-.m3-rail-header {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 8px 0;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.m3-rail-fab {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
-  background: rgb(var(--md-sys-color-primary-container));
-  color: rgb(var(--md-sys-color-on-primary-container));
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  margin: 4px 0;
-}
-
-.m3-rail-fab:hover {
-  background: rgb(var(--md-sys-color-primary-container-hover));
-}
-
-.m3-rail-fab-text {
-  font-size: 1rem;
-  font-weight: 500;
-  white-space: nowrap;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.is-expanded .m3-rail-fab {
-  width: 90%;
-  margin: 4px 16px;
-}
-
-.is-expanded .m3-rail-fab-text {
-  opacity: 1;
-}
-
-.m3-rail-items {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 4px;
-  flex-shrink: 0;
-}
-
-.m3-rail-item {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 48px;
-  width: 100%;
-  border-radius: 16px;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  padding: 0 12px;
-}
-
-.m3-rail-item:hover {
-  background: rgb(var(--md-sys-color-surface-container-highest));
-}
-
-.m3-rail-item.is-active {
-  background: rgb(var(--md-sys-color-secondary-container));
-  color: rgb(var(--md-sys-color-on-secondary-container));
-}
-
-.m3-rail-content {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-}
-
-.m3-rail-icon-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  flex-shrink: 0;
-}
-
-.m3-rail-icon {
-  font-size: 24px;
-}
-
-.m3-rail-label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  white-space: nowrap;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.is-expanded .m3-rail-label {
-  opacity: 1;
-}
-
-.m3-rail-content-area {
-  flex: 1;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Location Panel */
-.m3-location-panel {
-  padding: 8px;
-  background: rgb(var(--md-sys-color-surface-container));
-  border-bottom: 1px solid rgb(var(--md-sys-color-outline-variant));
-}
-
-/* Walks List */
-.m3-walks-list {
-  flex: 1;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Detail View */
-.m3-detail-header {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 16px;
-  background: rgb(var(--md-sys-color-surface-container));
-  border-bottom: 1px solid rgb(var(--md-sys-color-outline-variant));
-}
-
-.m3-title-large {
-  font-size: 1.25rem;
-  font-weight: 500;
-  color: rgb(var(--md-sys-color-on-surface));
-  margin: 0;
-  line-height: 1.4;
-}
-
-.m3-walk-detail {
-  flex: 1;
-  overflow: auto;
-  padding: 16px;
-}
-
-.m3-elevated-card {
-  background: rgb(var(--md-sys-color-surface-container));
-  border-radius: 16px;
-  box-shadow: var(--md-sys-elevation-1);
-  margin-bottom: 16px;
-}
-
-/* Add theme color utility classes if not already present */
-.text-primary {
-  color: rgb(var(--md-sys-color-primary));
-}
-
-.text-primary-container {
-  color: rgb(var(--md-sys-color-primary-container));
-}
-
-.text-outline {
-  color: rgb(var(--md-sys-color-outline));
-}
 </style>
