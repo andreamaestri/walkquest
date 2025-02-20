@@ -188,13 +188,13 @@ DJANGO_VITE = {
         "manifest_path": str(Path(STATIC_ROOT) / "manifest.json"),
         "ws_client_url": "@vite/client",
     },
-    "default": {  # Added default configuration fallback
+    "default": {
         "dev_mode": DEBUG,
         "dev_server_protocol": "http",
         "dev_server_host": "localhost",
         "dev_server_port": 5173,
-        "static_url_prefix": "",  # Adjust if needed
-        "manifest_path": str(Path(STATIC_ROOT) / "manifest.json"),
+        "static_url_prefix": "dist/",
+        "manifest_path": str(APPS_DIR / "static/dist/manifest.json"),
         "ws_client_url": "@vite/client",
     },
     "walkquest": {

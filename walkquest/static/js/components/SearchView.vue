@@ -6,10 +6,14 @@
         leave-active-class="search-leave"
         mode="out-in"
       >
-        <div :key="searchMode" class="search-bar" :class="{ 
-          'is-error': hasError,
-          'location-mode': searchMode === 'locations'
-        }">
+        <div :key="searchMode" 
+             class="search-bar" 
+             :class="{ 
+               'is-error': hasError,
+               'location-mode': searchMode === 'locations',
+               'is-focused': isFocused
+             }"
+             @click="handleContainerClick">
           <div class="search-input-wrapper">
             <Icon 
               :icon="searchMode === 'locations' ? 'material-symbols:location-on' : 'material-symbols:search'" 
@@ -54,7 +58,8 @@
         leave-active-class="animate-out"
         @after-leave="onTransitionComplete"
       >
-        <div v-if="showSuggestions && searchMode === 'locations'" class="suggestions-dropdown">
+        <div v-if="showSuggestions && (isFocused || suggestions.length > 0)" 
+             class="suggestions-dropdown">
           <template v-if="suggestions.length > 0">
             <button
               v-for="(suggestion, index) in suggestions"
@@ -105,6 +110,9 @@ const searchInput = ref(null)
 const selectedIndex = ref(-1)
 const showSuggestions = ref(false)
 
+// Add new ref for focus state
+const isFocused = ref(false)
+
 // Update searchQuery to use computed with two-way binding to store
 const searchQuery = computed({
   get: () => searchStore.searchQuery,
@@ -124,17 +132,36 @@ const searchPlaceholder = computed(() =>
   props.searchMode === 'locations' ? 'Search for a location...' : 'Search walks...'
 )
 
+// Add computed to get the current search mode from the store
+const currentSearchMode = computed(() => searchStore.searchMode)
+
+// Update suggestions computed property to use currentSearchMode
 const suggestions = computed(() => {
-  if (props.searchMode === 'locations') {
+  if (currentSearchMode.value === 'locations') {
     return searchStore.locationSuggestions
+  } else {
+    // For explore mode, filter walks based on searchQuery and return top 5 results as quick suggestions
+    const query = searchQuery.value.trim().toLowerCase();
+    if (!query) return [];
+    return walksStore.walks.filter(walk => {
+      const text = [walk.title, walk.walk_name, walk.location, walk.description]
+                      .filter(Boolean).join(' ').toLowerCase();
+      return text.includes(query);
+    }).slice(0, 5);
   }
-  return [] // Don't show suggestions in walks mode
 })
 
 const isLoading = computed(() => searchStore.isLoading)
 const hasError = computed(() => !!searchStore.error)
 const errorMessage = computed(() => searchStore.error)
 const canClear = computed(() => searchQuery.value.length > 0)
+
+// Add this watch to trigger location search when query updates
+watch(searchQuery, (newVal) => {
+  if (props.searchMode === 'locations' && newVal.trim().length > 0) {
+    searchStore.searchLocations(newVal)
+  }
+})
 
 // Methods
 const handleInput = (event) => {
@@ -144,16 +171,24 @@ const handleInput = (event) => {
   }
 }
 
+// Update handleFocus
 const handleFocus = () => {
+  isFocused.value = true
   showSuggestions.value = true
 }
 
+// Update handleBlur
 const handleBlur = () => {
-  // Delay hiding suggestions to allow click events to fire
+  isFocused.value = false
+  // Use a short delay to allow click events
   setTimeout(() => {
     showSuggestions.value = false
-    selectedIndex.value = -1
-  }, 200)
+  }, 150)
+}
+
+// Add new handler for container clicks
+const handleContainerClick = () => {
+  searchInput.value?.focus()
 }
 
 const handleKeyDown = () => {
@@ -510,6 +545,17 @@ watch(() => props.searchMode, (newMode) => {
   align-items: center;
   gap: 12px;
   height: 100%;
+}
+
+/* Add new styles */
+.search-bar.is-focused {
+  background: rgb(var(--md-sys-color-surface-container-highest));
+  box-shadow: var(--md-sys-elevation-2);
+}
+
+.search-bar:hover {
+  background: rgb(var(--md-sys-color-surface-container));
+  cursor: text;
 }
 
 /* Update suggestion styles for location mode */

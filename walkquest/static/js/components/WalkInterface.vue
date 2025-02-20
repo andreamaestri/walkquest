@@ -90,6 +90,7 @@
             v-model="searchQuery" 
             :search-mode="searchStore.searchMode"
             @location-selected="handleLocationSelected" 
+            @walk-selected="handleWalkSelection"
             class="md3-search-bar px-4" 
           />
         </div>

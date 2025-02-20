@@ -16,7 +16,11 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'walkquest/static/js/main.js'),
       }
-    }
+    },
+    // Add these settings
+    assetsDir: '',
+    sourcemap: true,
+    emptyOutDir: true
   },
   server: {
     host: '0.0.0.0',
