@@ -41,15 +41,24 @@
               </button>
             </nav>
             <!-- Main Content Area inside the rail (for walk list) -->
-            <div class="m3-rail-content-area">
-              <div v-if="searchStore.searchMode === 'locations'" class="m3-location-panel">
+            <div class="m3-rail-content-area"
+                 :class="{ 'content-hidden': !isExpanded }">
+              <div v-if="searchStore.searchMode === 'locations'" 
+                   class="m3-location-panel"
+                   :class="{ 'overflow-hidden': !isExpanded }">
                 <LocationSearch @location-selected="handleLocationSelected" />
               </div>
               <!-- Walk List -->
-              <div class="m3-walks-list">
-                <WalkList v-model="searchQuery" :walks="filteredWalks" :selected-walk-id="selectedWalkId"
-                  :expanded-walk-ids="expandedWalkIds" :is-compact="!isExpanded" @walk-selected="handleWalkSelection"
-                  @walk-expanded="handleWalkExpanded" />
+              <div class="m3-walks-list"
+                   :class="{ 'overflow-hidden': !isExpanded }">
+                <WalkList v-model="searchQuery" 
+                         :walks="filteredWalks" 
+                         :selected-walk-id="selectedWalkId"
+                         :expanded-walk-ids="expandedWalkIds" 
+                         :is-compact="!isExpanded" 
+                         @walk-selected="handleWalkSelection"
+                         @walk-expanded="handleWalkExpanded"
+                         v-show="isExpanded" />
               </div>
             </div>
           </template>
@@ -73,9 +82,9 @@
         <!-- Search Bar -->
         <div class="transition-all duration-300"
              :class="[
-               showNavigationRail 
-                 ? (isExpanded ? 'w-[calc(100vw-380px)]' : 'w-[calc(100vw-92px)]')
-                 : 'w-screen'
+                 showNavigationRail 
+                 ? (isExpanded ? 'w-xl' : 'w-sm')
+                 : 'w-full'
              ]">
           <SearchView 
             v-model="searchQuery" 
@@ -1443,4 +1452,15 @@ onBeforeUnmount(cleanup)
 <style>
 @import "tailwindcss";
 @import '../../css/material3.css';
+
+/* Add these new styles */
+.m3-rail-content-area {
+  transition: opacity 0.2s ease-out, visibility 0.2s ease-out;
+}
+
+.m3-rail-content-area.content-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
 </style>

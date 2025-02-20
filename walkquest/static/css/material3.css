@@ -150,9 +150,14 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 0; /* Remove gap between icon and label */
   width: 100%;
   height: 100%;
+  padding: 0 6px;
+}
+.m3-navigation-rail.is-expanded .m3-rail-content {
+  justify-content: flex-start;
+  gap: 12px; /* Restore gap only in expanded state */
   padding: 0 6px;
 }
 .m3-rail-icon-container {
@@ -179,9 +184,12 @@
 }
 .m3-rail-item.is-active {
   color: rgb(var(--md-sys-color-on-secondary-container));
+  border-radius: 32px;
 }
 .m3-rail-item.is-active .m3-state-layer {
   background-color: rgb(var(--md-sys-color-secondary-container));
+  border-radius: inherit;
+  transition: background-color var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized);
 }
 .m3-rail-item.is-active .m3-rail-label {
   color: rgb(var(--md-sys-color-on-secondary-container));
@@ -262,7 +270,7 @@
   display: flex;
   flex-direction: column;
   padding: 4px 12px;
-  gap: 4px;
+  gap: 1px;
   flex: 1;
   overflow: hidden;
   align-items: center;
@@ -740,7 +748,6 @@
   flex-direction: row;
   justify-content: flex-start;
   padding: 0 12px;
-  gap: 12px;
 }
 .m3-navigation-rail.is-expanded .m3-rail-label {
   margin-left: 4px;
@@ -838,9 +845,14 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 0; /* Remove gap between icon and label */
   width: 100%;
   height: 100%;
+  padding: 0 6px;
+}
+.m3-navigation-rail.is-expanded .m3-rail-content {
+  justify-content: flex-start;
+  gap: 12px; /* Restore gap only in expanded state */
   padding: 0 6px;
 }
 .m3-rail-icon-container {
@@ -875,9 +887,12 @@
 }
 .m3-rail-item.is-active {
   color: rgb(var(--md-sys-color-on-secondary-container));
+  border-radius: 32px;
 }
 .m3-rail-item.is-active .m3-state-layer {
   background-color: rgb(var(--md-sys-color-secondary-container));
+  border-radius: inherit;
+  transition: background-color var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized);
 }
 .menu-button {
   width: 56px !important;
@@ -930,7 +945,6 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
   padding: 12px 0;
   width: 100%;
   will-change: transform, opacity;
@@ -1117,7 +1131,7 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 0; /* Remove gap between icon and label */
   width: 100%;
   height: 100%;
   padding: 0 6px;
@@ -1256,7 +1270,6 @@
 .m3-rail-content {
   display: flex;
   align-items: center;
-  gap: 12px;
   width: 100%;
 }
 .m3-rail-icon-container {
