@@ -3,7 +3,7 @@
 
 import ssl
 from pathlib import Path
-
+import re
 import environ
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -406,3 +406,11 @@ ICONIFY_COLLECTIONS = {
     "mdi": "https://api.iconify.design/mdi.json",
 }
 
+# http://whitenoise.evans.io/en/stable/django.html#WHITENOISE_IMMUTABLE_FILE_TEST
+
+def immutable_file_test(path, url):
+    # Match vite (rollup)-generated hashes, à la, `some_file-CSliV9zW.js`
+    return re.match(r"^.+[.-][0-9a-zA-Z_-]{8,12}\..+$", url)
+
+
+WHITENOISE_IMMUTABLE_FILE_TEST = immutable_file_test
