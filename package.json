@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "**Walk in the Quest!** 🚶‍♂️🧭",
   "main": "tailwind.config.js",
+  "engines": {
+    "node": "22.x",
+    "npm": "11.x"
+  },
   "directories": {
     "doc": "docs",
     "test": "tests"
@@ -28,12 +32,8 @@
     "@studiometa/vue-mapbox-gl": "^2.7.1",
     "@tailwindcss/postcss": "^4.0.6",
     "@tailwindcss/vite": "^4.0.7",
-    "@tanstack/vue-virtual": "^3.13.0",
     "@vueuse/components": "^12.5.0",
     "@vueuse/core": "^12.5.0",
-    "@vueuse/motion": "^2.2.6",
-    "axios": "^1.6.7",
-    "Icon": "^2.3.0",
     "idb": "^8.0.2",
     "ky": "^1.7.4",
     "lodash": "^4.17.21",
@@ -42,7 +42,7 @@
     "mapbox-gl": "^3.9.4",
     "motion": "^12.4.2",
     "pinia": "^2.1.7",
-    "vue": "^3.0.0",
+    "vue": "^3.4.0",
     "vue-router": "^4.5.0",
     "vue-virtual-scroller": "^2.0.0-beta.8"
   },
@@ -59,16 +59,24 @@
   "devDependencies": {
     "@iconify/vue": "^4.3.0",
     "@tailwindcss/nesting": "^0.0.0-insiders.565cd3e",
-    "@vitejs/plugin-vue": "^4.0.0",
-    "@vue/compiler-sfc": "^3.5.13",
+    "@vitejs/plugin-vue": "^1.7.1",
+    "@vue/compiler-sfc": "^3.4.0",
     "autoprefixer": "^10.4.0",
+    "esbuild": "^0.19.12",
     "postcss": "^8.4.0",
     "postcss-import": "^16.1.0",
     "postcss-nested": "^7.0.2",
     "postcss-nesting": "^13.0.1",
     "postcss-preset-env": "^10.1.3",
-    "tailwindcss": "^3.0.0",
-    "vite": "^4.0.0"
+    "tailwindcss": "^4.0.0",
+    "vite": "^5.0.12"
   },
-  "type": "module"
+  "type": "module",
+  "resolutions": {
+    "vue": "^3.4.0"
+  },
+  "overrides": {
+    "vite": "^5.0.12",
+    "esbuild": "^0.19.12"
+  }
 }

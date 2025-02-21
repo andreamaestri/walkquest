@@ -173,23 +173,19 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATIC_URL = "/static/"
 
-# VITE_MANIFEST_PATH configuration
-VITE_MANIFEST_PATH = (
-    Path(__file__).resolve().parent.parent / "static" / "dist" / ".vite" / "manifest.json"
-)
+STATICFILES_DIRS = [
+    str(APPS_DIR / "static")
+]
 
 # Django Vite Configuration
 DJANGO_VITE = {
     "default": {
-        "dev_mode": False,
-        "manifest_path": VITE_MANIFEST_PATH,
+        "dev_mode": DEBUG,
+        # Fix the manifest path to point to the correct location
+        "manifest_path": str(APPS_DIR / "static" / "dist" / ".vite" / "manifest.json"),
         "static_url_prefix": "dist/",
-    },
+    }
 }
-
-STATICFILES_DIRS = [
-    str(APPS_DIR / "static")
-]
 
 
 STATICFILES_FINDERS = [
