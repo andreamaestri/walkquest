@@ -11,7 +11,7 @@ export default defineConfig({
     outDir: resolve('./walkquest/static/dist'),
     rollupOptions: {
       input: {
-        'walkquest/static/js/main.js': resolve(__dirname, 'walkquest/static/js/main.js')
+        main: resolve(__dirname, 'walkquest/static/js/main.js')
       },
       output: {
         entryFileNames: '[name].[hash].js',
