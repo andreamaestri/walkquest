@@ -122,7 +122,11 @@ const searchStore = useSearchStore()
 const locationStore = useLocationStore()
 const { flyToLocation } = useMap()
 
-const filteredWalks = computed(() => {
+const filteredResults = computed(() => {
+  if (searchStore.searchMode === 'locations' && locationStore.userLocation) {
+    return locationStore.nearbyWalks
+  }
+  
   const query = searchStore.searchQuery?.toLowerCase().trim()
   if (!query) return props.walks
 
@@ -136,13 +140,6 @@ const filteredWalks = computed(() => {
     
     return searchableText.includes(query)
   })
-})
-
-const filteredResults = computed(() => {
-  if (searchStore.searchMode === 'locations') {
-    return locationStore.nearbyWalks
-  }
-  return filteredWalks.value
 })
 
 const searchMode = ref('walks')
@@ -184,8 +181,8 @@ const handleWalkSelection = async (walk) => {
   emit('walk-selected', walk)
 }
 
-// Watch filtered results to update scroller
-watch(filteredWalks, () => {
+// Single watcher for filteredResults
+watch(filteredResults, () => {
   nextTick(() => {
     handleScrollerUpdate()
   })
@@ -195,18 +192,6 @@ watch(filteredWalks, () => {
 watch(searchMode, (newMode) => {
   handleSearchModeChange(newMode)
 })
-
-// Add watcher for search results to update scroller
-watch(
-  filteredResults,
-  () => {
-    nextTick(() => {
-      if (scroller.value?.updateSize) {
-        scroller.value.updateSize()
-      }
-    })
-  }
-)
 
 // Add these computed properties after the existing ones
 const showFilterStatus = computed(() => {

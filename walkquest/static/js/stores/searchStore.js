@@ -1,151 +1,162 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { useLocationStore } from './locationStore'
 import { useWalksStore } from './walks'
-import { useDebounceFn } from '@vueuse/core'
+import { useLocationStore } from './locationStore'
+import { useUiStore } from './ui'
 
 export const useSearchStore = defineStore('search', () => {
   const locationStore = useLocationStore()
   const walksStore = useWalksStore()
+  const uiStore = useUiStore()
 
   // State
   const searchQuery = ref('')
-  const searchMode = ref('walks') // 'walks' or 'locations'
+  const searchMode = ref('walks')
   const error = ref(null)
   const isLoading = ref(false)
-  const searchHistory = ref([])
-  const locationSuggestions = ref([]) // Ensure this exists
   const MAX_HISTORY_ITEMS = 5
+  const searchHistory = ref([])
+  const activeFilters = ref([])
+  const locationSuggestions = ref([])
+  const filterValues = ref({
+    difficulty: [],
+    distance: null,
+    duration: null,
+    category: [],
+    'dog-friendly': false
+  })
 
   // Computed
   const filteredWalks = computed(() => {
-    const query = searchQuery.value?.trim().toLowerCase()
-    const walks = searchMode.value === 'locations' 
-      ? locationStore.nearbyWalks
-      : walksStore.walks
+    let results = walksStore.walks
 
-    if (!query) return walks
-    
-    return walks.filter(walk => {
-      const searchableFields = [
-        walk.walk_name,
-        walk.title,
-        walk.location,
-        walk.description,
-        ...(walk.related_categories || []).map(cat => cat.name)
-      ]
-      
-      const searchableText = searchableFields
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-      
-      return searchableText.includes(query)
-    })
+    // Apply text search
+    if (searchQuery.value?.trim()) {
+      const query = searchQuery.value.toLowerCase().trim()
+      results = results.filter(walk => {
+        const text = [
+          walk.title,
+          walk.location,
+          walk.description
+        ].filter(Boolean).join(' ').toLowerCase()
+        return text.includes(query)
+      })
+    }
+
+    // Apply filters
+    if (activeFilters.value.length > 0) {
+      results = results.filter(walk => {
+        return activeFilters.value.every(filter => {
+          switch (filter) {
+            case 'difficulty':
+              return filterValues.value.difficulty.length === 0 || 
+                     filterValues.value.difficulty.includes(walk.difficulty?.toLowerCase())
+            case 'distance': {
+              if (!filterValues.value.distance) return true
+              const [min, max] = filterValues.value.distance
+              return walk.distance >= min && walk.distance <= max
+            }
+            case 'duration': {
+              if (!filterValues.value.duration) return true
+              const [minHours, maxHours] = filterValues.value.duration
+              return walk.duration >= minHours && walk.duration <= maxHours
+            }
+            case 'category':
+              return filterValues.value.category.length === 0 ||
+                     walk.categories?.some(cat => filterValues.value.category.includes(cat))
+            case 'dog-friendly':
+              return !filterValues.value['dog-friendly'] || walk.dogFriendly
+            default:
+              return true
+          }
+        })
+      })
+    }
+
+    // Apply location-based filtering if in location mode
+    if (searchMode.value === 'locations' && locationStore.userLocation) {
+      results = locationStore.nearbyWalks
+    }
+
+    return results
   })
 
   // Actions
-  const debouncedSearch = useDebounceFn((query) => {
-    setSearchQuery(query)
-  }, 300)
-
-  function setSearchMode(mode) {
-    if (!['walks', 'locations'].includes(mode)) {
-      console.error(`Invalid search mode: ${mode}`)
-      return
-    }
-    
-    if (mode !== searchMode.value) {
-      searchMode.value = mode
-      clearSearch() // Reset search when changing modes
-    }
-  }
-
   function setSearchQuery(query) {
-    if (typeof query !== 'string') return
-    
     searchQuery.value = query
-    error.value = null
-    
     // Add to search history if not empty and unique
-    if (query.trim() && !searchHistory.value.includes(query)) {
+    if (query?.trim() && !searchHistory.value.includes(query)) {
       searchHistory.value.unshift(query)
-      if (searchHistory.value.length > MAX_HISTORY_ITEMS) {
+      // Keep only last 10 searches
+      if (searchHistory.value.length > 10) {
         searchHistory.value.pop()
       }
     }
   }
 
-  function setError(errorMessage) {
-    error.value = errorMessage
+  function setSearchMode(mode) {
+    searchMode.value = mode
+    // Clear filters when switching modes
+    if (mode === 'locations') {
+      activeFilters.value = []
+      filterValues.value = {
+        difficulty: [],
+        distance: null,
+        duration: null,
+        category: [],
+        'dog-friendly': false
+      }
+    }
   }
 
-  function clearSearch() {
-    searchQuery.value = ''
-    locationSuggestions.value = []
-    error.value = null
+  function setError(msg) {
+    error.value = msg
   }
 
-  function clearLocationSuggestions() {
-    // Clear any location-specific state
-    error.value = null
-    isLoading.value = false
+  function setActiveFilters(filters) {
+    activeFilters.value = filters
   }
 
-  function clearSearchHistory() {
-    searchHistory.value = []
+  function updateFilterValue(filter, value) {
+    filterValues.value[filter] = value
+  }
+
+  function clearFilters() {
+    activeFilters.value = []
+    filterValues.value = {
+      difficulty: [],
+      distance: null,
+      duration: null,
+      category: [],
+      'dog-friendly': false
+    }
   }
 
   async function handleLocationSelected(location) {
-    if (!location?.center) {
-      setError('Invalid location data')
-      return
-    }
-
     try {
       isLoading.value = true
-      const coords = {
-        latitude: location.center[1],
-        longitude: location.center[0]
-      }
-      await locationStore.setUserLocation(coords)
-      await locationStore.findNearbyWalks(coords)
-      
-      // Add location to search history
-      const locationName = location.place_name || `${location.center[1]}, ${location.center[0]}`
-      if (!searchHistory.value.includes(locationName)) {
-        searchHistory.value.unshift(locationName)
-        if (searchHistory.value.length > MAX_HISTORY_ITEMS) {
-          searchHistory.value.pop()
-        }
-      }
-
-      // Switch to locations mode if not already in it
-      if (searchMode.value !== 'locations') {
-        setSearchMode('locations')
-      }
+      await locationStore.setUserLocation(location)
+      error.value = null
     } catch (err) {
-      setError('Failed to update location')
+      error.value = 'Failed to process location'
       console.error('Location selection error:', err)
     } finally {
       isLoading.value = false
     }
   }
 
-  async function searchLocations(query) {
-    try {
-      isLoading.value = true
-      // Replace the URL below with your actual location search endpoint if available.
-      // const response = await fetch(`/api/locations?query=${encodeURIComponent(query)}`)
-      // const data = await response.json()
-      // locationSuggestions.value = data.results || []
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      locationSuggestions.value = [] // update with actual results
-    } catch (err) {
-      error.value = err.message || "Location search failed."
-    } finally {
-      isLoading.value = false
-    }
+  function clearLocationSuggestions() {
+    locationSuggestions.value = []
+  }
+
+  function setLocationSuggestions(suggestions) {
+    locationSuggestions.value = suggestions
+  }
+
+  function clearSearch() {
+    searchQuery.value = ''
+    clearLocationSuggestions()
+    error.value = null
   }
 
   return {
@@ -155,20 +166,21 @@ export const useSearchStore = defineStore('search', () => {
     error,
     isLoading,
     searchHistory,
-    locationSuggestions,
-    
-    // Computed
+    activeFilters,
+    filterValues,
     filteredWalks,
-    
+    locationSuggestions,
+
     // Actions
-    setSearchMode,
     setSearchQuery,
-    debouncedSearch,
+    setSearchMode,
     setError,
-    clearSearch,
-    clearLocationSuggestions,
-    clearSearchHistory,
+    setActiveFilters,
+    updateFilterValue,
+    clearFilters,
     handleLocationSelected,
-    searchLocations
+    clearLocationSuggestions,
+    setLocationSuggestions,
+    clearSearch
   }
 })

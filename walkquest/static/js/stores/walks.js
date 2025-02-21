@@ -16,6 +16,11 @@ export const useWalksStore = defineStore('walks', {
   actions: {
     async loadWalks() {
       try {
+        if (this.loading) {
+          console.debug('Walks already loading, waiting...')
+          return
+        }
+
         this.loading = true
         this.error = null
         console.log('Fetching walks...')
@@ -23,21 +28,31 @@ export const useWalksStore = defineStore('walks', {
         
         console.log('API Response:', response)
         
-        if (response && Array.isArray(response.walks)) {
-          this.walks = response.walks.map(walk => ({
-            ...walk,
-            title: walk.title || walk.walk_name || 'Unnamed Walk',
-            location: walk.location || 'Unknown Location'
-          }))
-          console.log('Walks loaded:', this.walks)
-        } else {
-          console.error('Invalid response format:', response)
-          throw new Error('Invalid response format')
+        if (!response) {
+          throw new Error('No response from walks API')
         }
+
+        const walks = Array.isArray(response) ? response : response.walks
+
+        if (!Array.isArray(walks)) {
+          throw new Error('Invalid walks data format')
+        }
+
+        this.walks = walks.map(walk => ({
+          ...walk,
+          title: walk.title || walk.walk_name || 'Unnamed Walk',
+          location: walk.location || 'Unknown Location',
+          latitude: Number(walk.latitude),
+          longitude: Number(walk.longitude)
+        }))
+
+        console.log('Walks loaded:', this.walks.length)
+        return this.walks
       } catch (err) {
         console.error('Error loading walks:', err)
         this.error = err.message
         this.walks = []
+        throw err // Re-throw to allow proper error handling upstream
       } finally {
         this.loading = false
       }

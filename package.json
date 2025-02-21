@@ -28,6 +28,7 @@
   },
   "homepage": "https://github.com/andreamaestri/walkquest#readme",
   "dependencies": {
+    "@mapbox/mapbox-gl-geocoder": "^5.0.3",
     "@studiometa/vue-mapbox-gl": "^2.7.1",
     "@tailwindcss/postcss": "^4.0.6",
     "@tailwindcss/vite": "^4.0.7",

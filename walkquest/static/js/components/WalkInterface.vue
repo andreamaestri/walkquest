@@ -22,7 +22,13 @@
             </div>
             <!-- Navigation items -->
             <nav class="m3-rail-items">
-              <button class="m3-rail-item" :class="{ 'is-active': !showRoutesDrawer }" @click="handleWalkSelection(null)">
+              <button 
+                class="m3-rail-item" 
+                :class="{ 
+                  'is-active': searchStore.searchMode === 'walks' && !selectedWalkId
+                }" 
+                @click="handleExploreClick"
+              >
                 <div class="m3-rail-content">
                   <div class="m3-rail-icon-container">
                     <Icon icon="mdi:compass-outline" class="m3-rail-icon" />
@@ -30,8 +36,14 @@
                   <span class="m3-rail-label">Explore</span>
                 </div>
               </button>
-              <!-- New Location Search Button -->
-              <button class="m3-rail-item" @click="searchStore.setSearchMode('locations')">
+              <!-- Location Search Button -->
+              <button 
+                class="m3-rail-item" 
+                :class="{ 
+                  'is-active': searchStore.searchMode === 'locations'
+                }" 
+                @click="handleLocationSearchClick"
+              >
                 <div class="m3-rail-content">
                   <div class="m3-rail-icon-container">
                     <Icon icon="mdi:map-search" class="m3-rail-icon" />
@@ -43,25 +55,27 @@
             <!-- Main Content Area inside the rail (for walk list) -->
             <div class="m3-rail-content-area"
                  :class="{ 'content-hidden': !isExpanded }">
+              <!-- Location Search Panel -->
               <div v-if="searchStore.searchMode === 'locations'" 
-                   class="m3-location-panel"
-                   :class="{ 'overflow-hidden': !isExpanded }">
-                <LocationSearch 
-                  :mapbox-token="mapboxToken"
-                  @location-selected="handleLocationSelected" 
-                />
+                   class="m3-location-panel p-4">
+                <!-- Display nearby walks count if location is selected -->
+                <div v-if="locationStore.userLocation" class="mt-4 text-on-surface-variant">
+                  {{ filteredWalks.length }} walks found nearby
+                </div>
               </div>
               <!-- Walk List -->
               <div class="m3-walks-list"
                    :class="{ 'overflow-hidden': !isExpanded }">
-                <WalkList v-model="searchQuery" 
-                         :walks="filteredWalks" 
-                         :selected-walk-id="selectedWalkId"
-                         :expanded-walk-ids="expandedWalkIds" 
-                         :is-compact="!isExpanded" 
-                         @walk-selected="handleWalkSelection"
-                         @walk-expanded="handleWalkExpanded"
-                         v-show="isExpanded" />
+                <WalkList 
+                  v-model="searchQuery" 
+                  :walks="filteredWalks" 
+                  :selected-walk-id="selectedWalkId"
+                  :expanded-walk-ids="expandedWalkIds" 
+                  :is-compact="!isExpanded" 
+                  @walk-selected="handleWalkSelection"
+                  @walk-expanded="handleWalkExpanded"
+                  v-show="isExpanded" 
+                />
               </div>
             </div>
           </template>
@@ -264,7 +278,12 @@ import { animate } from "motion";
 import { useElementVisibility } from "@vueuse/core";
 import { DynamicScroller, DynamicScrollerItem } from "vue-virtual-scroller";
 import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
-import { MapboxMap, MapboxNavigationControl, MapboxMarker, MapboxLayer, MapboxSource } from '@studiometa/vue-mapbox-gl';
+import { 
+  MapboxMap, 
+  MapboxMarker, 
+  MapboxLayer, 
+  MapboxSource,
+} from '@studiometa/vue-mapbox-gl';
 import { Icon } from '@iconify/vue';
 
 import { useUiStore } from "../stores/ui";
@@ -438,6 +457,7 @@ const showRoutesDrawer = ref(false)
 const filteredWalks = computed(() => {
   let results = availableWalks.value
 
+  // Handle text search
   if (searchQuery.value?.trim()) {
     const query = searchQuery.value.toLowerCase().trim()
     results = results.filter(walk => {
@@ -448,6 +468,11 @@ const filteredWalks = computed(() => {
       ].filter(Boolean).join(' ').toLowerCase()
       return text.includes(query)
     })
+  }
+
+  // Handle location-based filtering
+  if (searchStore.searchMode === 'locations' && locationStore.userLocation) {
+    return locationStore.nearbyWalks
   }
 
   return results
@@ -817,9 +842,47 @@ const effectiveFlyToOptions = (location) => {
 // Modify handleLocationSelected to use the new flyTo options
 const handleLocationSelected = async (location) => {
   if (!location?.center) return;
-  await searchStore.handleLocationSelected(location);
-  await flyToLocation(effectiveFlyToOptions(location));
-};
+  
+  try {
+    // Set loading state
+    uiStore.setLoadingState('location', true)
+    
+    // Handle location selection in search store
+    await searchStore.handleLocationSelected(location)
+    
+    // Fly to the selected location with enhanced options
+    await flyToLocation({
+      ...effectiveFlyToOptions(location),
+      callback: () => {
+        // Update UI after flying to location
+        if (!isExpanded.value) {
+          isExpanded.value = true
+          localStorage.setItem("sidebarExpanded", "true")
+        }
+      }
+    })
+    
+    // Clear any previous errors
+    searchStore.setError(null)
+    
+  } catch (error) {
+    console.error('Error handling location selection:', error)
+    searchStore.setError('Failed to process location selection')
+  } finally {
+    uiStore.setLoadingState('location', false)
+  }
+}
+
+// Add watchers for search mode changes
+watch(() => searchStore.searchMode, (newMode) => {
+  if (newMode === 'locations') {
+    // Ensure sidebar is expanded when switching to location search
+    if (!isExpanded.value) {
+      isExpanded.value = true
+      localStorage.setItem("sidebarExpanded", "true")
+    }
+  }
+})
 
 // Refactor handleResize using debounce instead of manual clearTimeout
 const handleResize = debounce(() => {
@@ -949,7 +1012,7 @@ const handleBackClick = async () => {
       bearing: 0,
       padding: { top: 100, bottom: 100, left: 100, right: 100 },
       duration: 1200,
-      easing: (t) => (--t) * t * t + 1, // easeOutCubic
+      easing: t => t * (1 - t) * (1 + t), // easeOutCubic without parameter reassignment
       essential: true
     })
   }
@@ -1241,7 +1304,7 @@ const updateSpatialIndex = () => {
   const newIndex = new Map()
   const cellSize = 0.1 // roughly 11km at equator
 
-  walks.value.forEach(walk => {
+  for (const walk of walks.value) {
     const lng = Number(walk.longitude) || Number(walk.lng)
     const lat = Number(walk.latitude) || Number(walk.lat)
 
@@ -1256,7 +1319,7 @@ const updateSpatialIndex = () => {
       newIndex.set(key, [])
     }
     newIndex.get(key).push(walk)
-  })
+  }
 
   spatialIndex.value = newIndex
 }
@@ -1272,7 +1335,6 @@ const mapBounds = ref(null)
 
 // Replace your existing visibleWalks computed property with the optimized version:
 const visibleWalks = computed(() => {
-  // Use mapBounds as a dependency so that changes trigger recomputation.
   if (!mapBounds.value || spatialIndex.value.size === 0) return walks.value;
 
   const bounds = mapBounds.value;
@@ -1291,7 +1353,9 @@ const visibleWalks = computed(() => {
       const key = `${x}:${y}`;
       const cellWalks = spatialIndex.value.get(key);
       if (cellWalks) {
-        cellWalks.forEach(walk => visibleSet.add(walk));
+        for (const walk of cellWalks) {
+          visibleSet.add(walk);
+        }
       }
     }
   }
@@ -1303,10 +1367,10 @@ const visibleWalks = computed(() => {
     areArraysShallowEqual(previousVisibleWalks.value, currentVisibleWalks)
   ) {
     return previousVisibleWalks.value;
-  } else {
-    previousVisibleWalks.value = currentVisibleWalks;
-    return currentVisibleWalks;
   }
+  
+  previousVisibleWalks.value = currentVisibleWalks;
+  return currentVisibleWalks;
 });
 
 // Add the helper function (place it among your other functions/methods)
@@ -1321,21 +1385,17 @@ function areArraysShallowEqual(arrA, arrB) {
 
 // Replace recreateMarkers function
 const recreateMarkers = async (selectedWalkId = null) => {
-  // Wait for next tick to ensure map is ready
   await nextTick();
 
-  // Ensure map exists
   if (!mapComponent.value?.map) {
     console.warn('Map not ready');
     return;
   }
 
   // Clear existing markers
-  markerRefs.value.forEach(marker => {
-    if (marker && marker.remove) {
-      marker.remove();
-    }
-  });
+  for (const marker of markerRefs.value.values()) {
+    marker?.remove?.();
+  }
   markerRefs.value.clear();
 
   // Force template update by incrementing key
@@ -1359,8 +1419,8 @@ const handleMarkerMounted = (marker, walkId) => {
   markerRefs.value.set(walkId, marker);
 };
 
-// Consolidated cleanup
-onBeforeUnmount(() => {
+// Consolidated cleanup function
+const cleanup = () => {
   // 1. Clean up animations
   if (animationFrame) {
     cancelAnimationFrame(animationFrame)
@@ -1368,34 +1428,38 @@ onBeforeUnmount(() => {
   }
 
   // 2. Clean up event listeners
-  const cleanupEvents = () => {
-    window.removeEventListener('resize', handleResize)
+  window.removeEventListener('resize', handleResize)
 
-    if (!mapRef.value) return
-
-    // Map event handlers
+  if (mapRef.value) {
     const mapEvents = ['mousemove', 'mouseleave', 'styledata']
-    mapEvents.forEach(event => {
+    for (const event of mapEvents) {
       mapRef.value.off(event, MAP_LAYER.ROUTE)
-    })
+    }
   }
-  cleanupEvents()
 
   // 3. Reset state
   routeData.value = null
   loading.value = false
   mapLoaded.value = false
 
-  // 4. Clear collections
+  // 4. Clean up markers
+  for (const marker of markerRefs.value.values()) {
+    marker?.remove?.()
+  }
   markerRefs.value.clear()
+  markerKey.value = 0
+
+  // 5. Clear collections
   spatialIndex.value.clear()
 
-  // 5. Clear refs after cleanup
-  if (mapRef.value) {
-    mapRef.value = null
-    mapComponent.value = null
-  }
-})
+  // 6. Clear refs
+  mapRef.value = null
+  mapComponent.value = null
+}
+
+// Lifecycle hooks
+onMounted(initializeInterface)
+onBeforeUnmount(cleanup)
 
 // SearchStore helpers
 const setSearchMode = (mode) => searchStore.setSearchMode(mode)
@@ -1420,45 +1484,6 @@ const processRouteData = (data) => {
   return data
 }
 
-// Consolidated cleanup function
-const cleanup = () => {
-  // 1. Clean up animations
-  if (animationFrame) {
-    cancelAnimationFrame(animationFrame)
-    animationFrame = null
-  }
-
-  // 2. Clean up event listeners
-  window.removeEventListener('resize', handleResize)
-
-  if (mapRef.value) {
-    ['mousemove', 'mouseleave', 'styledata'].forEach(event => {
-      mapRef.value.off(event, MAP_LAYER.ROUTE)
-    })
-  }
-
-  // 3. Reset state
-  routeData.value = null
-  loading.value = false
-  mapLoaded.value = false
-
-  // 4. Clean up markers
-  markerRefs.value.forEach(marker => {
-    if (marker?.remove) {
-      marker.remove();
-    }
-  });
-  markerRefs.value.clear();
-  markerKey.value = 0;
-
-  // 5. Clear collections
-  spatialIndex.value.clear()
-
-  // 6. Clear refs
-  mapRef.value = null
-  mapComponent.value = null
-}
-
 // Lifecycle hooks
 onMounted(initializeInterface)
 onBeforeUnmount(cleanup)
@@ -1477,6 +1502,27 @@ const processDogConsiderations = (consideration) => {
     isDog: true
   };
 };
+
+// Add new methods for handling button clicks
+const handleExploreClick = () => {
+  searchStore.setSearchMode('walks')
+  handleWalkSelection(null) // Clear selected walk
+  // Clear any location search state
+  locationStore.clearLocation()
+  // Reset search error if any
+  searchStore.setError(null)
+}
+
+const handleLocationSearchClick = () => {
+  searchStore.setSearchMode('locations')
+  // Expand sidebar if not already expanded
+  if (!isExpanded.value) {
+    isExpanded.value = true
+    localStorage.setItem("sidebarExpanded", "true")
+  }
+  // Clear any previous location search errors
+  searchStore.setError(null)
+}
 
 </script>
 
@@ -1509,5 +1555,18 @@ const processDogConsiderations = (consideration) => {
 .m3-dog-badge .iconify {
   font-size: 1.25rem;
   color: var(--md-sys-color-secondary);
+}
+
+/* Add these styles at the bottom of your style section */
+.m3-location-panel {
+  background: rgb(var(--md-sys-color-surface-container-low));
+  border-radius: 16px;
+  margin: 8px;
+}
+
+.m3-walks-list {
+  flex: 1;
+  overflow-y: auto;
+  margin-top: 8px;
 }
 </style>
