@@ -13,8 +13,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build && npm run build:css",
-    "build:css": "tailwindcss -i ./walkquest/static/css/project.css -o ./walkquest/static/dist/css/project.css --minify",
+    "build": "vite build",
     "heroku-postbuild": "npm run build"
   },
   "repository": {
