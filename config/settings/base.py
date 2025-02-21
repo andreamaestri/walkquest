@@ -1,9 +1,11 @@
 # ruff: noqa: ERA001, E501
 """Base settings to build other settings files upon."""
 
+import os
+import re
 import ssl
 from pathlib import Path
-import re
+
 import environ
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -165,19 +167,22 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "allauth.account.middleware.AccountMiddleware",
 ]
-
 # STATIC
 # ------------------------------------------------------------------------------
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATIC_URL = "/static/"
 
+# VITE_MANIFEST_PATH configuration
+VITE_MANIFEST_PATH = (
+    Path(__file__).resolve().parent.parent / "static" / "dist" / ".vite" / "manifest.json"
+)
 
 # Django Vite Configuration
 DJANGO_VITE = {
     "default": {
         "dev_mode": False,
-        "manifest_path": str(BASE_DIR / "walkquest/static/dist/.vite/manifest.json"),
+        "manifest_path": VITE_MANIFEST_PATH,
         "static_url_prefix": "dist/",
     },
 }
@@ -186,8 +191,6 @@ STATICFILES_DIRS = [
     str(APPS_DIR / "static")
 ]
 
-STATIC_ROOT = BASE_DIR / "staticfiles"
-STATIC_URL = "/static/"
 
 STATICFILES_FINDERS = [
     "django.contrib.staticfiles.finders.FileSystemFinder",
