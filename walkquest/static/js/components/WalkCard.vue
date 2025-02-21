@@ -22,10 +22,6 @@
             <Icon icon="mdi:map-marker-distance" />
             <span>{{ formatDistance(walk.distance) }}</span>
           </div>
-          <div class="badge duration">
-            <Icon icon="mdi:clock-outline" />
-            <span>{{ formatDuration(walk.duration) }}</span>
-          </div>
         </div>
         
         <div class="walk-categories" v-if="walk.related_categories?.length">

@@ -223,13 +223,9 @@ function debounce(fn, delay) {
   }
 }
 
-// Update handleInput to be more efficient
+// Update handleInput to always update filteredWalks when in walks mode
 const handleInput = (event) => {
   const value = event.target.value || ''
-  
-  // Only update if value actually changed
-  if (searchQuery.value === value) return
-  
   searchQuery.value = value
   
   if (!value.trim()) {
@@ -238,7 +234,6 @@ const handleInput = (event) => {
     return
   }
   
-  // Only run walk search in walks mode
   if (props.searchMode === 'walks') {
     debouncedFilterWalks(value)
   }

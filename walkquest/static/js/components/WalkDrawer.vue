@@ -31,11 +31,11 @@
         >
           <button 
             ref="backButtonRef" 
-            class="m3-icon-button shrink-0 mr-4" 
+            class="m3-icon-button shrink-0" 
             @click="$emit('close')"
           >
             <div class="m3-state-layer">
-              <Icon icon="material-symbols:arrow-back-rounded" class="text-2xl" />
+              <Icon icon="mdi:arrow-back" class="text-2xl" />
             </div>
           </button>
           <h2 ref="titleRef" class="m3-headline-small text-on-surface pt-4 pr-4 mb-4 break-words">
@@ -222,33 +222,89 @@
               <!-- Pubs List -->
               <section 
                 v-if="walk.pubs_list?.length" 
-                class="m3-surface-container-low rounded-xl p-4 space-y-3"
+                class="m3-surface-container-low rounded-xl p-4 space-y-4"
               >
                 <h3 class="m3-title-medium text-on-surface flex items-center gap-2">
                   <Icon icon="mdi:beer" class="text-xl text-primary" />
                   Nearby Pubs
+                  <span class="m3-label-small text-on-surface-variant ml-auto">{{ walk.pubs_list.length }} found</span>
                 </h3>
-                <div class="space-y-2">
-                  <button
+                
+                <div class="space-y-3">
+                  <div
                     v-for="pub in walk.pubs_list"
                     :key="pub.name"
-                    class="w-full group"
-                    @click="openInGoogleMaps(pub)"
+                    class="pub-card relative overflow-hidden"
                   >
-                    <div class="flex items-center gap-3 p-3 rounded-lg hover:bg-surface-container-highest transition-colors">
-                      <Icon 
-                        icon="mdi:map-marker" 
-                        class="text-xl text-primary shrink-0" 
-                      />
-                      <span class="m3-body-large text-on-surface text-left flex-grow">
-                        {{ pub.name }}
-                      </span>
-                      <Icon 
-                        icon="mdi:open-in-new" 
-                        class="text-lg text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity shrink-0" 
-                      />
-                    </div>
-                  </button>
+                    <button
+                      class="w-full group"
+                      @click="openInGoogleMaps(pub)"
+                    >
+                      <!-- Main pub info -->
+                      <div class="flex items-start gap-3 p-3 rounded-lg hover:bg-surface-container-highest transition-all duration-200">
+                        <!-- Pub icon container -->
+                        <div class="flex-shrink-0 w-12 h-12 rounded-lg bg-surface-container-high flex items-center justify-center">
+                          <Icon 
+                            icon="mdi:glass-mug-variant" 
+                            class="text-2xl text-primary" 
+                          />
+                        </div>
+                        
+                        <!-- Pub details -->
+                        <div class="flex-grow text-left">
+                          <div class="flex items-center gap-2">
+                            <h4 class="m3-title-small text-on-surface group-hover:text-primary transition-colors">
+                              {{ pub.name }}
+                            </h4>
+                            <Icon 
+                              v-if="pub.is_dog_friendly"
+                              icon="mdi:dog" 
+                              class="text-lg text-primary" 
+                              title="Dog Friendly"
+                            />
+                          </div>
+                          
+                          <!-- Additional pub info -->
+                          <div class="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                            <div v-if="pub.distance" class="flex items-center gap-1">
+                              <Icon icon="mdi:map-marker-distance" class="text-sm text-primary" />
+                              <span class="m3-label-small text-on-surface-variant">{{ pub.distance }} km</span>
+                            </div>
+                            <div v-if="pub.rating" class="flex items-center gap-1">
+                              <Icon icon="mdi:star" class="text-sm text-primary" />
+                              <span class="m3-label-small text-on-surface-variant">{{ pub.rating }}/5</span>
+                            </div>
+                            <div v-if="pub.price_level" class="flex items-center gap-1">
+                              <Icon icon="mdi:currency-gbp" class="text-sm text-primary" />
+                              <span class="m3-label-small text-on-surface-variant">
+                                {{ '£'.repeat(pub.price_level) }}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          <!-- Opening hours preview -->
+                          <div v-if="pub.opening_hours" class="mt-2">
+                            <p class="m3-label-small text-on-surface-variant flex items-center gap-1">
+                              <Icon 
+                                :icon="pub.opening_hours.open_now ? 'mdi:clock' : 'mdi:clock-outline'" 
+                                class="text-sm"
+                                :class="pub.opening_hours.open_now ? 'text-primary' : 'text-error'"
+                              />
+                              {{ pub.opening_hours.open_now ? 'Open Now' : 'Closed' }}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <!-- Action icon -->
+                        <div class="flex-shrink-0 self-center">
+                          <Icon 
+                            icon="mdi:open-in-new" 
+                            class="text-lg text-on-surface-variant opacity-0 group-hover:opacity-100 transition-all duration-200" 
+                          />
+                        </div>
+                      </div>
+                    </button>
+                  </div>
                 </div>
               </section>
 
@@ -277,7 +333,6 @@
                     </details>
                   </div>
                   <div v-if="walk.trail_considerations" class="space-y-2">
-                    <strong class="m3-title-small text-on-surface">Trail Considerations</strong>
                     <!-- Dog badge with enhanced styling -->
                     <div v-if="dogConsiderations.length" class="mb-4">
                       <div class="m3-assist-chip-container">
@@ -916,7 +971,62 @@ function toggleFootwearDetails(e) {
 }
 
 /* Add new styles for pub list */
-.group:hover .text-on-surface {
+.pub-card {
+  background-color: rgb(var(--md-sys-color-surface-container));
+  border-radius: 12px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, box-shadow;
+}
+
+.pub-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--md-sys-elevation-level1);
+}
+
+.pub-card button {
+  text-align: left;
+  width: 100%;
+}
+
+.pub-card .text-error {
+  color: rgb(var(--md-sys-color-error));
+}
+
+/* Enhanced hover states for pub cards */
+.pub-card:hover .m3-title-small {
   color: rgb(var(--md-sys-color-primary));
+}
+
+.pub-card:active {
+  transform: translateY(0);
+  background-color: rgb(var(--md-sys-color-surface-container-highest));
+}
+
+/* Smooth transitions for all interactive elements */
+.pub-card * {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Add ripple effect container */
+.pub-card button {
+  position: relative;
+  overflow: hidden;
+}
+
+.pub-card button::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgb(var(--md-sys-color-on-surface));
+  opacity: 0;
+  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+.pub-card button:active::after {
+  opacity: 0.08;
 }
 </style>

@@ -6,85 +6,60 @@
         <div class="h-full flex flex-col" :key="selectedWalkId ? 'drawer' : 'nav'">
           <!-- Normal Navigation Rail Content -->
           <template v-if="!selectedWalkId">
-            <div 
-              class="m3-rail-header"
-              v-motion
-              :initial="{ opacity: 0, y: -20 }"
-              :enter="{ 
-                opacity: 1, 
-                y: 0,
-                transition: { 
-                  type: 'spring',
-                  stiffness: 300,
-                  damping: 25
-                }
-              }"
-            >
+            <div class="m3-rail-header" v-motion :initial="{ opacity: 0, y: -20 }" :enter="{
+              opacity: 1,
+              y: 0,
+              transition: {
+                type: 'spring',
+                stiffness: 300,
+                damping: 25
+              }
+            }">
               <!-- Menu button -->
-              <button 
-                class="m3-rail-item menu-button" 
-                @click="toggleExpanded"
-                v-motion
-                :initial="{ scale: 0.9, opacity: 0 }"
-                :enter="{ 
-                  scale: 1, 
+              <button class="m3-rail-item menu-button" @click="toggleExpanded" v-motion
+                :initial="{ scale: 0.9, opacity: 0 }" :enter="{
+                  scale: 1,
                   opacity: 1,
-                  transition: { 
+                  transition: {
                     type: 'spring',
                     stiffness: 400,
                     damping: 20
                   }
-                }"
-              >
+                }">
                 <div class="m3-state-layer">
                   <Icon icon="mdi:menu" class="m3-rail-icon text-[24px]" />
                 </div>
               </button>
               <!-- FAB -->
-              <button 
-                class="m3-rail-fab"
-                @click="handleFabClick"
-                v-motion
-                :initial="{ scale: 0.9, opacity: 0 }"
-                :enter="{ 
-                  scale: 1, 
-                  opacity: 1,
-                  transition: { 
-                    type: 'spring',
-                    stiffness: 400,
-                    damping: 20,
-                    delay: 0.1
-                  }
-                }"
-              >
+              <button class="m3-rail-fab" @click="handleFabClick" v-motion :initial="{ scale: 0.9, opacity: 0 }" :enter="{
+                scale: 1,
+                opacity: 1,
+                transition: {
+                  type: 'spring',
+                  stiffness: 400,
+                  damping: 20,
+                  delay: 0.1
+                }
+              }">
                 <Icon icon="mdi:hiking" class="text-[36px]" />
                 <span class="m3-rail-fab-text" v-if="isExpanded">WalkQuest</span>
                 <span class="sr-only">WalkQuest Home</span>
               </button>
             </div>
             <!-- Navigation items with animations -->
-            <nav 
-              class="m3-rail-items"
-              v-motion
-              :initial="{ opacity: 0, y: 20 }"
-              :enter="{ 
-                opacity: 1, 
-                y: 0,
-                transition: { 
-                  type: 'spring',
-                  stiffness: 300,
-                  damping: 25,
-                  delay: 0.2
-                }
-              }"
-            >
-              <button 
-                class="m3-rail-item" 
-                :class="{ 
-                  'is-active': searchStore.searchMode === 'walks' && !selectedWalkId
-                }" 
-                @click="handleExploreClick"
-              >
+            <nav class="m3-rail-items" v-motion :initial="{ opacity: 0, y: 20 }" :enter="{
+              opacity: 1,
+              y: 0,
+              transition: {
+                type: 'spring',
+                stiffness: 300,
+                damping: 25,
+                delay: 0.2
+              }
+            }">
+              <button class="m3-rail-item" :class="{
+                'is-active': searchStore.searchMode === 'walks' && !selectedWalkId
+              }" @click="handleExploreClick">
                 <div class="m3-rail-content">
                   <div class="m3-rail-icon-container">
                     <Icon icon="mdi:compass-outline" class="m3-rail-icon" />
@@ -93,13 +68,9 @@
                 </div>
               </button>
               <!-- Location Search Button -->
-              <button 
-                class="m3-rail-item" 
-                :class="{ 
-                  'is-active': searchStore.searchMode === 'locations'
-                }" 
-                @click="handleLocationSearchClick"
-              >
+              <button class="m3-rail-item" :class="{
+                'is-active': searchStore.searchMode === 'locations'
+              }" @click="handleLocationSearchClick">
                 <div class="m3-rail-content">
                   <div class="m3-rail-icon-container">
                     <Icon icon="mdi:map-search" class="m3-rail-icon" />
@@ -109,58 +80,39 @@
               </button>
             </nav>
             <!-- Main Content Area with animations -->
-            <div 
-              class="m3-rail-content-area"
-              :class="{ 'content-hidden': !isExpanded }"
-              v-motion
-              :initial="{ opacity: 0, scale: 0.95 }"
-              :enter="{ 
-                opacity: 1, 
+            <div class="m3-rail-content-area" :class="{ 'content-hidden': !isExpanded }" v-motion
+              :initial="{ opacity: 0, scale: 0.95 }" :enter="{
+                opacity: 1,
                 scale: 1,
-                transition: { 
+                transition: {
                   type: 'spring',
                   stiffness: 300,
                   damping: 25,
                   delay: 0.3
                 }
-              }"
-            >
+              }">
               <!-- Location Search Panel -->
-              <div v-if="searchStore.searchMode === 'locations'" 
-                   class="m3-location-panel p-4">
+              <div v-if="searchStore.searchMode === 'locations'" class="m3-location-panel p-4">
                 <!-- Display nearby walks count if location is selected -->
                 <div v-if="locationStore.userLocation" class="mt-4 text-on-surface-variant">
                   {{ filteredWalks.length }} walks found nearby
                 </div>
               </div>
               <!-- Walk List -->
-              <div class="m3-walks-list"
-                   :class="{ 'overflow-hidden': !isExpanded }">
-                <WalkList 
-                  v-model="searchQuery" 
-                  :walks="filteredWalks" 
-                  :selected-walk-id="selectedWalkId"
-                  :expanded-walk-ids="expandedWalkIds" 
-                  :is-compact="!isExpanded" 
-                  @walk-selected="handleWalkSelection"
-                  @walk-expanded="handleWalkExpanded"
-                  v-show="isExpanded" 
-                />
+              <div class="m3-walks-list" :class="{ 'overflow-hidden': !isExpanded }">
+                <WalkList v-model="searchQuery" :walks="filteredWalks" :selected-walk-id="selectedWalkId"
+                  :expanded-walk-ids="expandedWalkIds" :is-compact="!isExpanded" @walk-selected="handleWalkSelection"
+                  @walk-expanded="handleWalkExpanded" v-show="isExpanded" />
               </div>
             </div>
           </template>
           <!-- Walk Drawer with enhanced animation -->
-          <WalkDrawer 
-            v-else-if="selectedWalk && showDrawer" 
-            :walk="selectedWalk" 
-            @close="handleDrawerClose"
-            v-motion
+          <WalkDrawer v-else-if="selectedWalk && showDrawer" :walk="selectedWalk" @close="handleDrawerClose" v-motion
             :initial="{
               opacity: 0,
               scale: 0.98,
               x: '3%'
-            }"
-            :enter="{
+            }" :enter="{
               opacity: 1,
               scale: 1,
               x: 0,
@@ -171,8 +123,7 @@
                 mass: 0.5,
                 restSpeed: 0.001
               }
-            }"
-            :exit="{
+            }" :exit="{
               opacity: 0,
               scale: 0.98,
               x: '3%',
@@ -183,8 +134,7 @@
                 mass: 0.5,
                 restSpeed: 0.001
               }
-            }"
-            style="
+            }" style="
               position: absolute; 
               top: 0; 
               bottom: 0; 
@@ -192,35 +142,28 @@
               width: auto;
               transform-origin: right center;
               will-change: transform, opacity;
-            " 
-          />
+            " />
         </div>
       </Transition>
     </div>
 
     <!-- Header with Search Bar (positioned absolutely) -->
-    <div class="fixed top-0 z-10 transition-all duration-300" 
-         :style="{
-           marginLeft: showNavigationRail 
-             ? (isExpanded ? '410px' : '72px') 
-             : '0px'
-         }">
+    <div class="fixed top-0 z-10 transition-all duration-300" :style="{
+      marginLeft: showNavigationRail
+        ? (isExpanded ? '410px' : '72px')
+        : '0px'
+    }">
       <header class="py-3 bg-surface-variant">
         <!-- Search Bar -->
-        <div class="transition-all duration-300"
-             :class="[
-                 showNavigationRail 
-                 ? (isExpanded ? 'w-xl' : 'w-sm')
-                 : 'w-full'
-             ]">
-          <SearchView 
-            v-model="searchQuery" 
-            :search-mode="searchStore.searchMode"
-            :mapbox-token="mapboxToken"
-            @location-selected="handleLocationSelected" 
-            @walk-selected="handleWalkSelection"
-            class="md3-search-bar px-4" 
-          ></SearchView>
+        <div class="transition-all duration-300" :class="[
+          showNavigationRail
+            ? (isExpanded ? 'w-xl' : 'w-sm')
+            : 'w-full'
+        ]">
+          <SearchView v-model="searchQuery" :search-mode="searchStore.searchMode" :mapbox-token="mapboxToken"
+            @location-selected="handleLocationSelected" @walk-selected="handleWalkSelection"
+            class="md3-search-bar px-4">
+          </SearchView>
         </div>
       </header>
     </div>
@@ -250,22 +193,18 @@
     </Transition>
 
     <!-- Map container with simplified config -->
-    <div class="m3-content-container hardware-accelerated pointer-events-auto"
-      :class="{ 'drawer-open': isDrawerOpen }" 
+    <div class="m3-content-container hardware-accelerated pointer-events-auto" :class="{ 'drawer-open': isDrawerOpen }"
       :style="[
         mapContainerStyle,
         { 'marginTop': '64px' } // Add top margin to account for header
-      ]" 
-      ref="mapContainerRef">
+      ]" ref="mapContainerRef">
       <div class="m3-surface-container hardware-accelerated pointer-events-auto absolute inset-0">
         <MapboxMap ref="mapComponent" :access-token="mapboxToken" :map-style="mergedMapConfig.mapStyle"
           :max-bounds="mergedMapConfig.maxBounds" :center="mergedMapConfig.center" :zoom="mergedMapConfig.zoom"
-          :min-zoom="mergedMapConfig.minZoom" :max-zoom="mergedMapConfig.maxZoom"
-          :pitch="45" :bearing="0" :min-pitch="0" :max-pitch="85"
-          :drag-rotate="true" :touch-zoom-rotate="true" :optimize-for-terrain="true"
-          :touch-pitch="true" :cooperativeGestures="true"
-          @mb-created="handleMapCreated" @mb-load="handleMapLoad" @mb-moveend="updateVisibleMarkers"
-          class="h-full w-full absolute inset-0">
+          :min-zoom="mergedMapConfig.minZoom" :max-zoom="mergedMapConfig.maxZoom" :pitch="45" :bearing="0"
+          :min-pitch="0" :max-pitch="85" :drag-rotate="true" :touch-zoom-rotate="true" :optimize-for-terrain="true"
+          :touch-pitch="true" :cooperativeGestures="true" @mb-created="handleMapCreated" @mb-load="handleMapLoad"
+          @mb-moveend="updateVisibleMarkers" class="h-full w-full absolute inset-0">
           <!-- Loading indicator -->
           <div v-if="loading" class="absolute bottom-4 left-4 z-50 bg-white rounded-full px-4 py-2 shadow-lg">
             <div class="flex items-center gap-2">
@@ -328,14 +267,25 @@
                 Number(walk.longitude) || Number(walk.lng),
                 Number(walk.latitude) || Number(walk.lat)
               ]" :color="selectedWalkId === walk.id ? '#6750A4' : '#3FB1CE'" :popup="{
-                  offset: 25,
-                  anchor: 'bottom',
-                  closeButton: false
-                }" @mounted="marker => handleMarkerMounted(marker, walk.id)" @click="() => handleMarkerClick(walk)">
+                offset: 25,
+                anchor: 'bottom',
+                closeButton: false,
+                closeOnClick: false,
+                className: 'm3-popup'
+              }" @mounted="marker => handleMarkerMounted(marker, walk.id)" @click="() => handleMarkerClick(walk)">
                 <template #popup>
-                  <div class="p-2">
-                    <h3 class="font-medium">{{ walk.title || walk.walk_name }}</h3>
-                    <p class="text-sm text-on-surface-variant">{{ walk.location }}</p>
+                  <div class="flex flex-col">
+                    <div class="p-4 pb-3">
+                      <h3 class="m3-title-medium">{{ walk.title || walk.walk_name }}</h3>
+                    </div>
+                    <div class="px-2 pb-2">
+                      <button 
+                        @click="(event) => handlePopupOpenWalk(event, walk)"
+                        class="m3-button m3-button-filled w-full"
+                      >
+                        <span class="m3-button-label">Open Walk</span>
+                      </button>
+                    </div>
                   </div>
                 </template>
               </MapboxMarker>
@@ -388,10 +338,10 @@ import { animate } from "motion";
 import { useElementVisibility } from "@vueuse/core";
 import { DynamicScroller, DynamicScrollerItem } from "vue-virtual-scroller";
 import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
-import { 
-  MapboxMap, 
-  MapboxMarker, 
-  MapboxLayer, 
+import {
+  MapboxMap,
+  MapboxMarker,
+  MapboxLayer,
   MapboxSource,
 } from '@studiometa/vue-mapbox-gl';
 import { Icon } from '@iconify/vue';
@@ -631,7 +581,7 @@ const handleWalkSelection = async (walk) => {
     isExpanded.value = true
     localStorage.setItem("sidebarExpanded", "true")
   }
-  
+
   // No need to set selectedWalk.value since it's now computed
 
   if (walk) {
@@ -725,7 +675,36 @@ watch(
   },
   { immediate: true }
 )
-
+// Add helper for handling the "Open Walk" click from popup
+const handlePopupOpenWalk = async (event, walk) => {
+  event.stopPropagation();
+  try {
+    // Close all popups first
+    if (mapRef.value) {
+      const popups = document.getElementsByClassName('mapboxgl-popup');
+      for (const popup of Array.from(popups)) {
+        popup.remove();
+      }
+      
+      // Fly to the walk location with enhanced view
+      await mapRef.value.flyTo({
+        center: [Number(walk.longitude) || Number(walk.lng), Number(walk.latitude) || Number(walk.lat)],
+        zoom: 15.5, // Increased zoom level for closer view
+        pitch: 65,  // Increased pitch for better perspective
+        bearing: 30,
+        duration: 2000,
+        essential: true,
+        padding: { top: 100, bottom: 100, left: 100, right: 100 },
+        curve: 1.42,
+        easing: t => t * (2 - t)
+      });
+    }
+    // Select the walk to show route and details
+    await handleWalkSelection(walk);
+  } catch (error) {
+    console.error('Error handling walk selection with flyTo:', error);
+  }
+}
 // Reusable polished animation helper function
 const animateElement = async (el, options, onComplete) => {
   // Default configuration for the animation
@@ -952,14 +931,14 @@ const effectiveFlyToOptions = (location) => {
 // Modify handleLocationSelected to use the new flyTo options
 const handleLocationSelected = async (location) => {
   if (!location?.center) return;
-  
+
   try {
     // Set loading state
     uiStore.setLoadingState('location', true)
-    
+
     // Handle location selection in search store
     await searchStore.handleLocationSelected(location)
-    
+
     // Fly to the selected location with enhanced options
     await flyToLocation({
       ...effectiveFlyToOptions(location),
@@ -971,10 +950,10 @@ const handleLocationSelected = async (location) => {
         }
       }
     })
-    
+
     // Clear any previous errors
     searchStore.setError(null)
-    
+
   } catch (error) {
     console.error('Error handling location selection:', error)
     searchStore.setError('Failed to process location selection')
@@ -1478,7 +1457,7 @@ const visibleWalks = computed(() => {
   ) {
     return previousVisibleWalks.value;
   }
-  
+
   previousVisibleWalks.value = currentVisibleWalks;
   return currentVisibleWalks;
 });
@@ -1601,10 +1580,10 @@ onBeforeUnmount(cleanup)
 // Add new utility function near other helper functions
 const processDogConsiderations = (consideration) => {
   if (!consideration) return { text: '', isDog: false };
-  
+
   const startsWithDogs = consideration.trim().toLowerCase().startsWith('dogs');
   if (!startsWithDogs) return { text: consideration, isDog: false };
-  
+
   // Remove "Dogs" from the start and trim
   const remainingText = consideration.replace(/^dogs\s*[:,-]?\s*/i, '').trim();
   return {
@@ -1668,7 +1647,96 @@ async function onContentTransition(el, done) {
   pointer-events: none;
 }
 
-/* Add new styles at the bottom */
+/* Updated popup styles */
+.mapboxgl-popup {
+  max-width: none !important;
+  width: min(280px, calc(100vw - 32px));
+  font-family: "Roboto", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.mapboxgl-popup-content {
+  border-radius: 12px;
+  box-shadow: var(--md-sys-elevation-2);
+  padding: 0 !important;
+  background: rgb(var(--md-sys-color-surface-container-highest));
+  color: rgb(var(--md-sys-color-on-surface));
+  min-width: 0;
+  width: 100%;
+  border: 1px solid rgb(var(--md-sys-color-outline-variant));
+  overflow: hidden;
+}
+
+.mapboxgl-popup-content h3 {
+  color: rgb(var(--md-sys-color-on-surface));
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.5;
+  font-weight: 500;
+  margin: 0;
+  letter-spacing: 0.15px;
+}
+
+.mapboxgl-popup-content .m3-button {
+  width: 100%;
+  min-height: 40px;
+  justify-content: center;
+  margin: 0;
+  background-color: rgb(var(--md-sys-color-primary));
+  color: rgb(var(--md-sys-color-on-primary));
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+  padding: 0 16px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mapboxgl-popup-content .m3-button:hover {
+  background-color: rgb(var(--md-sys-color-primary) / 0.92);
+}
+
+.mapboxgl-popup-content .m3-button:active {
+  background-color: rgb(var(--md-sys-color-primary) / 0.85);
+  transform: scale(0.98);
+}
+
+/* Hide the popup tip */
+.mapboxgl-popup-tip {
+  display: none !important;
+}
+
+/* Add elevation when popup is open */
+.mapboxgl-popup {
+  will-change: transform;
+  transform-origin: bottom center;
+}
+
+/* Add subtle surface tint */
+.mapboxgl-popup-content::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgb(var(--md-sys-color-surface-tint));
+  opacity: 0.05;
+  pointer-events: none;
+}
+
+/* Ensure proper text wrapping */
+.mapboxgl-popup-content .m3-title-medium {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  hyphens: auto;
+  max-width: 100%;
+}
+
+@media (max-width: 640px) {
+  .mapboxgl-popup {
+    width: calc(100vw - 32px);
+  }
+}
+
+/* Add these new styles */
 .m3-dog-badge {
   display: inline-flex;
   align-items: center;
