@@ -176,18 +176,14 @@ STATIC_URL = "/static/"
 # Django Vite Configuration
 DJANGO_VITE = {
     "default": {
-        "dev_mode": DEBUG,
-        "dev_server_protocol": "http",
-        "dev_server_host": "localhost",
-        "dev_server_port": 5173,
-        "manifest_path": str(APPS_DIR / "static/dist/.vite/manifest.json"),
+        "dev_mode": False,
+        "manifest_path": str(STATIC_ROOT / "dist/.vite/manifest.json"),
         "static_url_prefix": "dist/",
-        "ws_client_url": "@vite/client",
     }
 }
 
 STATICFILES_DIRS = [
-    str(APPS_DIR / "static"),
+    str(APPS_DIR / "static")
 ]
 
 STATIC_ROOT = BASE_DIR / "staticfiles"
