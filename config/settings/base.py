@@ -177,9 +177,9 @@ STATIC_URL = "/static/"
 DJANGO_VITE = {
     "default": {
         "dev_mode": False,
-        "manifest_path": str(STATIC_ROOT / "dist/.vite/manifest.json"),
+        "manifest_path": str(BASE_DIR / "walkquest/static/dist/.vite/manifest.json"),
         "static_url_prefix": "dist/",
-    }
+    },
 }
 
 STATICFILES_DIRS = [
