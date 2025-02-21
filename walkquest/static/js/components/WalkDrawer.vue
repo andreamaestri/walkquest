@@ -115,9 +115,18 @@
           </div>
           <div v-if="walk.trail_considerations" class="space-y-1">
             <strong class="text-gray-700">Trail Considerations:</strong>
+            <!-- Dog badge placed outside the list -->
+            <div v-if="dogConsiderations.length" class="mb-2">
+              <span class="m3-dog-badge">
+                <Icon icon="mdi:dog" />
+                Dogs
+              </span>
+              <span v-if="dogCombinedText"> : {{ dogCombinedText }}</span>
+            </div>
+            <!-- List of non-dog considerations -->
             <ul class="list-disc pl-6 space-y-2 text-gray-600">
-              <li v-for="consideration in parsedConsiderations" :key="consideration">
-                {{ consideration }}
+              <li v-for="item in nonDogConsiderations" :key="item.text">
+                {{ item.text }}
               </li>
             </ul>
           </div>
@@ -181,8 +190,24 @@ const parsedConsiderations = computed(() => {
     .split(/\.\s*\n/)
     .map(c => c.trim())
     .filter(c => c.length > 0)
-    .map(c => c.endsWith('.') ? c : c + '.')
+    .map(c => {
+      // Ensure each ends with a period.
+      const text = c.endsWith('.') ? c : c + '.';
+      const result = processDogConsiderations(text);
+      return result;
+    });
 })
+
+// New computed properties to separate dog items from others
+const dogConsiderations = computed(() => {
+  return parsedConsiderations.value.filter(item => item.isDog);
+});
+const nonDogConsiderations = computed(() => {
+  return parsedConsiderations.value.filter(item => !item.isDog);
+});
+const dogCombinedText = computed(() => {
+  return dogConsiderations.value.map(item => item.text).join('; ');
+});
 
 // List of keys already displayed
 const displayedKeys = ['title', 'walk_name', 'description', 'difficulty', 'distance', 'highlights', 'features', 'categories', 'points_of_interest']
@@ -213,8 +238,34 @@ function formatValue(value) {
     return value
   }
 }
+
+// Helper function to process dog considerations
+function processDogConsiderations(consideration) {
+  if (!consideration) return { text: '', isDog: false };
+  const trimmed = consideration.trim();
+  const startsWithDogs = trimmed.toLowerCase().startsWith('dogs');
+  if (!startsWithDogs) return { text: consideration, isDog: false };
+  const remainingText = trimmed.replace(/^dogs\s*[:,-]?\s*/i, '').trim();
+  return { text: remainingText, isDog: true };
+}
 </script>
 
 <style scoped>
 @import "tailwindcss";
+
+/* Updated dog badge style */
+.m3-dog-badge {
+  display: inline-flex;
+  font-weight: 700;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 1rem;
+  background-color: #FFF9C4; /* pale yellow */
+  color: #2b231b; /* dark text */
+}
+
+.m3-dog-badge .iconify {
+  font-size: 1.25rem;
+}
 </style>

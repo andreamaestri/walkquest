@@ -1,142 +1,62 @@
 <template>
   <div class="location-search">
-    <div class="search-container">
-      <div class="search-bar" :class="{ 'is-error': searchStore.error }">
-        <div class="search-input-wrapper">
-          <input
-            type="text"
-            placeholder="Search locations..."
-            :value="searchStore.searchQuery"
-            @input="handleInput"
-            class="search-input"
-            aria-label="Search for a location"
-            :disabled="isLoading"
-          />
-          
-          <div class="input-actions">
-            <div v-if="isLoading" class="loading-indicator">
-              <Icon icon="mdi:loading" class="animate-spin" />
-            </div>
-            
-            <button 
-              v-else-if="searchStore.searchQuery"
-              @click="searchStore.clearSearch()" 
-              class="clear-button"
-              aria-label="Clear search"
-            >
-              <Icon icon="mdi:close" />
-            </button>
-          </div>
-        </div>
-      </div>
+    <MapboxGeocoder
+      :access-token="mapboxToken"
+      :zoom="14"
+      :placeholder="'Search locations...'"
+      :countries="['GB']"
+      :bbox="[-5.7, 49.9, -4.2, 50.9]"
+      :language="'en-GB'"
+      :limit="5"
+      :types="['place', 'address', 'poi']"
+      @result="handleGeocodeResult"
+      @error="handleGeocodeError"
+      @loading="handleGeocodeLoading"
+      @clear="handleGeocodeClear"
+    />
 
-      <div v-if="searchStore.error" class="search-error" role="alert">
-        {{ searchStore.error }}
-      </div>
-    </div>
-
-    <!-- Location suggestions -->
-    <div v-if="suggestions.length > 0" class="suggestions-list" role="listbox">
-      <button
-        v-for="suggestion in suggestions"
-        :key="suggestion.id"
-        class="suggestion-item"
-        role="option"
-        @click="handleLocationSelect(suggestion)"
-      >
-        <Icon icon="mdi:map-marker" />
-        <span>{{ suggestion.place_name }}</span>
-      </button>
-    </div>
-
-    <!-- Empty state -->
-    <div 
-      v-else-if="searchStore.searchQuery && !isSearching && !suggestions.length" 
-      class="empty-state"
-      role="status"
-    >
-      <Icon icon="mdi:map-marker-off" />
-      <span>No locations found</span>
+    <div v-if="searchStore.error" class="search-error" role="alert">
+      {{ searchStore.error }}
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue'
-import { useDebounceFn } from '@vueuse/core'
+import { ref, computed } from 'vue'
 import { useSearchStore } from '../stores/searchStore'
 import { useUiStore } from '../stores/ui'
+import { MapboxGeocoder } from '@studiometa/vue-mapbox-gl'
+import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css'
+
+const props = defineProps({
+  mapboxToken: {
+    type: String,
+    required: true
+  }
+})
 
 const searchStore = useSearchStore()
 const uiStore = useUiStore()
-const emit = defineEmits(['location-selected'])
 
-const suggestions = ref([])
-const isSearching = ref(false)
-
-// Add loading state computed property
-const isLoading = computed(() => 
-  searchStore.isLoading || 
-  isSearching.value || 
-  uiStore.loadingStates.location
-)
-
-const handleInput = (e) => {
-  const value = e.target.value
-  searchStore.debouncedSearch(value)
-  
-  if (value) {
-    uiStore.setLoadingState('search', true)
-    searchLocations(value)
-  } else {
-    suggestions.value = []
+const handleGeocodeResult = (result) => {
+  if (result && result.result) {
+    searchStore.handleLocationSelected(result.result)
+    searchStore.setSearchMode('locations')
   }
 }
 
-const searchLocations = useDebounceFn(async (query) => {
-  if (!query) {
-    suggestions.value = []
-    uiStore.setLoadingState('search', false)
-    return
-  }
-
-  isSearching.value = true
-  uiStore.setLoadingState('location', true)
-  try {
-    const bounds = '-5.7,49.9,-4.2,50.9'
-    const response = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${import.meta.env.VITE_MAPBOX_TOKEN}&country=GB&bbox=${bounds}`
-    )
-    
-    if (!response.ok) {
-      throw new Error('Failed to fetch location suggestions')
-    }
-    
-    const data = await response.json()
-    suggestions.value = data.features
-  } catch (error) {
-    console.error('Error fetching location suggestions:', error)
-    suggestions.value = []
-    searchStore.setError(error.message)
-  } finally {
-    isSearching.value = false
-    uiStore.setLoadingState('location', false)
-    uiStore.setLoadingState('search', false)
-  }
-}, 300)
-
-const handleLocationSelect = (location) => {
-  emit('location-selected', location)
-  suggestions.value = []
-  // Let the parent handle the search mode
+const handleGeocodeError = (error) => {
+  console.error('Geocoding error:', error)
+  searchStore.setError(error.message)
 }
 
-// Clear suggestions when search is cleared
-watch(() => searchStore.searchQuery, (newValue) => {
-  if (!newValue) {
-    suggestions.value = []
-  }
-})
+const handleGeocodeLoading = (isLoading) => {
+  uiStore.setLoadingState('location', isLoading)
+}
+
+const handleGeocodeClear = () => {
+  searchStore.clearSearch()
+}
 </script>
 
 <style scoped>

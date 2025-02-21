@@ -93,6 +93,7 @@
 import { ref, computed, watch, nextTick } from 'vue'
 import { useSearchStore } from '../stores/searchStore'
 import { useWalksStore } from '../stores/walks'
+import { useMap } from '../composables/useMap' // Add this import
 
 const props = defineProps({
   searchMode: {
@@ -115,7 +116,7 @@ const isFocused = ref(false)
 
 // Update searchQuery to use computed with two-way binding to store
 const searchQuery = computed({
-  get: () => searchStore.searchQuery,
+  get: () => searchStore.searchQuery || '',
   set: (value) => searchStore.setSearchQuery(value)
 })
 
@@ -159,7 +160,11 @@ const canClear = computed(() => searchQuery.value.length > 0)
 // Add this watch to trigger location search when query updates
 watch(searchQuery, (newVal) => {
   if (props.searchMode === 'locations' && newVal.trim().length > 0) {
-    searchStore.searchLocations(newVal)
+    if (typeof searchStore.searchLocations === 'function') {
+      searchStore.searchLocations(newVal)
+    } else {
+      console.warn('searchStore.searchLocations is not available')
+    }
   }
 })
 
@@ -167,7 +172,11 @@ watch(searchQuery, (newVal) => {
 const handleInput = (event) => {
   searchQuery.value = event.target.value
   if (props.searchMode === 'locations' && searchQuery.value.trim()) {
-    searchStore.searchLocations(searchQuery.value)
+    if (typeof searchStore.searchLocations === 'function') {
+      searchStore.searchLocations(searchQuery.value)
+    } else {
+      console.warn('searchStore.searchLocations is not available')
+    }
   }
 }
 
@@ -230,12 +239,25 @@ const toggleSearchMode = () => {
   clearSearch()
 }
 
-const selectSuggestion = (suggestion) => {
+const { flyToLocation } = useMap()
+
+const selectSuggestion = async (suggestion) => {
   if (props.searchMode === 'locations') {
     searchQuery.value = suggestion.place_name
     emit('location-selected', suggestion)
   } else {
     searchQuery.value = suggestion.walk_name || suggestion.title
+    // Fly to walk location before emitting walk-selected
+    if (suggestion.latitude && suggestion.longitude) {
+      await flyToLocation({
+        center: [Number(suggestion.longitude), Number(suggestion.latitude)],
+        zoom: 14,
+        pitch: 60,
+        bearing: 30,
+        duration: 2000,
+        essential: true
+      })
+    }
     emit('walk-selected', suggestion)
   }
   showSuggestions.value = false

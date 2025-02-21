@@ -84,6 +84,12 @@ export const useSearchStore = defineStore('search', () => {
     error.value = null
   }
 
+  function clearLocationSuggestions() {
+    // Clear any location-specific state
+    error.value = null
+    isLoading.value = false
+  }
+
   function clearSearchHistory() {
     searchHistory.value = []
   }
@@ -96,11 +102,12 @@ export const useSearchStore = defineStore('search', () => {
 
     try {
       isLoading.value = true
-      await locationStore.setUserLocation({
+      const coords = {
         latitude: location.center[1],
         longitude: location.center[0]
-      })
-      await locationStore.findNearbyWalks()
+      }
+      await locationStore.setUserLocation(coords)
+      await locationStore.findNearbyWalks(coords)
       
       // Add location to search history
       const locationName = location.place_name || `${location.center[1]}, ${location.center[0]}`
@@ -140,6 +147,7 @@ export const useSearchStore = defineStore('search', () => {
     debouncedSearch,
     setError,
     clearSearch,
+    clearLocationSuggestions,
     clearSearchHistory,
     handleLocationSelected
   }

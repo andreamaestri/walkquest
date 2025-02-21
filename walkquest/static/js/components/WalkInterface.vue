@@ -31,7 +31,7 @@
                 </div>
               </button>
               <!-- New Location Search Button -->
-              <button class="m3-rail-item" @click="setSearchMode('locations')">
+              <button class="m3-rail-item" @click="searchStore.setSearchMode('locations')">
                 <div class="m3-rail-content">
                   <div class="m3-rail-icon-container">
                     <Icon icon="mdi:map-search" class="m3-rail-icon" />
@@ -132,8 +132,12 @@
       <div class="m3-surface-container hardware-accelerated pointer-events-auto absolute inset-0">
         <MapboxMap ref="mapComponent" :access-token="mapboxToken" :map-style="mergedMapConfig.mapStyle"
           :max-bounds="mergedMapConfig.maxBounds" :center="mergedMapConfig.center" :zoom="mergedMapConfig.zoom"
-          :min-zoom="mergedMapConfig.minZoom" :max-zoom="mergedMapConfig.maxZoom" @mb-created="handleMapCreated"
-          @mb-load="handleMapLoad" @mb-moveend="updateVisibleMarkers" class="h-full w-full absolute inset-0">
+          :min-zoom="mergedMapConfig.minZoom" :max-zoom="mergedMapConfig.maxZoom"
+          :pitch="45" :bearing="0" :min-pitch="0" :max-pitch="85"
+          :drag-rotate="true" :touch-zoom-rotate="true" :optimize-for-terrain="true"
+          :touch-pitch="true" :cooperativeGestures="true"
+          @mb-created="handleMapCreated" @mb-load="handleMapLoad" @mb-moveend="updateVisibleMarkers"
+          class="h-full w-full absolute inset-0">
           <!-- Loading indicator -->
           <div v-if="loading" class="absolute bottom-4 left-4 z-50 bg-white rounded-full px-4 py-2 shadow-lg">
             <div class="flex items-center gap-2">
@@ -257,6 +261,7 @@ import { useElementVisibility } from "@vueuse/core";
 import { DynamicScroller, DynamicScrollerItem } from "vue-virtual-scroller";
 import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
 import { MapboxMap, MapboxNavigationControl, MapboxMarker, MapboxLayer, MapboxSource } from '@studiometa/vue-mapbox-gl';
+import { Icon } from '@iconify/vue';
 
 import { useUiStore } from "../stores/ui";
 import { useWalksStore } from "../stores/walks";
@@ -386,8 +391,8 @@ const handleMapLoad = () => {
 };
 // Add Cornwall bounds constants
 const CORNWALL_BOUNDS = [
-  [-5.7, 49.9], // Southwest coordinates
-  [-4.2, 50.9]  // Northeast coordinates
+  [-6.5, 49.5], // Southwest coordinates - expanded west and south
+  [-3.5, 51.2]  // Northeast coordinates - expanded east and north
 ]
 
 // Add Cornwall center
@@ -482,6 +487,12 @@ const handleRouteLayerLoaded = () => {
 // Replace the handleWalkSelection function
 const handleWalkSelection = async (walk) => {
   showDrawer.value = true
+  // Auto expand when selecting a walk
+  if (walk) {
+    isExpanded.value = true
+    localStorage.setItem("sidebarExpanded", "true")
+  }
+  
   // No need to set selectedWalk.value since it's now computed
 
   if (walk) {
@@ -1448,6 +1459,21 @@ const cleanup = () => {
 onMounted(initializeInterface)
 onBeforeUnmount(cleanup)
 
+// Add new utility function near other helper functions
+const processDogConsiderations = (consideration) => {
+  if (!consideration) return { text: '', isDog: false };
+  
+  const startsWithDogs = consideration.trim().toLowerCase().startsWith('dogs');
+  if (!startsWithDogs) return { text: consideration, isDog: false };
+  
+  // Remove "Dogs" from the start and trim
+  const remainingText = consideration.replace(/^dogs\s*[:,-]?\s*/i, '').trim();
+  return {
+    text: remainingText,
+    isDog: true
+  };
+};
+
 </script>
 
 <style>
@@ -1463,5 +1489,21 @@ onBeforeUnmount(cleanup)
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
+}
+
+/* Add new styles at the bottom */
+.m3-dog-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 1rem;
+  background-color: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+.m3-dog-badge .iconify {
+  font-size: 1.25rem;
+  color: var(--md-sys-color-secondary);
 }
 </style>
