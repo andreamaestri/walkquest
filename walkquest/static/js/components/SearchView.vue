@@ -1,53 +1,44 @@
 <template>
   <div class="search-view">
     <div class="search-container">
-      <Transition
-        enter-active-class="search-enter"
-        leave-active-class="search-leave"
-        mode="out-in"
-      >
-        <div :key="searchMode" 
-             class="search-bar" 
-             :class="{ 
-               'is-error': hasError,
-               'location-mode': searchMode === 'locations',
-               'is-focused': isFocused
-             }"
-             @click="handleContainerClick">
-          <div class="search-input-wrapper">
-            <Icon 
-              :icon="searchMode === 'locations' ? 'material-symbols:location-on' : 'material-symbols:search'" 
-              class="search-icon"
-              width="24" 
-              height="24" 
-            />
-            <input
-              ref="searchInput"
-              v-model="searchQuery"
-              class="search-input"
-              type="text"
-              :placeholder="searchPlaceholder"
-              :aria-label="searchMode === 'locations' ? 'Search for a location' : 'Search walks'"
-              @input="handleInput"
-              @focus="handleFocus"
-              @blur="handleBlur"
-              @keydown.down.prevent="handleKeyDown"
-              @keydown.up.prevent="handleKeyUp"
-              @keydown.enter.prevent="handleEnter"
-              @keydown.esc.prevent="handleEscape"
-            />
-            
-            <div class="input-actions">
-              <div v-if="isLoading" class="loading-indicator">
-                <Icon icon="eos-icons:loading" width="24" height="24" class="animate-spin" />
-              </div>
-              <button v-if="canClear" class="clear-button" @click="clearSearch" title="Clear search">
-                <Icon icon="material-symbols:close" width="24" height="24" />
-              </button>
+      <div class="search-bar"
+           :class="{ 
+             'is-error': hasError,
+             'is-focused': isFocused
+           }"
+           @click="handleContainerClick">
+        <div class="search-input-wrapper">
+          <Icon 
+            :icon="searchMode === 'locations' ? 'mdi:map-marker-search' : 'material-symbols:search'" 
+            class="search-icon"
+          />
+          <input
+            ref="searchInput"
+            v-model="searchQuery"
+            class="search-input"
+            type="text"
+            :placeholder="searchMode === 'locations' ? 'Search for locations in Cornwall...' : 'Search walks...'"
+            @input="handleInput"
+            @focus="handleFocus"
+            @blur="handleBlur"
+            @keydown.down.prevent="handleKeyDown"
+            @keydown.up.prevent="handleKeyUp"
+            @keydown.enter.prevent="handleEnter"
+            @keydown.esc.prevent="handleEscape"
+          />
+          
+          <div class="input-actions">
+            <div v-if="isLoading" class="loading-indicator">
+              <Icon icon="eos-icons:loading" class="animate-spin" />
             </div>
+            <button v-if="canClear" 
+                    class="clear-button" 
+                    @click="clearSearch">
+              <Icon icon="material-symbols:close" />
+            </button>
           </div>
         </div>
-      </Transition>
+      </div>
 
       <div v-if="hasError" class="search-error">
         {{ errorMessage }}
@@ -58,9 +49,9 @@
         leave-active-class="animate-out"
         @after-leave="onTransitionComplete"
       >
-        <div v-if="showSuggestions && (isFocused || suggestions.length > 0)" 
+        <div v-if="showSuggestions && isFocused" 
              class="suggestions-dropdown">
-          <template v-if="suggestions.length > 0">
+          <template v-if="suggestions?.length > 0">
             <button
               v-for="(suggestion, index) in suggestions"
               :key="suggestion.id || index"
@@ -77,12 +68,25 @@
           </template>
           <div v-else-if="searchQuery && !isLoading" class="empty-state">
             <div class="suggestion-item">
-              <Icon icon="material-symbols:search-off" width="24" height="24" />
-              <span>No locations found</span>
+              <Icon :icon="searchMode === 'locations' ? 'mdi:map-marker-off' : 'material-symbols:search-off'" />
+              <span>No {{ searchMode === 'locations' ? 'locations' : 'walks' }} found</span>
             </div>
           </div>
         </div>
       </Transition>
+
+      <!-- Add walk list when in locations mode -->
+      <div v-if="props.searchMode === 'locations' && showLocationResults"
+           class="location-results">
+        <div class="results-count">
+          {{ resultCountText }}
+        </div>
+        <WalkList 
+          :walks="filteredResults"
+          :is-compact="true"
+          @walk-selected="handleWalkSelected"
+        />
+      </div>
     </div>
 
     <slot name="meta"></slot>
@@ -91,17 +95,26 @@
 
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
-import { useSearchStore } from '../stores/searchStore'
-import { useWalksStore } from '../stores/walks'
-import { useMap } from '../composables/useMap' // Add this import
+import LocationSearch from './LocationSearch.vue'  // Fix import
+import WalkList from './WalkList.vue'
+import { useLocationStore } from '../stores/locationStore'
 
+// Props including mapboxToken
 const props = defineProps({
   searchMode: {
     type: String,
     default: 'walks',
     validator: (value) => ['walks', 'locations'].includes(value)
+  },
+  mapboxToken: {
+    type: String,
+    required: true
   }
 })
+
+import { useSearchStore } from '../stores/searchStore'
+import { useWalksStore } from '../stores/walks'
+import { useMap } from '../composables/useMap' // Add this import
 
 const emit = defineEmits(['update:search-mode', 'location-selected', 'walk-selected'])
 
@@ -136,19 +149,14 @@ const searchPlaceholder = computed(() =>
 // Add computed to get the current search mode from the store
 const currentSearchMode = computed(() => searchStore.searchMode)
 
-// Update suggestions computed property to use currentSearchMode
+// Updated computed suggestions to disable quicksearch for locations
 const suggestions = computed(() => {
-  if (currentSearchMode.value === 'locations') {
+  if (!searchQuery.value?.trim()) return []
+  
+  if (props.searchMode === 'locations') {
     return searchStore.locationSuggestions
   } else {
-    // For explore mode, filter walks based on searchQuery and return top 5 results as quick suggestions
-    const query = searchQuery.value.trim().toLowerCase();
-    if (!query) return [];
-    return walksStore.walks.filter(walk => {
-      const text = [walk.title, walk.walk_name, walk.location, walk.description]
-                      .filter(Boolean).join(' ').toLowerCase();
-      return text.includes(query);
-    }).slice(0, 5);
+    return filteredWalks.value.slice(0, 5)
   }
 })
 
@@ -157,26 +165,49 @@ const hasError = computed(() => !!searchStore.error)
 const errorMessage = computed(() => searchStore.error)
 const canClear = computed(() => searchQuery.value.length > 0)
 
-// Add this watch to trigger location search when query updates
-watch(searchQuery, (newVal) => {
-  if (props.searchMode === 'locations' && newVal.trim().length > 0) {
-    if (typeof searchStore.searchLocations === 'function') {
-      searchStore.searchLocations(newVal)
-    } else {
-      console.warn('searchStore.searchLocations is not available')
-    }
+// Add debounce helper
+const DEBOUNCE_DELAY = 300
+function debounce(fn, delay) {
+  let timeout
+  return (...args) => {
+    clearTimeout(timeout)
+    timeout = setTimeout(() => fn.apply(this, args), delay)
   }
-})
+}
 
-// Methods
+// Add filtered walks computation with debounce
+const filteredWalks = ref([])
+const debouncedFilterWalks = debounce((query) => {
+  if (!query?.trim()) {
+    filteredWalks.value = []
+    return
+  }
+
+  const searchTerms = query.toLowerCase().trim().split(/\s+/)
+  filteredWalks.value = walksStore.walks.filter(walk => {
+    const text = [
+      walk.title,
+      walk.location,
+      walk.description
+    ].filter(Boolean).join(' ').toLowerCase()
+    
+    return searchTerms.every(term => text.includes(term))
+  })
+}, DEBOUNCE_DELAY)
+
+// Update handleInput to use debounced search
 const handleInput = (event) => {
-  searchQuery.value = event.target.value
-  if (props.searchMode === 'locations' && searchQuery.value.trim()) {
-    if (typeof searchStore.searchLocations === 'function') {
-      searchStore.searchLocations(searchQuery.value)
-    } else {
-      console.warn('searchStore.searchLocations is not available')
+  const value = event.target.value
+  searchQuery.value = value
+  
+  if (props.searchMode === 'locations') {
+    // Use existing location search logic
+    if (value.trim()) {
+      searchStore.searchLocations(value)
     }
+  } else {
+    // Use debounced walk filtering
+    debouncedFilterWalks(value)
   }
 }
 
@@ -291,6 +322,39 @@ watch(() => props.searchMode, (newMode) => {
     searchInput.value?.focus()
   })
 })
+
+// Add handleLocationSelected method
+const handleLocationSelected = (location) => {
+  emit('location-selected', location)
+}
+
+// Add location store
+const locationStore = useLocationStore()
+
+// Add computed properties for location results
+const showLocationResults = computed(() => {
+  return props.searchMode === 'locations' && locationStore.userLocation
+})
+
+const filteredResults = computed(() => {
+  if (props.searchMode === 'locations') {
+    return locationStore.nearbyWalks
+  }
+  return []
+})
+
+const resultCountText = computed(() => {
+  const count = filteredResults.value.length
+  if (props.searchMode === 'locations') {
+    return `${count} ${count === 1 ? 'walk' : 'walks'} nearby`
+  }
+  return ''
+})
+
+// Add handler for walk selection
+const handleWalkSelected = (walk) => {
+  emit('walk-selected', walk)
+}
 </script>
 
 <style scoped>
@@ -392,10 +456,11 @@ watch(() => props.searchMode, (newMode) => {
   will-change: transform, opacity;
   transform: translateZ(0);
   backface-visibility: hidden;
+  transition: transform 0.2s ease-out, opacity 0.2s ease-out;
 }
 
 .animate-in {
-  animation: dropdownEnter 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: dropdownEnter 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .animate-out {
@@ -593,5 +658,16 @@ watch(() => props.searchMode, (newMode) => {
 
 .suggestion-item:last-child {
   border-bottom: none;
+}
+
+/* Add styles for location results */
+.location-results {
+  margin-top: 16px;
+}
+
+.results-count {
+  padding: 8px 16px;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+  font-size: 0.875rem;
 }
 </style>

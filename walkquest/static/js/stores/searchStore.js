@@ -14,6 +14,7 @@ export const useSearchStore = defineStore('search', () => {
   const error = ref(null)
   const isLoading = ref(false)
   const searchHistory = ref([])
+  const locationSuggestions = ref([]) // Ensure this exists
   const MAX_HISTORY_ITEMS = 5
 
   // Computed
@@ -81,6 +82,7 @@ export const useSearchStore = defineStore('search', () => {
 
   function clearSearch() {
     searchQuery.value = ''
+    locationSuggestions.value = []
     error.value = null
   }
 
@@ -130,6 +132,22 @@ export const useSearchStore = defineStore('search', () => {
     }
   }
 
+  async function searchLocations(query) {
+    try {
+      isLoading.value = true
+      // Replace the URL below with your actual location search endpoint if available.
+      // const response = await fetch(`/api/locations?query=${encodeURIComponent(query)}`)
+      // const data = await response.json()
+      // locationSuggestions.value = data.results || []
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      locationSuggestions.value = [] // update with actual results
+    } catch (err) {
+      error.value = err.message || "Location search failed."
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   return {
     // State
     searchQuery,
@@ -137,6 +155,7 @@ export const useSearchStore = defineStore('search', () => {
     error,
     isLoading,
     searchHistory,
+    locationSuggestions,
     
     // Computed
     filteredWalks,
@@ -149,6 +168,7 @@ export const useSearchStore = defineStore('search', () => {
     clearSearch,
     clearLocationSuggestions,
     clearSearchHistory,
-    handleLocationSelected
+    handleLocationSelected,
+    searchLocations
   }
 })

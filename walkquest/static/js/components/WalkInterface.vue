@@ -46,7 +46,10 @@
               <div v-if="searchStore.searchMode === 'locations'" 
                    class="m3-location-panel"
                    :class="{ 'overflow-hidden': !isExpanded }">
-                <LocationSearch @location-selected="handleLocationSelected" />
+                <LocationSearch 
+                  :mapbox-token="mapboxToken"
+                  @location-selected="handleLocationSelected" 
+                />
               </div>
               <!-- Walk List -->
               <div class="m3-walks-list"
@@ -89,10 +92,11 @@
           <SearchView 
             v-model="searchQuery" 
             :search-mode="searchStore.searchMode"
+            :mapbox-token="mapboxToken"
             @location-selected="handleLocationSelected" 
             @walk-selected="handleWalkSelection"
             class="md3-search-bar px-4" 
-          />
+          ></SearchView>
         </div>
       </header>
     </div>
