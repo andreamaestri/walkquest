@@ -56,7 +56,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { Icon } from '@iconify/vue'
 import { useSearchStore } from '../stores/searchStore'
 import { useUiStore } from '../stores/ui'
@@ -65,12 +65,18 @@ import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css'
 import { useWalksStore } from '../stores/walks'
 import mapboxgl from 'mapbox-gl'
 
+// Configure mapboxgl with token
 const props = defineProps({
   mapboxToken: {
     type: String,
     required: true
   }
 })
+
+// Configure Mapbox token globally
+mapboxgl.accessToken = props.mapboxToken
+
+const emit = defineEmits(['location-selected'])
 
 const searchStore = useSearchStore()
 const uiStore = useUiStore()
@@ -84,14 +90,23 @@ const CORNWALL_BOUNDS_ARRAY = [
   50.918  // North
 ]
 
-const CORNWALL_CENTER = {
-  longitude: -4.95,
-  latitude: 50.4
-}
+// Fix: Update CORNWALL_CENTER to use array format that Mapbox expects
+const CORNWALL_CENTER = [-4.95, 50.4]
 
 // State
 const isLoading = ref(false)
 const results = ref([])
+const inputValue = ref('')
+
+// Add debounce helper
+const DEBOUNCE_DELAY = 300
+function debounce(fn, delay) {
+  let timeout
+  return (...args) => {
+    clearTimeout(timeout)
+    timeout = setTimeout(() => fn.apply(this, args), delay)
+  }
+}
 
 // Local geocoder for custom results
 const localGeocoder = (query) => {
@@ -173,6 +188,23 @@ const handleGeocodeClear = () => {
 const handleResults = (rawResults) => {
   results.value = rawResults
 }
+
+// Debounced function to handle input changes
+const debouncedSetInput = debounce((value) => {
+  // Trigger geocoding here, e.g., call a method that performs the geocoding
+  setInput(value);
+}, DEBOUNCE_DELAY);
+
+// Method to set the input value and trigger debounced geocoding
+const setInput = (value) => {
+  inputValue.value = value;
+  searchStore.searchLocations(value);
+};
+
+// Watch for changes in the input value and call the debounced function
+watch(inputValue, (newVal) => {
+  debouncedSetInput(newVal);
+});
 </script>
 
 <style scoped>

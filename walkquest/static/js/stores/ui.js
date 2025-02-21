@@ -9,6 +9,18 @@ export const useUiStore = defineStore('ui', () => {
   const fullscreen = ref(false)
   const showSidebar = ref(true)
   const isMobile = ref(false)
+  const loadingStates = ref({
+    walks: false,
+    location: false,
+    map: false,
+    path: false,
+    search: false
+  })
+
+  // Computed
+  const isAnyLoading = computed(() => {
+    return Object.values(loadingStates.value).some(state => state)
+  })
 
   // Actions
   const setError = (message) => {
@@ -17,6 +29,12 @@ export const useUiStore = defineStore('ui', () => {
 
   const setLoading = (value) => {
     loading.value = value
+  }
+
+  const setLoadingState = (key, value) => {
+    if (key in loadingStates.value) {
+      loadingStates.value[key] = value
+    }
   }
 
   const setMobileMenuOpen = (value) => {
@@ -42,14 +60,19 @@ export const useUiStore = defineStore('ui', () => {
     // State
     error,
     loading,
+    loadingStates,
     mobileMenuOpen,
     fullscreen,
     showSidebar,
     isMobile,
 
+    // Computed
+    isAnyLoading,
+
     // Actions
     setError,
     setLoading,
+    setLoadingState,
     setMobileMenuOpen,
     setSidebarVisibility,
     initializeResponsiveState
