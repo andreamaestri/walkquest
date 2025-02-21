@@ -197,16 +197,15 @@ const debouncedFilterWalks = debounce((query) => {
   console.timeEnd('filterWalks')
 }, 150) // Reduced debounce time
 
-// Optimized suggestions computed
+// Optimize suggestions computed to only run for walk mode
 const suggestions = computed(() => {
-  const query = searchQuery.value?.trim()
-  if (!query) return []
+  if (!searchQuery.value?.trim()) return []
   
-  if (props.searchMode === 'locations') {
-    return searchStore.locationSuggestions || []
+  if (props.searchMode === 'walks') {
+    return filteredWalks.value.slice(0, 5)
   }
   
-  return filteredWalks.value.slice(0, 5)
+  return []
 })
 
 const isLoading = computed(() => searchStore.isLoading)
@@ -224,40 +223,6 @@ function debounce(fn, delay) {
   }
 }
 
-// Add debounced search function for locations
-const debouncedLocationSearch = debounce(async (query) => {
-  if (!query?.trim()) {
-    searchStore.clearLocationSuggestions()
-    return
-  }
-  
-  try {
-    searchStore.setError(null)
-    const commonLocations = [
-      { 
-        place_name: 'Truro, Cornwall',
-        center: [-5.0527, 50.2632],
-        place_type: ['place']
-      },
-      {
-        place_name: 'Falmouth, Cornwall',
-        center: [-5.0708, 50.1544],
-        place_type: ['place']
-      }
-    ]
-    
-    // Filter common locations first for instant results
-    const matches = commonLocations.filter(location => 
-      location.place_name.toLowerCase().includes(query.toLowerCase())
-    )
-    
-    searchStore.setLocationSuggestions(matches)
-  } catch (error) {
-    console.error('Location search error:', error)
-    searchStore.setError('Failed to search locations')
-  }
-}, 150) // Use a shorter delay for location search
-
 // Update handleInput to be more efficient
 const handleInput = (event) => {
   const value = event.target.value || ''
@@ -273,13 +238,10 @@ const handleInput = (event) => {
     return
   }
   
-  // Handle search modes
-  if (props.searchMode === 'locations') {
-    searchStore.setError(null)
-    return
+  // Only run walk search in walks mode
+  if (props.searchMode === 'walks') {
+    debouncedFilterWalks(value)
   }
-  
-  debouncedFilterWalks(value)
 }
 
 // Update handleFocus
@@ -428,9 +390,9 @@ const handleLocationSelected = (location) => {
 const locationStore = useLocationStore()
 
 // Add computed properties for location results
-const showLocationResults = computed(() => {
-  return props.searchMode === 'locations' && locationStore.userLocation
-})
+const showLocationResults = computed(() => 
+  props.searchMode === 'locations' && locationStore.userLocation
+)
 
 // Update filteredResults computed to use nearbyWalks directly from locationStore
 const nearbyWalks = computed(() => locationStore.nearbyWalks || [])
@@ -445,13 +407,10 @@ const filteredResults = computed(() => {
 
 // Update resultCountText
 const resultCountText = computed(() => {
-  if (props.searchMode === 'locations') {
-    if (!locationStore.userLocation) return 'Select a location to find nearby walks'
-    const count = nearbyWalks.value.length
-    if (count === 0) return 'No walks found nearby'
-    return `${count} ${count === 1 ? 'walk' : 'walks'} within ${locationStore.formattedSearchRadius}`
-  }
-  return ''
+  if (!locationStore.userLocation) return 'Select a location to find nearby walks'
+  const count = nearbyWalks.value.length
+  if (count === 0) return 'No walks found nearby'
+  return `${count} ${count === 1 ? 'walk' : 'walks'} within ${locationStore.formattedSearchRadius}`
 })
 
 // Add handler for walk selection
@@ -459,21 +418,18 @@ const handleWalkSelected = (walk) => {
   emit('walk-selected', walk)
 }
 
-// Add mounted hook to initialize suggestions
+// Simplify the mounted and unmounted hooks
 onMounted(() => {
   searchStore.clearLocationSuggestions()
 })
 
-// Add unmounted hook for cleanup
 onBeforeUnmount(() => {
   searchStore.clearLocationSuggestions()
 })
 
-// Update suggestions dropdown styles
+// Update suggestions dropdown styles to be simpler
 const suggestionDropdownStyle = computed(() => ({
-  transform: showSuggestions.value ? 'translateY(0)' : 'translateY(-8px)',
-  opacity: showSuggestions.value ? 1 : 0,
-  visibility: showSuggestions.value ? 'visible' : 'hidden'
+  display: showSuggestions.value ? 'block' : 'none'
 }))
 </script>
 
@@ -486,20 +442,6 @@ const suggestionDropdownStyle = computed(() => ({
 .search-container {
   position: relative;
   width: 100%;
-  background: rgb(var(--md-sys-color-surface-container-high));
-  border-radius: 28px;
-  padding: 8px;
-  box-shadow: var(--md-sys-elevation-1);
-  transition: box-shadow 0.2s ease;
-}
-
-.search-container:hover {
-  box-shadow: var(--md-sys-elevation-2);
-}
-
-.search-container:focus-within {
-  box-shadow: var(--md-sys-elevation-2);
-  background: rgb(var(--md-sys-color-surface-container-highest));
 }
 
 /* Location results styling */
@@ -516,143 +458,6 @@ const suggestionDropdownStyle = computed(() => ({
   color: rgb(var(--md-sys-color-on-surface-variant));
   font-size: 0.875rem;
   border-bottom: 1px solid rgb(var(--md-sys-color-outline-variant));
-}
-
-/* Location info section */
-.location-info {
-  padding: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: rgb(var(--md-sys-color-surface-container-low));
-}
-
-.selected-location {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: rgb(var(--md-sys-color-on-surface));
-  font-size: 0.875rem;
-}
-
-.selected-location svg {
-  color: rgb(var(--md-sys-color-primary));
-  font-size: 20px;
-}
-
-.clear-location {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 8px 16px;
-  border-radius: 20px;
-  background: rgb(var(--md-sys-color-surface-container));
-  color: rgb(var(--md-sys-color-on-surface-variant));
-  font-size: 0.875rem;
-  transition: background-color 0.2s ease;
-}
-
-.clear-location:hover {
-  background: rgb(var(--md-sys-color-surface-container-high));
-}
-
-.clear-location svg {
-  font-size: 20px;
-}
-
-/* Walk list container in location mode */
-.walk-list-container.location-mode {
-  background: rgb(var(--md-sys-color-surface-container));
-  border-radius: 0 0 16px 16px;
-}
-
-/* Search filters */
-.search-filters {
-  display: flex;
-  gap: 8px;
-  padding: 8px 16px;
-  border-bottom: 1px solid rgb(var(--md-sys-color-outline-variant));
-  background: rgb(var(--md-sys-color-surface-container-low));
-  overflow-x: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.search-filters::-webkit-scrollbar {
-  display: none;
-}
-
-.filter-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 8px 16px;
-  border-radius: 8px;
-  background: rgb(var(--md-sys-color-surface-container-highest));
-  color: rgb(var(--md-sys-color-on-surface));
-  font-size: 0.875rem;
-  border: 1px solid rgb(var(--md-sys-color-outline));
-  transition: all 0.2s ease;
-  white-space: nowrap;
-}
-
-.filter-chip:hover {
-  background: rgb(var(--md-sys-color-surface-container-highest));
-  border-color: rgb(var(--md-sys-color-outline));
-}
-
-.filter-chip.active {
-  background: rgb(var(--md-sys-color-primary-container));
-  color: rgb(var(--md-sys-color-on-primary-container));
-  border-color: transparent;
-}
-
-.filter-chip svg {
-  font-size: 18px;
-}
-
-/* Dropdown menu for filters */
-.filter-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  margin-top: 8px;
-  background: rgb(var(--md-sys-color-surface-container-highest));
-  border-radius: 16px;
-  box-shadow: var(--md-sys-elevation-2);
-  z-index: 100;
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-.filter-dropdown-item {
-  padding: 12px 16px;
-  color: rgb(var(--md-sys-color-on-surface));
-  transition: background-color 0.2s ease;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.filter-dropdown-item:hover {
-  background: rgb(var(--md-sys-color-surface-container-high));
-}
-
-.filter-dropdown-item.selected {
-  color: rgb(var(--md-sys-color-primary));
-  background: rgb(var(--md-sys-color-surface-container-highest));
-}
-
-.filter-dropdown-item svg {
-  font-size: 20px;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.filter-dropdown-item.selected svg {
-  opacity: 1;
 }
 
 /* Optimize suggestions dropdown animation */

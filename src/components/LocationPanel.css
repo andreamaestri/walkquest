@@ -1,0 +1,22 @@
+.m3-location-panel {
+  background-color: var(--md-sys-color-surface-container-low);
+  border-radius: var(--md-sys-shape-corner-large);
+  box-shadow: var(--md-sys-elevation-level1);
+  transition: box-shadow 0.2s ease-in-out, opacity 0.2s ease-in-out;
+}
+
+.m3-location-panel:hover {
+  box-shadow: var(--md-sys-elevation-level2);
+}
+
+.m3-location-panel.empty {
+  display: none;
+}
+
+.m3-location-panel .walks-count {
+  font-family: var(--md-sys-typescale-body-large-font);
+  font-size: var(--md-sys-typescale-body-large-size);
+  line-height: var(--md-sys-typescale-body-large-line-height);
+  font-weight: var(--md-sys-typescale-body-large-weight);
+  color: var(--md-sys-color-on-surface-variant);
+}

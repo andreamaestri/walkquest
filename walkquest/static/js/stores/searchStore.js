@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, shallowRef } from 'vue'
 import { useWalksStore } from './walks'
 import { useLocationStore } from './locationStore'
 import { useUiStore } from './ui'
@@ -9,48 +9,71 @@ export const useSearchStore = defineStore('search', () => {
   const walksStore = useWalksStore()
   const uiStore = useUiStore()
 
-  // State
+  // Use shallowRef for large lists
   const searchQuery = ref('')
   const searchMode = ref('walks')
   const error = ref(null)
   const isLoading = ref(false)
   const MAX_HISTORY_ITEMS = 5
   const searchHistory = ref([])
-  const activeFilters = ref([])
-  const locationSuggestions = ref([])
-  const filterValues = ref({
-    difficulty: [],
-    distance: null,
-    duration: null,
-    category: [],
-    'dog-friendly': false
-  })
+  const locationSuggestions = shallowRef([])
+  const activeFilters = shallowRef(new Set())
+  const filterValues = shallowRef({})
+
+  // Cache for walk text content
+  const walkTextCache = new Map()
+
+  // Helper to get cached walk text
+  function getWalkSearchText(walk) {
+    if (!walk?.id) return ''
+    
+    if (walkTextCache.has(walk.id)) {
+      return walkTextCache.get(walk.id)
+    }
+    
+    const text = [
+      walk.title,
+      walk.location,
+      walk.description
+    ].filter(Boolean).join(' ').toLowerCase()
+    
+    walkTextCache.set(walk.id, text)
+    return text
+  }
 
   // Computed
   const filteredWalks = computed(() => {
+    // Early return if no query and no filters
+    if (!searchQuery.value && activeFilters.value.size === 0) {
+      return []
+    }
+
+    // Handle location-based filtering
+    if (searchMode.value === 'locations' && locationStore.userLocation) {
+      return locationStore.nearbyWalks
+    }
+
+    const query = searchQuery.value.toLowerCase().trim()
     let results = walksStore.walks
 
-    // Apply text search
-    if (searchQuery.value?.trim()) {
-      const query = searchQuery.value.toLowerCase().trim()
+    // Apply text search if query exists
+    if (query) {
+      const searchTerms = query.split(/\s+/)
       results = results.filter(walk => {
-        const text = [
-          walk.title,
-          walk.location,
-          walk.description
-        ].filter(Boolean).join(' ').toLowerCase()
-        return text.includes(query)
+        const text = getWalkSearchText(walk)
+        return searchTerms.every(term => text.includes(term))
       })
     }
 
-    // Apply filters
-    if (activeFilters.value.length > 0) {
+    // Apply active filters
+    if (activeFilters.value.size > 0) {
       results = results.filter(walk => {
-        return activeFilters.value.every(filter => {
+        for (const filter of activeFilters.value) {
           switch (filter) {
-            case 'difficulty':
-              return filterValues.value.difficulty.length === 0 || 
-                     filterValues.value.difficulty.includes(walk.difficulty?.toLowerCase())
+            case 'difficulty': {
+              if (!filterValues.value.difficulty) return true
+              return walk.difficulty === filterValues.value.difficulty
+            }
             case 'distance': {
               if (!filterValues.value.distance) return true
               const [min, max] = filterValues.value.distance
@@ -61,21 +84,19 @@ export const useSearchStore = defineStore('search', () => {
               const [minHours, maxHours] = filterValues.value.duration
               return walk.duration >= minHours && walk.duration <= maxHours
             }
-            case 'category':
-              return filterValues.value.category.length === 0 ||
-                     walk.categories?.some(cat => filterValues.value.category.includes(cat))
-            case 'dog-friendly':
-              return !filterValues.value['dog-friendly'] || walk.dogFriendly
+            case 'category': {
+              if (!filterValues.value.category) return true
+              return walk.categories.includes(filterValues.value.category)
+            }
+            case 'dogFriendly': {
+              return walk.dogFriendly === true
+            }
             default:
               return true
           }
-        })
+        }
+        return true
       })
-    }
-
-    // Apply location-based filtering if in location mode
-    if (searchMode.value === 'locations' && locationStore.userLocation) {
-      results = locationStore.nearbyWalks
     }
 
     return results
@@ -83,7 +104,8 @@ export const useSearchStore = defineStore('search', () => {
 
   // Actions
   function setSearchQuery(query) {
-    searchQuery.value = query
+    if (searchQuery.value === query) return
+    searchQuery.value = query || ''
     // Add to search history if not empty and unique
     if (query?.trim() && !searchHistory.value.includes(query)) {
       searchHistory.value.unshift(query)
@@ -95,68 +117,72 @@ export const useSearchStore = defineStore('search', () => {
   }
 
   function setSearchMode(mode) {
+    if (!['walks', 'locations'].includes(mode)) return
+    if (searchMode.value === mode) return
     searchMode.value = mode
-    // Clear filters when switching modes
-    if (mode === 'locations') {
-      activeFilters.value = []
-      filterValues.value = {
-        difficulty: [],
-        distance: null,
-        duration: null,
-        category: [],
-        'dog-friendly': false
-      }
-    }
+    clearSearch()
   }
 
-  function setError(msg) {
-    error.value = msg
+  function setError(message) {
+    error.value = message
   }
 
-  function setActiveFilters(filters) {
-    activeFilters.value = filters
-  }
-
-  function updateFilterValue(filter, value) {
-    filterValues.value[filter] = value
-  }
-
-  function clearFilters() {
-    activeFilters.value = []
-    filterValues.value = {
-      difficulty: [],
-      distance: null,
-      duration: null,
-      category: [],
-      'dog-friendly': false
-    }
+  function setIsLoading(loading) {
+    isLoading.value = loading
   }
 
   async function handleLocationSelected(location) {
+    if (!location?.center) return
+    
+    const [longitude, latitude] = location.center
+    setSearchMode('locations')
+    
     try {
       isLoading.value = true
-      await locationStore.setUserLocation(location)
-      error.value = null
-    } catch (err) {
-      error.value = 'Failed to process location'
-      console.error('Location selection error:', err)
+      await locationStore.setUserLocation({
+        latitude,
+        longitude,
+        place_name: location.place_name
+      })
+    } catch (error) {
+      console.error('Error handling location:', error)
+      setError('Unable to process location')
     } finally {
       isLoading.value = false
     }
+  }
+
+  function setLocationSuggestions(suggestions) {
+    locationSuggestions.value = suggestions || []
   }
 
   function clearLocationSuggestions() {
     locationSuggestions.value = []
   }
 
-  function setLocationSuggestions(suggestions) {
-    locationSuggestions.value = suggestions
+  function toggleFilter(filter) {
+    const filters = new Set(activeFilters.value)
+    if (filters.has(filter)) {
+      filters.delete(filter)
+      delete filterValues.value[filter]
+    } else {
+      filters.add(filter)
+    }
+    activeFilters.value = filters
+  }
+
+  function setFilterValue(filter, value) {
+    if (!activeFilters.value.has(filter)) return
+    filterValues.value = { ...filterValues.value, [filter]: value }
   }
 
   function clearSearch() {
     searchQuery.value = ''
-    clearLocationSuggestions()
     error.value = null
+    locationSuggestions.value = []
+    activeFilters.value = new Set()
+    filterValues.value = {}
+    walkTextCache.clear()
   }
 
   return {
@@ -166,21 +192,23 @@ export const useSearchStore = defineStore('search', () => {
     error,
     isLoading,
     searchHistory,
+    locationSuggestions,
     activeFilters,
     filterValues,
+
+    // Computed
     filteredWalks,
-    locationSuggestions,
 
     // Actions
     setSearchQuery,
     setSearchMode,
     setError,
-    setActiveFilters,
-    updateFilterValue,
-    clearFilters,
+    setIsLoading,
     handleLocationSelected,
-    clearLocationSuggestions,
     setLocationSuggestions,
+    clearLocationSuggestions,
+    toggleFilter,
+    setFilterValue,
     clearSearch
   }
 })

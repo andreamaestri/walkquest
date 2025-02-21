@@ -56,6 +56,35 @@ const normalizeWalkData = (data) => {
 // API Methods
 const filterWalks = async (params = {}) => {
   try {
+    // If location parameters are provided, use the nearby endpoint
+    if (params.latitude && params.longitude) {
+      console.log('Fetching nearby walks:', params)
+      const searchParams = new URLSearchParams({
+        latitude: params.latitude,
+        longitude: params.longitude,
+        radius: params.radius || 5000,
+        limit: params.limit || 50
+      })
+      
+      const response = await fetch(`/api/walks/nearby?${searchParams}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+      console.log('Nearby walks response:', data)
+      
+      return normalizeWalkData(data)
+    }
+    
+    // Otherwise use the standard filtering endpoint
     console.log('Fetching walks with params:', params)
     const response = await fetch('/api/walks', {
       method: 'GET',
@@ -72,10 +101,7 @@ const filterWalks = async (params = {}) => {
     console.log('Raw API Response:', data)
 
     // Ensure we return an array of walks
-    const walks = Array.isArray(data) ? data : (data.walks || [])
-    console.log('Processed walks:', walks)
-
-    return { walks }
+    return normalizeWalkData(data)
   } catch (error) {
     console.error('Error fetching walks:', error)
     throw error

@@ -6,22 +6,78 @@
         <div class="h-full flex flex-col" :key="selectedWalkId ? 'drawer' : 'nav'">
           <!-- Normal Navigation Rail Content -->
           <template v-if="!selectedWalkId">
-            <div class="m3-rail-header">
+            <div 
+              class="m3-rail-header"
+              v-motion
+              :initial="{ opacity: 0, y: -20 }"
+              :enter="{ 
+                opacity: 1, 
+                y: 0,
+                transition: { 
+                  type: 'spring',
+                  stiffness: 300,
+                  damping: 25
+                }
+              }"
+            >
               <!-- Menu button -->
-              <button class="m3-rail-item menu-button" @click="toggleExpanded">
+              <button 
+                class="m3-rail-item menu-button" 
+                @click="toggleExpanded"
+                v-motion
+                :initial="{ scale: 0.9, opacity: 0 }"
+                :enter="{ 
+                  scale: 1, 
+                  opacity: 1,
+                  transition: { 
+                    type: 'spring',
+                    stiffness: 400,
+                    damping: 20
+                  }
+                }"
+              >
                 <div class="m3-state-layer">
                   <Icon icon="mdi:menu" class="m3-rail-icon text-[24px]" />
                 </div>
               </button>
               <!-- FAB -->
-              <button class="m3-rail-fab" @click="handleFabClick">
+              <button 
+                class="m3-rail-fab"
+                @click="handleFabClick"
+                v-motion
+                :initial="{ scale: 0.9, opacity: 0 }"
+                :enter="{ 
+                  scale: 1, 
+                  opacity: 1,
+                  transition: { 
+                    type: 'spring',
+                    stiffness: 400,
+                    damping: 20,
+                    delay: 0.1
+                  }
+                }"
+              >
                 <Icon icon="mdi:hiking" class="text-[36px]" />
                 <span class="m3-rail-fab-text" v-if="isExpanded">WalkQuest</span>
                 <span class="sr-only">WalkQuest Home</span>
               </button>
             </div>
-            <!-- Navigation items -->
-            <nav class="m3-rail-items">
+            <!-- Navigation items with animations -->
+            <nav 
+              class="m3-rail-items"
+              v-motion
+              :initial="{ opacity: 0, y: 20 }"
+              :enter="{ 
+                opacity: 1, 
+                y: 0,
+                transition: { 
+                  type: 'spring',
+                  stiffness: 300,
+                  damping: 25,
+                  delay: 0.2
+                }
+              }"
+            >
               <button 
                 class="m3-rail-item" 
                 :class="{ 
@@ -52,9 +108,23 @@
                 </div>
               </button>
             </nav>
-            <!-- Main Content Area inside the rail (for walk list) -->
-            <div class="m3-rail-content-area"
-                 :class="{ 'content-hidden': !isExpanded }">
+            <!-- Main Content Area with animations -->
+            <div 
+              class="m3-rail-content-area"
+              :class="{ 'content-hidden': !isExpanded }"
+              v-motion
+              :initial="{ opacity: 0, scale: 0.95 }"
+              :enter="{ 
+                opacity: 1, 
+                scale: 1,
+                transition: { 
+                  type: 'spring',
+                  stiffness: 300,
+                  damping: 25,
+                  delay: 0.3
+                }
+              }"
+            >
               <!-- Location Search Panel -->
               <div v-if="searchStore.searchMode === 'locations'" 
                    class="m3-location-panel p-4">
@@ -79,11 +149,51 @@
               </div>
             </div>
           </template>
-          <!-- Walk Drawer -->
-          <WalkDrawer v-else-if="selectedWalk && showDrawer" :walk="selectedWalk" @close="handleDrawerClose"
-            :enter-motion="{ duration: MD3_DURATION.medium1, easing: MD3_EASING.emphasizedDecelerate }"
-            :leave-motion="{ duration: MD3_DURATION.short3, easing: MD3_EASING.emphasizedAccelerate }"
-            style="position: absolute; top: 0; bottom: 0; right: 0; width: auto;" />
+          <!-- Walk Drawer with enhanced animation -->
+          <WalkDrawer 
+            v-else-if="selectedWalk && showDrawer" 
+            :walk="selectedWalk" 
+            @close="handleDrawerClose"
+            v-motion
+            :initial="{
+              opacity: 0,
+              scale: 0.98,
+              x: '3%'
+            }"
+            :enter="{
+              opacity: 1,
+              scale: 1,
+              x: 0,
+              transition: {
+                type: 'spring',
+                stiffness: 400,
+                damping: 30,
+                mass: 0.5,
+                restSpeed: 0.001
+              }
+            }"
+            :exit="{
+              opacity: 0,
+              scale: 0.98,
+              x: '3%',
+              transition: {
+                type: 'spring',
+                stiffness: 500,
+                damping: 35,
+                mass: 0.5,
+                restSpeed: 0.001
+              }
+            }"
+            style="
+              position: absolute; 
+              top: 0; 
+              bottom: 0; 
+              right: 0; 
+              width: auto;
+              transform-origin: right center;
+              will-change: transform, opacity;
+            " 
+          />
         </div>
       </Transition>
     </div>
@@ -1522,6 +1632,23 @@ const handleLocationSearchClick = () => {
   }
   // Clear any previous location search errors
   searchStore.setError(null)
+}
+
+// Add new transition function
+async function onContentTransition(el, done) {
+  await animate(
+    el,
+    {
+      opacity: [0, 1],
+      scale: [0.98, 1],
+      y: [-10, 0]
+    },
+    {
+      duration: 0.3,
+      easing: [0.22, 1, 0.36, 1],
+      onComplete: done
+    }
+  )
 }
 
 </script>

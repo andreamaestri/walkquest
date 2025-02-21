@@ -1,28 +1,18 @@
 <template>
-  <div class="location-search-wrapper">
-    <div class="location-search">
-      <MapboxGeocoder
-        v-bind="geocoderProps"
-        class="geocoder-container"
-        @mb-created="handleGeocodeCreated"
-        @mb-result="handleGeocodeResult"
-        @mb-error="handleGeocodeError"
-        @mb-clear="handleGeocodeClear"
-      />
+  <MapboxGeocoder v-bind="geocoderProps" class="geocoder-container" @mb-created="handleGeocodeCreated"
+    @mb-result="handleGeocodeResult" @mb-error="handleGeocodeError" @mb-clear="handleGeocodeClear" />
 
-      <div v-if="searchStore.error" class="search-error" role="alert">
-        {{ searchStore.error }}
-      </div>
-    </div>
+  <div v-if="searchStore.error" class="search-error" role="alert">
+    {{ searchStore.error }}
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onBeforeUnmount } from 'vue'
 import { useSearchStore } from '../stores/searchStore'
 import { useLocationStore } from '../stores/locationStore'
 import { MapboxGeocoder } from '@studiometa/vue-mapbox-gl'
-import 'mapbox-gl/dist/mapbox-gl.css'
+import { WalksAPI } from '../services/api'
 import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css'
 
 const props = defineProps({
@@ -38,7 +28,10 @@ const emit = defineEmits(['location-selected'])
 const searchStore = useSearchStore()
 const locationStore = useLocationStore()
 
-// Simple geocoder props without unnecessary filtering
+// Add loading state
+const isLoading = ref(false)
+
+// Optimize geocoder props using available options
 const geocoderProps = {
   accessToken: props.mapboxToken,
   placeholder: 'Search locations...',
@@ -47,211 +40,135 @@ const geocoderProps = {
   limit: 5,
   types: 'place,address,poi',
   minLength: 2,
-  flyTo: false
+  // Optimize flyTo behavior
+  flyTo: {
+    speed: 1.2,
+    curve: 1,
+    easing: t => t * (2 - t), // Ease out quad
+    essential: true,
+    padding: { top: 100, bottom: 100 }
+  },
+  // Performance optimizations
+  localGeocoder: null,
+  localGeocoderOnly: false,
+  clearOnBlur: true,
+  clearAndBlurOnEsc: true,
+  marker: false,
+  enableEventLogging: false,
+  trackProximity: false, // Disable tracking to reduce API calls
+  collapsed: false,
+  // Optimize suggestion rendering
+  render: item => `
+    <div class='geocoder-item'>
+      <div class='suggestion-title'>${item.text || ''}</div>
+      <div class='suggestion-address'>${item.place_name || ''}</div>
+    </div>
+  `,
+  getItemValue: item => item.place_name || '',
+  // Add bbox to limit results to Cornwall
+  bbox: [-6.5, 49.5, -3.5, 51.2],
+  // Add proximity bias for better local results
+  proximity: { longitude: -4.95, latitude: 50.4 }, // Cornwall center
+  // Optimize filtering
+  filter: (item) => {
+    if (!item?.place_type?.[0] || !item?.center) return false
+    const [lng, lat] = item.center
+
+    // Check if within Cornwall bounds
+    if (lng < -6.5 || lng > -3.5 || lat < 49.5 || lat > 51.2) {
+      return false
+    }
+
+    const validTypes = ['place', 'address', 'poi', 'locality', 'neighborhood']
+    return validTypes.includes(item.place_type[0])
+  }
 }
+
+// Cache geocoder instance
+let geocoderInstance = null
 
 const handleGeocodeCreated = (control) => {
   if (!control) {
     console.error('Geocoder control not initialized')
     return
   }
+  geocoderInstance = control
 }
 
-const handleGeocodeResult = async (event) => {
-  if (!event?.result) {
-    console.error('No result received from geocoder')
-    searchStore.setError('Please select a valid location')
+// Optimize result processing with API call
+const processGeocodeResult = async (result) => {
+  if (!result?.center || result.center.length !== 2) {
+    searchStore.setError('Invalid location data received')
     return
   }
-  
-  const result = event.result
-  
+
+  const [longitude, latitude] = result.center
+
   try {
-    if (!result.center || result.center.length !== 2) {
-      throw new Error('Invalid location data received')
-    }
+    isLoading.value = true
 
-    const [longitude, latitude] = result.center
-
-    // Emit the location selected event to update the map
+    // First emit the location to update the map immediately
     emit('location-selected', {
       center: [longitude, latitude],
       zoom: 14,
-      place_name: result.place_name
+      place_name: result.place_name,
+      pitch: 60,
+      bearing: 30,
+      duration: 2000,
+      essential: true
     })
 
-    // Update the store
+    // Update location store
     await locationStore.setUserLocation({
       latitude,
       longitude,
       place_name: result.place_name
     })
 
+    // Fetch nearby walks from API
+    const response = await WalksAPI.filterWalks({
+      latitude,
+      longitude,
+      radius: locationStore.searchRadius,
+      limit: 50
+    })
+
+    // Update store with results - directly set the ref value
+    locationStore.nearbyWalks = response
     searchStore.setError(null)
-    
+
   } catch (error) {
     console.error('Error handling location:', error)
-    searchStore.setError(error.message || 'Unable to process location. Please try again.')
+    searchStore.setError('Unable to process location')
+  } finally {
+    isLoading.value = false
   }
+}
+
+const handleGeocodeResult = (event) => {
+  if (!event?.result) {
+    searchStore.setError('Please select a valid location')
+    return
+  }
+  processGeocodeResult(event.result)
 }
 
 const handleGeocodeError = (error) => {
   console.error('Geocoding error:', error)
-  searchStore.setError(error.message || 'Location search failed. Please try again.')
+  searchStore.setError('Location search failed')
 }
 
 const handleGeocodeClear = () => {
   locationStore.clearLocation()
+  if (geocoderInstance) {
+    geocoderInstance.clear()
+  }
 }
+
+// Add cleanup on unmount
+onBeforeUnmount(() => {
+  if (geocoderInstance) {
+    geocoderInstance = null
+  }
+})
 </script>
-
-<style>
-.location-search-wrapper {
-  position: relative;
-  width: 100%;
-  z-index: 1000;
-}
-
-.location-search {
-  position: relative;
-  width: 100%;
-}
-
-.geocoder-container {
-  width: 100%;
-}
-
-/* Override default Mapbox Geocoder styles with MD3 */
-:deep(.mapboxgl-ctrl-geocoder) {
-  width: 100%;
-  max-width: none;
-  box-shadow: none;
-  font-family: inherit;
-  background: rgb(var(--md-sys-color-surface-container-high));
-  border-radius: 28px;
-  transition: all 0.2s ease;
-}
-
-:deep(.mapboxgl-ctrl-geocoder:hover) {
-  background: rgb(var(--md-sys-color-surface-container-highest));
-}
-
-:deep(.mapboxgl-ctrl-geocoder--input) {
-  height: 56px;
-  padding: 0 56px;
-  border-radius: 28px;
-  background: transparent;
-  color: rgb(var(--md-sys-color-on-surface));
-  font-family: inherit;
-  font-size: 1rem;
-  border: none;
-  outline: none;
-  transition: background 0.2s ease;
-}
-
-:deep(.mapboxgl-ctrl-geocoder--input:focus) {
-  outline: none;
-  background: transparent;
-  box-shadow: none;
-}
-
-:deep(.mapboxgl-ctrl-geocoder--input::placeholder) {
-  color: rgb(var(--md-sys-color-on-surface-variant));
-  opacity: 1;
-}
-
-:deep(.mapboxgl-ctrl-geocoder--icon) {
-  top: 16px;
-}
-
-:deep(.mapboxgl-ctrl-geocoder--icon-search) {
-  left: 16px;
-  fill: rgb(var(--md-sys-color-on-surface-variant));
-  transition: fill 0.2s ease;
-}
-
-:deep(.mapboxgl-ctrl-geocoder--pin-right) {
-  right: 12px;
-  top: 8px;
-}
-
-:deep(.mapboxgl-ctrl-geocoder--button) {
-  width: 40px;
-  height: 40px;
-  padding: 8px;
-  background: transparent;
-  border-radius: 20px;
-  transition: background-color 0.2s ease;
-}
-
-:deep(.mapboxgl-ctrl-geocoder--button:hover) {
-  background: rgb(var(--md-sys-color-surface-variant) / 0.08);
-}
-
-:deep(.mapboxgl-ctrl-geocoder--icon-close) {
-  fill: rgb(var(--md-sys-color-on-surface-variant));
-  margin: 0;
-}
-
-:deep(.mapboxgl-ctrl-geocoder--icon-loading) {
-  top: 16px;
-  right: 16px;
-  width: 24px;
-  height: 24px;
-}
-
-/* Style suggestions dropdown */
-:deep(.suggestions) {
-  margin-top: 8px;
-  background: rgb(var(--md-sys-color-surface-container-highest));
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: var(--md-sys-elevation-2);
-  border: none;
-  transform: translateZ(0); /* Force GPU acceleration */
-  will-change: transform, opacity; /* Hint for browser optimization */
-}
-
-:deep(.suggestions > li) {
-  padding: 16px;
-  color: rgb(var(--md-sys-color-on-surface));
-  border-bottom: 1px solid rgb(var(--md-sys-color-outline-variant) / 0.08);
-  transition: background-color 0.2s ease;
-  transform: translateZ(0); /* Force GPU acceleration */
-}
-
-:deep(.suggestions > li:last-child) {
-  border-bottom: none;
-}
-
-:deep(.suggestions > li:hover),
-:deep(.suggestions > .active) {
-  background: rgb(var(--md-sys-color-surface-container-high));
-  color: rgb(var(--md-sys-color-on-surface));
-}
-
-:deep(.mapboxgl-ctrl-geocoder--suggestion-title) {
-  color: rgb(var(--md-sys-color-on-surface));
-  font-size: 0.875rem;
-  margin-bottom: 4px;
-}
-
-:deep(.mapboxgl-ctrl-geocoder--suggestion-address) {
-  color: rgb(var(--md-sys-color-on-surface-variant));
-  font-size: 0.75rem;
-}
-
-:deep(.mapboxgl-ctrl-geocoder--powered-by) {
-  display: none !important;
-}
-
-/* Error message styling */
-.search-error {
-  margin-top: 8px;
-  padding: 12px 16px;
-  border-radius: 12px;
-  background: rgb(var(--md-sys-color-error-container));
-  color: rgb(var(--md-sys-color-on-error-container));
-  font-size: 0.875rem;
-}
-</style>

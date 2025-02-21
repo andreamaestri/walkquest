@@ -1,17 +1,6 @@
 <template>
   <div class="walk-list-container" :class="{ 'is-compact': isCompact }" ref="listContainer">
     <div class="walks-section" :class="{ 'location-mode': searchStore.searchMode === 'locations' }">
-      <div v-if="searchStore.searchMode === 'locations' && locationStore.userLocation" class="location-info">
-        <div class="selected-location">
-          <Icon icon="material-symbols:location-on" />
-          <span>{{ locationStore.userLocation.place_name }}</span>
-        </div>
-        <button class="clear-location" @click="clearFilters">
-          <Icon icon="material-symbols:close" />
-          Clear location
-        </button>
-      </div>
-
       <DynamicScroller
         ref="scroller"
         class="scroller"
@@ -145,7 +134,9 @@ const filteredResults = computed(() => {
 const searchMode = ref('walks')
 
 const handleLocationSelected = async (location) => {
-  await searchStore.handleLocationSelected(location)
+  // Update search mode and location
+  searchStore.setSearchMode('locations')
+  await locationStore.setUserLocation(location)
   emit('location-selected', location)
 }
 

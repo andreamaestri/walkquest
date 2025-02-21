@@ -1,169 +1,592 @@
 <template>
-  <Motion
-    :initial="{ width: 0, opacity: 1 }"
-    :enter="enterMotionConfig"
-    :leave="leaveMotionConfig"
-    class="fixed inset-y-0 right-0 bg-white flex flex-col z-10"
-    style="overflow-x: hidden;"
-  >
-    <header class="sticky top-0 z-10 flex items-center px-4 py-4 bg-purple-600 text-white">
-      <button class="mr-4 hover:opacity-80" @click="$emit('close')">
-        <Icon icon="material-symbols:arrow-back-rounded" class="text-2xl" />
-      </button>
-      <h2 class="text-xl md:text-2xl font-semibold flex-1">{{ walk.title || walk.walk_name }}</h2>
-    </header>
-
-    <div class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
-      <!-- Key Info -->
-      <div class="flex gap-6">
-        <div v-if="walk.distance" class="flex items-center gap-2 text-lg">
-          <Icon icon="mdi:map-marker-distance" />
-          <span>{{ walk.distance }} km</span>
-        </div>
-        <div v-if="walk.steepness" class="flex items-center gap-2 text-lg">
-          <Icon icon="mdi:trending-up" class="text-xl" />
-          <span>{{ walk.steepness }}</span>
-        </div>
-      </div>
-
-      <!-- Action Buttons -->
-      <div class="flex flex-wrap gap-4">
-        <button
-          class="flex items-center gap-2 px-4 py-2 h-12 bg-purple-600 text-white rounded-2xl hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
+  <Transition :css="false" @enter="onEnter" @leave="onLeave">
+    <!-- Full screen overlay container -->
+    <div class="fixed inset-0 z-50 flex">
+      <!-- Scrim with proper stacking -->
+      <div 
+        ref="scrimRef"
+        class="absolute inset-0 bg-scrim"
+        style="background-color: rgba(0, 0, 0, 0.4);"
+        @click="$emit('close')"
+      ></div>
+      
+      <!-- Drawer container with proper positioning -->
+      <div 
+        class="relative ml-auto flex flex-col m3-surface-container-highest"
+        style="
+          width: 100%;
+          max-width: min(420px, 90vw);
+          box-shadow: var(--md-sys-elevation-level3);
+          border-radius: 0;
+          border-left: 1px solid rgb(var(--md-sys-color-outline-variant));
+          transform-origin: right center;
+        "
+        ref="drawerRef"
+      >
+        <!-- Header with proper elevation -->
+        <header 
+          ref="headerRef" 
+          class="sticky top-0 z-10 flex items-center min-h-[64px] px-4 bg-surface-container-highest"
+          style="box-shadow: var(--md-sys-elevation-level1);"
         >
-          <Icon icon="mdi:navigation" class="w-6 h-6 text-xl" />
-          <span class="text-sm font-medium">Get Directions</span>
-        </button>
-        <button
-          class="flex items-center gap-2 px-4 py-2 h-12 bg-purple-600 text-white rounded-2xl hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
-        >
-          <Icon icon="mdi:play-circle" class="w-6 h-6 text-xl" />
-          <span class="text-sm font-medium">Start Walk</span>
-        </button>
-        <button
-          class="flex items-center gap-2 px-4 py-2 h-12 bg-purple-600 text-white rounded-2xl hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
-        >
-          <Icon icon="mdi:heart" class="w-6 h-6 text-xl" />
-          <span class="text-sm font-medium">Save</span>
-        </button>
-        <button
-          class="flex items-center gap-2 px-4 py-2 h-12 bg-purple-600 text-white rounded-2xl hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
-        >
-          <Icon icon="mdi:share" class="w-6 h-6 text-xl" />
-          <span class="text-sm font-medium">Share</span>
-        </button>
-      </div>
-
-      <!-- Description -->
-      <section v-if="walk.description" class="space-y-3">
-        <h3 class="text-lg font-semibold text-gray-800">About</h3>
-        <p class="text-gray-600">{{ walk.description }}</p>
-      </section>
-
-      <!-- Highlights -->
-      <section v-if="walk.highlights" class="space-y-3">
-        <h3 class="text-lg font-semibold text-gray-800">Highlights</h3>
-        <ul class="list-disc pl-6 space-y-2 text-gray-600">
-          <li v-for="highlight in parsedHighlights" :key="highlight">
-            {{ highlight }}
-          </li>
-        </ul>
-      </section>
-
-      <!-- Points of Interest -->
-      <section v-if="walk.points_of_interest" class="space-y-3">
-        <h3 class="text-lg font-semibold text-gray-800">Points of Interest</h3>
-        <div class="flex flex-wrap gap-2">
-          <span
-            v-for="poi in parsedPOIs"
-            :key="poi"
-            class="inline-flex items-center h-6 px-2 rounded-full bg-blue-100 text-blue-800 text-xs font-medium"
+          <button 
+            ref="backButtonRef" 
+            class="m3-icon-button shrink-0 mr-4" 
+            @click="$emit('close')"
           >
-            {{ poi }}
-          </span>
-        </div>
-      </section>
-
-      <!-- Features & Categories -->
-      <section v-if="walk.features?.length || walk.categories?.length" class="space-y-3">
-        <h3 class="text-lg font-semibold text-gray-800">Trail Features</h3>
-        <div class="flex flex-wrap gap-2">
-          <span
-            v-for="feature in walk.features"
-            :key="feature.name"
-            class="px-3 py-1.5 bg-gray-100 rounded-full text-sm"
-          >
-            {{ feature.name }}
-          </span>
-          <span
-            v-for="category in walk.categories"
-            :key="category.name"
-            class="px-3 py-1.5 bg-gray-100 rounded-full text-sm"
-          >
-            {{ category.name }}
-          </span>
-        </div>
-      </section>
-
-      <!-- Practical Information -->
-      <section class="space-y-3">
-        <h3 class="text-lg font-semibold text-gray-800">Practical Information</h3>
-        <div class="space-y-4">
-          <div v-if="walk.footwear_category" class="space-y-1">
-            <strong class="text-gray-700">Recommended Footwear:</strong>
-            <p class="text-gray-600">{{ walk.footwear_category }}</p>
-          </div>
-          <div v-if="walk.trail_considerations" class="space-y-1">
-            <strong class="text-gray-700">Trail Considerations:</strong>
-            <!-- Dog badge placed outside the list -->
-            <div v-if="dogConsiderations.length" class="mb-2">
-              <span class="m3-dog-badge">
-                <Icon icon="mdi:dog" />
-                Dogs
-              </span>
-              <span v-if="dogCombinedText"> : {{ dogCombinedText }}</span>
+            <div class="m3-state-layer">
+              <Icon icon="material-symbols:arrow-back-rounded" class="text-2xl" />
             </div>
-            <!-- List of non-dog considerations -->
-            <ul class="list-disc pl-6 space-y-2 text-gray-600">
-              <li v-for="item in nonDogConsiderations" :key="item.text">
-                {{ item.text }}
-              </li>
-            </ul>
+          </button>
+          <h2 ref="titleRef" class="m3-headline-small text-on-surface pt-4 pr-4 mb-4 break-words">
+            {{ walk.title || walk.walk_name }}
+          </h2>
+        </header>
+
+        <!-- Main content with proper spacing -->
+        <div class="flex-1 overflow-y-auto">
+          <div class="p-4 space-y-6">
+            <!-- Key Info with proper layout -->
+            <div ref="keyInfoRef" class="flex items-center gap-6">
+              <div v-if="walk.distance" class="m3-label-large flex items-center gap-2">
+                <Icon icon="mdi:map-marker-distance" class="text-xl text-primary" />
+                <span>{{ walk.distance }} km</span>
+              </div>
+              <div v-if="walk.steepness" class="m3-label-large flex items-center gap-2">
+                <Icon icon="mdi:trending-up" class="text-xl text-primary" />
+                <span>{{ walk.steepness }}</span>
+              </div>
+            </div>
+
+            <!-- Amenities Grid -->
+            <div class="grid grid-cols-2 gap-3">
+              <div v-if="walk.has_pub" class="flex items-center gap-2 m3-label-large text-on-surface">
+                <div class="flex items-center justify-center w-8 h-8 rounded-full bg-surface-container-high">
+                  <Icon icon="mdi:glass-mug-variant" class="text-xl text-primary" />
+                </div>
+                <span>Pub Available</span>
+                <Icon icon="mdi:check-circle" class="text-success ml-auto" />
+              </div>
+              <div v-if="walk.has_cafe" class="flex items-center gap-2 m3-label-large text-on-surface">
+                <div class="flex items-center justify-center w-8 h-8 rounded-full bg-surface-container-high">
+                  <Icon icon="mdi:tea" class="text-xl text-primary" />
+                </div>
+                <span>Café Available</span>
+                <Icon icon="mdi:check-circle" class="text-success ml-auto" />
+              </div>
+              <div v-if="walk.has_stiles" class="flex items-center gap-2 m3-label-large text-on-surface">
+                <div class="flex items-center justify-center w-8 h-8 rounded-full bg-surface-container-high">
+                  <Icon icon="mdi:gate-alert" class="text-xl text-primary" />
+                </div>
+                <span>Has Stiles</span>
+                <Icon icon="mdi:check-circle" class="text-success ml-auto" />
+              </div>
+              <div v-if="walk.has_bus_access" class="flex items-center gap-2 m3-label-large text-on-surface">
+                <div class="flex items-center justify-center w-8 h-8 rounded-full bg-surface-container-high">
+                  <Icon icon="mdi:bus" class="text-xl text-primary" />
+                </div>
+                <span>Bus Access</span>
+                <Icon icon="mdi:check-circle" class="text-success ml-auto" />
+              </div>
+              <div v-if="walk.is_favorite" class="flex items-center gap-2 m3-label-large text-on-surface">
+                <div class="flex items-center justify-center w-8 h-8 rounded-full bg-surface-container-high">
+                  <Icon icon="mdi:heart" class="text-xl text-primary" />
+                </div>
+                <span>Favorite Walk</span>
+                <Icon icon="mdi:check-circle" class="text-success ml-auto" />
+              </div>
+            </div>
+
+            <!-- Action Buttons with proper layout -->
+            <div ref="buttonsContainerRef" class="flex flex-col gap-3">
+              <!-- Primary action -->
+              <button
+                :ref="el => buttonRefs[0] = el"
+                class="m3-button m3-filled-button w-full h-10"
+              >
+                <div class="m3-button-state-layer">
+                  <div class="flex items-center justify-center gap-2">
+                    <Icon icon="mdi:play-circle" class="text-xl" />
+                    <span class="m3-label-large">Start Walk</span>
+                  </div>
+                </div>
+              </button>
+              
+              <!-- Secondary actions in a row -->
+              <div class="flex gap-2">
+                <button
+                  :ref="el => buttonRefs[1] = el"
+                  class="m3-button m3-tonal-button flex-1 h-10"
+                >
+                  <div class="m3-button-state-layer">
+                    <div class="flex items-center justify-center gap-2">
+                      <Icon icon="mdi:navigation" class="text-xl" />
+                      <span class="m3-label-large">Directions</span>
+                    </div>
+                  </div>
+                </button>
+                
+                <button
+                  :ref="el => buttonRefs[2] = el"
+                  class="m3-button m3-outlined-button w-10 h-10 !p-0"
+                >
+                  <div class="m3-button-state-layer">
+                    <Icon icon="mdi:heart" class="text-xl" />
+                  </div>
+                </button>
+                
+                <button
+                  :ref="el => buttonRefs[3] = el"
+                  class="m3-button m3-outlined-button w-10 h-10 !p-0"
+                >
+                  <div class="m3-button-state-layer">
+                    <Icon icon="mdi:share" class="text-xl" />
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <!-- Content sections with proper spacing -->
+            <div class="space-y-4">
+              <!-- Description -->
+              <section 
+                v-if="walk.description" 
+                :ref="el => sectionRefs[0] = el" 
+                class="m3-surface-container-low rounded-xl p-4 space-y-3"
+              >
+                <h3 class="m3-title-medium text-on-surface">About</h3>
+                <p class="m3-body-medium text-on-surface-variant">{{ walk.description }}</p>
+              </section>
+
+              <!-- Highlights -->
+              <section 
+                v-if="parsedHighlights.length" 
+                :ref="el => sectionRefs[1] = el" 
+                class="m3-surface-container-low rounded-xl p-4 space-y-3"
+              >
+                <h3 class="m3-title-medium text-on-surface">Highlights</h3>
+                <ul class="list-disc pl-6 space-y-2">
+                  <li 
+                    v-for="highlight in parsedHighlights" 
+                    :key="highlight" 
+                    class="m3-body-medium text-on-surface-variant"
+                  >
+                    {{ highlight }}
+                  </li>
+                </ul>
+              </section>
+
+              <!-- Points of Interest -->
+              <section 
+                v-if="parsedPOIs.length" 
+                :ref="el => sectionRefs[2] = el" 
+                class="m3-surface-container-low rounded-xl p-4 space-y-3"
+              >
+                <h3 class="m3-title-medium text-on-surface">Points of Interest</h3>
+                <div class="flex flex-wrap gap-2">
+                  <span
+                    v-for="poi in parsedPOIs"
+                    :key="poi"
+                    class="m3-assist-chip"
+                  >
+                    {{ poi }}
+                  </span>
+                </div>
+              </section>
+
+              <!-- Features & Categories -->
+              <section 
+                v-if="walk.features?.length || walk.categories?.length" 
+                :ref="el => sectionRefs[3] = el"
+                class="m3-surface-container-low rounded-xl p-4 space-y-3"
+              >
+                <h3 class="m3-title-medium text-on-surface">Trail Features</h3>
+                <div class="flex flex-wrap gap-2">
+                  <span
+                    v-for="feature in walk.features"
+                    :key="feature.name"
+                    class="m3-filter-chip"
+                  >
+                    {{ feature.name }}
+                  </span>
+                  <span
+                    v-for="category in walk.categories"
+                    :key="category.name"
+                    class="m3-filter-chip"
+                  >
+                    {{ category.name }}
+                  </span>
+                </div>
+              </section>
+
+              <!-- Pubs List -->
+              <section 
+                v-if="walk.pubs_list?.length" 
+                class="m3-surface-container-low rounded-xl p-4 space-y-3"
+              >
+                <h3 class="m3-title-medium text-on-surface flex items-center gap-2">
+                  <Icon icon="mdi:beer" class="text-xl text-primary" />
+                  Nearby Pubs
+                </h3>
+                <div class="space-y-2">
+                  <button
+                    v-for="pub in walk.pubs_list"
+                    :key="pub.name"
+                    class="w-full group"
+                    @click="openInGoogleMaps(pub)"
+                  >
+                    <div class="flex items-center gap-3 p-3 rounded-lg hover:bg-surface-container-highest transition-colors">
+                      <Icon 
+                        icon="mdi:map-marker" 
+                        class="text-xl text-primary shrink-0" 
+                      />
+                      <span class="m3-body-large text-on-surface text-left flex-grow">
+                        {{ pub.name }}
+                      </span>
+                      <Icon 
+                        icon="mdi:open-in-new" 
+                        class="text-lg text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity shrink-0" 
+                      />
+                    </div>
+                  </button>
+                </div>
+              </section>
+
+              <!-- Practical Information -->
+              <section 
+                v-if="walk.footwear_category || walk.trail_considerations" 
+                :ref="el => sectionRefs[4] = el" 
+                class="m3-surface-container-low rounded-xl p-4 space-y-3"
+              >
+                <h3 class="m3-title-medium text-on-surface">Practical Information</h3>
+                <div class="space-y-4">
+                  <div v-if="walk.footwear_category" class="space-y-2">
+                    <strong class="m3-title-small text-on-surface">Recommended Footwear</strong>
+                    <p class="m3-body-medium text-on-surface-variant">{{ walk.footwear_category }}</p>
+                    <!-- Collapsible details for recommended footwear with animated open/close -->
+                    <details 
+                      v-if="walk.recommended_footwear" 
+                      class="m3-body-small text-on-surface-variant" 
+                      ref="footwearDetailsRef" 
+                      @toggle="toggleFootwearDetails"
+                    >
+                      <summary>Show Details</summary>
+                      <div class="details-content">
+                        <p>{{ walk.recommended_footwear }}</p>
+                      </div>
+                    </details>
+                  </div>
+                  <div v-if="walk.trail_considerations" class="space-y-2">
+                    <strong class="m3-title-small text-on-surface">Trail Considerations</strong>
+                    <!-- Dog badge with enhanced styling -->
+                    <div v-if="dogConsiderations.length" class="mb-4">
+                      <div class="m3-assist-chip-container">
+                        <div class="m3-assist-chip-header flex items-center gap-2 mb-2">
+                          <Icon icon="mdi:dog" class="text-xl text-primary" />
+                          <span class="m3-title-small text-on-surface">Dogs</span>
+                        </div>
+                        <div class="m3-assist-chip-content pl-8">
+                          <p class="m3-body-medium text-on-surface-variant">
+                            {{ dogCombinedText }}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <!-- List of non-dog considerations -->
+                    <ul class="list-disc pl-6 space-y-2">
+                      <li 
+                        v-for="item in nonDogConsiderations" 
+                        :key="item.text" 
+                        class="m3-body-medium text-on-surface-variant"
+                      >
+                        {{ item.text }}
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </section>
+            </div>
           </div>
         </div>
-      </section>
+      </div>
     </div>
-  </Motion>
+  </Transition>
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { defineProps } from 'vue'
-import { createMotion, MD3_EASING, MD3_DURATION } from '../utils/motion'
+import { ref, computed, onMounted } from 'vue'
+import { animate, spring } from 'motion'
+import { Icon } from '@iconify/vue'
 
 const props = defineProps({
   walk: {
     type: Object,
     required: true
-  },
-  enterMotion: {
-    type: Object,
-    default: () => ({
-      duration: MD3_DURATION.short1,
-      easing: MD3_EASING.fastOutSlowIn
-    })
-  },
-  leaveMotion: {
-    type: Object,
-    default: () => ({
-      duration: MD3_DURATION.short2,
-      easing: MD3_EASING.emphasizedAccelerate
-    })
   }
 })
 
-const enterMotionConfig = computed(() => createMotion(props.enterMotion))
-const leaveMotionConfig = computed(() => createMotion(props.leaveMotion))
+// Refs for animation targets
+const drawerRef = ref(null)
+const headerRef = ref(null)
+const backButtonRef = ref(null)
+const titleRef = ref(null)
+const keyInfoRef = ref(null)
+const buttonsContainerRef = ref(null)
+const buttonRefs = ref([])
+const sectionRefs = ref([])
+
+// New ref for recommended footwear details element
+const footwearDetailsRef = ref(null)
+
+// Enhanced animation configurations
+const springConfig = {
+  type: 'spring',
+  stiffness: 300,
+  damping: 30,
+  mass: 0.8,
+  restSpeed: 0.01,
+  restDelta: 0.01
+}
+
+const fastSpringConfig = {
+  type: 'spring',
+  stiffness: 400,
+  damping: 25,
+  mass: 0.7,
+  restSpeed: 0.01
+}
+
+const easeOutConfig = {
+  easing: [0.22, 1, 0.36, 1],
+  duration: 0.6
+}
+
+// New function to animate typography for headings and titles
+function animateTypography() {
+  const typographyElements = document.querySelectorAll(
+    '.m3-headline-small, .m3-title-medium, .m3-title-small'
+  );
+  typographyElements.forEach(el => {
+    el.style.opacity = 0;
+    animate(
+      el,
+      { letterSpacing: ['-2px', '0px'], opacity: [0, 1] },
+      { duration: 0.4, easing: 'ease-out' }
+    );
+  });
+}
+
+async function onEnter(el, onComplete) {
+  const drawer = drawerRef.value
+  const scrim = scrimRef.value
+  const header = headerRef.value
+  const backButton = backButtonRef.value
+  const title = titleRef.value
+  const keyInfo = keyInfoRef.value
+  const buttonsContainer = buttonsContainerRef.value
+  const buttons = buttonRefs.value
+  const sections = sectionRefs.value
+
+  // Initial states
+  drawer.style.transform = 'scale(0.98)'
+  drawer.style.opacity = '0'
+  scrim.style.opacity = '0'
+  
+  header.style.transform = 'scale(0.96)'
+  header.style.opacity = '0'
+  
+  backButton.style.transform = 'scale(0.9)'
+  backButton.style.opacity = '0'
+  
+  title.style.transform = 'scale(0.96)'
+  title.style.opacity = '0'
+  
+  keyInfo.style.transform = 'scale(0.96)'
+  keyInfo.style.opacity = '0'
+  
+  buttonsContainer.style.transform = 'scale(0.96)'
+  buttonsContainer.style.opacity = '0'
+
+  // Animate scrim and drawer together
+  await Promise.all([
+    animate(scrim, 
+      { opacity: [0, 1] },
+      { duration: 0.3, easing: [0.4, 0, 0.2, 1] }
+    ),
+    animate(drawer, 
+      { 
+        transform: ['scale(0.98)', 'scale(1)'],
+        opacity: [0, 1]
+      },
+      { 
+        ...springConfig,
+        duration: 0.4,
+        easing: [0.2, 0, 0, 1]
+      }
+    )
+  ])
+
+  // Animate header elements with stagger
+  await Promise.all([
+    animate(header,
+      { 
+        transform: ['scale(0.96)', 'scale(1)'],
+        opacity: [0, 1]
+      },
+      { ...fastSpringConfig, duration: 0.3 }
+    ),
+    animate(backButton,
+      { 
+        transform: ['scale(0.9)', 'scale(1)'],
+        opacity: [0, 1]
+      },
+      { ...fastSpringConfig, duration: 0.3, delay: 0.05 }
+    ),
+    animate(title,
+      { 
+        transform: ['scale(0.96)', 'scale(1)'],
+        opacity: [0, 1]
+      },
+      { ...fastSpringConfig, duration: 0.3, delay: 0.1 }
+    )
+  ])
+
+  // Animate content sections with stagger
+  await Promise.all([
+    animate(keyInfo,
+      { 
+        transform: ['scale(0.96)', 'scale(1)'],
+        opacity: [0, 1]
+      },
+      { ...springConfig, duration: 0.3, delay: 0.15 }
+    ),
+    animate(buttonsContainer,
+      { 
+        transform: ['scale(0.96)', 'scale(1)'],
+        opacity: [0, 1]
+      },
+      { ...springConfig, duration: 0.3, delay: 0.2 }
+    ),
+    ...buttons.map((button, i) =>
+      animate(button,
+        { 
+          transform: ['scale(0.96)', 'scale(1)'],
+          opacity: [0, 1]
+        },
+        { 
+          ...fastSpringConfig,
+          delay: 0.25 + (i * 0.05),
+          duration: 0.3
+        }
+      )
+    ),
+    ...sections.map((section, i) =>
+      animate(section,
+        { 
+          transform: ['scale(0.96)', 'scale(1)'],
+          opacity: [0, 1]
+        },
+        {
+          ...springConfig,
+          delay: 0.3 + (i * 0.05),
+          duration: 0.3
+        }
+      )
+    )
+  ])
+
+  // Animate typography
+  const typographyElements = document.querySelectorAll(
+    '.m3-headline-small, .m3-title-medium, .m3-title-small'
+  )
+  for (const el of typographyElements) {
+    el.style.opacity = '0'
+    animate(
+      el,
+      { 
+        opacity: [0, 1],
+        scale: [0.96, 1]
+      },
+      { 
+        duration: 0.3, 
+        easing: [0.4, 0, 0.2, 1],
+        delay: 0.35
+      }
+    )
+  }
+
+  onComplete()
+}
+
+async function onLeave(el, onComplete) {
+  const drawer = drawerRef.value
+  const scrim = scrimRef.value
+  const sections = sectionRefs.value
+  const buttons = buttonRefs.value
+  const header = headerRef.value
+
+  // Animate sections out with quick fade
+  await Promise.all([
+    ...sections.reverse().map((section, i) =>
+      animate(section,
+        { 
+          transform: ['scale(1)', 'scale(0.96)'],
+          opacity: [1, 0]
+        },
+        { 
+          duration: 0.2,
+          delay: i * 0.03,
+          easing: [0.4, 0, 0.2, 1]
+        }
+      )
+    ),
+    ...buttons.reverse().map((button, i) =>
+      animate(button,
+        { 
+          transform: ['scale(1)', 'scale(0.96)'],
+          opacity: [1, 0]
+        },
+        { 
+          duration: 0.2,
+          delay: i * 0.02,
+          easing: [0.4, 0, 0.2, 1]
+        }
+      )
+    )
+  ])
+
+  // Animate header out
+  await animate(header,
+    { 
+      transform: ['scale(1)', 'scale(0.96)'],
+      opacity: [1, 0]
+    },
+    { 
+      duration: 0.2,
+      easing: [0.4, 0, 0.2, 1]
+    }
+  )
+
+  // Animate drawer and scrim out together
+  await Promise.all([
+    animate(drawer,
+      { 
+        transform: ['scale(1)', 'scale(0.98)'],
+        opacity: [1, 0]
+      },
+      { 
+        duration: 0.25,
+        easing: [0.4, 0, 1, 1]
+      }
+    ),
+    animate(scrim,
+      { opacity: [1, 0] },
+      { duration: 0.25, easing: [0.4, 0, 1, 1] }
+    )
+  ])
+
+  onComplete()
+}
 
 // Parse highlights using semicolons and newlines as separators
 const parsedHighlights = computed(() => {
@@ -248,24 +671,252 @@ function processDogConsiderations(consideration) {
   const remainingText = trimmed.replace(/^dogs\s*[:,-]?\s*/i, '').trim();
   return { text: remainingText, isDog: true };
 }
+
+// Add new function to handle opening locations in Google Maps
+function openInGoogleMaps(pub) {
+  let mapsUrl = "";
+
+  if (pub.name) {
+    // If we have a pub name, that's our primary search term
+    const searchQuery = encodeURIComponent(pub.name);
+
+    if (props.walk.latitude && props.walk.longitude) {
+      // Add coordinates to help locate the specific pub
+      const latitude = props.walk.latitude;
+      const longitude = props.walk.longitude;
+      mapsUrl = `https://www.google.com/maps/search/?api=1&query=${searchQuery}&query=${encodeURIComponent(`places near ${latitude},${longitude}`)}`;
+    } else {
+      // Just search for the pub name if no coordinates
+      mapsUrl = `https://www.google.com/maps/search/?api=1&query=${searchQuery}`;
+    }
+    //if you have the place id, you can add it here
+    //mapsUrl += `&query_place_id=${encodeURIComponent(pub.place_id)}`;
+  } else if (props.walk.latitude && props.walk.longitude) {
+    // If we only have coordinates, we'll search for places near those coordinates
+    const latitude = props.walk.latitude;
+    const longitude = props.walk.longitude;
+    mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`places near ${latitude},${longitude}`)}`;
+  }
+
+  // Open the URL in a new tab/window
+  if (mapsUrl) {
+    window.open(mapsUrl, '_blank');
+  }
+}
+
+// New function to animate details open/close changes
+function toggleFootwearDetails(e) {
+  const detail = e.target;
+  const content = detail.querySelector('.details-content');
+  if (detail.open) {
+    // Expand: Animate from 0 to content scrollHeight then clear explicit height
+    content.style.height = '0px';
+    content.style.overflow = 'hidden';
+    const targetHeight = content.scrollHeight;
+    animate(content, 
+      { height: [0, targetHeight] }, 
+      { duration: 0.3, easing: 'ease-out' }
+    ).then(() => {
+      content.style.height = 'auto';
+      content.style.overflow = 'visible';
+    });
+  } else {
+    // Collapse: Animate from current height to 0
+    content.style.height = content.offsetHeight + 'px';
+    content.style.overflow = 'hidden';
+    animate(content, 
+      { height: [content.offsetHeight, 0] }, 
+      { duration: 0.3, easing: 'ease-out' }
+    );
+  }
+}
 </script>
 
 <style scoped>
 @import "tailwindcss";
 
-/* Updated dog badge style */
-.m3-dog-badge {
-  display: inline-flex;
-  font-weight: 700;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.25rem 0.55rem;
-  border-radius: 1rem;
-  background-color: #FFF9C4; /* pale yellow */
-  color: #2b231b; /* dark text */
+/* Enhanced MD3 Surface styles */
+.m3-surface-container-highest {
+  background-color: rgb(var(--md-sys-color-surface-container-highest));
+  transform-origin: right center;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
 }
 
-.m3-dog-badge .iconify {
-  font-size: 1.25rem;
+.bg-surface-container-highest {
+  background-color: rgb(var(--md-sys-color-surface-container-highest));
+}
+
+/* Enhanced text colors */
+.text-on-surface {
+  color: rgb(var(--md-sys-color-on-surface));
+}
+
+.text-on-surface-variant {
+  color: rgb(var(--md-sys-color-on-surface-variant));
+}
+
+/* Enhanced icon button */
+.m3-icon-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgb(var(--md-sys-color-on-surface));
+  transition: background-color 0.2s;
+}
+
+.m3-icon-button:hover {
+  background-color: color-mix(in srgb, rgb(var(--md-sys-color-on-surface)) 8%, transparent);
+}
+
+.m3-icon-button:active {
+  background-color: color-mix(in srgb, rgb(var(--md-sys-color-on-surface)) 12%, transparent);
+}
+
+/* Enhanced button styles */
+.m3-button {
+  position: relative;
+  border-radius: 20px;
+  font-family: var(--md-sys-typescale-label-large-font);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, background-color;
+  overflow: hidden;
+}
+
+.m3-filled-button {
+  background-color: rgb(var(--md-sys-color-primary));
+  color: rgb(var(--md-sys-color-on-primary));
+  box-shadow: var(--md-sys-elevation-level1);
+}
+
+.m3-filled-button:hover {
+  box-shadow: var(--md-sys-elevation-level2);
+  background-color: color-mix(in srgb, rgb(var(--md-sys-color-primary)) 92%, rgb(var(--md-sys-color-on-primary)));
+}
+
+.m3-filled-button:active {
+  box-shadow: var(--md-sys-elevation-level1);
+  background-color: color-mix(in srgb, rgb(var(--md-sys-color-primary)) 88%, rgb(var(--md-sys-color-on-primary)));
+}
+
+.m3-tonal-button {
+  background-color: rgb(var(--md-sys-color-secondary-container));
+  color: rgb(var(--md-sys-color-on-secondary-container));
+}
+
+.m3-tonal-button:hover {
+  background-color: color-mix(in srgb, rgb(var(--md-sys-color-secondary-container)) 92%, rgb(var(--md-sys-color-on-secondary-container)));
+}
+
+.m3-tonal-button:active {
+  background-color: color-mix(in srgb, rgb(var(--md-sys-color-secondary-container)) 88%, rgb(var(--md-sys-color-on-secondary-container)));
+}
+
+.m3-outlined-button {
+  background-color: transparent;
+  color: rgb(var(--md-sys-color-primary));
+  border: 1px solid rgb(var(--md-sys-color-outline));
+}
+
+.m3-outlined-button:hover {
+  background-color: color-mix(in srgb, rgb(var(--md-sys-color-primary)) 8%, transparent);
+}
+
+.m3-outlined-button:active {
+  background-color: color-mix(in srgb, rgb(var(--md-sys-color-primary)) 12%, transparent);
+}
+
+/* Enhanced chip styles */
+.m3-assist-chip {
+  background-color: rgb(var(--md-sys-color-surface-container-highest));
+  color: rgb(var(--md-sys-color-on-surface));
+  border-radius: 8px;
+  min-height: 32px;
+  padding: 8px 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: var(--md-sys-typescale-label-large);
+  border: 1px solid rgb(var(--md-sys-color-outline));
+}
+
+.m3-filter-chip {
+  background-color: rgb(var(--md-sys-color-surface-container-highest));
+  color: rgb(var(--md-sys-color-on-surface));
+  border-radius: 8px;
+  height: 32px;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  font: var(--md-sys-typescale-label-large);
+  border: 1px solid rgb(var(--md-sys-color-outline));
+}
+
+/* Enhanced scrollbar styling */
+.overflow-y-auto {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--md-sys-color-outline-variant)) transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar {
+  width: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background-color: rgb(var(--md-sys-color-outline-variant));
+  border-radius: 2px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(var(--md-sys-color-outline));
+}
+
+/* Ensure proper stacking context */
+.fixed {
+  isolation: isolate;
+  transform-style: preserve-3d;
+  perspective: 1000px;
+}
+
+/* Enhanced chip container styles */
+.m3-assist-chip-container {
+  background-color: rgb(var(--md-sys-color-surface-container-low));
+  border-radius: 12px;
+  padding: 12px 16px;
+  border: 1px solid rgb(var(--md-sys-color-outline-variant));
+}
+
+.m3-assist-chip-header {
+  position: relative;
+}
+
+.m3-assist-chip-content {
+  position: relative;
+}
+
+.m3-assist-chip-content p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Add new styles for amenities */
+.text-success {
+  color: rgb(var(--md-sys-color-primary));
+}
+
+.bg-surface-container-high {
+  background-color: rgb(var(--md-sys-color-surface-container-high));
+}
+
+/* Add new styles for pub list */
+.group:hover .text-on-surface {
+  color: rgb(var(--md-sys-color-primary));
 }
 </style>

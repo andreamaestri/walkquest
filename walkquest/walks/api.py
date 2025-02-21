@@ -1,22 +1,24 @@
 from typing import List
 from typing import Optional
 from uuid import UUID
+import math
 
 import orjson
 from django.conf import settings
 from django.contrib.gis.geos import GEOSGeometry
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.db.models import Exists
 from django.db.models import OuterRef
 from django.db.models import Value
 from django.http import HttpRequest
 from django.http import JsonResponse
-from ninja import NinjaAPI
+from ninja import NinjaAPI, Path
 from ninja import Router
 from ninja import Schema
 from ninja.parser import Parser
 from ninja.renderers import BaseRenderer
 from django.shortcuts import get_object_or_404
+from ninja import Query
 
 from .models import Walk
 from .models import WalkCategoryTag
@@ -72,8 +74,8 @@ def list_walks(
     categories: Optional[str] = None,
     features: Optional[str] = None,
     difficulty: Optional[str] = None,
-    has_stiles: Optional[bool] = None,
-    has_bus: Optional[bool] = None
+    has_bus_access: Optional[bool] = None,  # renamed parameter
+    has_stiles: Optional[bool] = None
 ):
     """List walks with optional filtering"""
     try:
@@ -99,8 +101,8 @@ def list_walks(
             walks = walks.filter(steepness_level=difficulty)
         if has_stiles is not None:
             walks = walks.filter(has_stiles=has_stiles)
-        if has_bus is not None:
-            walks = walks.filter(has_bus_access=has_bus)
+        if has_bus_access is not None:  # updated filtering
+            walks = walks.filter(has_bus_access=has_bus_access)
 
         walk_list = []
         for walk in walks:
@@ -126,7 +128,7 @@ def list_walks(
                 steepness_level=walk.steepness_level,
                 footwear_category=walk.footwear_category,
                 recommended_footwear=walk.recommended_footwear,
-                pubs_list=formatted_pubs,
+                pubs_list=[pub if isinstance(pub, dict) and 'name' in pub else {'name': str(pub)} for pub in walk.pubs_list],
                 trail_considerations=walk.trail_considerations,
                 rewritten_trail_considerations=walk.rewritten_trail_considerations,
                 has_stiles=walk.has_stiles,
@@ -137,6 +139,97 @@ def list_walks(
         return walk_list
     except Exception as e:
         print(f"Error in list_walks: {e}")
+        return []
+
+@router.get("/walks/nearby", response=List[WalkOutSchema])
+def find_nearby_walks(
+    request,
+    latitude: float = Query(..., description="Latitude of the center point"),
+    longitude: float = Query(..., description="Longitude of the center point"),
+    radius: float = Query(5000, description="Search radius in meters"),
+    limit: int = Query(50, description="Maximum number of results to return")
+):
+    """Find walks near a specific location using efficient spatial queries"""
+    try:
+        # Validate coordinates
+        if not (-90 <= latitude <= 90) or not (-180 <= longitude <= 180):
+            return []
+
+        # Calculate bounding box for initial filtering
+        lat_radius = radius / 111000  # Convert meters to degrees
+        lng_radius = lat_radius / math.cos(math.radians(latitude))
+        
+        min_lat = latitude - lat_radius
+        max_lat = latitude + lat_radius
+        min_lng = longitude - lng_radius
+        max_lng = longitude + lng_radius
+
+        walks = Walk.objects.filter(
+            latitude__gte=min_lat,
+            latitude__lte=max_lat,
+            longitude__gte=min_lng,
+            longitude__lte=max_lng
+        ).prefetch_related(
+            'features',
+            'categories',
+            'related_categories'
+        ).annotate(
+            is_favorite=Exists(
+                Walk.favorites.through.objects.filter(
+                    walk_id=OuterRef('pk'),
+                    user=request.user
+                )
+            ) if request.user.is_authenticated else Value(False)
+        )
+
+        # Calculate exact distances and prepare response
+        results = []
+        for walk in walks:
+            try:
+                distance = calculate_distance(
+                    latitude, longitude,
+                    float(walk.latitude), float(walk.longitude)
+                )
+                
+                if distance <= radius:
+                    walk_out = WalkOutSchema(
+                        id=walk.id,
+                        walk_id=walk.walk_id,
+                        walk_name=walk.walk_name,
+                        distance=walk.distance,
+                        latitude=walk.latitude,
+                        longitude=walk.longitude,
+                        has_pub=walk.has_pub,
+                        has_cafe=walk.has_cafe,
+                        is_favorite=walk.is_favorite,
+                        features=[{'name': f.name, 'slug': f.slug} for f in walk.features.all()],
+                        categories=[{'name': c.name, 'slug': c.slug} for c in walk.categories.all()],
+                        related_categories=[{'name': rc.name, 'slug': rc.slug} for rc in walk.related_categories.all()],
+                        highlights=walk.highlights,
+                        points_of_interest=walk.points_of_interest,
+                        os_explorer_reference=walk.os_explorer_reference,
+                        steepness_level=walk.steepness_level,
+                        footwear_category=walk.footwear_category,
+                        recommended_footwear=walk.recommended_footwear,
+                        pubs_list=[pub if isinstance(pub, dict) and 'name' in pub else {'name': str(pub)} for pub in walk.pubs_list],
+                        trail_considerations=walk.trail_considerations,
+                        rewritten_trail_considerations=walk.rewritten_trail_considerations,
+                        has_stiles=walk.has_stiles,
+                        has_bus_access=walk.has_bus_access,
+                        created_at=walk.created_at.isoformat(),
+                        updated_at=walk.updated_at.isoformat()
+                    )
+                    results.append(walk_out)
+            except (ValueError, TypeError) as e:
+                print(f"Error processing walk {walk.id}: {e}")
+                continue
+
+        # Sort by distance and limit results
+        results.sort(key=lambda x: float(x.distance) if x.distance else float('inf'))
+        return results[:limit]
+
+    except Exception as e:
+        print(f"Error finding nearby walks: {e}")
         return []
 
 @router.get("/walks/{id}", response=WalkOutSchema)
@@ -178,7 +271,7 @@ def get_walk(request: HttpRequest, id: UUID):
             steepness_level=walk.steepness_level,
             footwear_category=walk.footwear_category,
             recommended_footwear=walk.recommended_footwear,
-            pubs_list=formatted_pubs,
+            pubs_list=[pub if isinstance(pub, dict) and 'name' in pub else {'name': str(pub)} for pub in walk.pubs_list],
             trail_considerations=walk.trail_considerations,
             rewritten_trail_considerations=walk.rewritten_trail_considerations,
             has_stiles=walk.has_stiles,
@@ -344,4 +437,53 @@ def get_walk_geometry(request: HttpRequest, id: UUID):
             status=404
         )
 
-api.add_router("/", router)
+def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Calculate the Haversine distance between two points in meters."""
+    R = 6371000  # Earth's radius in meters
+
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    delta_phi = math.radians(lat2 - lat1)
+    delta_lambda = math.radians(lon2 - lon1)
+
+    a = (math.sin(delta_phi/2) * math.sin(delta_phi/2) +
+         math.cos(phi1) * math.cos(phi2) *
+         math.sin(delta_lambda/2) * math.sin(delta_lambda/2))
+    
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    
+    return R * c
+
+def walk_to_dict(walk: Walk) -> dict:
+    """Convert a Walk instance to a dictionary with all necessary fields"""
+    return {
+        'id': str(walk.id),
+        'walk_id': walk.walk_id,
+        'walk_name': walk.walk_name,
+        'highlights': walk.highlights,
+        'distance': float(walk.distance) if walk.distance else None,
+        'steepness_level': walk.steepness_level,
+        'latitude': float(walk.latitude),
+        'longitude': float(walk.longitude),
+        'features': [
+            {'name': f.name, 'slug': f.slug}
+            for f in walk.features.all()
+        ],
+        'categories': [
+            {'name': c.name, 'slug': c.slug}
+            for c in walk.categories.all()
+        ],
+        'related_categories': [
+            {'name': rc.name, 'slug': rc.slug}
+            for rc in walk.related_categories.all()
+        ],
+        'has_pub': bool(walk.has_pub),
+        'has_cafe': bool(walk.has_cafe),
+        'has_bus_access': bool(walk.has_bus_access),
+        'has_stiles': bool(walk.has_stiles),
+        'created_at': walk.created_at.isoformat() if walk.created_at else None,
+        'updated_at': walk.updated_at.isoformat() if walk.updated_at else None
+    }
+
+# Make sure the router is properly registered
+api.add_router("", router)
