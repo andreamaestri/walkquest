@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed, shallowRef } from 'vue'
+import { ref, computed, shallowRef, watch } from 'vue'
 import { useWalksStore } from './walks'
 import { useLocationStore } from './locationStore'
 import { useUiStore } from './ui'
@@ -9,7 +9,7 @@ export const useSearchStore = defineStore('search', () => {
   const walksStore = useWalksStore()
   const uiStore = useUiStore()
 
-  // Use shallowRef for large lists
+  // State
   const searchQuery = ref('')
   const searchMode = ref('walks')
   const error = ref(null)
@@ -20,43 +20,86 @@ export const useSearchStore = defineStore('search', () => {
   const activeFilters = shallowRef(new Set())
   const filterValues = shallowRef({})
 
-  // Cache for walk text content
+  // Pre-compute searchable walks (using only titles in lowercase)
+  const searchableWalks = shallowRef([])
+
+  function initializeSearchableWalks() {
+    console.time('initializeSearchableWalks')
+    searchableWalks.value = walksStore.walks.map(walk => ({
+      id: walk.id,
+      // Preprocess once: use title (or walk_name) in lowercase
+      title: (walk.title || walk.walk_name || '').toLowerCase(),
+      originalWalk: walk
+    }))
+    console.timeEnd('initializeSearchableWalks')
+  }
+
+  // Update searchableWalks when walksStore.walks changes
+  watch(
+    () => walksStore.walks,
+    () => {
+      initializeSearchableWalks()
+    },
+    { immediate: true }
+  )
+
+  // Optimized suggestions using only the preprocessed title
+  const suggestions = computed(() => {
+    const t0 = performance.now()
+    const query = searchQuery.value.trim().toLowerCase()
+    if (!query) return []
+    
+    const terms = query.split(/\s+/)
+    const results = []
+    
+    // Simple scan over the cached searchableWalks
+    for (const walk of searchableWalks.value) {
+      let match = true
+      for (const term of terms) {
+        if (!walk.title.includes(term)) {
+          match = false
+          break
+        }
+      }
+      if (match) {
+        results.push(walk.originalWalk)
+        if (results.length >= 5) break
+      }
+    }
+    
+    const t1 = performance.now()
+    console.debug(`Suggestions computed in ${(t1 - t0).toFixed(2)}ms for query: "${query}"`)
+    return results
+  })
+
+  // Cache for full text (for detailed filtering)
   const walkTextCache = new Map()
 
-  // Helper to get cached walk text
   function getWalkSearchText(walk) {
     if (!walk?.id) return ''
-    
     if (walkTextCache.has(walk.id)) {
       return walkTextCache.get(walk.id)
     }
-    
     const text = [
       walk.title,
       walk.location,
       walk.description
     ].filter(Boolean).join(' ').toLowerCase()
-    
     walkTextCache.set(walk.id, text)
     return text
   }
 
-  // Computed
+  // Detailed filtering including active filters
   const filteredWalks = computed(() => {
     // Early return if no query and no filters
     if (!searchQuery.value && activeFilters.value.size === 0) {
       return []
     }
-
-    // Handle location-based filtering
     if (searchMode.value === 'locations' && locationStore.userLocation) {
       return locationStore.nearbyWalks
     }
-
     const query = searchQuery.value.toLowerCase().trim()
     let results = walksStore.walks
-
-    // Apply text search if query exists
     if (query) {
       const searchTerms = query.split(/\s+/)
       results = results.filter(walk => {
@@ -64,8 +107,6 @@ export const useSearchStore = defineStore('search', () => {
         return searchTerms.every(term => text.includes(term))
       })
     }
-
-    // Apply active filters
     if (activeFilters.value.size > 0) {
       results = results.filter(walk => {
         for (const filter of activeFilters.value) {
@@ -98,7 +139,6 @@ export const useSearchStore = defineStore('search', () => {
         return true
       })
     }
-
     return results
   })
 
@@ -106,11 +146,9 @@ export const useSearchStore = defineStore('search', () => {
   function setSearchQuery(query) {
     if (searchQuery.value === query) return
     searchQuery.value = query || ''
-    // Add to search history if not empty and unique
     if (query?.trim() && !searchHistory.value.includes(query)) {
       searchHistory.value.unshift(query)
-      // Keep only last 10 searches
-      if (searchHistory.value.length > 10) {
+      if (searchHistory.value.length > MAX_HISTORY_ITEMS) {
         searchHistory.value.pop()
       }
     }
@@ -133,10 +171,8 @@ export const useSearchStore = defineStore('search', () => {
 
   async function handleLocationSelected(location) {
     if (!location?.center) return
-    
     const [longitude, latitude] = location.center
     setSearchMode('locations')
-    
     try {
       isLoading.value = true
       await locationStore.setUserLocation({
@@ -198,6 +234,7 @@ export const useSearchStore = defineStore('search', () => {
 
     // Computed
     filteredWalks,
+    suggestions,
 
     // Actions
     setSearchQuery,
@@ -209,6 +246,7 @@ export const useSearchStore = defineStore('search', () => {
     clearLocationSuggestions,
     toggleFilter,
     setFilterValue,
-    clearSearch
+    clearSearch,
+    initializeSearchableWalks
   }
 })

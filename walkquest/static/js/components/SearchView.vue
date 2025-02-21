@@ -8,50 +8,54 @@
         />
       </template>
       <template v-else>
-        <div class="search-bar"
+        <div class="m3-search-field"
              :class="{ 
                'is-error': hasError,
-               'is-focused': isFocused
+               'is-focused': isFocused,
+               'has-input': canClear
              }"
              @click="handleContainerClick">
-          <div class="search-input-wrapper">
-            <Icon icon="material-symbols:search" class="search-icon" />
-            <input
-              ref="searchInput"
-              v-model="searchQuery"
-              class="search-input"
-              type="text"
-              placeholder="Search walks..."
-              @input="handleInput"
-              @focus="handleFocus"
-              @blur="handleBlur"
-              @keydown.down.prevent="handleKeyDown"
-              @keydown.up.prevent="handleKeyUp"
-              @keydown.enter.prevent="handleEnter"
-              @keydown.esc.prevent="handleEscape"
-            />
-            <div class="input-actions">
-              <div v-if="isLoading" class="loading-indicator">
-                <Icon icon="eos-icons:loading" class="animate-spin" />
+          <div class="m3-search-field-container">
+            <div class="m3-search-field-content">
+              <Icon icon="material-symbols:search" class="m3-search-field-icon" />
+              <input
+                ref="searchInput"
+                v-model="searchQuery"
+                class="m3-search-field-input"
+                type="text"
+                placeholder="Search walks..."
+                @input="handleInput"
+                @focus="handleFocus"
+                @blur="handleBlur"
+                @keydown.down.prevent="handleKeyDown"
+                @keydown.up.prevent="handleKeyUp"
+                @keydown.enter.prevent="handleEnter"
+                @keydown.esc.prevent="handleEscape"
+              />
+              <div class="m3-search-field-actions">
+                <div v-if="isLoading" class="m3-search-field-loading">
+                  <Icon icon="eos-icons:loading" class="animate-spin" />
+                </div>
+                <button v-if="canClear" 
+                        class="m3-search-field-clear" 
+                        @click="clearSearch"
+                        aria-label="Clear search">
+                  <Icon icon="material-symbols:close" />
+                </button>
               </div>
-              <button v-if="canClear" 
-                      class="clear-button" 
-                      @click="clearSearch">
-                <Icon icon="material-symbols:close" />
-              </button>
             </div>
           </div>
         </div>
       </template>
 
-      <div v-if="hasError" class="search-error">
+      <div v-if="hasError" class="m3-search-error">
         {{ errorMessage }}
       </div>
 
       <!-- Show location results only when in location mode and have a selected location -->
       <div v-if="props.searchMode === 'locations' && showLocationResults"
-           class="location-results">
-        <div class="results-count">
+           class="m3-location-results">
+        <div class="m3-results-count">
           {{ resultCountText }}
         </div>
         <WalkList 
@@ -63,30 +67,30 @@
 
       <!-- Show walk search results only in walks mode -->
       <Transition v-else
-        enter-active-class="animate-in"
-        leave-active-class="animate-out"
+        enter-active-class="m3-animate-in"
+        leave-active-class="m3-animate-out"
         @after-leave="onTransitionComplete"
       >
         <div v-if="showSuggestions && isFocused" 
-             class="suggestions-dropdown"
+             class="m3-suggestions-menu"
              :style="suggestionDropdownStyle">
           <template v-if="suggestions?.length > 0">
             <button
               v-for="(suggestion, index) in suggestions"
               :key="suggestion.id || index"
-              class="suggestion-item"
+              class="m3-suggestion-item"
               :class="{ 'is-selected': index === selectedIndex }"
               @mousedown.prevent="selectSuggestion(suggestion)"
               @mouseover="selectedIndex = index"
             >
-              <Icon icon="material-symbols:location-on" width="24" height="24" />
-              <div class="suggestion-content">
-                <span class="suggestion-title">{{ getSuggestionText(suggestion) }}</span>
+              <Icon icon="material-symbols:location-on" class="m3-suggestion-icon" />
+              <div class="m3-suggestion-content">
+                <span class="m3-suggestion-text">{{ getSuggestionText(suggestion) }}</span>
               </div>
             </button>
           </template>
-          <div v-else-if="searchQuery && !isLoading" class="empty-state">
-            <div class="suggestion-item">
+          <div v-else-if="searchQuery && !isLoading" class="m3-empty-state">
+            <div class="m3-suggestion-item">
               <Icon :icon="searchMode === 'locations' ? 'mdi:map-marker-off' : 'material-symbols:search-off'" />
               <span>No {{ searchMode === 'locations' ? 'locations' : 'walks' }} found</span>
             </div>
@@ -108,6 +112,15 @@ import { useSearchStore } from '../stores/searchStore'
 import { useWalksStore } from '../stores/walks'
 import { useMap } from '../composables/useMap' // Add this import
 import { Icon } from '@iconify/vue'
+
+// Add debounce helper at the top level
+function debounce(fn, delay) {
+  let timeoutId
+  return (...args) => {
+    clearTimeout(timeoutId)
+    timeoutId = setTimeout(() => fn.apply(null, args), delay)
+  }
+}
 
 // Props including mapboxToken
 const props = defineProps({
@@ -155,88 +168,37 @@ const searchPlaceholder = computed(() =>
 // Add computed to get the current search mode from the store
 const currentSearchMode = computed(() => searchStore.searchMode)
 
-// Add shallowRef for better performance with large lists
-const filteredWalks = shallowRef([])
-
-// Cache walk text content for faster filtering
-const walkTextCache = new Map()
-
-function getWalkSearchText(walk) {
-  if (walkTextCache.has(walk.id)) {
-    return walkTextCache.get(walk.id)
-  }
-  
-  const text = [
-    walk.title,
-    walk.location,
-    walk.description
-  ].filter(Boolean).join(' ').toLowerCase()
-  
-  walkTextCache.set(walk.id, text)
-  return text
-}
-
-// Optimized debounced walk filter
-const debouncedFilterWalks = debounce((query) => {
-  console.time('filterWalks')
-  
-  if (!query?.trim()) {
-    filteredWalks.value = []
-    return
-  }
-
-  const searchTerms = query.toLowerCase().trim().split(/\s+/)
-  
-  // Use faster array filtering
-  const results = walksStore.walks.filter(walk => {
-    const text = getWalkSearchText(walk)
-    return searchTerms.every(term => text.includes(term))
-  })
-
-  filteredWalks.value = results
-  console.timeEnd('filterWalks')
-}, 150) // Reduced debounce time
-
-// Optimize suggestions computed to only run for walk mode
-const suggestions = computed(() => {
-  if (!searchQuery.value?.trim()) return []
-  
-  if (props.searchMode === 'walks') {
-    return filteredWalks.value.slice(0, 5)
-  }
-  
-  return []
-})
+// Optimize suggestions computed to be more lightweight
+const suggestions = computed(() => 
+  props.searchMode === 'walks' ? searchStore.suggestions : []
+)
 
 const isLoading = computed(() => searchStore.isLoading)
 const hasError = computed(() => !!searchStore.error)
 const errorMessage = computed(() => searchStore.error)
 const canClear = computed(() => searchQuery.value.length > 0)
 
-// Add debounce helper
-const DEBOUNCE_DELAY = 300
-function debounce(fn, delay) {
-  let timeout
-  return (...args) => {
-    clearTimeout(timeout)
-    timeout = setTimeout(() => fn.apply(this, args), delay)
-  }
-}
+// Create debounced input handler
+const debouncedSetQuery = debounce((value) => {
+  searchQuery.value = value
+}, 150) // 150ms debounce
 
-// Update handleInput to always update filteredWalks when in walks mode
+// Update handleInput to use debouncing
 const handleInput = (event) => {
   const value = event.target.value || ''
-  searchQuery.value = value
   
+  // Update UI immediately for responsiveness
   if (!value.trim()) {
-    filteredWalks.value = []
+    showSuggestions.value = false
+    selectedIndex.value = -1
     searchStore.clearLocationSuggestions()
-    return
+    searchQuery.value = ''
+  } else if (!showSuggestions.value) {
+    showSuggestions.value = true
   }
   
-  if (props.searchMode === 'walks') {
-    debouncedFilterWalks(value)
-  }
+  // Debounce the actual search query update
+  debouncedSetQuery(value)
 }
 
 // Update handleFocus
@@ -330,12 +292,9 @@ const getSuggestionIcon = (suggestion) => {
   return 'material-symbols:search'
 }
 
-const getSuggestionText = (suggestion) => {
-  if (props.searchMode === 'locations') {
-    return suggestion.place_name
-  }
-  return suggestion.walk_name || suggestion.title
-}
+// Optimize suggestion text getter
+const getSuggestionText = (suggestion) => 
+  props.searchMode === 'locations' ? suggestion.place_name : suggestion.title
 
 const onTransitionComplete = () => {
   if (!showSuggestions.value) {
@@ -392,14 +351,6 @@ const showLocationResults = computed(() =>
 // Update filteredResults computed to use nearbyWalks directly from locationStore
 const nearbyWalks = computed(() => locationStore.nearbyWalks || [])
 
-// Remove the text filtering from filteredResults since it's not needed for locations
-const filteredResults = computed(() => {
-  if (props.searchMode === 'walks') {
-    return filteredWalks.value
-  }
-  return nearbyWalks.value
-})
-
 // Update resultCountText
 const resultCountText = computed(() => {
   if (!locationStore.userLocation) return 'Select a location to find nearby walks'
@@ -429,115 +380,230 @@ const suggestionDropdownStyle = computed(() => ({
 </script>
 
 <style>
-.search-view {
-  width: 100%;
-  position: relative;
-}
-
-.search-container {
+/* Material Design 3 Search Field */
+.m3-search-field {
   position: relative;
   width: 100%;
+  height: 40px;
+  border-radius: 20px;
+  background: rgb(var(--md-sys-color-surface-container-low));
+  transition: background 200ms cubic-bezier(0.2, 0, 0, 1);
 }
 
-/* Location results styling */
-.location-results {
-  margin-top: 8px;
+.m3-search-field:hover {
   background: rgb(var(--md-sys-color-surface-container));
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: var(--md-sys-elevation-1);
 }
 
-.results-count {
-  padding: 16px;
+.m3-search-field.is-focused {
+  background: rgb(var(--md-sys-color-surface-container));
+}
+
+.m3-search-field-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.m3-search-field-content {
+  display: flex;
+  align-items: center;
+  padding: 0 4px 0 16px;
+  gap: 8px;
+  height: 100%;
+}
+
+.m3-search-field-icon {
+  color: rgb(var(--md-sys-color-on-surface));
+  font-size: 20px;
+  flex-shrink: 0;
+  opacity: 0.65;
+}
+
+.m3-search-field-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: rgb(var(--md-sys-color-on-surface));
+  font-family: var(--md-sys-typescale-body-large-font);
+  font-size: var(--md-sys-typescale-body-large-size);
+  line-height: var(--md-sys-typescale-body-large-line-height);
+  font-weight: var(--md-sys-typescale-body-large-weight);
+  letter-spacing: var(--md-sys-typescale-body-large-tracking);
+}
+
+.m3-search-field-input::placeholder {
   color: rgb(var(--md-sys-color-on-surface-variant));
-  font-size: 0.875rem;
-  border-bottom: 1px solid rgb(var(--md-sys-color-outline-variant));
 }
 
-/* Optimize suggestions dropdown animation */
-.suggestions-dropdown {
+.m3-search-field-input:focus {
+  outline: none;
+}
+
+.m3-search-field-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-right: 8px;
+}
+
+.m3-search-field-loading {
+  color: rgb(var(--md-sys-color-on-surface-variant));
+  font-size: 20px;
+  opacity: 0.65;
+}
+
+.m3-search-field-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 16px;
+  background: transparent;
+  color: rgb(var(--md-sys-color-on-surface));
+  cursor: pointer;
+  opacity: 0.65;
+  transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.m3-search-field-clear:hover {
+  background: rgb(var(--md-sys-color-on-surface-variant) / 0.08);
+  opacity: 0.85;
+}
+
+.m3-search-field-clear:active {
+  background: rgb(var(--md-sys-color-on-surface-variant) / 0.12);
+  opacity: 1;
+}
+
+/* Remove the active indicator since it's not used in MD3 search bars */
+.m3-search-field-active-indicator {
+  display: none;
+}
+
+/* Error state */
+.m3-search-field.is-error {
+  background: rgb(var(--md-sys-color-error-container) / 0.08);
+}
+
+.m3-search-error {
+  margin-top: 4px;
+  padding: 0 16px;
+  color: rgb(var(--md-sys-color-error));
+  font-size: var(--md-sys-typescale-body-small-size);
+}
+
+/* Suggestions Menu - Updated to match MD3 menu styling */
+.m3-suggestions-menu {
   position: absolute;
   left: 0;
   right: 0;
-  margin-top: 8px;
-  background: rgb(var(--md-sys-color-surface-container-highest));
-  border-radius: 16px;
+  margin-top: 4px;
+  background: rgb(var(--md-sys-color-surface-container));
+  border-radius: 12px;
   overflow: hidden;
-  box-shadow: var(--md-sys-elevation-2);
+  box-shadow: none;
   z-index: 1000;
-  transform-origin: top;
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1),
-              visibility 0s linear;
+  border: 1px solid rgb(var(--md-sys-color-outline-variant) / 0.12);
 }
 
-.animate-in {
-  animation: slideIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.animate-out {
-  animation: slideOut 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideOut {
-  from {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-}
-
-.suggestion-item {
+.m3-suggestion-item {
   display: flex;
   align-items: center;
-  gap: 12px;
   width: 100%;
-  padding: 12px 16px;
-  background: transparent;
+  height: 48px;
+  padding: 0 16px;
+  gap: 12px;
   border: none;
-  cursor: pointer;
+  background: transparent;
+  color: rgb(var(--md-sys-color-on-surface));
+  font-family: var(--md-sys-typescale-body-large-font);
   text-align: left;
-  transition: background-color 0.15s ease;
+  cursor: pointer;
+  transition: background 200ms cubic-bezier(0.2, 0, 0, 1);
 }
 
-.suggestion-item:hover,
-.suggestion-item.is-selected {
-  background: rgb(var(--md-sys-color-surface-container-high));
+.m3-suggestion-item:hover,
+.m3-suggestion-item.is-selected {
+  background: rgb(var(--md-sys-color-surface-container-highest));
 }
 
-.suggestion-content {
+.m3-suggestion-icon {
+  color: rgb(var(--md-sys-color-on-surface-variant));
+  font-size: 20px;
+  opacity: 0.65;
+}
+
+.m3-suggestion-content {
   flex: 1;
   min-width: 0;
 }
 
-.suggestion-title {
+.m3-suggestion-text {
   display: block;
-  color: rgb(var(--md-sys-color-on-surface));
-  font-size: 0.875rem;
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--md-sys-typescale-body-large-size);
 }
 
-.empty-state {
-  padding: 16px;
+.m3-empty-state {
+  padding: 12px 16px;
   color: rgb(var(--md-sys-color-on-surface-variant));
-  font-size: 0.875rem;
   text-align: center;
+  font-size: var(--md-sys-typescale-body-medium-size);
+}
+
+/* Animations */
+.m3-animate-in {
+  animation: m3-slide-in 100ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.m3-animate-out {
+  animation: m3-slide-out 100ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+@keyframes m3-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes m3-slide-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+/* Location Results */
+.m3-location-results {
+  margin-top: 8px;
+  background: rgb(var(--md-sys-color-surface-container));
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--md-sys-elevation-1);
+  border: 1px solid rgb(var(--md-sys-color-outline-variant) / 0.2);
+}
+
+.m3-results-count {
+  padding: 12px 16px;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+  font-size: var(--md-sys-typescale-body-medium-size);
+  border-bottom: 1px solid rgb(var(--md-sys-color-outline-variant));
 }
 </style>
