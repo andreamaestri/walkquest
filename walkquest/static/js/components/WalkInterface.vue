@@ -850,6 +850,13 @@ const handleMapCreated = (map) => {
   mapInstance.value = map;
   setMapInstance(map);
   currentZoom.value = map.getZoom();
+  
+  // Wait for style to load before enabling interactions
+  map.once('style.load', () => {
+    mapLoaded.value = true;
+    mapReady.value = true;
+  });
+
   // Listen to continuous map movement to update mapBounds
   map.on('move', updateVisibleMarkers);
 };
@@ -933,34 +940,50 @@ const handleLocationSelected = async (location) => {
   if (!location?.center) return;
 
   try {
-    // Set loading state
-    uiStore.setLoadingState('location', true)
+    uiStore.setLoadingState('location', true);
 
-    // Handle location selection in search store
-    await searchStore.handleLocationSelected(location)
+    // Wait for map to be ready
+    if (!mapRef.value) {
+      console.log('Waiting for map to be ready...');
+      await new Promise(resolve => {
+        const unwatch = watch(mapRef, (newVal) => {
+          if (newVal) {
+            unwatch();
+            resolve();
+          }
+        });
+      });
+    }
 
-    // Fly to the selected location with enhanced options
+    // Ensure map is loaded before flying
+    if (!mapLoaded.value) {
+      console.log('Waiting for map style to load...');
+      await new Promise(resolve => {
+        mapRef.value.once('style.load', resolve);
+      });
+    }
+
+    // Now safe to fly to location
     await flyToLocation({
       ...effectiveFlyToOptions(location),
       callback: () => {
-        // Update UI after flying to location
         if (!isExpanded.value) {
-          isExpanded.value = true
-          localStorage.setItem("sidebarExpanded", "true")
+          isExpanded.value = true;
+          localStorage.setItem("sidebarExpanded", "true");
         }
       }
-    })
+    });
 
     // Clear any previous errors
-    searchStore.setError(null)
+    searchStore.setError(null);
 
   } catch (error) {
-    console.error('Error handling location selection:', error)
-    searchStore.setError('Failed to process location selection')
+    console.error('Error handling location selection:', error);
+    searchStore.setError('Failed to process location selection');
   } finally {
-    uiStore.setLoadingState('location', false)
+    uiStore.setLoadingState('location', false);
   }
-}
+};
 
 // Add watchers for search mode changes
 watch(() => searchStore.searchMode, (newMode) => {
@@ -1603,15 +1626,28 @@ const handleExploreClick = () => {
 }
 
 const handleLocationSearchClick = () => {
-  searchStore.setSearchMode('locations')
+  searchStore.setSearchMode('locations');
   // Expand sidebar if not already expanded
   if (!isExpanded.value) {
-    isExpanded.value = true
-    localStorage.setItem("sidebarExpanded", "true")
+    isExpanded.value = true;
+    localStorage.setItem("sidebarExpanded", "true");
   }
-  // Clear any previous location search errors
-  searchStore.setError(null)
-}
+  // Clear any previous errors
+  searchStore.setError(null);
+
+  // If we have a saved location, make sure it's displayed
+  if (locationStore.userLocation && mapRef.value) {
+    nextTick(() => {
+      handleLocationSelected({
+        center: [locationStore.userLocation.longitude, locationStore.userLocation.latitude],
+        zoom: 14,
+        place_name: locationStore.userLocation.place_name,
+        pitch: 60,
+        bearing: 30
+      });
+    });
+  }
+};
 
 // Add new transition function
 async function onContentTransition(el, done) {

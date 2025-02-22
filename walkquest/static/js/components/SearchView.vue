@@ -3,15 +3,20 @@
     <div class="search-container">
       <template v-if="props.searchMode === 'locations'">
         <LocationSearch 
+          :key="`location-search-${props.searchMode}`"
           :mapbox-token="props.mapboxToken"
+          :value="modelValue"
+          :map-instance="mapInstance"
+          @update:value="$emit('update:modelValue', $event)"
           @location-selected="handleLocationSelected"
+          :initial-value="modelValue"
         />
       </template>
       <template v-else>
-        <div class="m3-search-field"
+        <!-- Ensure walk search gets remounted too -->
+        <div :key="`walk-search-${props.searchMode}`" 
+             class="m3-search-field"
              :class="{ 
-               'is-error': hasError,
-               'is-focused': isFocused,
                'has-input': canClear
              }"
              @click="handleContainerClick">
@@ -52,28 +57,34 @@
         {{ errorMessage }}
       </div>
 
-      <!-- Show location results only when in location mode and have a selected location -->
-      <div v-if="props.searchMode === 'locations' && showLocationResults"
-           class="m3-location-results">
-        <div class="m3-results-count">
-          {{ resultCountText }}
-        </div>
-        <WalkList 
-          :walks="nearbyWalks"
-          :is-compact="true"
-          @walk-selected="handleWalkSelected"
-        />
-      </div>
-
-      <!-- Show walk search results only in walks mode -->
-      <Transition v-else
+      <!-- Location results with proper transition -->
+      <Transition
         enter-active-class="m3-animate-in"
         leave-active-class="m3-animate-out"
         @after-leave="onTransitionComplete"
       >
-        <div v-if="showSuggestions && isFocused" 
-             class="m3-suggestions-menu"
-             :style="suggestionDropdownStyle">
+        <div v-if="props.searchMode === 'locations' && showLocationResults"
+             class="m3-location-results">
+          <div class="m3-results-count">
+            {{ resultCountText }}
+          </div>
+          <WalkList 
+            :key="`location-results-${nearbyWalks?.length}`"
+            :walks="nearbyWalks"
+            :is-compact="true"
+            @walk-selected="handleWalkSelected"
+          />
+        </div>
+      </Transition>
+
+      <!-- Walk search results -->
+      <Transition
+        enter-active-class="m3-animate-in"
+        leave-active-class="m3-animate-out"
+        @after-leave="onTransitionComplete"
+      >
+        <div v-if="showSuggestions && isFocused && props.searchMode === 'walks'" 
+             class="m3-suggestions-menu">
           <template v-if="suggestions?.length > 0">
             <button
               v-for="(suggestion, index) in suggestions"
@@ -132,10 +143,15 @@ const props = defineProps({
   mapboxToken: {
     type: String,
     required: true
+  },
+  modelValue: {
+    type: String,
+    default: ''
   }
 })
 
-const emit = defineEmits(['update:search-mode', 'location-selected', 'walk-selected'])
+// Add to emits
+const emit = defineEmits(['update:search-mode', 'location-selected', 'walk-selected', 'update:modelValue'])
 
 const searchStore = useSearchStore()
 const walksStore = useWalksStore()
@@ -260,7 +276,7 @@ const toggleSearchMode = () => {
   clearSearch()
 }
 
-const { flyToLocation } = useMap()
+const { flyToLocation, mapInstance } = useMap()
 
 const selectSuggestion = async (suggestion) => {
   if (props.searchMode === 'locations') {
@@ -311,7 +327,7 @@ watch(() => props.searchMode, (newMode) => {
 })
 
 // Add handleLocationSelected method
-const handleLocationSelected = (location) => {
+const handleLocationSelected = async (location) => {
   if (!location?.center || !Array.isArray(location.center) || location.center.length !== 2) {
     console.error('Invalid location data:', location)
     searchStore.setError('Invalid location data received')
@@ -319,21 +335,30 @@ const handleLocationSelected = (location) => {
   }
 
   try {
+    // Reset UI state
+    showSuggestions.value = false
+    isFocused.value = false
+
     const coords = {
       latitude: location.center[1],
       longitude: location.center[0],
       place_name: location.place_name || `${location.center[1]}, ${location.center[0]}`
     }
 
-    // First, set the location in the store
+    // Set location in store
     locationStore.setUserLocation(coords)
 
-    // Then emit the event for parent components
+    // Emit event
     emit('location-selected', {
       ...location,
       latitude: coords.latitude,
       longitude: coords.longitude
     })
+
+    // Clear input and reset UI
+    emit('update:modelValue', '')
+    searchStore.clearLocationSuggestions()
+
   } catch (error) {
     console.error('Error handling location selection:', error)
     searchStore.setError('Failed to process location')
@@ -377,6 +402,148 @@ onBeforeUnmount(() => {
 const suggestionDropdownStyle = computed(() => ({
   display: showSuggestions.value ? 'block' : 'none'
 }))
+
+// Add a watcher to handle search mode changes
+watch(
+  () => props.searchMode,
+  async (newMode, oldMode) => {
+    if (newMode !== oldMode) {
+      // Reset component state when switching modes
+      isFocused.value = false;
+      showSuggestions.value = false;
+      
+      // Clear input when switching to location search
+      if (newMode === 'locations') {
+        emit('update:modelValue', '');
+      }
+      
+      // Wait for DOM update before focusing
+      await nextTick();
+      
+      // Auto-focus the appropriate input
+      const input = document.querySelector(
+        newMode === 'locations' 
+          ? '.location-search-input' 
+          : '.walk-search-input'
+      );
+      if (input) {
+        input.focus();
+      }
+    }
+  }
+);
+
+// Add cleanup for component unmount
+const cleanup = () => {
+  isFocused.value = false;
+  showSuggestions.value = false;
+  emit('update:modelValue', '');
+};
+
+onBeforeUnmount(cleanup);
+
+// Add initialization in onMounted
+onMounted(async () => {
+  // Initialize with stored search mode
+  const savedMode = localStorage.getItem('searchMode')
+  if (savedMode && ['walks', 'locations'].includes(savedMode)) {
+    searchStore.setSearchMode(savedMode)
+  }
+
+  // If we're in location mode and have a saved location, restore it
+  if (props.searchMode === 'locations' && locationStore.userLocation) {
+    await nextTick()
+    handleLocationResult(locationStore.userLocation)
+  }
+})
+
+// Watch for search mode changes
+watch(() => searchStore.searchMode, (newMode) => {
+  localStorage.setItem('searchMode', newMode)
+})
+
+// Update the location result handling
+const handleLocationResult = async (location) => {
+  if (!location?.center || !Array.isArray(location.center)) {
+    console.error('Invalid location data:', location)
+    searchStore.setError('Invalid location data received')
+    return
+  }
+
+  try {
+    // Reset UI state
+    showSuggestions.value = false
+    isFocused.value = false
+
+    const coords = {
+      latitude: location.center[1],
+      longitude: location.center[0],
+      place_name: location.place_name || `${location.center[1]}, ${location.center[0]}`
+    }
+
+    // Set location in store first
+    await locationStore.setUserLocation(coords)
+
+    // Then emit event
+    emit('location-selected', {
+      ...location,
+      latitude: coords.latitude,
+      longitude: coords.longitude
+    })
+
+    // Reset UI
+    emit('update:modelValue', '')
+    searchStore.clearLocationSuggestions()
+
+  } catch (error) {
+    console.error('Error handling location selection:', error)
+    searchStore.setError('Failed to process location')
+  }
+}
+
+// Add view transition tracking
+const isTransitioning = ref(false)
+
+// Update search mode handling with better transitions
+const handleSearchModeChange = async (newMode) => {
+  isTransitioning.value = true
+  searchStore.setError(null)
+  
+  try {
+    await searchStore.setSearchMode(newMode)
+    
+    // Reset state when switching to location search
+    if (newMode === 'locations') {
+      emit('update:modelValue', '')
+      showSuggestions.value = false
+      selectedIndex.value = -1
+      
+      // If we have a saved location, restore it
+      if (locationStore.hasLocation) {
+        await nextTick()
+        handleLocationResult(locationStore.userLocation)
+      }
+    }
+  } finally {
+    isTransitioning.value = false
+  }
+}
+
+// Add initialization in onMounted
+onMounted(async () => {
+  // Initialize with stored search mode
+  const savedMode = localStorage.getItem('searchMode')
+  if (savedMode && ['walks', 'locations'].includes(savedMode)) {
+    await handleSearchModeChange(savedMode)
+  }
+})
+
+// Update search mode persistence
+watch(() => searchStore.searchMode, (newMode) => {
+  if (!isTransitioning.value) {
+    localStorage.setItem('searchMode', newMode)
+  }
+})
 </script>
 
 <style>

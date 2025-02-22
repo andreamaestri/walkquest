@@ -1,34 +1,52 @@
 import { defineStore } from 'pinia'
 import { ref, computed, shallowRef } from 'vue'
 import { useUiStore } from './ui'
-import { useWalksStore } from './walks'
+import { useWalkStore } from './walkStore'
 import { calculateDistance, formatDistance } from '../utils/distance'
 
 export const useLocationStore = defineStore('location', () => {
   const uiStore = useUiStore()
-  const walksStore = useWalksStore()
+  const walkStore = useWalkStore()
+
+  // Load saved state
+  const loadSavedState = () => {
+    try {
+      const savedLocation = localStorage.getItem('userLocation')
+      const savedRadius = localStorage.getItem('searchRadius')
+      return {
+        location: savedLocation ? JSON.parse(savedLocation) : null,
+        radius: savedRadius ? Number(savedRadius) : 5000
+      }
+    } catch (error) {
+      console.error('Error loading saved location state:', error)
+      return { location: null, radius: 5000 }
+    }
+  }
+
+  const { location: savedLocation, radius: savedRadius } = loadSavedState()
 
   // State
-  const userLocation = ref(null)
-  const searchRadius = ref(5000) // 5km default radius
+  const userLocation = ref(savedLocation)
+  const searchRadius = ref(savedRadius)
   const nearbyWalks = shallowRef([])
-  
-  // Use Map for O(1) lookup
   const walkDistances = new Map()
   
   // Computed
   const formattedSearchRadius = computed(() => formatDistance(searchRadius.value))
+  const hasLocation = computed(() => !!userLocation.value)
 
-  // Helper function to get cached distance
-  function getCachedDistance(lat1, lng1, lat2, lng2) {
-    const key = `${lat1},${lng1}-${lat2},${lng2}`
-    const cached = walkDistances.get(key)
-    if (cached !== undefined) {
-      return cached
+  // Save state helper
+  const saveState = () => {
+    try {
+      if (userLocation.value) {
+        localStorage.setItem('userLocation', JSON.stringify(userLocation.value))
+      } else {
+        localStorage.removeItem('userLocation')
+      }
+      localStorage.setItem('searchRadius', String(searchRadius.value))
+    } catch (error) {
+      console.error('Error saving location state:', error)
     }
-    const distance = calculateDistance(lat1, lng1, lat2, lng2)
-    walkDistances.set(key, distance)
-    return distance
   }
 
   // Actions
@@ -39,18 +57,32 @@ export const useLocationStore = defineStore('location', () => {
     }
 
     try {
-      userLocation.value = {
+      uiStore.setLoadingState('location', true)
+      
+      const normalizedLocation = {
         latitude: Number(location.latitude),
         longitude: Number(location.longitude),
         place_name: location.place_name
       }
 
+      userLocation.value = normalizedLocation
+      saveState()
+      
       await findNearbyWalks()
       
     } catch (error) {
       console.error('Error setting location:', error)
       userLocation.value = null
+      localStorage.removeItem('userLocation')
+    } finally {
+      uiStore.setLoadingState('location', false)
     }
+  }
+
+  function getFormattedDistance(walkId) {
+    const distance = walkDistances.get(walkId)
+    if (distance === undefined) return ''
+    return formatDistance(distance)
   }
 
   async function findNearbyWalks() {
@@ -60,31 +92,30 @@ export const useLocationStore = defineStore('location', () => {
     }
 
     try {
-      const timerLabel = `findNearby-${Date.now()}`
-      console.time(timerLabel)
-      
       const userLat = userLocation.value.latitude
       const userLng = userLocation.value.longitude
       
       // Process walks in chunks for better performance
       const chunkSize = 50
-      const walks = walksStore.walks
+      const walks = walkStore.walks
       const results = []
       
       for (let i = 0; i < walks.length; i += chunkSize) {
         const chunk = walks.slice(i, Math.min(i + chunkSize, walks.length))
         
-        // Process chunk
         const chunkResults = chunk
           .map(walk => {
             if (!walk.latitude || !walk.longitude) return null
             
-            const distance = getCachedDistance(
+            const distance = calculateDistance(
               userLat,
               userLng,
               Number(walk.latitude),
               Number(walk.longitude)
             )
+            
+            // Store the distance for later use
+            walkDistances.set(walk.id, distance)
             
             if (distance <= searchRadius.value) {
               return { ...walk, distance }
@@ -95,16 +126,12 @@ export const useLocationStore = defineStore('location', () => {
         
         results.push(...chunkResults)
         
-        // Allow UI to update between chunks
         if (i + chunkSize < walks.length) {
           await new Promise(resolve => setTimeout(resolve, 0))
         }
       }
 
-      // Sort by distance and update state
       nearbyWalks.value = results.sort((a, b) => a.distance - b.distance)
-      
-      console.timeEnd(timerLabel)
 
     } catch (error) {
       console.error('Error finding nearby walks:', error)
@@ -116,14 +143,21 @@ export const useLocationStore = defineStore('location', () => {
     userLocation.value = null
     nearbyWalks.value = []
     walkDistances.clear()
+    localStorage.removeItem('userLocation')
   }
 
   function setSearchRadius(radius) {
     if (typeof radius !== 'number' || radius <= 0) return
     searchRadius.value = radius
+    localStorage.setItem('searchRadius', String(radius))
     if (userLocation.value) {
       findNearbyWalks()
     }
+  }
+
+  // Initialize if we have saved data
+  if (savedLocation) {
+    findNearbyWalks()
   }
 
   return {
@@ -131,6 +165,7 @@ export const useLocationStore = defineStore('location', () => {
     userLocation,
     searchRadius,
     nearbyWalks,
+    hasLocation,
 
     // Computed
     formattedSearchRadius,
@@ -138,6 +173,8 @@ export const useLocationStore = defineStore('location', () => {
     // Actions
     setUserLocation,
     clearLocation,
-    setSearchRadius
+    setSearchRadius,
+    findNearbyWalks,
+    getFormattedDistance
   }
 })

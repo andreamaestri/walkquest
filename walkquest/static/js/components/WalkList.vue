@@ -75,6 +75,19 @@
             <span>No walks available</span>
           </div>
         </template>
+        <template x-if="walks.length === 0">
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <Icon icon="mdi:map-marker-off" />
+                </div>
+                <div class="empty-state-text">
+                    No walks found
+                </div>
+                <p class="empty-state-suggestion">
+                    Try adjusting your search or filters
+                </p>
+            </div>
+        </template>
       </div>
     </div>
   </div>
