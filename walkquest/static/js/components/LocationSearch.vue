@@ -14,7 +14,7 @@
     </div>
 
     <!-- Walks count header -->
-    <div v-if="locationStore.userLocation" class="walks-count-header" role="status">
+    <div v-if="locationStore.userLocation && hasSearched" class="walks-count-header" role="status">
       <template v-if="walkStore.isLoading">
         <div class="loading-text">
           <div class="loading-spinner small"></div>
@@ -450,6 +450,29 @@ function debounce(fn, delay) {
   width: 24px;
   height: 24px;
   z-index: 2;
+}
+
+/* Add specific styles for the close icon */
+.mapboxgl-ctrl-geocoder .mapboxgl-ctrl-geocoder--icon-close {
+  right: 8px;
+  left: auto;
+  width: 32px;
+  height: 32px;
+  padding: 4px;
+  margin-right: 4px;
+  border-radius: 16px;
+  cursor: pointer;
+  background: transparent;
+  transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mapboxgl-ctrl-geocoder .mapboxgl-ctrl-geocoder--icon-close:hover {
+  background: rgb(var(--md-sys-color-on-surface-variant) / 0.08);
+}
+
+/* Adjust the input padding to account for both icons */
+.mapboxgl-ctrl-geocoder--input {
+  padding: 6px 44px 6px 44px !important;
 }
 
 .mapboxgl-ctrl-geocoder,

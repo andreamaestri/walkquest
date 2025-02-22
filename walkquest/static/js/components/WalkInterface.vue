@@ -91,13 +91,6 @@
                   delay: 0.3
                 }
               }">
-              <!-- Location Search Panel -->
-              <div v-if="searchStore.searchMode === 'locations'" class="m3-location-panel p-4">
-                <!-- Display nearby walks count if location is selected -->
-                <div v-if="locationStore.userLocation" class="mt-4 text-on-surface-variant">
-                  {{ filteredWalks.length }} walks found nearby
-                </div>
-              </div>
               <!-- Walk List -->
               <div class="m3-walks-list" :class="{ 'overflow-hidden': !isExpanded }">
                 <WalkList v-model="searchQuery" :walks="filteredWalks" :selected-walk-id="selectedWalkId"

@@ -63,7 +63,7 @@
         leave-active-class="m3-animate-out"
         @after-leave="onTransitionComplete"
       >
-        <div v-if="props.searchMode === 'locations' && showLocationResults"
+        <div v-if="props.searchMode === 'locations' && showLocationResults && locationStore.hasSearched"
              class="m3-location-results">
           <div class="m3-results-count">
             {{ resultCountText }}
@@ -100,10 +100,12 @@
               </div>
             </button>
           </template>
-          <div v-else-if="searchQuery && !isLoading" class="m3-empty-state">
+          <!-- Only show empty state for walk search -->
+          <div v-else-if="searchQuery && !isLoading && props.searchMode === 'walks'" 
+               class="m3-empty-state">
             <div class="m3-suggestion-item">
-              <Icon :icon="searchMode === 'locations' ? 'mdi:map-marker-off' : 'material-symbols:search-off'" />
-              <span>No {{ searchMode === 'locations' ? 'locations' : 'walks' }} found</span>
+              <Icon icon="material-symbols:search-off" />
+              <span>No walks found</span>
             </div>
           </div>
         </div>
@@ -157,7 +159,13 @@ const searchStore = useSearchStore()
 const walksStore = useWalksStore()
 const searchInput = ref(null)
 const selectedIndex = ref(-1)
-const showSuggestions = ref(false)
+
+// Update showSuggestions computed to exclude locations mode
+const showSuggestions = computed(() => 
+  props.searchMode === 'walks' && 
+  searchQuery.value?.trim() && 
+  isFocused.value
+)
 
 // Add new ref for focus state
 const isFocused = ref(false)
@@ -370,7 +378,9 @@ const locationStore = useLocationStore()
 
 // Add computed properties for location results
 const showLocationResults = computed(() => 
-  props.searchMode === 'locations' && locationStore.userLocation
+  props.searchMode === 'locations' && 
+  locationStore.userLocation &&
+  locationStore.hasSearched // Add this condition
 )
 
 // Update filteredResults computed to use nearbyWalks directly from locationStore
