@@ -3,9 +3,6 @@
     <div class="search-field-container" :class="{ 'is-loading': isLoading }">
       <MapboxGeocoder v-bind="geocoderProps" class="geocoder-container" @mb-created="handleGeocodeCreated"
         @mb-result="handleGeocodeResult" @mb-error="handleGeocodeError" @mb-clear="handleGeocodeClear" />
-      <div v-if="isLoading" class="loading-indicator" role="status" aria-label="Loading results">
-        <div class="loading-spinner"></div>
-      </div>
     </div>
 
     <div v-if="searchStore.error" class="search-error" role="alert">
@@ -224,7 +221,17 @@ const debouncedSetLocation = debounce(async (location) => {
         walkStore.setWalks([])
         walkStore.setError('No walks found in this area')
       } else {
-        walkStore.setWalks(walks)
+        // Process walks to include distance from search location
+        const walksWithDistance = walks.map(walk => ({
+          ...walk,
+          distance: calculateDistance(
+            location.latitude,
+            location.longitude,
+            walk.latitude,
+            walk.longitude
+          )
+        }))
+        walkStore.setWalks(walksWithDistance)
         walkStore.setError(null)
       }
 
@@ -256,19 +263,23 @@ const debouncedSetLocation = debounce(async (location) => {
     walkStore.setLoading(false)
   }
 }, 300)
-const processGeocodeResult = async (result) => {
-  if (!result?.center || result.center.length !== 2) {
-    searchStore.setError('Invalid location data received')
-    return
-  }
 
-  const [longitude, latitude] = result.center
+// Add helper function to calculate distance
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371; // Earth's radius in km
+  const dLat = deg2rad(lat2 - lat1);
+  const dLon = deg2rad(lon2 - lon1);
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const distance = R * c; // Distance in km
+  return Math.round(distance * 10) / 10; // Round to 1 decimal place
+}
 
-  debouncedSetLocation({
-    latitude,
-    longitude,
-    place_name: result.place_name
-  })
+function deg2rad(deg) {
+  return deg * (Math.PI/180);
 }
 
 // Event handlers

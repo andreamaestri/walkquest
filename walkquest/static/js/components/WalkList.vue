@@ -259,6 +259,11 @@ watch(() => searchStore.searchMode, (newMode) => {
   flex-direction: column;
   overflow: hidden;
   position: relative;
+  min-height: 0;  /* Important for flex-child scrolling */
+}
+
+.walks-section.location-mode {
+  height: 100%;
 }
 
 .scroller {
@@ -319,15 +324,19 @@ watch(() => searchStore.searchMode, (newMode) => {
   align-items: center;
   justify-content: center;
   padding: 24px;
-  text-align: center;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  height: 100%;
+  min-height: 200px;
+  background: rgb(var(--md-sys-color-surface-container-low));
+  border-radius: 12px;
 }
 
 .empty-message {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
+  text-align: center;
+  color: rgb(var(--md-sys-color-on-surface-variant));
 }
 
 .empty-icon {

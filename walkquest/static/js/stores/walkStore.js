@@ -30,7 +30,11 @@ export const useWalkStore = defineStore('walk', {
         this.isEmpty = true
         return
       }
-      this.walks = walks
+      // Ensure walks have distance property when in nearby mode
+      this.walks = walks.map(walk => ({
+        ...walk,
+        distance: walk.distance || null
+      }))
       this.isEmpty = walks.length === 0
       this.error = null
     },
@@ -60,4 +64,4 @@ export const useWalkStore = defineStore('walk', {
       this.searchRadius = radius
     }
   }
-}) 
+})
