@@ -62,7 +62,8 @@
               }" @click="handleExploreClick">
                 <div class="m3-rail-content">
                   <div class="m3-rail-icon-container">
-                    <Icon icon="mdi:compass-outline" class="m3-rail-icon" />
+                    <Icon icon="mdi:compass" class="m3-rail-icon filled-icon" />
+                    <Icon icon="mdi:compass-outline" class="m3-rail-icon outlined-icon" />
                   </div>
                   <span class="m3-rail-label">Explore</span>
                 </div>
@@ -73,9 +74,10 @@
               }" @click="handleLocationSearchClick">
                 <div class="m3-rail-content">
                   <div class="m3-rail-icon-container">
-                    <Icon icon="mdi:map-search" class="m3-rail-icon" />
+                    <Icon icon="mdi:map-marker" class="m3-rail-icon filled-icon" />
+                    <Icon icon="mdi:map-marker-outline" class="m3-rail-icon outlined-icon" />
                   </div>
-                  <span class="m3-rail-label">Find Nearby</span>
+                    <span class="m3-rail-label">Find<br>Nearby</span>
                 </div>
               </button>
             </nav>
@@ -207,13 +209,13 @@
           </div>
           <!-- Route layers -->
           <template v-if="validRouteData">
-            <MapboxSource :id="MAP_SOURCE.ROUTE" :options="{
+            <MapboxSource :id="routeSourceId" :options="{
               type: 'geojson',
               data: validRouteData
             }" />
-            <MapboxLayer :id="MAP_LAYER.ROUTE_GLOW" :options="{
+            <MapboxLayer :id="routeGlowLayerId" :options="{
               type: 'line',
-              source: MAP_SOURCE.ROUTE,
+              source: routeSourceId,
               layout: {
                 'line-join': 'round',
                 'line-cap': 'round'
@@ -225,9 +227,9 @@
                 'line-blur': 8
               }
             }" />
-            <MapboxLayer :id="MAP_LAYER.ROUTE_BG" :options="{
+            <MapboxLayer :id="routeBgLayerId" :options="{
               type: 'line',
-              source: MAP_SOURCE.ROUTE,
+              source: routeSourceId,
               layout: {
                 'line-join': 'round',
                 'line-cap': 'round'
@@ -238,9 +240,9 @@
                 'line-opacity': 0.9
               }
             }" />
-            <MapboxLayer :id="MAP_LAYER.ROUTE_ANIMATED" :options="{
+            <MapboxLayer :id="routeAnimatedLayerId" :options="{
               type: 'line',
-              source: MAP_SOURCE.ROUTE,
+              source: routeSourceId,
               layout: {
                 'line-join': 'round',
                 'line-cap': 'round'
@@ -254,7 +256,7 @@
             }" @mb-layer-loaded="handleRouteLayerLoaded" />
           </template>
           <!-- Walk markers -->
-          <template v-if="mapLoaded && mapReady">
+          <template v-if="mapLoaded">
             <template v-for="walk in visibleWalks" :key="`${walk.id}-${markerKey}`">
               <MapboxMarker :lng-lat="[
                 Number(walk.longitude) || Number(walk.lng),
@@ -263,7 +265,7 @@
                 offset: 25,
                 anchor: 'bottom',
                 closeButton: false,
-                closeOnClick: false,
+                closeOnClick: true,
                 className: 'm3-popup'
               }" @mounted="marker => handleMarkerMounted(marker, walk.id)" @click="() => handleMarkerClick(walk)">
                 <template #popup>
@@ -325,7 +327,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch, h, createApp } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch, h, createApp, shallowRef } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { animate } from "motion";
 import { useElementVisibility } from "@vueuse/core";
@@ -344,6 +346,7 @@ import { useWalksStore } from "../stores/walks";
 import { useLocationStore } from "../stores/locationStore";
 import { useSearchStore } from "../stores/searchStore";
 import { useMap } from "../composables/useMap";
+import { storeToRefs } from 'pinia';
 
 import WalkList from "./WalkList.vue";
 import WalkCard from "./WalkCard.vue";
@@ -357,6 +360,98 @@ import WalkDrawer from "./WalkDrawer.vue";
 import { getGeometry } from "../services/api";
 import { MD3_DURATION, MD3_EASING } from "../utils/motion";
 
+// Resource Manager for better lifecycle management
+const useResourceManager = () => {
+  const eventListeners = ref(new Set())
+  const timeouts = ref(new Set())
+  const intervals = ref(new Set())
+  const observers = ref(new Set())
+  const animations = ref(new Set())
+
+  // Register event listener with automatic cleanup
+  const registerEventListener = (target, event, handler, options = {}) => {
+    if (!target) return () => {}
+    
+    target.addEventListener(event, handler, options)
+    
+    const cleanup = () => {
+      target.removeEventListener(event, handler, options)
+    }
+    
+    eventListeners.value.add(cleanup)
+    return cleanup
+  }
+
+  // Register timeout with automatic cleanup
+  const registerTimeout = (callback, delay) => {
+    const id = setTimeout(callback, delay)
+    
+    const cleanup = () => clearTimeout(id)
+    timeouts.value.add(cleanup)
+    
+    return cleanup
+  }
+
+  // Register interval with automatic cleanup
+  const registerInterval = (callback, delay) => {
+    const id = setInterval(callback, delay)
+    
+    const cleanup = () => clearInterval(id)
+    intervals.value.add(cleanup)
+    
+    return cleanup
+  }
+
+  // Register observer with automatic cleanup
+  const registerObserver = (observer) => {
+    if (!observer) return () => {}
+    
+    const cleanup = () => observer.disconnect()
+    observers.value.add(cleanup)
+    
+    return cleanup
+  }
+
+  // Register animation frame with automatic cleanup
+  const registerAnimationFrame = (callback) => {
+    let frameId = requestAnimationFrame(callback)
+    
+    const cleanup = () => {
+      if (frameId) {
+        cancelAnimationFrame(frameId)
+        frameId = null
+      }
+    }
+    
+    animations.value.add(cleanup)
+    return cleanup
+  }
+
+  // Clean up all resources
+  const cleanupAll = () => {
+    eventListeners.value.forEach(cleanup => cleanup())
+    timeouts.value.forEach(cleanup => cleanup())
+    intervals.value.forEach(cleanup => cleanup())
+    observers.value.forEach(cleanup => cleanup())
+    animations.value.forEach(cleanup => cleanup())
+    
+    eventListeners.value.clear()
+    timeouts.value.clear()
+    intervals.value.clear()
+    observers.value.clear()
+    animations.value.clear()
+  }
+
+  return {
+    registerEventListener,
+    registerTimeout,
+    registerInterval,
+    registerObserver,
+    registerAnimationFrame,
+    cleanupAll
+  }
+}
+
 // NEW: Add debounce helper
 function debounce(fn, delay) {
   let timer;
@@ -365,6 +460,10 @@ function debounce(fn, delay) {
     timer = setTimeout(() => fn.apply(this, args), delay);
   }
 }
+
+// Use resource manager
+const resourceManager = useResourceManager()
+
 async function onDrawerEnter(el, onComplete) {
   await animateElement(el, { type: 'entry', direction: 'vertical' }, onComplete)
 }
@@ -423,22 +522,23 @@ searchStore.$patch({
 })
 
 // Component refs and state
-const mapComponent = ref(null)
-const sidebarRef = ref(null)
-const drawerRef = ref(null)
-const mobileButtonRef = ref(null)
-const mapContainerRef = ref(null)
+const mapComponent = shallowRef(null)
+const mapInstance = shallowRef(null);
+const sidebarRef = shallowRef(null)
+const drawerRef = shallowRef(null)
+const mobileButtonRef = shallowRef(null)
+const mapContainerRef = shallowRef(null)
 const expandedWalkIds = ref([])
 const isExpanded = ref(localStorage.getItem("sidebarExpanded") === "true")
 const mapReady = ref(false)
 const currentZoom = ref(8)
 const mapContainerVisible = useElementVisibility(mapContainerRef)
-const mapRef = ref(null)
+const mapRef = shallowRef(null)
 const isDrawerOpen = computed(() => selectedWalk.value && showDrawer.value);
 const markerKey = ref(0);
 
 // Update route data ref with better typing and structure
-const routeData = ref({
+const routeData = shallowRef({
   type: "Feature",
   properties: {},
   geometry: {
@@ -455,6 +555,17 @@ const isValidGeoJSON = (data) => {
     typeof data.geometry === "object" &&
     typeof data.properties === "object"
   )
+}
+
+// Constants for map sources and layers
+const MAP_SOURCE = {
+  ROUTE: 'route-source'
+}
+
+const MAP_LAYER = {
+  ROUTE: 'route-line',          // Adding this missing constant
+  ROUTE_GLOW: 'route-line-glow',
+  ROUTE_BG: 'route-line-background'
 }
 
 // Add mapLoaded state
@@ -490,7 +601,7 @@ const isFullscreen = computed(() => uiStore?.fullscreen)
 const showSidebar = computed(() => uiStore?.showSidebar)
 const isMobile = computed(() => uiStore?.isMobile)
 const selectedWalkId = computed(() => props.walkId)
-const availableWalks = computed(() => walksStore.walks)
+// Removed duplicate availableWalks declaration - using version defined later
 const walks = computed(() => {
   if (!Array.isArray(walksStore.walks)) return []
   return walksStore.walks.map(walk => ({
@@ -538,7 +649,15 @@ const searchQuery = computed({
 })
 
 // Add ref for filtered results
-const filteredResults = ref([])
+const filteredResults = shallowRef([])
+
+// Add back availableWalks computed property
+const availableWalks = computed(() => {
+  if (searchStore.searchMode === 'locations' && locationStore.userLocation) {
+    return displayedWalks.value;
+  }
+  return walks.value;
+})
 
 // Update the location search visibility computed property
 const isLocationSearchVisible = computed({
@@ -555,14 +674,17 @@ const loading = ref(false)
 const showDrawer = ref(false)
 
 const handleRouteLayerLoaded = () => {
-  // Start the route animation once the layer is loaded
-  if (mapRef.value && validRouteData.value) {
-    // Cancel any existing animation
-    if (animationFrame) {
-      cancelAnimationFrame(animationFrame);
+  if (!mapRef.value) return;
+  
+  // Check if layer exists before starting animation
+  if (mapRef.value.getLayer(MAP_LAYER.ROUTE_ANIMATED)) {
+    // Start animation only if we have valid route data
+    if (validRouteData.value) {
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+      }
+      animationFrame = requestAnimationFrame(animateDashArray);
     }
-    // Start new animation
-    animationFrame = requestAnimationFrame(animateDashArray);
   }
 };
 
@@ -855,7 +977,13 @@ const handleMapCreated = (map) => {
 };
 // Add helper to check if layer exists
 const layerExists = (layerId) => {
-  return mapRef.value?.getLayer(layerId);
+  if (!mapInstance.value || !layerId) return false;
+  try {
+    return !!mapInstance.value.getLayer(layerId);
+  } catch (error) {
+    console.warn(`Error checking if layer exists (${layerId}):`, error);
+    return false;
+  }
 };
 // Handle map keyboard navigation
 const handleMapKeyboard = (e) => {
@@ -913,70 +1041,14 @@ const handleFabClick = async () => {
 }
 
 // Add a helper to compute effective flyTo options for better centering
-const effectiveFlyToOptions = (location) => {
-  // Use a different offset on mobile vs desktop for improved centering
-  const defaultOffset = isMobile.value ? [0, 0] : [0, -100];
-  return {
-    center: location.center,
-    zoom: location.zoom || 14,
-    pitch: location.pitch !== undefined ? location.pitch : 60,
-    bearing: location.bearing !== undefined ? location.bearing : 30,
-    offset: location.offset || defaultOffset,
-    duration: location.duration || 2000,
-    easing: location.easing || ((t) => t * (2 - t)),
-    essential: true
-  };
-};
-
-// Modify handleLocationSelected to use the new flyTo options
-const handleLocationSelected = async (location) => {
-  if (!location?.center) return;
-
-  try {
-    uiStore.setLoadingState('location', true);
-
-    // Wait for map to be ready
-    if (!mapRef.value) {
-      console.log('Waiting for map to be ready...');
-      await new Promise(resolve => {
-        const unwatch = watch(mapRef, (newVal) => {
-          if (newVal) {
-            unwatch();
-            resolve();
-          }
-        });
-      });
-    }
-
-    // Ensure map is loaded before flying
-    if (!mapLoaded.value) {
-      console.log('Waiting for map style to load...');
-      await new Promise(resolve => {
-        mapRef.value.once('style.load', resolve);
-      });
-    }
-
-    // Now safe to fly to location
-    await flyToLocation({
-      ...effectiveFlyToOptions(location),
-      callback: () => {
-        if (!isExpanded.value) {
-          isExpanded.value = true;
-          localStorage.setItem("sidebarExpanded", "true");
-        }
-      }
-    });
-
-    // Clear any previous errors
-    searchStore.setError(null);
-
-  } catch (error) {
-    console.error('Error handling location selection:', error);
-    searchStore.setError('Failed to process location selection');
-  } finally {
-    uiStore.setLoadingState('location', false);
-  }
-};
+const effectiveFlyToOptions = (location) => ({
+  center: [location.lon, location.lat],
+  zoom: 14,
+  padding: { top: 100, bottom: 100, left: 100, right: 100 },
+  duration: 1200,
+  easing: function(t) { return t * (1 - t) * (1 + t); }, // Fixed easing function
+  essential: true
+});
 
 // Add watchers for search mode changes
 watch(() => searchStore.searchMode, (newMode) => {
@@ -1092,6 +1164,64 @@ const initializeInterface = () => {
       handleWalkSelection(walk)
     }
   }
+
+  // Register event listeners
+  resourceManager.registerEventListener(window, 'resize', handleResize)
+
+  // Add keyboard accessibility for map
+  if (mapRef.value) {
+    resourceManager.registerEventListener(
+      mapRef.value.getCanvas(),
+      'keydown',
+      handleMapKeyboard
+    )
+  }
+}
+
+// Consolidated resource cleanup function
+const cleanupResources = () => {
+  // 1. Clean up animations
+  if (animationFrame) {
+    cancelAnimationFrame(animationFrame);
+    animationFrame = null;
+  }
+  
+  // 2. Clean up event listeners
+  window.removeEventListener('resize', handleResize);
+  
+  if (mapRef.value) {
+    // Remove general map event listeners
+    const mapEvents = ['mousemove', 'mouseleave', 'styledata'];
+    for (const event of mapEvents) {
+      // Remove all event listeners for this event type
+      mapRef.value.off(event);
+    }
+    
+    // Remove keyboard event listener
+    if (mapRef.value.getCanvas()) {
+      mapRef.value.getCanvas().removeEventListener('keydown', handleMapKeyboard);
+    }
+  }
+  
+  // 3. Reset state
+  routeData.value = null;
+  loading.value = false;
+  mapLoaded.value = false;
+  mapInstance.value = null;
+  
+  // 4. Clean up markers
+  for (const marker of markerRefs.value.values()) {
+    marker?.remove?.();
+  }
+  markerRefs.value.clear();
+  markerKey.value = 0;
+  
+  // 5. Clear collections
+  spatialIndex.value.clear();
+  
+  // 6. Clear refs
+  mapRef.value = null;
+  mapComponent.value = null;
 }
 
 onMounted(initializeInterface)
@@ -1107,173 +1237,129 @@ const selectedWalk = computed(() => {
   return walks.value.find(walk => walk.id === selectedWalkId.value)
 })
 
+// Add watch for route changes to handle direct URL access
+watch(
+  () => route.params,
+  () => {
+    // Your route change handling logic here
+  }
+);
+
 // Update handleBackClick to use flyTo with optimized flight path parameters
 const handleBackClick = async () => {
   if (mapComponent.value?.map) {
     mapComponent.value.map.flyTo({
       center: mergedMapConfig.value.center,
       zoom: mergedMapConfig.value.zoom,
-      pitch: 0,
-      bearing: 0,
       padding: { top: 100, bottom: 100, left: 100, right: 100 },
       duration: 1200,
-      easing: t => t * (1 - t) * (1 + t), // easeOutCubic without parameter reassignment
+      easing: function(t) { return t * (1 - t) * (1 + t); },
       essential: true
-    })
+    });
   }
-  await router.push({ name: 'home' })
-}
-
-// Add watch for route changes to handle direct URL access
-watch(
-  () => route.params.id,
-  async (newId) => {
-    if (newId) {
-      const walk = walks.value.find(w => w.id === newId)
-      if (walk) {
-        await handleWalkSelection(walk)
-      }
-    }
-  },
-  { immediate: true }
-)
+};
 
 // Optimize search filtering
 const searchResults = ref([])
 const searchThrottleMs = 150
 
+// Helper function for throttle
+function throttle(fn, delay) {
+  let lastCall = 0;
+  return function(...args) {
+    const now = new Date().getTime();
+    if (now - lastCall >= delay) {
+      fn.apply(this, args);
+      lastCall = now;
+    }
+  }
+}
+
 // Optimized search with throttle
 const performSearch = throttle((query) => {
-  if (!query?.trim()) {
-    searchResults.value = availableWalks.value
-    return
+  // Implementation
+  if (!query || query.length < 2) {
+    searchResults.value = walks.value;
+    return;
   }
-
-  const searchTerms = query.toLowerCase().trim().split(/\s+/)
-
-  searchResults.value = availableWalks.value.filter(walk => {
-    const text = [
-      walk.title,
-      walk.location,
-      walk.description,
-      walk.difficulty
-    ].filter(Boolean).join(' ').toLowerCase()
-
-    return searchTerms.every(term => text.includes(term))
-  })
-}, searchThrottleMs)
+  searchResults.value = walks.value.filter(walk => 
+    walk.title.toLowerCase().includes(query.toLowerCase())
+  );
+}, searchThrottleMs);
 
 // Replace existing search watcher with optimized version
 watch(searchQuery, (newQuery) => {
   performSearch(newQuery)
 }, { immediate: true })
 
-// Helper function for throttle
-function throttle(fn, delay) {
-  let lastCall = 0
-  return function (...args) {
-    const now = Date.now()
-    if (now - lastCall >= delay) {
-      fn.apply(this, args)
-      lastCall = now
-    }
-  }
-}
-
 // Update filtered results based on search results
 watch(searchResults, (results) => {
   filteredResults.value = results
 })
 
-// Add cleanup
-onBeforeUnmount(() => {
-  // Clean up map event listeners
-  if (mapRef.value) {
-    mapRef.value.off('styledata')
-  }
-
-  // Clear refs
-  mapRef.value = null
-  mapComponent.value = null
-})
-
 // Add handler for map movement
 const updateVisibleMarkers = debounce(() => {
-  if (mapRef.value) {
-    try {
-      mapBounds.value = mapRef.value.getBounds()  // update reactive bounds
-    } catch (error) {
-      console.error('Error updating visible markers:', error)
-      // Don't throw - silently recover from map errors
-      return
+  // Implementation here
+  const bounds = mapInstance.value.getBounds();
+  // Additional code to update visible markers
+}, 100);
+
+// Define visibleWalks as a computed property
+const visibleWalks = computed(() => {
+  if (!mapBounds.value || !walks.value?.length) {
+    return walks.value || [];
+  }
+
+  const bounds = mapBounds.value;
+  const sw = bounds.getSouthWest();
+  const ne = bounds.getNorthEast();
+  const cellSize = 0.1;
+  const minCellX = Math.floor(sw.lng / cellSize);
+  const maxCellX = Math.floor(ne.lng / cellSize);
+  const minCellY = Math.floor(sw.lat / cellSize);
+  const maxCellY = Math.floor(ne.lat / cellSize);
+  const visibleSet = new Set();
+  
+  for (let x = minCellX; x <= maxCellX; x++) {
+    for (let y = minCellY; y <= maxCellY; y++) {
+      const cellKey = `${x}:${y}`;
+      const cellWalks = spatialIndex.value.get(cellKey) || [];
+      cellWalks.forEach(walk => visibleSet.add(walk));
     }
   }
-}, 100) // Debounce map updates
+  
+  const currentVisibleWalks = Array.from(visibleSet);
+  if (previousVisibleWalks.value && 
+      JSON.stringify(currentVisibleWalks) === JSON.stringify(previousVisibleWalks.value)) {
+    return previousVisibleWalks.value;
+  }
+  
+  previousVisibleWalks.value = currentVisibleWalks;
+  return currentVisibleWalks;
+});
+
 // Add a computed property to validate route data
 const validRouteData = computed(() => {
-  if (!routeData.value) return null
+  if (!routeData.value) return null;
 
   // Basic structure validation
   if (!routeData.value.type || !routeData.value.geometry) {
-    console.error('Invalid route data structure:', routeData.value)
-    return null
+    console.warn("Invalid route data structure", routeData.value);
+    return null;
   }
 
-  return routeData.value
-})
+  return routeData.value;
+});
 
-// Simplifying the route data watcher to focus on essential updates
-watch(routeData, (newData) => {
-  if (newData) {
-    console.log('Route data updated:', {
-      type: newData.type,
-      coordinates: newData.geometry?.coordinates?.length
-    })
+// Add a new location-aware computed property for filtering walks
+const displayedWalks = computed(() => {
+  if (searchStore.searchMode === 'locations' && locationStore.userLocation) {
+    // Apply location-based filtering logic here
+    return filteredResults.value;
   }
-}, { deep: true })
+  return visibleWalks.value;
+});
 
-// Add constants for map source and layer IDs
-const MAP_SOURCE = {
-  ROUTE: 'walkquest-route-source'
-};
-
-const MAP_LAYER = {
-  ROUTE_GLOW: 'walkquest-route-glow',
-  ROUTE_BG: 'walkquest-route-bg',
-  ROUTE_ANIMATED: 'walkquest-route-animated'
-};
-
-// Add map reference and initialization state
-const mapInstance = ref(null);
-
-// Add route hover effect handler
-const addRouteHoverEffect = () => {
-  if (!mapRef.value) return
-
-  mapRef.value.on('mousemove', MAP_LAYER.ROUTE, (e) => {
-    if (e.features.length > 0) {
-      mapRef.value.setFeatureState(
-        { source: MAP_SOURCE.ROUTE, id: e.features[0].id },
-        { hover: true }
-      )
-    }
-  })
-
-  mapRef.value.on('mouseleave', MAP_LAYER.ROUTE, () => {
-    mapRef.value.setFeatureState(
-      { source: MAP_SOURCE.ROUTE },
-      { hover: false }
-    )
-  })
-}
-
-// Add cleanup for hover effects
-onBeforeUnmount(() => {
-  if (mapRef.value) {
-    mapRef.value.off('mousemove', MAP_LAYER.ROUTE)
-    mapRef.value.off('mouseleave', MAP_LAYER.ROUTE)
-  }
-})
 // Improved animation logic for irregular linestrings
 const dashArraySequence = [
   [0, 4, 3],      // 1. Start - Dash is present
@@ -1291,58 +1377,35 @@ const dashArraySequence = [
   [2.4, 4, 0.6],  // 13.
   [2.6, 4, 0.4],  // 14.
   [2.8, 4, 0.2],  // 15.
-  [3, 4, 0],      // 16. Dash disappears
-  [2.5, 4, 0.5],  // 17. Start bringing dash back, offset decreasing
-  [2, 4, 1],      // 18.
-  [1.5, 4, 1.5],  // 19.
-  [1, 4, 2],      // 20.
-  [0.5, 4, 2.5],  // 21.
-  [0, 4, 3]       // 22. Back to the start - Smooth loop point!
 ];
 
 let animationFrame = null;
 
 const animateDashArray = (timestamp) => {
-  if (!mapRef.value) return;
-
-  const animationDuration = 5000;
-  const progress = (timestamp % animationDuration) / animationDuration;
-
-  const dashSeqLength = dashArraySequence.length;
-  const targetIndex = progress * dashSeqLength;
-  const lowerIdx = Math.floor(targetIndex);
-  const fraction = targetIndex - lowerIdx;
-
-  // Adjusted Indexing for Circularity:
-  const currentIdx = lowerIdx % dashSeqLength; // Ensure index wraps around
-  const nextIdx = (lowerIdx + 1) % dashSeqLength; // Ensure next index wraps around
-
-  // Interpolate between two consecutive dash array values
-  const interpolatedDashArray = dashArraySequence[currentIdx].map((value, i) => {
-    const nextValue = dashArraySequence[nextIdx][i];
-    return value + (nextValue - value) * fraction;
-  });
-
-  mapRef.value.setPaintProperty(
-    MAP_LAYER.ROUTE_ANIMATED,
-    'line-dasharray',
-    interpolatedDashArray
-  );
-
+  if (!mapRef.value || !mapLoaded.value) return;
+  
+  // Update dash array based on current time
+  const index = Math.floor((timestamp / 200) % dashArraySequence.length);
+  const dashValue = dashArraySequence[index];
+  
+  if (mapRef.value.getLayer('route-animated')) {
+    mapRef.value.setPaintProperty('route-animated', 'line-dasharray', dashValue);
+  }
+  
+  // Continue animation loop
   animationFrame = requestAnimationFrame(animateDashArray);
 };
 
 // Start animation when map is loaded and valid route data exists
 watch([mapLoaded, validRouteData], ([isLoaded, hasRoute]) => {
-  if (animationFrame) {
+  if (isLoaded && hasRoute && mapRef.value) {
+    if (animationFrame) {
+      cancelAnimationFrame(animationFrame);
+    }
+    animationFrame = requestAnimationFrame(animateDashArray);
+  } else if (animationFrame) {
     cancelAnimationFrame(animationFrame);
     animationFrame = null;
-  }
-
-  if (isLoaded && hasRoute) {
-    nextTick(() => {
-      animationFrame = requestAnimationFrame(animateDashArray);
-    });
   }
 }, { immediate: true });
 
@@ -1350,6 +1413,7 @@ watch([mapLoaded, validRouteData], ([isLoaded, hasRoute]) => {
 onBeforeUnmount(() => {
   if (animationFrame) {
     cancelAnimationFrame(animationFrame);
+    animationFrame = null;
   }
 });
 
@@ -1376,10 +1440,10 @@ const updateAllMarkerColors = (selectedId = null) => {
 };
 
 // Add ref to store marker references
-const markerRefs = ref(new Map());
+const markerRefs = shallowRef(new Map());
 
 // Add spatial index structure
-const spatialIndex = ref(new Map())
+const spatialIndex = shallowRef(new Map())
 
 // Consolidated sidebar state watcher
 watch(
@@ -1433,50 +1497,10 @@ const updateSpatialIndex = () => {
 watch(() => walks.value, updateSpatialIndex, { immediate: true })
 
 // Add a ref at the top with your other refs (e.g., after spatialIndex definition)
-const previousVisibleWalks = ref(null)
+const previousVisibleWalks = shallowRef(null)
 
 // Add a reactive ref for the map bounds (place near other refs)
-const mapBounds = ref(null)
-
-// Replace your existing visibleWalks computed property with the optimized version:
-const visibleWalks = computed(() => {
-  if (!mapBounds.value || spatialIndex.value.size === 0) return walks.value;
-
-  const bounds = mapBounds.value;
-  const sw = bounds.getSouthWest();
-  const ne = bounds.getNorthEast();
-  const cellSize = 0.1;
-
-  const minCellX = Math.floor(sw.lng / cellSize);
-  const maxCellX = Math.floor(ne.lng / cellSize);
-  const minCellY = Math.floor(sw.lat / cellSize);
-  const maxCellY = Math.floor(ne.lat / cellSize);
-
-  const visibleSet = new Set();
-  for (let x = minCellX; x <= maxCellX; x++) {
-    for (let y = minCellY; y <= maxCellY; y++) {
-      const key = `${x}:${y}`;
-      const cellWalks = spatialIndex.value.get(key);
-      if (cellWalks) {
-        for (const walk of cellWalks) {
-          visibleSet.add(walk);
-        }
-      }
-    }
-  }
-
-  const currentVisibleWalks = Array.from(visibleSet);
-
-  if (
-    previousVisibleWalks.value &&
-    areArraysShallowEqual(previousVisibleWalks.value, currentVisibleWalks)
-  ) {
-    return previousVisibleWalks.value;
-  }
-
-  previousVisibleWalks.value = currentVisibleWalks;
-  return currentVisibleWalks;
-});
+const mapBounds = shallowRef(null)
 
 // Add the helper function (place it among your other functions/methods)
 function areArraysShallowEqual(arrA, arrB) {
@@ -1524,47 +1548,9 @@ const handleMarkerMounted = (marker, walkId) => {
   markerRefs.value.set(walkId, marker);
 };
 
-// Consolidated cleanup function
-const cleanup = () => {
-  // 1. Clean up animations
-  if (animationFrame) {
-    cancelAnimationFrame(animationFrame)
-    animationFrame = null
-  }
-
-  // 2. Clean up event listeners
-  window.removeEventListener('resize', handleResize)
-
-  if (mapRef.value) {
-    const mapEvents = ['mousemove', 'mouseleave', 'styledata']
-    for (const event of mapEvents) {
-      mapRef.value.off(event, MAP_LAYER.ROUTE)
-    }
-  }
-
-  // 3. Reset state
-  routeData.value = null
-  loading.value = false
-  mapLoaded.value = false
-
-  // 4. Clean up markers
-  for (const marker of markerRefs.value.values()) {
-    marker?.remove?.()
-  }
-  markerRefs.value.clear()
-  markerKey.value = 0
-
-  // 5. Clear collections
-  spatialIndex.value.clear()
-
-  // 6. Clear refs
-  mapRef.value = null
-  mapComponent.value = null
-}
-
 // Lifecycle hooks
 onMounted(initializeInterface)
-onBeforeUnmount(cleanup)
+onBeforeUnmount(cleanupResources)
 
 // SearchStore helpers
 const setSearchMode = (mode) => searchStore.setSearchMode(mode)
@@ -1591,7 +1577,7 @@ const processRouteData = (data) => {
 
 // Lifecycle hooks
 onMounted(initializeInterface)
-onBeforeUnmount(cleanup)
+onBeforeUnmount(cleanupResources)
 
 // Add new utility function near other helper functions
 const processDogConsiderations = (consideration) => {
@@ -1659,6 +1645,147 @@ async function onContentTransition(el, done) {
   )
 }
 
+// Add a new location-aware computed property for filtering walks
+const locationFilteredWalks = computed(() => {
+  if (searchStore.searchMode === 'locations' && locationStore.userLocation) {
+    return visibleWalks.value
+      .filter(walk => {
+        // Add distance info if not already present
+        if (!walk.distance) {
+          walk.distance = calculateDistance(
+            locationStore.userLocation.latitude,
+            locationStore.userLocation.longitude,
+            walk.latitude || walk.lat,
+            walk.longitude || walk.lng
+          )
+        }
+        return true // Keep all walks with distance information
+      })
+      .sort((a, b) => (a.distance || 0) - (b.distance || 0)) // Sort by distance
+  }
+  return visibleWalks.value
+})
+
+// Add helper function for distance calculation
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371 // Earth's radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLon = (lon1 - lon2) * Math.PI / 180
+  const a = // Add equals sign here
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+  const distance = R * c // Distance in km
+  return Math.round(distance * 10) / 10 // Round to 1 decimal place
+}
+
+// Update handleLocationSelected to handle filtered walks
+const handleLocationSelected = async (location) => {
+  if (!location?.center) {
+    searchStore.setError(null)
+    locationStore.clearLocation()
+    return
+  }
+
+  try {
+    uiStore.setLoadingState('location', true)
+
+    // Ensure map is ready
+    if (!mapRef.value) {
+      console.log('Waiting for map to be ready...')
+      await new Promise(resolve => {
+        const unwatch = watch(mapRef, (newVal) => {
+          if (newVal) {
+            unwatch()
+            resolve()
+          }
+        })
+      })
+    }
+
+    // Update map view with location
+    await flyToLocation({
+      ...location,
+      callback: () => {
+        if (!isExpanded.value) {
+          isExpanded.value = true
+          localStorage.setItem("sidebarExpanded", "true")
+        }
+        
+        // Update markers after location change
+        nextTick(() => {
+          if (displayedWalks.value.length) {
+            recreateMarkers()
+          }
+        })
+      }
+    })
+
+    // Store the selected location
+    if (location.center && location.place_name) {
+      await locationStore.setUserLocation({
+        latitude: location.center[1],
+        longitude: location.center[0],
+        place_name: location.place_name
+      })
+    }
+
+    searchStore.setError(null)
+
+  } catch (error) {
+    console.error('Error handling location selection:', error)
+    searchStore.setError('Failed to process location selection')
+  } finally {
+    uiStore.setLoadingState('location', false)
+  }
+}
+
+// Generate unique IDs for map sources and layers
+const routeSourceId = ref(`route-source-${Math.random().toString(36).substring(2, 10)}`);
+const routeGlowLayerId = ref(`route-glow-layer-${Math.random().toString(36).substring(2, 10)}`);
+const routeBgLayerId = ref(`route-bg-layer-${Math.random().toString(36).substring(2, 10)}`);
+const routeAnimatedLayerId = ref(`route-animated-layer-${Math.random().toString(36).substring(2, 10)}`);
+
+// Add helper to check if source exists
+const sourceExists = (sourceId) => {
+  if (!mapInstance.value || !sourceId) return false;
+  try {
+    return !!mapInstance.value.getSource(sourceId);
+  } catch (error) {
+    console.warn(`Error checking if source exists (${sourceId}):`, error);
+    return false;
+  }
+};
+
+// Add cleanup function for layers and sources
+const cleanupMapResources = () => {
+  if (!mapInstance.value) return;
+  
+  try {
+    // Always remove layers before removing sources
+    if (routeGlowLayerId.value && layerExists(routeGlowLayerId.value)) {
+      mapInstance.value.removeLayer(routeGlowLayerId.value);
+    }
+    
+    if (routeBgLayerId.value && layerExists(routeBgLayerId.value)) {
+      mapInstance.value.removeLayer(routeBgLayerId.value);
+    }
+    
+    if (routeAnimatedLayerId.value && layerExists(routeAnimatedLayerId.value)) {
+      mapInstance.value.removeLayer(routeAnimatedLayerId.value);
+    }
+    
+    // After all layers are removed, remove sources
+    if (routeSourceId.value && sourceExists(routeSourceId.value)) {
+      mapInstance.value.removeSource(routeSourceId.value);
+    }
+    
+    console.log('Map resources cleaned up successfully');
+  } catch (error) {
+    console.error('Error cleaning up map resources:', error);
+  }
+};
 </script>
 
 <style>
@@ -1788,9 +1915,26 @@ async function onContentTransition(el, done) {
   margin: 8px;
 }
 
-.m3-walks-list {
-  flex: 1;
-  overflow-y: auto;
-  margin-top: 8px;
+.filled-icon {
+  opacity: 0;
+  transform: scale(0.8);
+}
+
+.outlined-icon {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Show filled icon on hover and active states */
+.m3-rail-item:hover .filled-icon,
+.m3-rail-item.is-active .filled-icon {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.m3-rail-item:hover .outlined-icon,
+.m3-rail-item.is-active .outlined-icon {
+  opacity: 0;
+  transform: scale(1.1);
 }
 </style>

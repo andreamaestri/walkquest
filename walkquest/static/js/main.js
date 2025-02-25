@@ -9,7 +9,7 @@ import { useUiStore } from './stores/ui'
 import { Icon } from "@iconify/vue";
 import { StoreLocator, MapboxMarker, MapboxNavigationControl, MapboxCluster, MapboxLayer } from '@studiometa/vue-mapbox-gl'
 
-// Import required CSS
+// Import CSS
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 import 'mapbox-gl/dist/mapbox-gl.css'
 

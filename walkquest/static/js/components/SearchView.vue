@@ -63,7 +63,7 @@
         leave-active-class="m3-animate-out"
         @after-leave="onTransitionComplete"
       >
-        <div v-if="props.searchMode === 'locations' && showLocationResults && locationStore.hasSearched"
+        <div v-if="props.searchMode === 'locations' && showLocationResults && hasLocationSearched"
              class="m3-location-results">
           <div class="m3-results-count">
             {{ resultCountText }}
@@ -118,13 +118,14 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount, shallowRef } from 'vue'
-import LocationSearch from './LocationSearch.vue'  // Fix import
+import LocationSearch from './LocationSearch.vue'
 import WalkList from './WalkList.vue'
 import { useLocationStore } from '../stores/locationStore'
 import { useSearchStore } from '../stores/searchStore'
 import { useWalksStore } from '../stores/walks'
-import { useMap } from '../composables/useMap' // Add this import
+import { useMap } from '../composables/useMap'
 import { Icon } from '@iconify/vue'
+import { storeToRefs } from 'pinia'
 
 // Add debounce helper at the top level
 function debounce(fn, delay) {
@@ -155,28 +156,43 @@ const props = defineProps({
 // Add to emits
 const emit = defineEmits(['update:search-mode', 'location-selected', 'walk-selected', 'update:modelValue'])
 
+// Initialize stores with storeToRefs for reactivity
 const searchStore = useSearchStore()
 const walksStore = useWalksStore()
-const searchInput = ref(null)
-const selectedIndex = ref(-1)
+const locationStore = useLocationStore()
+const mapTools = useMap()
+const { mapInstance } = mapTools
 
-// Update showSuggestions computed to exclude locations mode
-const showSuggestions = computed(() => 
+// Extract reactive state from stores
+const { 
+  searchQuery, 
+  searchMode, 
+  error: searchError, 
+  isLoading: searchIsLoading, 
+  suggestions: storeSuggestions 
+} = storeToRefs(searchStore)
+
+const { userLocation, nearbyWalks, hasSearched: hasLocationSearched } = storeToRefs(locationStore)
+
+// References with appropriate performance optimization
+const searchInput = shallowRef(null)
+const selectedIndex = ref(-1)
+const isFocused = ref(false) // Focus state management
+const showSuggestions = ref(false)
+
+// Update showSuggestions computed with correct reactive dependencies
+const shouldShowSuggestions = computed(() => 
   props.searchMode === 'walks' && 
   searchQuery.value?.trim() && 
   isFocused.value
 )
 
-// Add new ref for focus state
-const isFocused = ref(false)
-
-// Update searchQuery to use computed with two-way binding to store
-const searchQuery = computed({
-  get: () => searchStore.searchQuery || '',
-  set: (value) => searchStore.setSearchQuery(value)
+// Sync show suggestions with computed value
+watch(shouldShowSuggestions, (value) => {
+  showSuggestions.value = value
 })
 
-// Computed properties
+// Computed properties with reactivity
 const searchModeIcon = computed(() => 
   props.searchMode === 'walks' ? 'material-symbols:search' : 'material-symbols:location-on'
 )
@@ -189,25 +205,23 @@ const searchPlaceholder = computed(() =>
   props.searchMode === 'locations' ? 'Search for a location...' : 'Search walks...'
 )
 
-// Add computed to get the current search mode from the store
-const currentSearchMode = computed(() => searchStore.searchMode)
-
-// Optimize suggestions computed to be more lightweight
+// Optimize suggestions computed with shallowRef
 const suggestions = computed(() => 
-  props.searchMode === 'walks' ? searchStore.suggestions : []
+  props.searchMode === 'walks' ? storeSuggestions.value : []
 )
 
-const isLoading = computed(() => searchStore.isLoading)
-const hasError = computed(() => !!searchStore.error)
-const errorMessage = computed(() => searchStore.error)
+const isLoading = computed(() => searchIsLoading.value)
+const hasError = computed(() => !!searchError.value)
+const errorMessage = computed(() => searchError.value)
 const canClear = computed(() => searchQuery.value.length > 0)
 
-// Create debounced input handler
+// Create debounced input handler with proper cancellation
 const debouncedSetQuery = debounce((value) => {
-  searchQuery.value = value
+  searchStore.setSearchQuery(value)
 }, 150) // 150ms debounce
 
-// Update handleInput to use debouncing
+// Input handler calls with debounce cleanup
+let inputDebounceTimer = null
 const handleInput = (event) => {
   const value = event.target.value || ''
   
@@ -217,25 +231,35 @@ const handleInput = (event) => {
     selectedIndex.value = -1
     searchStore.clearLocationSuggestions()
     searchQuery.value = ''
+    
+    // Clear any pending debounce
+    clearTimeout(inputDebounceTimer)
   } else if (!showSuggestions.value) {
     showSuggestions.value = true
   }
   
   // Debounce the actual search query update
-  debouncedSetQuery(value)
+  clearTimeout(inputDebounceTimer)
+  inputDebounceTimer = setTimeout(() => {
+    searchStore.setSearchQuery(value)
+  }, 150)
 }
 
-// Update handleFocus
+// Update handleFocus with better focus management
 const handleFocus = () => {
   isFocused.value = true
-  showSuggestions.value = true
+  
+  // Show suggestions only if there's a query
+  if (searchQuery.value?.trim()) {
+    showSuggestions.value = true
+  }
 }
 
-// Update handleBlur
+// Update handleBlur with debounced hide for better UX
 const handleBlur = () => {
-  isFocused.value = false
-  // Use a short delay to allow click events
   setTimeout(() => {
+    // Allow click events on suggestions to complete first
+    isFocused.value = false
     showSuggestions.value = false
   }, 150)
 }
@@ -245,6 +269,7 @@ const handleContainerClick = () => {
   searchInput.value?.focus()
 }
 
+// Navigation handlers with boundary checks
 const handleKeyDown = () => {
   if (selectedIndex.value < suggestions.value.length - 1) {
     selectedIndex.value++
@@ -257,84 +282,108 @@ const handleKeyUp = () => {
   }
 }
 
+// Handle enter with correct action
 const handleEnter = () => {
   if (selectedIndex.value >= 0 && selectedIndex.value < suggestions.value.length) {
     selectSuggestion(suggestions.value[selectedIndex.value])
+  } else if (searchQuery.value?.trim()) {
+    // Perform a search with current query
+    searchStore.performSearch(searchQuery.value)
   }
 }
 
+// Better escape key handling
 const handleEscape = () => {
   showSuggestions.value = false
   selectedIndex.value = -1
   searchInput.value?.blur()
 }
 
+// Clear search with proper store updates
 const clearSearch = () => {
+  // Clear all state in one go
   searchQuery.value = ''
   searchStore.clearSearch()
-  if (props.searchMode === 'locations') {
-    searchStore.clearLocationSuggestions()
-  }
-  searchInput.value?.focus()
+  searchStore.clearLocationSuggestions()
+  showSuggestions.value = false
+  selectedIndex.value = -1
+  
+  // Maintain focus for better UX
+  nextTick(() => {
+    searchInput.value?.focus()
+  })
 }
 
+// Mode toggle with state cleanup
 const toggleSearchMode = () => {
   const newMode = props.searchMode === 'walks' ? 'locations' : 'walks'
+  
+  // Update mode before clearing to ensure proper cleanup
   emit('update:search-mode', newMode)
+  
+  // Clean up previous mode state
   clearSearch()
 }
 
-const { flyToLocation, mapInstance } = useMap()
-
+// Suggestion selection with improved error handling
 const selectSuggestion = async (suggestion) => {
-  if (props.searchMode === 'locations') {
-    searchQuery.value = suggestion.place_name
-    emit('location-selected', suggestion)
-  } else {
-    searchQuery.value = suggestion.walk_name || suggestion.title
-    // Fly to walk location before emitting walk-selected
-    if (suggestion.latitude && suggestion.longitude) {
-      await flyToLocation({
-        center: [Number(suggestion.longitude), Number(suggestion.latitude)],
-        zoom: 14,
-        pitch: 60,
-        bearing: 30,
-        duration: 2000,
-        essential: true
-      })
+  if (!suggestion) return
+  
+  try {
+    if (props.searchMode === 'locations') {
+      searchQuery.value = suggestion.place_name || ''
+      emit('location-selected', suggestion)
+    } else {
+      // Update query to show selected walk
+      searchQuery.value = suggestion.walk_name || suggestion.title || ''
+      
+      // Fly to location if coordinates available
+      if (suggestion.latitude && suggestion.longitude) {
+        try {
+          await mapTools.flyToLocation({
+            center: [Number(suggestion.longitude), Number(suggestion.latitude)],
+            zoom: 14,
+            pitch: 60,
+            bearing: 30,
+            duration: 2000,
+            essential: true
+          })
+        } catch (error) {
+          console.error('Error flying to walk location:', error)
+          // Continue with selection even if fly fails
+        }
+      }
+      
+      // Emit selection event
+      emit('walk-selected', suggestion)
     }
-    emit('walk-selected', suggestion)
+    
+    // Reset UI state after selection
+    showSuggestions.value = false
+    selectedIndex.value = -1
+    
+  } catch (error) {
+    console.error('Error selecting suggestion:', error)
+    searchStore.setError(`Failed to select ${props.searchMode === 'walks' ? 'walk' : 'location'}: ${error.message}`)
   }
-  showSuggestions.value = false
-  selectedIndex.value = -1
-}
-
-const getSuggestionIcon = (suggestion) => {
-  if (props.searchMode === 'locations') {
-    return 'material-symbols:location-on'
-  }
-  return 'material-symbols:search'
 }
 
 // Optimize suggestion text getter
-const getSuggestionText = (suggestion) => 
-  props.searchMode === 'locations' ? suggestion.place_name : suggestion.title
+const getSuggestionText = (suggestion) => {
+  if (!suggestion) return ''
+  return props.searchMode === 'locations' 
+    ? suggestion.place_name || ''
+    : suggestion.title || suggestion.walk_name || ''
+}
 
+// Clean up after transitions
 const onTransitionComplete = () => {
   if (!showSuggestions.value) {
     selectedIndex.value = -1
   }
 }
 
-// Watch for search mode changes
-watch(() => props.searchMode, (newMode) => {
-  clearSearch()
-  nextTick(() => {
-    searchInput.value?.focus()
-  })
-})
-
-// Add handleLocationSelected method
+// Better location selection handler with error boundary
 const handleLocationSelected = async (location) => {
   if (!location?.center || !Array.isArray(location.center) || location.center.length !== 2) {
     console.error('Invalid location data:', location)
@@ -343,28 +392,29 @@ const handleLocationSelected = async (location) => {
   }
 
   try {
-    // Reset UI state
+    // Reset UI state first for better perceived performance
     showSuggestions.value = false
     isFocused.value = false
 
+    // Prepare location data
     const coords = {
       latitude: location.center[1],
       longitude: location.center[0],
       place_name: location.place_name || `${location.center[1]}, ${location.center[0]}`
     }
 
-    // Set location in store
-    locationStore.setUserLocation(coords)
+    // Set location in store with await to catch errors
+    await locationStore.setUserLocation(coords)
 
-    // Emit event
+    // Emit event with complete location data
     emit('location-selected', {
       ...location,
       latitude: coords.latitude,
       longitude: coords.longitude
     })
 
-    // Clear input and reset UI
-    emit('update:modelValue', '')
+    // Clear input and reset UI only on success
+    emit('update:modelValue', coords.place_name || '')
     searchStore.clearLocationSuggestions()
 
   } catch (error) {
@@ -373,187 +423,146 @@ const handleLocationSelected = async (location) => {
   }
 }
 
-// Add location store
-const locationStore = useLocationStore()
-
-// Add computed properties for location results
-const showLocationResults = computed(() => 
-  props.searchMode === 'locations' && 
-  locationStore.userLocation &&
-  locationStore.hasSearched // Add this condition
-)
-
-// Update filteredResults computed to use nearbyWalks directly from locationStore
-const nearbyWalks = computed(() => locationStore.nearbyWalks || [])
-
-// Update resultCountText
-const resultCountText = computed(() => {
-  if (!locationStore.userLocation) return 'Select a location to find nearby walks'
-  const count = nearbyWalks.value.length
-  if (count === 0) return 'No walks found nearby'
-  return `${count} ${count === 1 ? 'walk' : 'walks'} within ${locationStore.formattedSearchRadius}`
-})
-
-// Add handler for walk selection
+// Walk selection handler with proper error handling
 const handleWalkSelected = (walk) => {
-  emit('walk-selected', walk)
+  if (!walk) return
+  
+  try {
+    // Close suggestions when a walk is selected
+    showSuggestions.value = false
+    selectedIndex.value = -1
+    
+    // Emit selection event
+    emit('walk-selected', walk)
+  } catch (error) {
+    console.error('Error handling walk selection:', error)
+  }
 }
 
-// Simplify the mounted and unmounted hooks
+// Add computed for location results visibility
+const showLocationResults = computed(() => 
+  props.searchMode === 'locations' && 
+  userLocation.value &&
+  hasLocationSearched.value
+)
+
+// resultCountText with more detailed information
+const resultCountText = computed(() => {
+  if (!userLocation.value) return 'Select a location to find nearby walks'
+  
+  const count = nearbyWalks.value?.length || 0
+  if (count === 0) return 'No walks found nearby'
+  
+  const radius = locationStore.formattedSearchRadius || '10km'
+  return `${count} ${count === 1 ? 'walk' : 'walks'} within ${radius}`
+})
+
+// Enhanced lifecycle hooks
+
+// Setup component on mount
 onMounted(() => {
+  // Clear any stale suggestions
   searchStore.clearLocationSuggestions()
+  
+  // Initialize with stored search mode if available
+  const savedMode = localStorage.getItem('searchMode')
+  if (savedMode && ['walks', 'locations'].includes(savedMode)) {
+    searchStore.setSearchMode(savedMode)
+  }
+  
+  // Focus search input on mobile devices only when not in a map view
+  const isMobileView = window.innerWidth < 768
+  if (isMobileView && !document.querySelector('.mapboxgl-map')) {
+    nextTick(() => {
+      searchInput.value?.focus()
+    })
+  }
+  
+  // Restore location if we're in location mode
+  if (props.searchMode === 'locations' && userLocation.value) {
+    handleLocationResult(userLocation.value)
+  }
 })
 
+// Clean up on unmount
 onBeforeUnmount(() => {
+  // Cancel any pending debounced operations
+  clearTimeout(inputDebounceTimer)
+  
+  // Clear suggestions to prevent memory leaks
   searchStore.clearLocationSuggestions()
 })
 
-// Update suggestions dropdown styles to be simpler
-const suggestionDropdownStyle = computed(() => ({
-  display: showSuggestions.value ? 'block' : 'none'
-}))
-
-// Add a watcher to handle search mode changes
+// Better watchers for search mode changes
 watch(
   () => props.searchMode,
   async (newMode, oldMode) => {
     if (newMode !== oldMode) {
       // Reset component state when switching modes
-      isFocused.value = false;
-      showSuggestions.value = false;
-      
-      // Clear input when switching to location search
-      if (newMode === 'locations') {
-        emit('update:modelValue', '');
-      }
-      
-      // Wait for DOM update before focusing
-      await nextTick();
-      
-      // Auto-focus the appropriate input
-      const input = document.querySelector(
-        newMode === 'locations' 
-          ? '.location-search-input' 
-          : '.walk-search-input'
-      );
-      if (input) {
-        input.focus();
-      }
-    }
-  }
-);
-
-// Add cleanup for component unmount
-const cleanup = () => {
-  isFocused.value = false;
-  showSuggestions.value = false;
-  emit('update:modelValue', '');
-};
-
-onBeforeUnmount(cleanup);
-
-// Add initialization in onMounted
-onMounted(async () => {
-  // Initialize with stored search mode
-  const savedMode = localStorage.getItem('searchMode')
-  if (savedMode && ['walks', 'locations'].includes(savedMode)) {
-    searchStore.setSearchMode(savedMode)
-  }
-
-  // If we're in location mode and have a saved location, restore it
-  if (props.searchMode === 'locations' && locationStore.userLocation) {
-    await nextTick()
-    handleLocationResult(locationStore.userLocation)
-  }
-})
-
-// Watch for search mode changes
-watch(() => searchStore.searchMode, (newMode) => {
-  localStorage.setItem('searchMode', newMode)
-})
-
-// Update the location result handling
-const handleLocationResult = async (location) => {
-  if (!location?.center || !Array.isArray(location.center)) {
-    console.error('Invalid location data:', location)
-    searchStore.setError('Invalid location data received')
-    return
-  }
-
-  try {
-    // Reset UI state
-    showSuggestions.value = false
-    isFocused.value = false
-
-    const coords = {
-      latitude: location.center[1],
-      longitude: location.center[0],
-      place_name: location.place_name || `${location.center[1]}, ${location.center[0]}`
-    }
-
-    // Set location in store first
-    await locationStore.setUserLocation(coords)
-
-    // Then emit event
-    emit('location-selected', {
-      ...location,
-      latitude: coords.latitude,
-      longitude: coords.longitude
-    })
-
-    // Reset UI
-    emit('update:modelValue', '')
-    searchStore.clearLocationSuggestions()
-
-  } catch (error) {
-    console.error('Error handling location selection:', error)
-    searchStore.setError('Failed to process location')
-  }
-}
-
-// Add view transition tracking
-const isTransitioning = ref(false)
-
-// Update search mode handling with better transitions
-const handleSearchModeChange = async (newMode) => {
-  isTransitioning.value = true
-  searchStore.setError(null)
-  
-  try {
-    await searchStore.setSearchMode(newMode)
-    
-    // Reset state when switching to location search
-    if (newMode === 'locations') {
-      emit('update:modelValue', '')
+      isFocused.value = false
       showSuggestions.value = false
       selectedIndex.value = -1
       
-      // If we have a saved location, restore it
-      if (locationStore.hasLocation) {
-        await nextTick()
-        handleLocationResult(locationStore.userLocation)
+      // Clear input when switching to location search
+      if (newMode === 'locations') {
+        emit('update:modelValue', '')
+        
+        // If we have a stored location, restore its display
+        if (userLocation.value) {
+          nextTick(() => {
+            handleLocationResult({
+              center: [userLocation.value.longitude, userLocation.value.latitude],
+              place_name: userLocation.value.place_name
+            })
+          })
+        }
+      }
+      
+      // Wait for DOM update before focusing
+      await nextTick()
+      
+      // Auto-focus the appropriate input
+      const input = newMode === 'locations'
+        ? document.querySelector('.location-search-input')
+        : searchInput.value
+        
+      if (input) {
+        input.focus()
       }
     }
-  } finally {
-    isTransitioning.value = false
   }
+)
+
+// Store search mode for persistence
+watch(
+  () => searchStore.searchMode,
+  (newMode) => {
+    if (['walks', 'locations'].includes(newMode)) {
+      localStorage.setItem('searchMode', newMode)
+    }
+  }
+)
+
+// Helper for location result handling
+const handleLocationResult = (location) => {
+  if (!location?.center || !Array.isArray(location.center)) {
+    return
+  }
+
+  // Reformat for consistency
+  const formattedLocation = {
+    center: location.center,
+    place_name: location.place_name || userLocation.value?.place_name,
+    latitude: location.center[1],
+    longitude: location.center[0]
+  }
+
+  // Update UI with location name
+  emit('update:modelValue', formattedLocation.place_name || '')
+  
+  // Emit location selected event
+  emit('location-selected', formattedLocation)
 }
-
-// Add initialization in onMounted
-onMounted(async () => {
-  // Initialize with stored search mode
-  const savedMode = localStorage.getItem('searchMode')
-  if (savedMode && ['walks', 'locations'].includes(savedMode)) {
-    await handleSearchModeChange(savedMode)
-  }
-})
-
-// Update search mode persistence
-watch(() => searchStore.searchMode, (newMode) => {
-  if (!isTransitioning.value) {
-    localStorage.setItem('searchMode', newMode)
-  }
-})
 </script>
 
 <style>

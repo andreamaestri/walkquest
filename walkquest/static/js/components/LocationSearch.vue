@@ -5,14 +5,14 @@
         @mb-result="handleGeocodeResult" @mb-error="handleGeocodeError" @mb-clear="handleGeocodeClear" />
     </div>
 
-    <div v-if="searchStore.error" class="search-error" role="alert">
+    <div v-if="searchError" class="search-error" role="alert">
       <Icon icon="mdi:alert-circle" class="error-icon" />
-      {{ searchStore.error }}
+      {{ searchError }}
     </div>
 
     <!-- Walks count header -->
-    <div v-if="locationStore.userLocation && hasSearched" class="walks-count-header" role="status">
-      <template v-if="walkStore.isLoading">
+    <div v-if="userLocation && hasSearched" class="walks-count-header" role="status">
+      <template v-if="walkLoading">
         <div class="loading-text">
           <div class="loading-spinner small"></div>
           Searching for walks...
@@ -20,12 +20,12 @@
       </template>
       <template v-else>
         <Icon icon="mdi:map-marker-radius" class="location-icon" />
-        {{ walkStore.walksCountText }}
+        {{ walksCountText }}
       </template>
     </div>
 
     <!-- Empty state -->
-    <div v-if="hasSearched && walkStore.isEmptyState && locationStore.userLocation && !walkStore.isLoading" 
+    <div v-if="hasSearched && isEmptyState && userLocation && !walkLoading" 
          class="empty-state" 
          role="status" 
          aria-label="No walks found">
@@ -43,7 +43,7 @@
     </div>
 
     <!-- Initial state -->
-    <div v-else-if="hasSearched && !locationStore.userLocation && !walkStore.isLoading" 
+    <div v-else-if="hasSearched && !userLocation && !walkLoading" 
          class="empty-state" 
          aria-label="Search prompt">
       <div class="empty-state-icon">
@@ -59,12 +59,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onBeforeUnmount, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onBeforeUnmount, onMounted, watch, nextTick, shallowRef } from 'vue'
 import { useSearchStore } from '../stores/searchStore'
 import { useLocationStore } from '../stores/locationStore'
 import { MapboxGeocoder } from '@studiometa/vue-mapbox-gl'
 import { Icon } from '@iconify/vue'
 import { useWalkStore } from '../stores/walkStore'
+import { storeToRefs } from 'pinia'
 
 // Props and emits
 const props = defineProps({
@@ -88,34 +89,44 @@ const props = defineProps({
 
 const emit = defineEmits(['update:value', 'location-selected'])
 
-// Stores
+// Stores with storeToRefs for better reactivity
 const searchStore = useSearchStore()
 const locationStore = useLocationStore()
 const walkStore = useWalkStore()
 
+// Extract reactive state from stores
+const { error: searchError } = storeToRefs(searchStore)
+const { userLocation, nearbyWalks, hasSearched } = storeToRefs(locationStore)
+const { isLoading: walkLoading, walksCountText, isEmptyState } = storeToRefs(walkStore)
+
 // State
 const isLoading = ref(false)
-const hasSearched = ref(false)  // This will now control empty state visibility
-let geocoderInstance = null
+let geocoderInstance = shallowRef(null)
+let debounceTimers = {}
 
-// Watch for map instance changes
-watch(() => props.mapInstance, async (map) => {
-  if (map && !geocoderInstance) {
-    await initGeocoder()
-  }
-}, { immediate: true })
-
-// Computed
+// Computed properties with storeToRefs
 const hasMapboxToken = computed(() => !!props.mapboxToken)
+
+// Create debounce helper with timer tracking
+function debounce(fn, delay, id = 'default') {
+  return (...args) => {
+    if (debounceTimers[id]) clearTimeout(debounceTimers[id])
+    
+    debounceTimers[id] = setTimeout(() => {
+      fn(...args)
+      delete debounceTimers[id]
+    }, delay)
+  }
+}
 
 // Geocoder configuration
 const geocoderProps = computed(() => ({
   accessToken: props.mapboxToken,
-  placeholder: 'Search locations...',
+  placeholder: 'Search walks nearby...',
   countries: 'GB',
   language: 'en-GB',
   limit: 5,
-  types: 'place,address,poi',
+  types: 'address,poi,locality,neighborhood',
   minLength: 2,
   flyTo: false, // Disable default flyTo since we handle it ourselves
   showResultMarkers: false,
@@ -133,128 +144,133 @@ const geocoderProps = computed(() => ({
   }
 }))
 
-// Enhanced geocoder initialization
+// Enhanced geocoder initialization with better error handling and lifecycle management
 const initGeocoder = async () => {
-  console.log('Initializing geocoder...', { mapInstance: props.mapInstance, token: props.mapboxToken })
-  try {
-    if (!props.mapboxToken) {
-      throw new Error('Mapbox token is required')
-    }
+  if (!props.mapboxToken) {
+    console.error('Missing Mapbox token')
+    searchStore.setError('Location search unavailable (missing API key)')
+    return
+  }
 
-    if (geocoderInstance) {
-      console.log('Geocoder already initialized')
+  try {
+    // Check if map instance is ready
+    if (!props.mapInstance) {
+      console.log('Map instance not ready, deferring initialization')
       return
     }
 
-    if (!props.mapInstance) {
-      console.log('Map instance not ready, waiting...')
-      return // Don't throw error, just return and wait for the watcher to call again
-    }
-
-    // Wait for the map to be fully loaded
-    if (!props.mapInstance.loaded()) {
-      console.log('Map not loaded, waiting for load event...')
+    // Ensure map is fully loaded before initializing geocoder
+    if (props.mapInstance && !props.mapInstance.loaded()) {
+      console.log('Map loading, waiting for load event')
       await new Promise(resolve => {
-        props.mapInstance.once('load', resolve)
+        const loadHandler = () => {
+          props.mapInstance.off('load', loadHandler)
+          resolve()
+        }
+        props.mapInstance.on('load', loadHandler)
       })
     }
 
-    console.log('Map is ready, completing geocoder initialization')
-    await nextTick()
+    // Clear any previous errors once initialization is successful
+    searchStore.setError(null)
     console.log('Geocoder initialization complete')
-
   } catch (error) {
     console.error('Geocoder initialization error:', error)
-    searchStore.setError('Location search is temporarily unavailable')
+    searchStore.setError('Location search temporarily unavailable')
   }
 }
 
-// Enhanced geocoder created handler
+// Enhanced geocoder created handler with proper cleanup
 const handleGeocodeCreated = (control) => {
-  console.log('Geocoder created')
   if (!control) {
-    console.error('Geocoder control not initialized')
+    console.error('Failed to create geocoder control')
     return
   }
   
-  geocoderInstance = control
+  // Store reference with proper cleanup
+  if (geocoderInstance.value) {
+    try {
+      geocoderInstance.value.clear()
+    } catch (e) {
+      console.warn('Error cleaning up previous geocoder instance:', e)
+    }
+  }
+  
+  geocoderInstance.value = control
   
   // Initialize with any existing location
-  if (locationStore.userLocation) {
-    const { latitude, longitude, place_name } = locationStore.userLocation
+  if (userLocation.value) {
     nextTick(() => {
-      console.log('Setting initial geocoder value')
-      geocoderInstance.setInput(place_name || `${latitude}, ${longitude}`)
+      setGeocoderInput(userLocation.value.place_name || 
+                      `${userLocation.value.latitude}, ${userLocation.value.longitude}`)
     })
   }
 }
 
-// Debounced location update
-const debouncedSetLocation = debounce(async (location) => {
+// Helper to safely set geocoder input
+const setGeocoderInput = (text) => {
+  if (!geocoderInstance.value) return
+  
   try {
+    geocoderInstance.value.setInput(text || '')
+  } catch (error) {
+    console.warn('Failed to set geocoder input:', error)
+  }
+}
+
+// Process geocode result with better validation
+const processGeocodeResult = async (result) => {
+  if (!result?.geometry?.coordinates || !Array.isArray(result.geometry.coordinates)) {
+    searchStore.setError('Invalid location data received')
+    return
+  }
+
+  const location = {
+    latitude: result.geometry.coordinates[1],
+    longitude: result.geometry.coordinates[0],
+    place_name: result.place_name,
+    properties: result.properties || {}
+  }
+
+  await handleLocationChange(location)
+}
+
+// Consolidated location change handler
+const handleLocationChange = async (location) => {
+  try {
+    // Update loading state
     isLoading.value = true
-    hasSearched.value = true // mark that a search has been initiated
     searchStore.setError(null)
     walkStore.setError(null)
     walkStore.setLoading(true)
-
-    // First set the location
+    // Record that a search has happened
+    locationStore.$patch({ hasSearched: true })
+    
+    // Set the user location in the store
     await locationStore.setUserLocation({
       latitude: location.latitude,
       longitude: location.longitude,
       place_name: location.place_name
     })
+    // Fetch nearby walks
+    await fetchNearbyWalks(location)
+    // Emit location selected event for map positioning
+    emit('location-selected', {
+      center: [location.longitude, location.latitude],
+      zoom: calculateZoomLevel(nearbyWalks.value?.length > 0 ? 
+                              nearbyWalks.value[0].distance : 5),
+      place_name: location.place_name,
+      pitch: 60,
+      bearing: 30,
+      duration: 2000,
+      essential: true
+    })
 
-    // Then fetch nearby walks
-    try {
-      const response = await fetch(`/api/walks/nearby?latitude=${location.latitude}&longitude=${location.longitude}&radius=5000&limit=50`)
-      if (!response.ok) {
-        throw new Error('Failed to fetch nearby walks')
-      }
-      const walks = await response.json()
-      
-      if (!Array.isArray(walks)) {
-        throw new Error('Invalid response format for walks')
-      }
-
-      if (walks.length === 0) {
-        walkStore.setWalks([])
-        walkStore.setError('No walks found in this area')
-      } else {
-        // Process walks to include distance from search location
-        const walksWithDistance = walks.map(walk => ({
-          ...walk,
-          distance: calculateDistance(
-            location.latitude,
-            location.longitude,
-            walk.latitude,
-            walk.longitude
-          )
-        }))
-        walkStore.setWalks(walksWithDistance)
-        walkStore.setError(null)
-      }
-
-      // Emit location selected event after successful walk fetch
-      emit('location-selected', {
-        center: [location.longitude, location.latitude],
-        zoom: 14,
-        place_name: location.place_name,
-        pitch: 60,
-        bearing: 30,
-        duration: 2000,
-        essential: true
-      })
-
-    } catch (error) {
-      console.error('Error fetching nearby walks:', error)
-      walkStore.setError('Unable to fetch nearby walks')
-      walkStore.setWalks([])
-      searchStore.setError('Unable to fetch nearby walks')
-    }
+    // Update input value for parent components
+    emit('update:value', location.place_name || '')
 
   } catch (error) {
-    console.error('Error setting location:', error)
+    console.error('Error handling location change:', error)
     searchStore.setError('Unable to process location')
     walkStore.setWalks([])
     walkStore.setError('Unable to process location')
@@ -262,7 +278,89 @@ const debouncedSetLocation = debounce(async (location) => {
     isLoading.value = false
     walkStore.setLoading(false)
   }
-}, 300)
+}
+
+// Fetch nearby walks with better error handling and retry logic
+const fetchNearbyWalks = async (location) => {
+  if (!location?.latitude || !location?.longitude) {
+    console.error('Invalid location for walk search')
+    return
+  }
+  
+  let retries = 2
+  let success = false
+  
+  while (retries >= 0 && !success) {
+    try {
+      const response = await fetch(
+        `/api/walks/nearby?` + 
+        new URLSearchParams({
+          latitude: location.latitude.toString(),
+          longitude: location.longitude.toString(),
+          radius: '10000', // 10km radius
+          limit: '50',
+          sort: 'distance',
+        })
+      )
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`)
+      }
+      
+      const walks = await response.json()
+      
+      if (!Array.isArray(walks)) {
+        throw new Error('Invalid response format for walks')
+      }
+      
+      if (walks.length === 0) {
+        walkStore.setWalks([])
+      } else {
+        // Process walks to include distance and sort by proximity
+        const processedWalks = walks
+          .map(walk => ({
+            ...walk,
+            distance: calculateDistance(
+              location.latitude,
+              location.longitude,
+              walk.latitude,
+              walk.longitude
+            )
+          }))
+          .sort((a, b) => a.distance - b.distance) // Sort by distance
+          
+        walkStore.setWalks(processedWalks)
+        
+        // Update search radius based on the furthest walk
+        const maxDistance = Math.max(...processedWalks.map(w => w.distance || 0))
+        walkStore.setSearchRadius(maxDistance)
+      }
+      
+      success = true
+    } catch (error) {
+      console.error(`Error fetching nearby walks (retry ${2 - retries}/2):`, error)
+      retries--
+      
+      if (retries < 0) {
+        walkStore.setError('Unable to fetch nearby walks')
+        walkStore.setWalks([])
+      } else {
+        // Wait before retry
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      }
+    }
+  }
+}
+
+// Add helper function to calculate appropriate zoom level based on distance
+function calculateZoomLevel(distance) {
+  // Convert distance from km to determine appropriate zoom
+  if (distance <= 1) return 14 // Very close
+  if (distance <= 3) return 13
+  if (distance <= 5) return 12
+  if (distance <= 10) return 11
+  return 10 // Default for larger distances
+}
 
 // Add helper function to calculate distance
 function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -282,108 +380,123 @@ function deg2rad(deg) {
   return deg * (Math.PI/180);
 }
 
-// Event handlers
+// Clear search state with proper store coordination
+const clearSearchState = () => {
+  locationStore.clearSearched()
+  walkStore.clearWalks()
+  locationStore.clearLocation()
+  searchStore.setError(null)
+  walkStore.setError(null)
+  
+  // Clear geocoder input safely
+  if (geocoderInstance.value) {
+    try {
+      geocoderInstance.value.clear()
+    } catch (e) {
+      console.warn('Error clearing geocoder:', e)
+    }
+  }
+  
+  // Emit value cleared event
+  emit('update:value', '')
+}
+
+// Event handlers with improved error handling
 const handleGeocodeResult = (event) => {
-  console.log('Geocode result received')
   if (!event?.result) {
     searchStore.setError('Please select a valid location')
     return
   }
-  processGeocodeResult(event.result)
+  
+  processGeocodeResult(event.result).catch(error => {
+    console.error('Error processing geocode result:', error)
+    searchStore.setError('Failed to process location')
+  })
 }
 
 const handleGeocodeError = (error) => {
   console.error('Geocoding error:', error)
   searchStore.setError('Location search failed')
+  isLoading.value = false
 }
 
+// Update the handleGeocodeClear method with store coordination
 const handleGeocodeClear = () => {
-  locationStore.clearLocation()
-  walkStore.clearWalks()
-  hasSearched.value = false // Reset search state
-  if (geocoderInstance) {
-    geocoderInstance.clear()
-  }
+  clearSearchState()
+  emit('location-selected', null) // Notify parent that location was cleared
 }
 
-// Lifecycle hooks and watchers
+// Lifecycle hooks with proper cleanup
 onMounted(async () => {
-  console.log('LocationSearch mounted')
-  // Don't try to initialize immediately, let the watcher handle it
-})
-
-// Watch for map instance changes
-watch(
-  () => props.mapInstance,
-  async (map, oldMap) => {
-    console.log('Map instance changed:', { map, oldMap })
-    if (map && !geocoderInstance) {
-      await initGeocoder()
-    }
-  },
-  { immediate: true }
-)
-
-// Watch for mapbox token changes
-watch(
-  () => props.mapboxToken,
-  async (token, oldToken) => {
-    console.log('Mapbox token changed:', { token: !!token, oldToken: !!oldToken })
-    if (token && props.mapInstance && !geocoderInstance) {
-      await initGeocoder()
-    }
-  },
-  { immediate: true }
-)
-
-// Watch for changes in userLocation
-watch(
-  () => locationStore.userLocation,
-  (userLocation) => {
-    if (userLocation && geocoderInstance) {
-      console.log('Updating geocoder with new location')
-      nextTick(() => {
-        geocoderInstance.setInput(
-          userLocation.place_name || 
-          `${userLocation.latitude}, ${userLocation.longitude}`
-        )
-      })
-    }
-  },
-  { immediate: true }
-)
-
-// Watch for errors to reinitialize if needed
-watch(() => searchStore.error, async (error) => {
-  if (error) {
-    console.log('Error detected, attempting geocoder recovery')
-    await nextTick()
-    if (props.mapInstance && props.mapboxToken) {
-      await initGeocoder()
-    }
+  if (props.mapInstance && props.mapboxToken) {
+    await initGeocoder()
+  }
+  
+  // If we already have a location stored, restore the geocoder state
+  if (userLocation.value && geocoderInstance.value) {
+    nextTick(() => {
+      setGeocoderInput(userLocation.value.place_name || 
+                      `${userLocation.value.latitude}, ${userLocation.value.longitude}`)
+    })
   }
 })
 
-// Cleanup
+// Clean up all resources on unmount
 onBeforeUnmount(() => {
-  if (geocoderInstance) {
+  // Clear all debounce timers
+  Object.values(debounceTimers).forEach(clearTimeout)
+  debounceTimers = {}
+  
+  // Clean up geocoder instance
+  if (geocoderInstance.value) {
     try {
-      geocoderInstance.clear()
-      geocoderInstance = null
+      geocoderInstance.value.clear()
+      geocoderInstance.value = null
     } catch (e) {
       console.error('Error cleaning up geocoder:', e)
     }
   }
 })
 
-// Helper function
-function debounce(fn, delay) {
-  let timeoutId
-  return (...args) => {
-    clearTimeout(timeoutId)
-    timeoutId = setTimeout(() => fn.apply(null, args), delay)
+// Watchers with proper reactive dependencies
+
+// Watch for map instance changes
+watch(() => props.mapInstance, async (map) => {
+  if (map && props.mapboxToken && !geocoderInstance.value) {
+    await initGeocoder()
   }
-}
+}, { immediate: true })
+
+// Watch for mapbox token changes
+watch(() => props.mapboxToken, async (token) => {
+  if (token && props.mapInstance && !geocoderInstance.value) {
+    await initGeocoder()
+  }
+}, { immediate: true })
+
+// Watch for changes in userLocation for restoring geocoder state
+watch(() => userLocation.value, (location) => {
+  if (location && geocoderInstance.value) {
+    nextTick(() => {
+      setGeocoderInput(location.place_name || `${location.latitude}, ${location.longitude}`)
+    })
+  }
+}, { immediate: true })
+
+// Watch for search mode changes in searchStore
+watch(() => searchStore.searchMode, (newMode) => {
+  if (newMode !== 'locations') {
+    clearSearchState()
+  }
+})
+
+// Watch for error changes to attempt geocoder recovery
+watch(() => searchError.value, async (error) => {
+  if (error && props.mapInstance && props.mapboxToken && !geocoderInstance.value) {
+    // Try to recover from error by reinitializing
+    await initGeocoder()
+  }
+})
 </script>
 
 <style>
@@ -408,16 +521,16 @@ function debounce(fn, delay) {
 
 .mapboxgl-ctrl-geocoder {
   font-size: 16px;
-  line-height: 24px;
+  line-height: 18px;
   font-family: "Roboto", "Segoe UI", system-ui, -apple-system;
   position: relative;
   background-color: rgb(var(--md-sys-color-surface));
   width: 100%;
   min-width: 240px;
   z-index: 1;
-  border-radius: 12px;
+  border-radius: 24px;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: var(--md-sys-elevation-1);
+  box-shadow: var(--md-sys-elevation-0);
 }
 
 .mapboxgl-ctrl-geocoder--input {
@@ -426,9 +539,9 @@ function debounce(fn, delay) {
   border: 0;
   background-color: transparent;
   margin: 0;
-  height: 50px;
+  height: 40px;
   color: rgb(var(--md-sys-color-on-surface));
-  padding: 6px 45px 6px 44px;
+  padding: 2px 45px 2px 44px;
   text-overflow: ellipsis;
   white-space: nowrap;
   overflow: hidden;
@@ -455,11 +568,13 @@ function debounce(fn, delay) {
 
 .mapboxgl-ctrl-geocoder .mapboxgl-ctrl-geocoder--icon {
   position: absolute;
-  left: 10px;
+  left: 15px;
   top: 50%;
   transform: translateY(-50%);
-  width: 24px;
-  height: 24px;
+  color: rgb(var(--md-sys-color-on-surface));
+  fill: rgb(var(--md-sys-color-on-surface))!important;
+  width: 18px;
+  height: 18px;
   z-index: 2;
 }
 
@@ -467,8 +582,9 @@ function debounce(fn, delay) {
 .mapboxgl-ctrl-geocoder .mapboxgl-ctrl-geocoder--icon-close {
   right: 8px;
   left: auto;
-  width: 32px;
-  height: 32px;
+  width: 18px;
+  height: 18px;
+  color: rgb(var(--md-sys-color-on-surface))!important;
   padding: 4px;
   margin-right: 4px;
   border-radius: 16px;
@@ -488,7 +604,7 @@ function debounce(fn, delay) {
 
 .mapboxgl-ctrl-geocoder,
 .mapboxgl-ctrl-geocoder .suggestions {
-  box-shadow: var(--md-sys-elevation-2);
+  box-shadow: var(--md-sys-elevation-0);
 }
 
 /* Collapsed */

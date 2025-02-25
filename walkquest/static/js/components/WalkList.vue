@@ -1,6 +1,6 @@
 <template>
   <div class="walk-list-container" :class="{ 'is-compact': isCompact }" ref="listContainer">
-    <div class="walks-section" :class="{ 'location-mode': searchStore.searchMode === 'locations' }">
+    <div class="walks-section" :class="{ 'location-mode': searchMode === 'locations' }">
       <DynamicScroller
         ref="scroller"
         class="scroller"
@@ -38,7 +38,7 @@
                 :is-selected="selectedWalkId === item.id"
                 @walk-selected="handleWalkSelection"
               >
-                <template v-if="searchStore.searchMode === 'locations'" #meta>
+                <template v-if="searchMode === 'locations'" #meta>
                   <div class="distance-badge" :title="'Distance from selected location'">
                     <Icon icon="mdi:map-marker-distance" />
                     {{ locationStore.getFormattedDistance(item.id) }}
@@ -51,12 +51,12 @@
       </DynamicScroller>
 
       <div 
-        v-if="searchStore.searchMode === 'locations' && !locationStore.userLocation || (!filteredResults.length && !searchStore.error)" 
+        v-if="searchMode === 'locations' && !userLocation || (!filteredResults.length && !searchError)" 
         class="empty-state"
         role="status"
       >
-        <template v-if="searchStore.searchMode === 'locations'">
-          <div v-if="locationStore.userLocation && !locationStore.nearbyWalks.length" class="empty-message">
+        <template v-if="searchMode === 'locations'">
+          <div v-if="userLocation && !nearbyWalks.length" class="empty-message">
             <Icon icon="mdi:map-marker-off" class="empty-icon" />
             <span>No walks found near this location</span>
           </div>
@@ -66,7 +66,7 @@
           </div>
         </template>
         <template v-else>
-          <div v-if="searchStore.searchQuery" class="empty-message">
+          <div v-if="searchQuery" class="empty-message">
             <Icon icon="mdi:magnify-close" class="empty-icon" />
             <span>No walks found matching your search</span>
           </div>
@@ -94,13 +94,15 @@
 </template>
 
 <script setup>
-import { computed, ref, nextTick, watch } from 'vue'
+import { computed, ref, nextTick, watch, shallowRef, onMounted, onBeforeUnmount } from 'vue'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import { useMap } from '../composables/useMap'
 import WalkCard from './WalkCard.vue'
 import SearchView from './SearchView.vue'
 import { useLocationStore } from '../stores/locationStore'
 import { useSearchStore } from '../stores/searchStore'
+import { Icon } from '@iconify/vue'
+import { storeToRefs } from 'pinia'
 
 const props = defineProps({
   walks: {
@@ -119,20 +121,38 @@ const props = defineProps({
 
 const emit = defineEmits(['walk-selected', 'location-selected'])
 
-const scroller = ref(null)
+// Use shallowRef for better performance with the scroller
+const scroller = shallowRef(null)
+const listContainer = shallowRef(null)
+
+// Initialize stores with storeToRefs for reactivity
 const searchStore = useSearchStore()
 const locationStore = useLocationStore()
 const { flyToLocation } = useMap()
 
-const filteredResults = computed(() => {
-  if (searchStore.searchMode === 'locations' && locationStore.userLocation) {
-    return locationStore.nearbyWalks
+// Extract reactive state from stores
+const { searchQuery, searchMode, error: searchError } = storeToRefs(searchStore)
+const { userLocation, nearbyWalks } = storeToRefs(locationStore)
+
+// Use shallowRef to optimize large data structures
+const filteredResults = shallowRef([])
+
+// More efficient computation of filtered results
+const updateFilteredResults = () => {
+  let results = props.walks
+
+  if (searchMode.value === 'locations' && userLocation.value) {
+    filteredResults.value = nearbyWalks.value
+    return
   }
   
-  const query = searchStore.searchQuery?.toLowerCase().trim()
-  if (!query) return props.walks
+  const query = searchQuery.value?.toLowerCase().trim()
+  if (!query) {
+    filteredResults.value = results
+    return
+  }
 
-  return props.walks.filter(walk => {
+  filteredResults.value = results.filter(walk => {
     const searchableText = [
       walk.walk_name,
       walk.title,
@@ -142,18 +162,28 @@ const filteredResults = computed(() => {
     
     return searchableText.includes(query)
   })
-})
-
-const searchMode = ref('walks')
-
-const handleLocationSelected = async (location) => {
-  // Update search mode and location
-  searchStore.setSearchMode('locations')
-  await locationStore.setUserLocation(location)
-  emit('location-selected', location)
 }
 
-const handleSearchModeChange = (mode) => {
+// Handle location selection with improved error handling
+const handleLocationSelected = async (location) => {
+  if (!location) {
+    console.warn('Invalid location data received')
+    return
+  }
+  
+  try {
+    // Update search mode and location
+    searchStore.setSearchMode('locations')
+    await locationStore.setUserLocation(location)
+    emit('location-selected', location)
+  } catch (error) {
+    console.error('Error setting location:', error)
+    searchStore.setError('Unable to process location')
+  }
+}
+
+// Debounced search mode change for better UX
+const handleSearchModeChange = debounce((mode) => {
   searchStore.setSearchMode(mode)
   // Clear any existing search when switching modes
   clearFilters()
@@ -164,50 +194,56 @@ const handleSearchModeChange = (mode) => {
       searchInput.focus()
     }
   })
-}
+}, 150)
 
+// Optimized scroller update with microtask timing
 const handleScrollerUpdate = () => {
-  if (scroller.value?.updateSize) {
-    nextTick(async () => {
-      await scroller.value.updateSize()
-    })
-  }
-}
-
-const handleWalkSelection = async (walk) => {
-  if (walk?.latitude && walk?.longitude) {
-    await flyToLocation({
-      center: [walk.longitude, walk.latitude],
-      zoom: 14,
-      pitch: 45
-    })
-  }
-  emit('walk-selected', walk)
-}
-
-// Single watcher for filteredResults
-watch(filteredResults, () => {
-  nextTick(() => {
-    handleScrollerUpdate()
+  if (!scroller.value?.updateSize) return
+  
+  // Use microtask for better performance than nextTick
+  queueMicrotask(() => {
+    scroller.value.updateSize()
   })
-})
+}
 
-// Update the search mode watcher
-watch(searchMode, (newMode) => {
-  handleSearchModeChange(newMode)
-})
+// Walk selection handler with improved error handling
+const handleWalkSelection = async (walk) => {
+  if (!walk) return
+  
+  try {
+    if (walk.latitude && walk.longitude) {
+      await flyToLocation({
+        center: [walk.longitude, walk.latitude],
+        zoom: 14,
+        pitch: 45
+      })
+    }
+    emit('walk-selected', walk)
+  } catch (error) {
+    console.error('Error handling walk selection:', error)
+  }
+}
 
-// Add these computed properties after the existing ones
+// Helper function for debounced operations
+function debounce(fn, delay) {
+  let timer
+  return function(...args) {
+    clearTimeout(timer)
+    timer = setTimeout(() => fn.apply(this, args), delay)
+  }
+}
+
+// Improved computed properties
 const showFilterStatus = computed(() => {
-  return searchStore.searchQuery || hasFilters.value || maxDistance.value
+  return searchQuery.value || hasFilters.value || maxDistance.value
 })
 
 const hasFilters = computed(() => {
-  return searchStore.searchMode === 'locations' && locationStore.userLocation
+  return searchMode.value === 'locations' && userLocation.value
 })
 
 const maxDistance = computed(() => {
-  return searchStore.searchMode === 'locations' ? locationStore.searchRadius : null
+  return searchMode.value === 'locations' ? locationStore.searchRadius : null
 })
 
 const resultCountText = computed(() => {
@@ -215,7 +251,7 @@ const resultCountText = computed(() => {
   return `${count} ${count === 1 ? 'walk' : 'walks'} found`
 })
 
-// Add this helper method
+// Helper method
 const formatDistance = (distance) => {
   if (!distance) return ''
   return `${distance / 1000}km radius`
@@ -226,14 +262,68 @@ const clearFilters = () => {
   locationStore.clearLocation()
 }
 
-// Add transition handling for search mode changes
-watch(() => searchStore.searchMode, (newMode) => {
+// Better lifecycle management
+
+// Initialize components and state
+onMounted(() => {
+  // Initial filtered results
+  updateFilteredResults()
+  
+  // Setup ResizeObserver for responsive updates
+  const resizeObserver = new ResizeObserver(debounce(() => {
+    handleScrollerUpdate()
+  }, 100))
+  
+  if (listContainer.value) {
+    resizeObserver.observe(listContainer.value)
+  }
+  
+  // Clean up on unmount
+  onBeforeUnmount(() => {
+    resizeObserver.disconnect()
+  })
+})
+
+// More efficient watchers
+
+// Watch for changes to walks props
+watch(() => props.walks, () => {
+  updateFilteredResults()
+  handleScrollerUpdate()
+}, { immediate: true })
+
+// Watch for query changes with debounce
+watch(searchQuery, debounce(() => {
+  updateFilteredResults()
+  handleScrollerUpdate()
+}, 100))
+
+// Watch for search mode changes
+watch(searchMode, (newMode) => {
   // Reset scroll position when changing modes
+  updateFilteredResults()
   nextTick(() => {
     if (scroller.value?.$el) {
       scroller.value.$el.scrollTop = 0
+      handleScrollerUpdate()
     }
   })
+})
+
+// Watch for location changes
+watch(userLocation, () => {
+  if (searchMode.value === 'locations') {
+    updateFilteredResults()
+    handleScrollerUpdate()
+  }
+})
+
+// Watch for nearby walks changes
+watch(nearbyWalks, () => {
+  if (searchMode.value === 'locations') {
+    updateFilteredResults()
+    handleScrollerUpdate()
+  }
 })
 </script>
 

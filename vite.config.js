@@ -18,6 +18,6 @@ export default defineConfig({
     emptyOutDir: true
   },
   server: {
-    origin: 'http://localhost:5173'
+    origin: process.env.VITE_DEV_SERVER_URL || 'http://localhost:5174'
   }
 })
