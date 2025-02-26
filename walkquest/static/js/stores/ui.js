@@ -50,12 +50,14 @@ export const useUiStore = defineStore('ui', () => {
 
   // Update handleWalkSelected to be more explicit
   const handleWalkSelected = () => {
-    showSidebar.value = false
+    showSidebar.value = true // Keep sidebar visible
     showDrawer.value = true
+    console.log('handleWalkSelected called - showing drawer:', showDrawer.value)
   }
 
   const handleWalkClosed = () => {
     showDrawer.value = false
+    console.log('handleWalkClosed called - hiding drawer:', showDrawer.value) 
     showSidebar.value = !isMobile.value
   }
 
@@ -66,7 +68,7 @@ export const useUiStore = defineStore('ui', () => {
   const initializeResponsiveState = () => {
     const checkMobile = () => {
       isMobile.value = window.innerWidth < 768
-      // Only set showSidebar if no walk is selected
+      // Only set showSidebar if no walk is selected and drawer is not showing
       if (!window.location.search.includes('walkId')) {
         showSidebar.value = !isMobile.value
       }

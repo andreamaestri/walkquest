@@ -1,6 +1,19 @@
 <template>
-  <!-- Remove the outer transition and backdrop -->
-  <div class="flex flex-col h-full">
+  <!-- Drawer with sliding animation, positioned to dock next to sidebar -->
+  <aside 
+    ref="drawerRef" 
+    class="walk-drawer flex flex-col h-full fixed top-0 bottom-0 max-w-full z-[40] pointer-events-auto drawer-transition"
+    :class="{ 'is-open': isOpen }"
+    :style="{
+      left: `var(--md-sys-sidebar-collapsed)`,
+      transform: isOpen ? 'translateX(0)' : 'translateX(-100%)'
+    }"
+  >
+    <!-- Mapbox logo position adjuster -->
+    <div 
+      v-if="isOpen" 
+      class="mapboxgl-logo-adjuster"
+    ></div>
     <!-- Header -->
     <header ref="headerRef" 
             class="sticky top-0 z-10 flex items-center min-h-[64px] px-4 bg-surface-container-highest"
@@ -339,11 +352,11 @@
         </div>
       </div>
     </div>
-  </div>
+  </aside>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { animate } from 'motion'
 import { Icon } from '@iconify/vue'
 
@@ -351,6 +364,14 @@ const props = defineProps({
   walk: {
     type: Object,
     required: true
+  },
+  isOpen: {
+    type: Boolean,
+    default: false
+  },
+  sidebarWidth: {
+    type: Number,
+    default: 80 // Default collapsed sidebar width (--md-sys-sidebar-collapsed)
   }
 })
 
@@ -366,6 +387,9 @@ const sectionRefs = ref([])
 
 // New ref for recommended footwear details element
 const footwearDetailsRef = ref(null)
+
+// Ref for tracking mapboxgl logo element
+const mapboxLogoElement = ref(null)
 
 // Enhanced animation configurations
 const animationConfigs = {
@@ -389,6 +413,57 @@ const animationConfigs = {
     easing: [0.22, 1, 0.36, 1],
     duration: 0.6
   }
+}
+
+// Initialize drawer position and animation
+onMounted(() => {
+  // Set initial position
+  if (drawerRef.value) {
+    drawerRef.value.style.width = '320px'
+  }
+  
+  // Find mapboxgl logo element
+  mapboxLogoElement.value = document.querySelector('.mapboxgl-ctrl-logo')
+  
+  // Adjust mapbox logo position when drawer opens/closes
+  updateMapboxLogoPosition()
+  
+  // Add resize listener to handle responsive adjustments
+  window.addEventListener('resize', updateMapboxLogoPosition)
+})
+
+// Clean up event listeners
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', updateMapboxLogoPosition)
+})
+
+// Watch for changes in isOpen prop to trigger animations
+watch(() => props.isOpen, (newValue) => {
+  if (newValue) {
+    openDrawer()
+  } else {
+    closeDrawer()
+  }
+}, { immediate: true })
+
+// Function to open drawer with animation
+function openDrawer() {
+  if (!drawerRef.value) return
+  
+  // Animate drawer sliding in (now handled by CSS transitions through :style binding)
+  
+  // Update mapbox logo position
+  updateMapboxLogoPosition()
+}
+
+// Function to close drawer with animation
+function closeDrawer() {
+  if (!drawerRef.value) return
+  
+  // Animation now handled by CSS transitions through :style binding
+  
+  // Reset mapbox logo position
+  updateMapboxLogoPosition(true)
 }
 
 // Animation helper specifically for drawer elements
@@ -434,6 +509,31 @@ async function runAnimationSequence(elements, animations, onComplete) {
   
   await Promise.all(promises);
   onComplete?.();
+}
+
+// Function to update mapboxgl-ctrl-logo position
+function updateMapboxLogoPosition(isClosing = false) {
+  if (!mapboxLogoElement.value) {
+    mapboxLogoElement.value = document.querySelector('.mapboxgl-ctrl-logo')
+    if (!mapboxLogoElement.value) return
+  }
+  
+  // Calculate the total width of sidebar + drawer
+  const sidebarWidth = props.sidebarWidth || 80
+  const drawerWidth = drawerRef.value ? drawerRef.value.offsetWidth : 320
+  const totalWidth = props.isOpen && !isClosing ? sidebarWidth + drawerWidth : sidebarWidth
+  
+  // Adjust logo position based on sidebar + drawer width
+  if (props.isOpen && !isClosing) {
+    // Move logo to the right of the drawer + sidebar
+    mapboxLogoElement.value.style.left = `${totalWidth + 10}px`
+    mapboxLogoElement.value.style.right = 'auto'
+    mapboxLogoElement.value.style.transition = 'left 0.3s ease'
+  } else {
+    // Position logo to the right of sidebar when drawer is closed
+    mapboxLogoElement.value.style.left = `${sidebarWidth + 10}px`
+    mapboxLogoElement.value.style.right = 'auto'
+  }
 }
 
 // Parse highlights with proper null checks
@@ -596,7 +696,93 @@ function toggleFootwearDetails(e) {
 <style scoped>
 @import "tailwindcss";
 
-/* Add hardware acceleration hints for smoother animations */
+/* Drawer styles adjusted for docking next to sidebar */
+.walk-drawer {
+  width: 320px;
+  will-change: transform;
+  backface-visibility: hidden !important;
+  z-index: 39 !important; /* Ensure drawer stays below navigation rail */
+  box-shadow: var(--md-sys-elevation-level3);
+  background-color: rgb(var(--md-sys-color-surface));
+  transition: transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+  pointer-events: auto !important;
+  overflow-x: hidden;
+  overflow-y: auto;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: var(--md-sys-sidebar-collapsed); /* Position relative to collapsed sidebar */
+  transform: translateX(-100%); /* Start hidden */
+}
+
+.drawer-transition {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: left center;
+}
+
+/* Ensure proper positioning when drawer is open */
+.walk-drawer.is-open {
+  transform: translateX(0);
+  margin-left: var(--md-sys-sidebar-collapsed); /* Add margin to prevent overlap */
+}
+
+/* Navigation rail styles for proper z-index and visibility */
+.m3-navigation-rail {
+  z-index: 45 !important; /* Ensure rail stays above drawer */
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+
+/* Enhanced header styling */
+.walk-drawer .sticky {
+  position: sticky;
+  top: 0;
+  background-color: rgb(var(--md-sys-color-surface));
+  z-index: 10;
+  border-bottom: 1px solid rgb(var(--md-sys-color-outline-variant));
+}
+
+/* Ensure proper stacking context */
+.walk-drawer {
+  isolation: isolate;
+  transform-style: preserve-3d;
+  perspective: 1000px;
+}
+
+/* Ensure mapboxgl logo adjusts properly */
+.mapboxgl-ctrl-logo {
+  position: fixed !important;
+  bottom: 10px !important;
+  z-index: 10000 !important;
+  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Ensure mapboxgl logo is always visible */
+.mapboxgl-ctrl-logo {
+  position: fixed !important;
+  bottom: 10px !important;
+  z-index: 10000 !important;
+  transition: left 0.3s ease, right 0.3s ease;
+}
+
+/* Adjust drawer position to account for sidebar */
+.walk-drawer.is-open {
+  transform: translateX(0) !important;
+}
+
+/* Ensure mapboxgl logo is always visible */
+.mapboxgl-ctrl-logo {
+  position: fixed !important;
+  bottom: 10px !important;
+  z-index: 10000 !important;
+  transition: left 0.3s ease, right 0.3s ease;
+}
+
+/* Adjuster for mapbox logo */
+.mapboxgl-logo-adjuster {
+  display: none; /* Hidden but used as a reference */
+}
+
 .flex-col {
   transform: translateZ(0);
   backface-visibility: hidden;

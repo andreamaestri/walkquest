@@ -128,6 +128,9 @@ import { useMap } from '../composables/useMap'
 import { Icon } from '@iconify/vue'
 import { storeToRefs } from 'pinia'
 
+// Add walkStore reference to access searchRadius
+import { useWalkStore } from '../stores/walkStore'
+
 // Add debounce helper at the top level
 function debounce(fn, delay) {
   let timeoutId
@@ -161,6 +164,7 @@ const emit = defineEmits(['update:search-mode', 'location-selected', 'walk-selec
 const searchStore = useSearchStore()
 const walksStore = useWalksStore()
 const locationStore = useLocationStore()
+const walkStore = useWalkStore() // Add walkStore initialization
 const mapTools = useMap()
 const { mapInstance } = mapTools
 
@@ -173,7 +177,8 @@ const {
   suggestions: storeSuggestions 
 } = storeToRefs(searchStore)
 
-const { userLocation, nearbyWalks, hasSearched: hasLocationSearched, searchRadius } = storeToRefs(locationStore)
+const { userLocation, nearbyWalks, hasSearched: hasLocationSearched } = storeToRefs(locationStore)
+const { searchRadius } = storeToRefs(walkStore) // Get searchRadius from walkStore instead
 
 // References with appropriate performance optimization
 const searchInput = shallowRef(null)
@@ -439,7 +444,7 @@ const resultCountText = computed(() => {
   const count = nearbyWalks.value?.length || 0
   if (count === 0) return 'No walks found nearby'
   
-  // Format the radius directly using the utility function
+  // When using storeToRefs, all store properties become refs with .value
   const radius = searchRadius.value ? formatDistance(searchRadius.value) : '10km'
   return `${count} ${count === 1 ? 'walk' : 'walks'} within ${radius}`
 })

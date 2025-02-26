@@ -1,4 +1,4 @@
-import { ref, shallowRef } from 'vue';
+import { ref, shallowRef, nextTick } from 'vue';
 
 export function useMap() {
   const mapInstance = shallowRef(null);
@@ -29,7 +29,7 @@ export function useMap() {
         callback = null
       } = options;
       
-      // Fly to the specified location
+      // Fly to the specified location with a delay to prevent state issues
       await mapInstance.value.flyTo({
         center,
         zoom,
@@ -39,14 +39,20 @@ export function useMap() {
         essential
       });
       
-      // Wait for moveend event before executing callback
+      // Use a promise to handle the moveend event
       if (typeof callback === 'function') {
-        const onMoveEnd = () => {
-          mapInstance.value.off('moveend', onMoveEnd);
-          callback();
-        };
-        
-        mapInstance.value.once('moveend', onMoveEnd);
+        return new Promise((resolve) => {
+          const onMoveEnd = () => {
+            // Remove the event listener to prevent memory leaks
+            mapInstance.value.off('moveend', onMoveEnd);
+            // Use nextTick to ensure Vue has updated the DOM
+            nextTick(() => {
+              callback();
+              resolve();
+            });
+          };
+          mapInstance.value.once('moveend', onMoveEnd);
+        });
       }
     } catch (error) {
       console.error('Error flying to location:', error);

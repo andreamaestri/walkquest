@@ -1,6 +1,5 @@
 <template>
   <div
-    v-show="visible"
     ref="sidebarRef"
     class="m3-navigation-rail"
     :class="[
@@ -157,8 +156,7 @@ const searchMode = computed(() => searchStore.searchMode);
 const visible = computed(() => {
   return !uiStore.isMobile && 
          uiStore.showSidebar && 
-         !uiStore.fullscreen && 
-         !props.selectedWalkId;
+         !uiStore.fullscreen;
 });
 
 /**
@@ -349,15 +347,23 @@ onMounted(() => {
 
 <style scoped>
 /* Navigation rail styles */
-.m3-navigation-rail {
+.m3-navigation-rail { 
   position: fixed;
   left: 0;
   top: 0;
   bottom: 0;
-  z-index: 40;
+  z-index: 45 !important; /* Keep navigation rail above drawer */
   background: rgb(var(--md-sys-color-surface));
+  box-shadow: var(--md-sys-elevation-level2);
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  pointer-events: auto;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  width: var(--md-sys-sidebar-collapsed);
+}
+
+/* Add interaction styles for when drawer is open */
+.m3-navigation-rail.is-collapsed {
+  box-shadow: none; /* Remove shadow when drawer is open */
 }
 
 .m3-rail-content-area {

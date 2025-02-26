@@ -4,7 +4,7 @@
     <NavigationRail
       :walks="walks"
       :selected-walk-id="selectedWalkId"
-      :filtered-walks="filteredWalks"
+      :filtered-walks="filteredWalks" 
       @walk-selected="handleWalkSelection"
       @fab-click="handleFabClick"
       @walk-expanded="handleWalkExpanded"
@@ -45,16 +45,15 @@
 
     <!-- Walk Drawer -->
     <Teleport to="body">
-      <Transition :css="false" @enter="onDrawerEnter" @leave="onDrawerLeave">
-        <WalkDrawer
-          v-if="selectedWalkId"
-          :walk="selectedWalk"
-          ref="walkDrawerRef"
-          @close="handleDrawerClose"
-          @start-walk="handleStartWalk"
-          class="drawer"
+      <WalkDrawer v-show="selectedWalkId && uiStore.showDrawer"
+        v-if="selectedWalkId"
+        :walk="selectedWalk"
+        :is-open="uiStore.showDrawer"
+        :sidebar-width="sidebarWidth"
+        ref="walkDrawerRef"
+        @close="handleDrawerClose"
+        @start-walk="handleStartWalk"
         />
-      </Transition>
     </Teleport>
   </div>
 </template>
@@ -124,6 +123,8 @@ const walkDrawerRef = ref(null);
 const expandedWalkIds = ref([]);
 const isExpanded = ref(localStorage.getItem("sidebarExpanded") === "true");
 const drawerAnimating = ref(false);
+const drawerMounted = ref(false);
+const sidebarWidth = ref(80); // Default collapsed sidebar width (--md-sys-sidebar-collapsed)
 
 /**
  * Extract reactive state from stores using storeToRefs
@@ -194,80 +195,7 @@ const selectedWalkId = computed(() => route.query.walkId);
  * Computed property for drawer open state
  * Combines selected walk and drawer visibility
  */
-const isDrawerOpen = computed(() => selectedWalk.value && uiStore.showDrawer);
-
-/**
- * Enhanced drawer enter animation
- * Uses motion library for fluid animations with proper physics
- */
-const onDrawerEnter = async (el, onComplete) => {
-  drawerAnimating.value = true;
-
-  try {
-    // Apply initial styles
-    el.style.opacity = '0';
-    el.style.transform = 'translateX(100%)';
-    el.style.transformOrigin = 'right center';
-    
-    // Force reflow
-    el.offsetHeight;
-    
-    // Animate drawer with spring physics
-    await animate(el, 
-      { 
-        opacity: [0, 1],
-        x: ['100%', '0%'],
-        scale: [1.02, 1],
-      }, 
-      { 
-        type: 'spring',
-        stiffness: 300,
-        damping: 30,
-        mass: 1,
-        duration: 0.6,
-      }
-    ).finished;
-    
-    if (onComplete) onComplete();
-  } catch (error) {
-    console.error('Drawer animation error:', error);
-    // Ensure completion even on error
-    if (onComplete) onComplete();
-  } finally {
-    drawerAnimating.value = false;
-  }
-};
-
-/**
- * Enhanced drawer leave animation
- * Uses motion library for fluid animations with proper physics
- */
-const onDrawerLeave = async (el, onComplete) => {
-  drawerAnimating.value = true;
-  
-  // Animate drawer with spring physics
-  try {
-    await animate(el, 
-      { 
-        opacity: [1, 0],
-        x: ['0%', '100%'],
-        scale: [1, 1.02],
-      }, 
-      { 
-        duration: 0.4,
-        easing: [0.4, 0, 0.2, 1],
-      }
-    ).finished;
-    
-    if (onComplete) onComplete();
-  } catch (error) {
-    console.error('Drawer animation error:', error);
-    // Ensure completion even on error
-    if (onComplete) onComplete();
-  } finally {
-    drawerAnimating.value = false;
-  }
-};
+const isDrawerOpen = computed(() => Boolean(selectedWalk.value) && uiStore.showDrawer);
 
 /**
  * Handle walk selection
@@ -277,10 +205,13 @@ const handleWalkSelection = async (walk) => {
   if (walk?.id) {
     isExpanded.value = false; // Collapse sidebar
     
-    // Don't process if animation is in progress
+    // Don't process if animation is in progress 
     if (drawerAnimating.value) return;
     
-    uiStore.handleWalkSelected(); // Hide sidebar
+    // Hide sidebar and show drawer
+    drawerAnimating.value = true;
+    uiStore.handleWalkSelected();
+    
     await router.push({ query: { walkId: walk.id } });
 
     // Wait for next tick to ensure drawer is mounted
@@ -288,6 +219,9 @@ const handleWalkSelection = async (walk) => {
     if (walkDrawerRef.value) {
       // Force a reflow
       walkDrawerRef.value.$el?.offsetHeight;
+      drawerMounted.value = true;
+      console.log('Drawer mounted and visible:', uiStore.showDrawer, 'with walk ID:', selectedWalkId.value); 
+      drawerAnimating.value = false;
     }
   } else {
     isExpanded.value = true; // Expand sidebar
@@ -305,10 +239,13 @@ const handleDrawerClose = async () => {
   if (drawerAnimating.value) return;
   
   // Close drawer
+  drawerAnimating.value = true;
+  console.log('Closing drawer');
   await router.push({ query: {} });
   isExpanded.value = true;
-  uiStore.handleWalkClosed();
-};
+  uiStore.handleWalkClosed(); 
+  drawerAnimating.value = false;
+}
 
 /**
  * Handle start walk action
@@ -449,13 +386,36 @@ const initializeInterface = () => {
 
 // Lifecycle hooks
 onMounted(() => {
+  // Add event listener to prevent route changes during map movements
+  const preventRouteChange = (e) => {
+    if (drawerAnimating.value && e.type === 'popstate') {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    }
+  };
+  window.addEventListener('popstate', preventRouteChange);
+  
   try {
+    // Get sidebar width for proper drawer positioning
+    const sidebarElement = document.querySelector('.m3-navigation-rail');
+    if (sidebarElement) {
+      sidebarWidth.value = sidebarElement.offsetWidth;
+      
+      // Add resize observer to update sidebar width
+      const resizeObserver = new ResizeObserver((entries) => {
+        sidebarWidth.value = entries[0].target.offsetWidth;
+      });
+      
+      resizeObserver.observe(sidebarElement);
+    }
     const cleanup = initializeInterface();
   
     // Return cleanup function
     onBeforeUnmount(() => {
       try {
         cleanup();
+        window.removeEventListener('popstate', preventRouteChange);
       } catch (error) {
         console.error("Error during cleanup:", error);
       }
@@ -473,21 +433,5 @@ onMounted(() => {
 /* Background colors */
 .bg-surface {
   background-color: rgb(var(--md-sys-color-surface));
-}
-
-/* Drawer styling */
-.drawer {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: min(420px, 90vw);
-  z-index: 50;
-  background: rgb(var(--md-sys-color-surface-container-highest));
-  box-shadow: var(--md-sys-elevation-level2);
-  border-left: 1px solid rgb(var(--md-sys-color-outline-variant));
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  will-change: transform, opacity;
 }
 </style>

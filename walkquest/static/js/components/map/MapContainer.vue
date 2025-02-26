@@ -178,8 +178,8 @@ const mapContainerStyle = computed(() => ({
   inset: "0",
   width: "100vw",
   height: "100vh",
-  marginLeft: "0", // Remove left margin to allow map to extend under sidebar
-  paddingRight: props.selectedWalkId ? "min(420px, 90vw)" : "0", // Add padding when drawer is open
+  marginLeft: "var(--md-sys-sidebar-collapsed)", // Always keep margin for sidebar
+  paddingRight: "0", // No padding needed on right side
 }));
 
 /**
@@ -283,7 +283,7 @@ const handleMapCreated = (map) => {
   map.on("move", () => {
     // Update mapBounds when the map moves
     mapBounds.value = map.getBounds();
-    updateVisibleMarkers();
+    if (!props.selectedWalkId) updateVisibleMarkers(); // Only update markers if no walk is selected
   });
   
   // Initialize mapBounds
@@ -461,7 +461,7 @@ async function loadRouteData(walkId) {
                   (bounds.minLng + bounds.maxLng) / 2,
                   (bounds.minLat + bounds.maxLat) / 2
                 ],
-                zoom: 14,
+                zoom: 13,
                 pitch: 65,
                 bearing: 30,
                 duration: 2000,
@@ -470,13 +470,16 @@ async function loadRouteData(walkId) {
                   top: 50,
                   bottom: 50,
                   left: 50,
-                  right: props.selectedWalkId ? 470 : 50
+                  right: 50
                 }
+              }, {
+                // Prevent the moveend event from triggering any route changes
+                preserveDrawingBuffer: true
               });
             } else if (coordinates.length === 1) {
               mapInstance.value.flyTo({
                 center: coordinates[0],
-                zoom: 14,
+                zoom: 13,
                 pitch: 65,
                 bearing: 30,
                 duration: 2000,
@@ -485,8 +488,10 @@ async function loadRouteData(walkId) {
                   top: 50,
                   bottom: 50,
                   left: 50,
-                  right: props.selectedWalkId ? 470 : 50
+                  right: 50
                 }
+              }, {
+                preserveDrawingBuffer: true
               });
             }
           } catch (e) {
@@ -593,8 +598,9 @@ onBeforeUnmount(() => {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Update to adjust map when drawer is open but keep sidebar visible */
 .m3-content-container.drawer-open {
-  padding-right: min(420px, 90vw);
+  margin-left: calc(var(--md-sys-sidebar-collapsed) + 320px);
 }
 
 .m3-surface-container {
