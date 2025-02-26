@@ -1,456 +1,294 @@
 <template>
-  <!-- Drawer with sliding animation, positioned to integrate with the navigation rail -->
-  <Transition 
+  <Transition
     :css="false"
     @enter="onEnter"
     @leave="onLeave"
   >
     <div v-if="isOpen" ref="drawerRef" class="walk-drawer">
-      <!-- Rail connector - visual element that connects to navigation rail -->
       <div ref="connectorRef" class="rail-connector"></div>
 
-      <!-- Header with enhanced styling -->
-      <header
-        ref="headerRef"
-        class="header-container sticky top-0 z-10"
-      >
-        <div class="header-content flex items-center min-h-[64px]">
+      <header ref="headerRef" class="header-container">
+        <div class="header-content">
           <button
             ref="backButtonRef"
-            class="m3-icon-button shrink-0 ml-4"
-            @click="$emit('close')"
+            class="m3-icon-button"
+            @click="handleBackClick"
+            aria-label="Close drawer"
           >
-            <div class="m3-state-layer">
-              <Icon icon="mdi:arrow-back" class="text-2xl" />
-            </div>
+            <Icon icon="mdi:arrow-back" class="text-2xl" />
           </button>
-          <h2
-            ref="titleRef"
-            class="m3-headline-small text-on-surface pt-4 pl-2 pr-2 mb-4 break-words"
-          >
+          <h2 ref="titleRef" class="m3-headline-small">
             {{ walk.title || walk.walk_name }}
           </h2>
         </div>
       </header>
 
-      <!-- Main content -->
-      <div class="flex-1 overflow-y-auto">
-        <div class="p-4 space-y-6">
-          <!-- Key Info with proper layout -->
-          <div ref="keyInfoRef" class="flex items-center gap-6">
-            <div
-              v-if="walk.distance"
-              class="m3-label-large flex items-center gap-2"
-            >
-              <Icon icon="mdi:map-marker-distance" class="text-xl text-primary" />
+      <!-- Scrollable Container -->
+      <div class="scrollable-container">
+        <div class="content">
+          <div ref="keyInfoRef" class="key-info">
+            <div v-if="walk.distance" class="info-item">
+              <Icon icon="mdi:map-marker-distance" class="info-icon" />
               <span>{{ walk.distance }} km</span>
             </div>
-            <div
-              v-if="walk.steepness"
-              class="m3-label-large flex items-center gap-2"
-            >
-              <Icon icon="mdi:trending-up" class="text-xl text-primary" />
+            <div v-if="walk.steepness" class="info-item">
+              <Icon icon="mdi:trending-up" class="info-icon" />
               <span>{{ walk.steepness }}</span>
             </div>
           </div>
 
-          <!-- Amenities Grid -->
-          <div ref="amenitiesRef" class="grid grid-cols-2 gap-3">
-            <div
-              v-if="walk.has_pub"
-              class="flex items-center gap-2 m3-label-large text-on-surface"
-            >
-              <div
-                class="flex items-center justify-center w-8 h-8 rounded-full bg-surface-container-high"
-              >
-                <Icon icon="mdi:glass-mug-variant" class="text-xl text-primary" />
-              </div>
+          <div ref="amenitiesRef" class="amenities-grid">
+            <div v-if="walk.has_pub" class="amenity-item">
+              <Icon icon="mdi:glass-mug-variant" class="amenity-icon" />
               <span>Pub Available</span>
-              <Icon icon="mdi:check-circle" class="text-success ml-auto" />
+              <Icon icon="mdi:check-circle" class="amenity-check" />
             </div>
-            <div
-              v-if="walk.has_cafe"
-              class="flex items-center gap-2 m3-label-large text-on-surface"
-            >
-              <div
-                class="flex items-center justify-center w-8 h-8 rounded-full bg-surface-container-high"
-              >
-                <Icon icon="mdi:tea" class="text-xl text-primary" />
-              </div>
+            <div v-if="walk.has_cafe" class="amenity-item">
+              <Icon icon="mdi:tea" class="amenity-icon" />
               <span>Café Available</span>
-              <Icon icon="mdi:check-circle" class="text-success ml-auto" />
+              <Icon icon="mdi:check-circle" class="amenity-check" />
             </div>
-            <div
-              v-if="walk.has_stiles"
-              class="flex items-center gap-2 m3-label-large text-on-surface"
-            >
-              <div
-                class="flex items-center justify-center w-8 h-8 rounded-full bg-surface-container-high"
-              >
-                <Icon icon="mdi:gate-alert" class="text-xl text-primary" />
-              </div>
+            <div v-if="walk.has_stiles" class="amenity-item">
+              <Icon icon="mdi:gate-alert" class="amenity-icon" />
               <span>Has Stiles</span>
-              <Icon icon="mdi:check-circle" class="text-success ml-auto" />
+              <Icon icon="mdi:check-circle" class="amenity-check" />
             </div>
-            <div
-              v-if="walk.has_bus_access"
-              class="flex items-center gap-2 m3-label-large text-on-surface"
-            >
-              <div
-                class="flex items-center justify-center w-8 h-8 rounded-full bg-surface-container-high"
-              >
-                <Icon icon="mdi:bus" class="text-xl text-primary" />
-              </div>
+            <div v-if="walk.has_bus_access" class="amenity-item">
+              <Icon icon="mdi:bus" class="amenity-icon" />
               <span>Bus Access</span>
-              <Icon icon="mdi:check-circle" class="text-success ml-auto" />
+              <Icon icon="mdi:check-circle" class="amenity-check" />
             </div>
-            <div
-              v-if="walk.is_favorite"
-              class="flex items-center gap-2 m3-label-large text-on-surface"
-            >
-              <div
-                class="flex items-center justify-center w-8 h-8 rounded-full bg-surface-container-high"
-              >
-                <Icon icon="mdi:heart" class="text-xl text-primary" />
-              </div>
+            <div v-if="walk.is_favorite" class="amenity-item">
+              <Icon icon="mdi:heart" class="amenity-icon" />
               <span>Favorite Walk</span>
-              <Icon icon="mdi:check-circle" class="text-success ml-auto" />
+              <Icon icon="mdi:check-circle" class="amenity-check" />
             </div>
           </div>
 
-          <!-- Action Buttons with proper layout -->
-          <div ref="buttonsContainerRef" class="flex flex-col gap-3">
-            <!-- Primary action -->
+          <div ref="buttonsContainerRef" class="buttons-container">
             <button
               :ref="(el) => (buttonRefs[0] = el)"
-              class="m3-button m3-filled-button w-full h-10"
+              class="m3-button m3-filled-button"
+              @click="() => {}"
             >
-              <div class="m3-button-state-layer">
-                <div class="flex items-center justify-center gap-2">
-                  <Icon icon="mdi:play-circle" class="text-xl" />
-                  <span class="m3-label-large">Start Walk</span>
-                </div>
-              </div>
+              <Icon icon="mdi:play-circle" class="button-icon" />
+              <span>Start Walk</span>
             </button>
 
-            <!-- Secondary actions in a row -->
-            <div class="flex gap-2">
+            <div class="secondary-buttons">
               <button
                 :ref="(el) => (buttonRefs[1] = el)"
-                class="m3-button m3-tonal-button flex-1 h-10"
+                class="m3-button m3-tonal-button"
+                @click="() => {}"
               >
-                <div class="m3-button-state-layer">
-                  <div class="flex items-center justify-center gap-2">
-                    <Icon icon="mdi:navigation" class="text-xl" />
-                    <span class="m3-label-large">Directions</span>
-                  </div>
-                </div>
+                <Icon icon="mdi:navigation" class="button-icon" />
+                <span>Directions</span>
               </button>
 
               <button
                 :ref="(el) => (buttonRefs[2] = el)"
-                class="m3-button m3-outlined-button w-10 h-10 !p-0"
+                class="m3-button m3-outlined-button icon-button"
+                @click="() => {}"
               >
-                <div class="m3-button-state-layer">
-                  <Icon icon="mdi:heart" class="text-xl" />
-                </div>
+                <Icon icon="mdi:heart" class="button-icon" />
               </button>
 
               <button
                 :ref="(el) => (buttonRefs[3] = el)"
-                class="m3-button m3-outlined-button w-10 h-10 !p-0"
+                class="m3-button m3-outlined-button icon-button"
+                @click="() => {}"
               >
-                <div class="m3-button-state-layer">
-                  <Icon icon="mdi:share" class="text-xl" />
-                </div>
+                <Icon icon="mdi:share" class="button-icon" />
               </button>
             </div>
           </div>
 
-          <!-- Content sections with proper spacing -->
-          <div class="space-y-4">
-            <!-- Description -->
+          <div class="sections-container">
             <section
               v-if="walk.description"
               :ref="(el) => (sectionRefs[0] = el)"
-              class="m3-surface-container-low rounded-xl p-4 space-y-3"
+              class="section"
             >
-              <h3 class="m3-title-medium text-on-surface">About</h3>
-              <p class="m3-body-medium text-on-surface-variant">
-                {{ walk.description }}
-              </p>
+              <h3 class="section-title">About</h3>
+              <p class="section-text">{{ walk.description }}</p>
             </section>
 
-            <!-- Highlights -->
             <section
               v-if="parsedHighlights.length"
               :ref="(el) => (sectionRefs[1] = el)"
-              class="m3-surface-container-low rounded-xl p-4 space-y-3"
+              class="section"
             >
-              <h3 class="m3-title-medium text-on-surface">Highlights</h3>
-              <ul class="list-disc pl-6 space-y-2">
-                <li
-                  v-for="highlight in parsedHighlights"
-                  :key="highlight"
-                  class="m3-body-medium text-on-surface-variant"
-                >
+              <h3 class="section-title">Highlights</h3>
+              <ul class="section-list">
+                <li v-for="highlight in parsedHighlights" :key="highlight" class="section-list-item">
                   {{ highlight }}
                 </li>
               </ul>
             </section>
 
-            <!-- Points of Interest -->
             <section
               v-if="parsedPOIs.length"
               :ref="(el) => (sectionRefs[2] = el)"
-              class="m3-surface-container-low rounded-xl p-4 space-y-3"
+              class="section"
             >
-              <h3 class="m3-title-medium text-on-surface">Points of Interest</h3>
-              <div class="flex flex-wrap gap-2">
-                <span v-for="poi in parsedPOIs" :key="poi" class="m3-assist-chip">
-                  {{ poi }}
+              <h3 class="section-title">Points of Interest</h3>
+              <div class="poi-container">
+                <span v-for="poi in parsedPOIs" :key="poi.text" class="poi-chip">
+                  <Icon :icon="poi.icon" :class="poi.iconColor" class="poi-icon" />
+                  <span class="poi-text">{{ poi.text }}</span>
+                  <span v-if="poi.subtext" class="poi-subtext">{{ poi.subtext }}</span>
+                  <span v-if="poi.badge" class="poi-badge">{{ poi.badge }}</span>
                 </span>
+                <span class="poi-count">{{ parsedPOIs.length }} places</span>
               </div>
             </section>
 
-            <!-- Features & Categories -->
             <section
               v-if="walk.features?.length || walk.categories?.length"
               :ref="(el) => (sectionRefs[3] = el)"
-              class="m3-surface-container-low rounded-xl p-4 space-y-3"
+              class="section"
             >
-              <h3 class="m3-title-medium text-on-surface">Trail Features</h3>
-              <div class="flex flex-wrap gap-2">
-                <span
-                  v-for="feature in walk.features"
-                  :key="feature.name"
-                  class="m3-filter-chip"
-                >
+              <h3 class="section-title">Trail Features</h3>
+              <div class="feature-container">
+                <span v-for="feature in walk.features" :key="feature.name" class="feature-chip">
                   {{ feature.name }}
                 </span>
-                <span
-                  v-for="category in walk.categories"
-                  :key="category.name"
-                  class="m3-filter-chip"
-                >
+                <span v-for="category in walk.categories" :key="category.name" class="feature-chip">
                   {{ category.name }}
                 </span>
               </div>
             </section>
 
-            <!-- Pubs List -->
             <section
               v-if="walk.pubs_list?.length"
-              class="m3-surface-container-low rounded-xl p-4 space-y-4"
+              class="section"
             >
-              <h3 class="m3-title-medium text-on-surface flex items-center gap-2">
-                <Icon icon="mdi:beer" class="text-xl text-primary" />
+              <h3 class="section-title section-title-with-icon">
+                <Icon icon="mdi:beer" class="section-icon" />
                 Nearby Pubs
-                <span class="m3-label-small text-on-surface-variant ml-auto"
-                  >{{ walk.pubs_list.length }} found</span
-                >
+                <span class="pub-count">{{ walk.pubs_list.length }} found</span>
               </h3>
 
-              <div class="space-y-3">
-                <div
-                  v-for="pub in walk.pubs_list"
-                  :key="pub.name"
-                  class="pub-card relative overflow-hidden"
-                >
-                  <button class="w-full group" @click="openInGoogleMaps(pub)">
-                    <!-- Main pub info -->
-                    <div
-                      class="flex items-start gap-3 p-3 rounded-lg hover:bg-surface-container-highest transition-all duration-200"
-                    >
-                      <!-- Pub icon container -->
-                      <div
-                        class="flex-shrink-0 w-12 h-12 rounded-lg bg-surface-container-high flex items-center justify-center"
-                      >
-                        <Icon
-                          icon="mdi:glass-mug-variant"
-                          class="text-2xl text-primary"
-                        />
+              <div class="pub-list">
+                <div v-for="pub in walk.pubs_list" :key="pub.name" class="pub-card">
+                  <button class="pub-button" @click="openInGoogleMaps(pub)">
+                    <div class="pub-info">
+                      <div class="pub-icon-container">
+                        <Icon icon="mdi:glass-mug-variant" class="pub-main-icon" />
                       </div>
-
-                      <!-- Pub details -->
-                      <div class="flex-grow text-left">
-                        <div class="flex items-center gap-2">
-                          <h4
-                            class="m3-title-small text-on-surface group-hover:text-primary transition-colors"
-                          >
-                            {{ pub.name }}
-                          </h4>
+                      <div class="pub-details">
+                        <div class="pub-name-line">
+                          <h4 class="pub-name">{{ pub.name }}</h4>
+                          <Icon v-if="pub.is_dog_friendly" icon="mdi:dog" class="dog-friendly-icon" title="Dog Friendly" />
+                        </div>
+                        <div class="pub-meta">
+                          <div v-if="pub.distance" class="pub-meta-item">
+                            <Icon icon="mdi:map-marker-distance" class="pub-meta-icon" />
+                            <span>{{ pub.distance }} km</span>
+                          </div>
+                          <div v-if="pub.rating" class="pub-meta-item">
+                            <Icon icon="mdi:star" class="pub-meta-icon" />
+                            <span>{{ pub.rating }}/5</span>
+                          </div>
+                          <div v-if="pub.price_level" class="pub-meta-item">
+                            <Icon icon="mdi:currency-gbp" class="pub-meta-icon" />
+                            <span>{{ "£".repeat(pub.price_level) }}</span>
+                          </div>
+                        </div>
+                        <div v-if="pub.opening_hours" class="pub-opening-hours">
                           <Icon
-                            v-if="pub.is_dog_friendly"
-                            icon="mdi:dog"
-                            class="text-lg text-primary"
-                            title="Dog Friendly"
+                            :icon="pub.opening_hours.open_now ? 'mdi:clock' : 'mdi:clock-outline'"
+                            class="pub-opening-hours-icon"
+                            :class="pub.opening_hours.open_now ? 'text-primary' : 'text-error'"
                           />
-                        </div>
-
-                        <!-- Additional pub info -->
-                        <div class="mt-1 flex flex-wrap gap-x-4 gap-y-1">
-                          <div
-                            v-if="pub.distance"
-                            class="flex items-center gap-1"
-                          >
-                            <Icon
-                              icon="mdi:map-marker-distance"
-                              class="text-sm text-primary"
-                            />
-                            <span class="m3-label-small text-on-surface-variant"
-                              >{{ pub.distance }} km</span
-                            >
-                          </div>
-                          <div v-if="pub.rating" class="flex items-center gap-1">
-                            <Icon icon="mdi:star" class="text-sm text-primary" />
-                            <span class="m3-label-small text-on-surface-variant"
-                              >{{ pub.rating }}/5</span
-                            >
-                          </div>
-                          <div
-                            v-if="pub.price_level"
-                            class="flex items-center gap-1"
-                          >
-                            <Icon
-                              icon="mdi:currency-gbp"
-                              class="text-sm text-primary"
-                            />
-                            <span class="m3-label-small text-on-surface-variant">
-                              {{ "£".repeat(pub.price_level) }}
-                            </span>
-                          </div>
-                        </div>
-
-                        <!-- Opening hours preview -->
-                        <div v-if="pub.opening_hours" class="mt-2">
-                          <p
-                            class="m3-label-small text-on-surface-variant flex items-center gap-1"
-                          >
-                            <Icon
-                              :icon="
-                                pub.opening_hours.open_now
-                                  ? 'mdi:clock'
-                                  : 'mdi:clock-outline'
-                              "
-                              class="text-sm"
-                              :class="
-                                pub.opening_hours.open_now
-                                  ? 'text-primary'
-                                  : 'text-error'
-                              "
-                            />
-                            {{
-                              pub.opening_hours.open_now ? "Open Now" : "Closed"
-                            }}
-                          </p>
+                          <span>{{ pub.opening_hours.open_now ? "Open Now" : "Closed" }}</span>
                         </div>
                       </div>
-
-                      <!-- Action icon -->
-                      <div class="flex-shrink-0 self-center">
-                        <Icon
-                          icon="mdi:open-in-new"
-                          class="text-lg text-on-surface-variant opacity-0 group-hover:opacity-100 transition-all duration-200"
-                        />
-                      </div>
+                      <Icon icon="mdi:open-in-new" class="pub-open-icon" />
                     </div>
                   </button>
                 </div>
               </div>
             </section>
 
-            <!-- Practical Information -->
             <section
               v-if="walk.footwear_category || walk.trail_considerations"
               :ref="(el) => (sectionRefs[4] = el)"
-              class="m3-surface-container-low rounded-xl p-4 space-y-3"
+              class="section"
             >
-              <h3 class="m3-title-medium text-on-surface">
-                Practical Information
-              </h3>
-              <div class="space-y-4">
-                <div v-if="walk.footwear_category" class="space-y-2">
-                  <strong class="m3-title-small text-on-surface"
-                    >Recommended Footwear</strong
-                  >
-                  <p class="m3-body-medium text-on-surface-variant">
-                    {{ walk.footwear_category }}
-                  </p>
-                  <!-- Collapsible details for recommended footwear with animated open/close -->
+              <h3 class="section-title">Practical Information</h3>
+              <div class="practical-info-container">
+                <div v-if="walk.footwear_category" class="footwear-section">
+                  <strong class="footwear-title">Recommended Footwear</strong>
+                  <p class="footwear-text">{{ walk.footwear_category }}</p>
                   <details
                     v-if="walk.recommended_footwear"
-                    class="m3-body-small text-on-surface-variant"
+                    class="details-container"
                     ref="footwearDetailsRef"
                     @toggle="toggleFootwearDetails"
                   >
-                    <summary>Show Details</summary>
+                    <summary class="details-summary">
+                      <span>{{ detailsOpen ? 'Hide Details' : 'Show Details' }}</span>
+                      <Icon :icon="detailsOpen ? 'mdi:chevron-up' : 'mdi:chevron-down'" class="details-icon" />
+                    </summary>
                     <div class="details-content">
                       <p>{{ walk.recommended_footwear }}</p>
                     </div>
                   </details>
                 </div>
-                <div v-if="walk.trail_considerations" class="space-y-2">
-                  <!-- Dog badge with enhanced styling -->
-                  <div v-if="dogConsiderations.length" class="mb-4">
-                    <div class="m3-assist-chip-container">
-                      <div
-                        class="m3-assist-chip-header flex items-center gap-2 mb-2"
-                      >
-                        <Icon icon="mdi:dog" class="text-xl text-primary" />
-                        <span class="m3-title-small text-on-surface">Dogs</span>
-                      </div>
-                      <div class="m3-assist-chip-content pl-8">
-                        <p class="m3-body-medium text-on-surface-variant">
-                          {{ dogCombinedText }}
-                        </p>
-                      </div>
+                <div v-if="walk.trail_considerations" class="considerations-section">
+                  <div v-if="dogConsiderations.length" class="dog-considerations">
+                    <div class="dog-chip-header">
+                      <Icon icon="mdi:dog" class="dog-chip-icon" />
+                      <span class="dog-chip-title">Dogs</span>
+                    </div>
+                    <div class="dog-chip-content">
+                      <p>{{ dogCombinedText }}</p>
                     </div>
                   </div>
-                  <!-- List of non-dog considerations -->
-                  <ul class="list-disc pl-6 space-y-2">
-                    <li
-                      v-for="item in nonDogConsiderations"
-                      :key="item.text"
-                      class="m3-body-medium text-on-surface-variant"
-                    >
+                  <ul v-if="nonDogConsiderations.length" class="considerations-list">
+                    <li v-for="item in nonDogConsiderations" :key="item.text" class="considerations-list-item">
                       {{ item.text }}
                     </li>
                   </ul>
                 </div>
               </div>
             </section>
+            
+            <section
+              v-if="hasExtraInfo"
+              :ref="(el) => (sectionRefs[5] = el)"
+              class="section"
+            >
+              <h3 class="section-title">Additional Information</h3>
+              <div class="extra-info-container">
+                <div v-for="(value, key) in walkExtra" :key="key" class="extra-info-item">
+                  <strong class="extra-info-label">{{ key.split('_').join(' ') }}:</strong>
+                  <span class="extra-info-value">{{ formatValue(value) }}</span>
+                </div>
+              </div>
+            </section>
           </div>
         </div>
       </div>
+      <div ref="accentLineRef" class="drawer-accent-line"></div>
     </div>
   </Transition>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch, nextTick } from "vue";
-import { animate, stagger, spring } from "motion";
+import { animate, stagger } from "motion";
 import { Icon } from "@iconify/vue";
 
 const props = defineProps({
-  walk: {
-    type: Object,
-    required: true,
-  },
-  isOpen: {
-    type: Boolean,
-    default: false,
-  },
-  sidebarWidth: {
-    type: Number,
-    default: 80, // Default collapsed sidebar width (--md-sys-sidebar-collapsed)
-  },
+  walk: { type: Object, required: true },
+  isOpen: { type: Boolean, default: false },
+  sidebarWidth: { type: Number, default: 80 },
 });
 
-// Emit events
-const emit = defineEmits(['close']);
+const emit = defineEmits(["close"]);
 
-// Refs for animation targets
 const drawerRef = ref(null);
 const connectorRef = ref(null);
 const headerRef = ref(null);
@@ -462,463 +300,209 @@ const buttonsContainerRef = ref(null);
 const buttonRefs = ref([]);
 const sectionRefs = ref([]);
 const footwearDetailsRef = ref(null);
+const detailsOpen = ref(false);
+const accentLineRef = ref(null);
 
-// Animation configurations
 const animationConfigs = {
-  fluid: {
-    duration: 0.5,
-    easing: [0.22, 1, 0.36, 1], // Custom bezier curve for fluid motion
-  },
-  springDefault: {
-    type: "spring",
-    stiffness: 400,
-    damping: 40,
-    mass: 1
-  },
-  springSofter: {
-    type: "spring",
-    stiffness: 300,
-    damping: 45,
-    mass: 1
-  },
-  springStaggered: {
-    type: "spring",
-    stiffness: 350,
-    damping: 40,
-    mass: 1
-  }
+  fluid: { duration: 0.5, easing: [0.22, 1, 0.36, 1] },
 };
 
-// Watch for drawer open/close state changes
 watch(() => props.isOpen, (isOpen) => {
   if (isOpen) {
-    nextTick(() => {
-      initializeDrawer();
-    });
+    nextTick(initializeDrawer);
   }
 }, { immediate: true });
 
-// Initialize drawer with improved positioning for NavigationRail integration
 function initializeDrawer() {
   if (drawerRef.value) {
     drawerRef.value.style.width = "380px";
     drawerRef.value.style.transform = "translateX(0)";
-    
-    // Animate the connector
     if (connectorRef.value) {
-      animate(connectorRef.value, 
-        { 
-          opacity: [0, 1], 
-          width: ["0px", "28px"]
-        }, 
-        { 
-          delay: 0.2,
-          duration: 0.6,
-          easing: "ease-out" 
-        }
-      );
+      animate(connectorRef.value, { opacity: [0, 1], width: ["0px", "28px"] }, { delay: 0.2, duration: 0.6, easing: "ease-out" });
     }
   }
 }
 
-// Enhanced enter animation with proper sequence
 async function onEnter(el, onComplete) {
-  if (!el) {
-    onComplete();
-    return;
-  }
-
-  // Main drawer animation
-  animate(
-    el,
-    { 
-      transform: ["translateX(-100%) scale(0.95)", "translateX(0) scale(1)"],
-      opacity: [0, 1],
-      filter: ["blur(8px)", "blur(0px)"]
-    },
-    animationConfigs.springDefault
-  );
-
-  // Header elements animation with stagger
-  const headerElements = el.querySelectorAll(".header-content > *");
-  animate(
-    headerElements,
-    { 
-      opacity: [0, 1],
-      transform: ["translateY(-15px)", "translateY(0)"],
-      filter: ["blur(4px)", "blur(0px)"]
-    },
-    { 
-      delay: stagger(0.08, { start: 0.2 }),
-      ...animationConfigs.springSofter 
-    }
-  );
-
-  // Key info animation
-  if (keyInfoRef.value) {
-    animate(
-      keyInfoRef.value,
-      { 
-        opacity: [0, 1],
-        transform: ["translateY(15px)", "translateY(0)"],
-        filter: ["blur(3px)", "blur(0px)"]
-      },
-      { 
-        delay: 0.3,
-        ...animationConfigs.springStaggered 
-      }
-    );
-  }
-
-  // Amenities animation with grid reveal effect
-  if (amenitiesRef.value) {
-    const amenityItems = amenitiesRef.value.querySelectorAll(".flex.items-center");
-    animate(
-      amenityItems,
-      { 
-        opacity: [0, 1],
-        scale: [0.95, 1],
-        filter: ["blur(2px)", "blur(0px)"]
-      },
-      { 
-        delay: stagger(0.05, { start: 0.4 }),
-        ...animationConfigs.springStaggered 
-      }
-    );
-  }
-
-  // Button animations
-  const buttons = el.querySelectorAll("button");
-  animate(
-    buttons,
-    {
-      opacity: [0, 1],
-      transform: ["translateY(10px) scale(0.95)", "translateY(0) scale(1)"],
-      filter: ["blur(3px)", "blur(0px)"]
-    },
-    { 
-      delay: stagger(0.06, { start: 0.5 }),
-      ...animationConfigs.springSofter 
-    }
-  );
-
-  // Content sections animation with staggered reveal
-  const sections = el.querySelectorAll("section");
-  animate(
-    sections,
-    {
-      opacity: [0, 1],
-      transform: ["translateY(20px)", "translateY(0)"],
-      filter: ["blur(4px)", "blur(0px)"]
-    },
-    { 
-      delay: stagger(0.08, { start: 0.6 }),
-      ...animationConfigs.springStaggered
-    }
-  ).finished.then(() => {
-    // Apply a subtle bounce effect to the drawer to indicate it's fully open
-    animate(
-      el,
-      { x: [0, 3, 0] },
-      { 
-        duration: 0.5,
-        easing: "ease-in-out"
-      }
-    );
-    // Animate in the gradient accent line
-    if (el) {
-      const accentLine = document.createElement("div");
-      accentLine.className = "drawer-accent-line";
-      el.appendChild(accentLine);
-      
-      animate(
-        accentLine,
-        { 
-          scaleY: [0, 1],
-          opacity: [0, 1] 
-        },
-        { 
-          duration: 0.6,
-          easing: "ease-out",
-          delay: 0.1
+    try {
+        if (!el) {
+            onComplete();
+            return;
         }
+
+        const accentLine = el.querySelector('.drawer-accent-line');
+        if (accentLine) accentLine.style.opacity = '0';
+
+        const drawerAnimation = animate(
+            el,
+            {
+                transform: ["translateX(-100%) scale(0.95)", "translateX(0) scale(1)"],
+                opacity: [0, 1],
+                filter: ["blur(8px)", "blur(0px)"]
+            },
+            { duration: 0.5, easing: [0.22, 1, 0.36, 1] }
+        );
+
+        const headerElements = el.querySelectorAll(".header-content > *");
+        if (headerElements.length) {
+            animate(
+                headerElements,
+                { opacity: [0, 1], transform: ["translateY(-15px)", "translateY(0)"], filter: ["blur(4px)", "blur(0px)"] },
+                { delay: stagger(0.08, { start: 0.2 }), duration: 0.4, easing: "ease-out" }
+            );
+        }
+
+        const sections = el.querySelectorAll(".scrollable-container section"); // Target sections within scrollable-container
+        if (sections.length) {
+            animate(
+                sections,
+                { opacity: [0, 1], transform: ["translateY(20px)", "translateY(0)"], filter: ["blur(4px)", "blur(0px)"] },
+                { delay: stagger(0.08, { start: 0.3 }), duration: 0.5, easing: "ease-out" }
+            );
+        }
+
+        await drawerAnimation.finished;
+
+        if (accentLine) {
+            animate(accentLine, { scaleY: [0, 1], opacity: [0, 0.8] }, { duration: 0.6, easing: "ease-out", delay: 0.1 });
+        }
+
+        animate(el, { x: [0, 3, 0] }, { duration: 0.5, easing: "ease-in-out" });
+        onComplete();
+
+    } catch (error) {
+        console.error("Animation error:", error);
+        if (el) {
+            el.style.opacity = '1';
+            el.style.transform = 'translateX(0) scale(1)';
+        }
+        onComplete();
+    }
+}
+
+async function onLeave(el, onComplete) {
+  try {
+    if (!el) {
+      onComplete();
+      return;
+    }
+
+    const accentLine = el.querySelector(".drawer-accent-line");
+    if (accentLine) {
+      await animate(accentLine, { scaleY: [1, 0], opacity: [0.8, 0] }, { duration: 0.3, easing: "ease-in" }).finished;
+    }
+
+    const sections = el.querySelectorAll(".scrollable-container section"); // Target sections within scrollable-container
+    if (sections.length) {
+      animate(
+        sections,
+        { opacity: [1, 0], transform: ["translateY(0)", "translateY(15px)"], filter: ["blur(0px)", "blur(3px)"] },
+        { delay: stagger(0.03, { from: "last" }), duration: 0.2, easing: "ease-in" }
       );
     }
+
+    const drawerAnimation = animate(
+      el,
+      { transform: ["translateX(0) scale(1)", "translateX(-100%) scale(0.95)"], opacity: [1, 0], filter: ["blur(0px)", "blur(6px)"] },
+      { delay: 0.1, duration: 0.4, easing: "ease-in" }
+    );
+
+    await drawerAnimation.finished;
     onComplete();
-  });
+  } catch (error) {
+    console.error("Leave animation error:", error);
+    if (el) el.style.opacity = '0';
+    onComplete();
+  }
 }
 
-// Enhanced leave animation with proper sequence
-async function onLeave(el, onComplete) {
-  if (!el) {
-    onComplete();
-    return;
-  }
-  
-  // First animate out the accent line if it exists
-  const accentLine = el.querySelector(".drawer-accent-line");
-  if (accentLine) {
-    animate(
-      accentLine,
-      { scaleY: [1, 0], opacity: [1, 0] },
-      { duration: 0.3, easing: "ease-in" }
-    );
-  }
-
-  // Content sections fade out first
-  const sections = el.querySelectorAll("section");
-  animate(
-    sections,
-    {
-      opacity: [1, 0],
-      transform: ["translateY(0)", "translateY(15px)"],
-      filter: ["blur(0px)", "blur(3px)"]
-    },
-    { 
-      delay: stagger(0.03, { from: "last" }),
-      duration: 0.2,
-      easing: "ease-in"
-    }
-  );
-
-  // Buttons fade out
-  const buttons = el.querySelectorAll("button");
-  animate(
-    buttons,
-    {
-      opacity: [1, 0],
-      transform: ["translateY(0) scale(1)", "translateY(10px) scale(0.95)"],
-      filter: ["blur(0px)", "blur(3px)"]
-    },
-    { 
-      delay: stagger(0.03, { from: "last", start: 0.1 }),
-      duration: 0.2,
-      easing: "ease-in"
-    }
-  );
-
-  // Header elements fade out
-  const headerElements = el.querySelectorAll(".header-content > *");
-  animate(
-    headerElements,
-    { 
-      opacity: [1, 0],
-      transform: ["translateX(0)", "translateX(-15px)"],
-      filter: ["blur(0px)", "blur(3px)"]
-    },
-    { 
-      delay: stagger(0.03, { from: "last", start: 0.2 }),
-      duration: 0.2,
-      easing: "ease-in"
-    }
-  );
-
-  // Animate the connector out
-  if (connectorRef.value) {
-    animate(
-      connectorRef.value,
-      { opacity: [1, 0], width: ["28px", "0px"] },
-      { duration: 0.3, easing: "ease-in" }
-    );
-  }
-
-  // Finally, animate the main drawer out
-  animate(
-    el,
-    { 
-      transform: ["translateX(0) scale(1)", "translateX(-100%) scale(0.95)"],
-      opacity: [1, 0],
-      filter: ["blur(0px)", "blur(6px)"]
-    },
-    { 
-      delay: 0.3,
-      duration: 0.4,
-      easing: "ease-in"
-    }
-  ).finished.then(() => {
-    onComplete();
-  });
-}
-
-// New function to animate details open/close changes with smoother motion
 function toggleFootwearDetails(e) {
   const detail = e.target;
   const content = detail.querySelector(".details-content");
-  const summary = detail.querySelector("summary");
-  
+  detailsOpen.value = detail.open;
+
   if (detail.open) {
-    // Expand animation
     content.style.height = "0px";
     content.style.overflow = "hidden";
     content.style.opacity = "0";
-    
-    // Get the final height
     const targetHeight = content.scrollHeight;
-    
-    // Animate the rotate arrow if present
-    if (summary) {
-      animate(
-        summary, 
-        { rotate: [0, 180] },
-        { duration: 0.5, easing: "ease-out" }
-      );
-    }
-    
-    // Animate content height and opacity
     animate(
       content,
-      { 
-        height: [0, targetHeight + "px"],
-        opacity: [0, 1]
-      },
-      { 
-        duration: 0.5, 
-        easing: [0.25, 1, 0.5, 1] 
-      }
+      { height: [0, `${targetHeight}px`], opacity: [0, 1], transform: ["translateY(-10px)", "translateY(0px)"] },
+      { duration: 0.35, easing: [0.2, 0.9, 0.4, 1] }
     ).finished.then(() => {
-      // Clean up inline styles after animation completes
-      content.style.height = "";
+      content.style.height = "auto";
       content.style.overflow = "visible";
     });
   } else {
-    // Collapse animation
     const currentHeight = content.offsetHeight;
-    content.style.height = currentHeight + "px";
+    content.style.height = `${currentHeight}px`;
     content.style.overflow = "hidden";
-    
-    // Animate the rotate arrow if present
-    if (summary) {
-      animate(
-        summary, 
-        { rotate: [180, 0] },
-        { duration: 0.4, easing: "ease-in" }
-      );
-    }
-    
-    // Animate content height and opacity
     animate(
       content,
-      { 
-        height: [currentHeight + "px", "0px"],
-        opacity: [1, 0]
-      },
-      { 
-        duration: 0.4, 
-        easing: [0.5, 0, 0.75, 0] 
-      }
+      { height: [`${currentHeight}px`, "0px"], opacity: [1, 0], transform: ["translateY(0px)", "translateY(-10px)"] },
+      { duration: 0.3, easing: [0.4, 0.0, 0.6, 1] }
     );
   }
 }
 
-// Animation helper specifically for individual drawer elements
-async function animateElement(el, animation, config = {}) {
-  if (!el) return;
-  return animate(el, animation, {
-    ...animationConfigs.fluid,
-    ...config
-  });
-}
+const poiCategories = [
+  { pattern: /(pub|inn|tavern)/i, icon: 'mdi:glass-mug-variant', color: 'text-amber-800', badge: 'Refreshment' },
+  { pattern: /(church|chapel|cathedral|abbey)/i, icon: 'mdi:church', color: 'text-blue-600', badge: 'Religious' },
+  { pattern: /(lake|river|waterfall|pond|reservoir|stream|beach|sea)/i, icon: 'mdi:water', color: 'text-blue-500', badge: 'Water' },
+  { pattern: /(hill|mountain|peak|ridge|valley|viewpoint|panorama)/i, icon: 'mdi:mountain', color: 'text-emerald-700', badge: 'Landscape' },
+  { pattern: /(café|cafe|restaurant|tea|coffee)/i, icon: 'mdi:coffee', color: 'text-amber-700', badge: 'Refreshment' },
+  { pattern: /(wood|forest|woodland|tree)/i, icon: 'mdi:pine-tree', color: 'text-green-600', badge: 'Nature' },
+  { pattern: /(garden|park|flower)/i, icon: 'mdi:flower', color: 'text-pink-500', badge: 'Nature' },
+  { pattern: /(museum|gallery|art)/i, icon: 'mdi:bank', color: 'text-purple-600', badge: 'Cultural' },
+  { pattern: /(bridge|viaduct|aqueduct)/i, icon: 'mdi:bridge', color: 'text-stone-600', badge: 'Structure' },
+  { pattern: /(wildlife|animal|bird)/i, icon: 'mdi:paw', color: 'text-orange-600', badge: 'Wildlife' },
+  { pattern: /(castle)/i, icon: 'mdi:castle', color: 'text-gray-700', badge: 'Historical' },
+  { pattern: /(garden)/i, icon: 'mdi:flower', color: 'text-pink-500', badge: 'Nature' },
+];
 
-// Parse highlights with proper null checks
-const parsedHighlights = computed(() => {
-  const highlights = props.walk?.highlights;
-  if (!highlights) return [];
-  if (Array.isArray(highlights)) {
-    return highlights.filter((h) => h && h.length > 0);
-  }
-  if (typeof highlights === "string") {
-    return highlights
-      .split(";")
-      .map((h) => h.trim())
-      .filter((h) => h.length > 0);
-  }
-  return [];
-});
-
-// Parse POIs using semicolon as separator
 const parsedPOIs = computed(() => {
-  // Handle cases where points_of_interest could be null, undefined, or not an array
   const pois = props.walk?.points_of_interest;
   if (!pois) return [];
 
-  // If it's already an array, filter it
+  const mapper = (poi) => {
+    const poiLower = poi.toLowerCase();
+    const category = poiCategories.find((cat) => cat.pattern.test(poiLower)) || { icon: 'mdi:map-marker', color: 'text-primary', badge: '' };
+    const isPriority = poi.length > 20;
+    return {
+      text: poi,
+      icon: category.icon,
+      iconColor: category.color,
+      badge: isPriority ? category.badge : null,
+    };
+  };
+
   if (Array.isArray(pois)) {
-    return pois.filter((poi) => poi && poi.length > 0);
+    return pois.filter((poi) => poi && poi.length > 0).map(mapper);
   }
-
-  // If it's a string, split and filter
   if (typeof pois === "string") {
-    return pois
-      .split(";")
+    return pois.split(";")
       .map((poi) => poi.trim())
-      .filter((poi) => poi.length > 0);
+      .filter((poi) => poi.length > 0)
+      .map(mapper);
   }
-
   return [];
 });
 
-// Add new computed property for trail considerations
-const parsedConsiderations = computed(() => {
-  const considerations = props.walk?.trail_considerations;
-  if (!considerations || !Array.isArray(considerations)) return [];
+const parsedHighlights = computed(() => {
+    const highlights = props.walk?.highlights;
+    if (!highlights) return [];
+    const processHighlight = (h) => h && h.length > 0;
 
-  return considerations
-    .filter((consideration) => consideration && consideration.length > 0)
-    .map((consideration) => processDogConsiderations(consideration));
+    if (Array.isArray(highlights)) {
+        return highlights.filter(processHighlight);
+    }
+    if (typeof highlights === 'string') {
+        return highlights.split(';').map(h => h.trim()).filter(processHighlight);
+    }
+    return [];
 });
 
-// New computed properties to separate dog items from others
-const dogConsiderations = computed(() => {
-  return parsedConsiderations.value.filter((item) => item.isDog);
-});
-const nonDogConsiderations = computed(() => {
-  return parsedConsiderations.value.filter((item) => !item.isDog);
-});
-const dogCombinedText = computed(() => {
-  return dogConsiderations.value.map((item) => item.text).join("; ");
-});
-
-// List of keys already displayed
-const displayedKeys = [
-  "title",
-  "walk_name",
-  "description",
-  "difficulty",
-  "distance",
-  "highlights",
-  "features",
-  "categories",
-  "points_of_interest",
-];
-
-// Compute additional info not explicitly displayed in the main section
-const walkExtra = computed(() => {
-  return Object.fromEntries(
-    Object.entries(props.walk).filter(
-      ([key, value]) =>
-        !displayedKeys.includes(key) &&
-        value !== null &&
-        value !== "" &&
-        (Array.isArray(value) ? value.length > 0 : true)
-    )
-  );
-});
-
-// Check if any additional info exists
-const hasExtraInfo = computed(() => Object.keys(walkExtra.value).length > 0);
-
-// Helper to format value if array or object
-function formatValue(value) {
-  if (Array.isArray(value)) {
-    return value.join(", ");
-  } else if (typeof value === "object" && value !== null) {
-    return JSON.stringify(value);
-  } else {
-    return value;
-  }
-}
-
-// Helper function to process dog considerations
 function processDogConsiderations(consideration) {
   if (!consideration) return { text: "", isDog: false };
   const trimmed = consideration.trim();
@@ -928,72 +512,111 @@ function processDogConsiderations(consideration) {
   return { text: remainingText, isDog: true };
 }
 
-// Add new function to handle opening locations in Google Maps
+const parsedConsiderations = computed(() => {
+  const considerations = props.walk?.trail_considerations;
+  if (!considerations || !Array.isArray(considerations)) return [];
+  return considerations
+    .map(processDogConsiderations)
+    .filter(item => item && item.text && item.text.length > 0);
+});
+
+const dogConsiderations = computed(() => parsedConsiderations.value.filter((item) => item.isDog));
+const nonDogConsiderations = computed(() => parsedConsiderations.value.filter((item) => !item.isDog));
+const dogCombinedText = computed(() => dogConsiderations.value.map((item) => item.text).join("; "));
+
+const displayedKeys = [
+  "title", "walk_name", "description", "difficulty", "distance", "steepness",
+  "highlights", "features", "categories", "points_of_interest", "has_pub",
+  "has_cafe", "has_stiles", "has_bus_access", "is_favorite", "pubs_list",
+  "footwear_category", "trail_considerations", "recommended_footwear"
+];
+
+const walkExtra = computed(() => {
+    const extra = {};
+    for (const key in props.walk) {
+        if (!displayedKeys.includes(key)) {
+            const value = props.walk[key];
+            if (value != null && (typeof value !== 'string' || value !== "")) {
+                extra[key] = value;
+            }
+        }
+    }
+    return extra;
+});
+
+const hasExtraInfo = computed(() => Object.keys(walkExtra.value).length > 0);
+
+function formatValue(value) {
+  if (Array.isArray(value)) {
+    return value.map(item => {
+      if (typeof item === 'object' && item !== null) {
+        return item.name || item.title || Object.values(item).filter(v => typeof v === 'string').join(', ') || '[Object]';
+      }
+      return item;
+    }).join(", ");
+  } else if (typeof value === "object" && value !== null) {
+    if (value.name || value.title) {
+      return value.name || value.title;
+    }
+    const stringValues = Object.entries(value)
+      .filter(([_, v]) => v !== null && v !== undefined)
+      .map(([k, v]) => {
+        if (typeof v === 'object') {
+          return `${k}: ${v.name || v.title || '[Object]'}`;
+        }
+        return `${k}: ${v}`;
+      });
+    return stringValues.join(", ");
+  }
+  return value;
+}
+
 function openInGoogleMaps(pub) {
   let mapsUrl = "";
 
   if (pub.name) {
-    // If we have a pub name, that's our primary search term
     const searchQuery = encodeURIComponent(pub.name);
-
     if (props.walk.latitude && props.walk.longitude) {
-      // Add coordinates to help locate the specific pub
       const latitude = props.walk.latitude;
       const longitude = props.walk.longitude;
-      mapsUrl = `https://www.google.com/maps/search/?api=1&query=${searchQuery}&query=${encodeURIComponent(
-        `places near ${latitude},${longitude}`
-      )}`;
+      mapsUrl = `https://www.google.com/maps/search/?api=1&query=${searchQuery}&query=${encodeURIComponent(`places near ${latitude},${longitude}`)}`;
     } else {
-      // Just search for the pub name if no coordinates
       mapsUrl = `https://www.google.com/maps/search/?api=1&query=${searchQuery}`;
     }
-    //if you have the place id, you can add it here
-    //mapsUrl += `&query_place_id=${encodeURIComponent(pub.place_id)}`;
   } else if (props.walk.latitude && props.walk.longitude) {
-    // If we only have coordinates, we'll search for places near those coordinates
     const latitude = props.walk.latitude;
     const longitude = props.walk.longitude;
-    mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-      `places near ${latitude},${longitude}`
-    )}`;
+    mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`places near ${latitude},${longitude}`)}`;
   }
 
-  // Open the URL in a new tab/window
   if (mapsUrl) {
     window.open(mapsUrl, "_blank");
   }
+}
+
+function handleBackClick() {
+  emit("close", { expandSidebar: true });
 }
 </script>
 
 <style scoped>
 @import "tailwindcss";
 
-/* Drawer styles */
+/* General Styles */
 .walk-drawer {
   width: 380px;
   height: 100vh;
-  left: 0;
-  will-change: transform, opacity;
-  backface-visibility: hidden;
-  background-color: rgb(var(--md-sys-color-surface-container));
-  pointer-events: auto;
-  overflow: hidden;
-  transform-origin: left center;
-  box-shadow: var(--md-sys-elevation-level2);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  opacity: 1;
-  overflow-y: auto;
   position: fixed;
   top: 0;
-  bottom: 0;
+  left: 0;
+  background-color: rgb(var(--md-sys-color-surface-container));
+  box-shadow: var(--md-sys-elevation-level2);
   border-radius: 0 24px 24px 0;
-  border: none;
   padding-left: var(--md-sys-sidebar-collapsed);
   z-index: 20;
+  overflow: hidden; /* Important: Keep this to prevent double scrollbars */
 }
 
-/* Rail connector with improved styling */
 .rail-connector {
   position: absolute;
   left: 0;
@@ -1003,53 +626,40 @@ function openInGoogleMaps(pub) {
   width: 28px;
   background-color: rgb(var(--md-sys-color-surface-container-highest));
   border-radius: 0 28px 28px 0;
-  opacity: 0;
-  z-index: 1;
   box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+  z-index: 1;
 }
 
-/* Gradient accent line for the drawer */
 .drawer-accent-line {
   position: absolute;
   top: 24px;
   bottom: 24px;
   left: calc(var(--md-sys-sidebar-collapsed) - 1px);
   width: 4px;
-  background: linear-gradient(
-    to bottom,
-    rgb(var(--md-sys-color-primary)),
-    rgb(var(--md-sys-color-tertiary))
-  );
+  background: linear-gradient(to bottom, rgb(var(--md-sys-color-primary)), rgb(var(--md-sys-color-tertiary)));
   border-radius: 4px;
   opacity: 0.8;
-  transform-origin: center top;
 }
 
-/* Enhanced header styling */
+/* Header Styles */
 .header-container {
   background-color: rgb(var(--md-sys-color-surface-container-highest));
   box-shadow: var(--md-sys-elevation-level1);
   border-top-right-radius: 24px;
-  overflow: hidden;
   position: sticky;
   top: 0;
   z-index: 10;
-  /* Extend header to the left edge of drawer (before padding) */
   margin-left: calc(0px - var(--md-sys-sidebar-collapsed));
-  margin-right: 0;
   width: calc(100% + var(--md-sys-sidebar-collapsed));
-  box-sizing: border-box;
 }
 
 .header-content {
-  /* Keep padding for the text content */
-  margin-left: var(--md-sys-sidebar-collapsed);
-  margin-right: 0;
-  box-sizing: border-box;
-  min-height: 64px;
+    display: flex;
+    align-items: center;
+    min-height: 64px;
+    padding: 0 16px;
+    margin-left: var(--md-sys-sidebar-collapsed);
 }
-
-/* Enhanced icon button states */
 .m3-icon-button {
   width: 40px;
   height: 40px;
@@ -1058,64 +668,484 @@ function openInGoogleMaps(pub) {
   align-items: center;
   justify-content: center;
   color: rgb(var(--md-sys-color-on-surface));
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
+    margin-right: 16px;
 }
 
-.m3-icon-button:hover {
-  background-color: rgba(var(--md-sys-color-on-surface), 0.08);
-  transform: scale(1.05);
+.m3-headline-small {
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: rgb(var(--md-sys-color-on-surface));
+    margin: 0;
+    padding: 1rem;
+    word-break: break-word;
 }
 
-.m3-icon-button:active {
-  background-color: rgba(var(--md-sys-color-on-surface), 0.12);
-  transform: scale(0.95);
+/* Scrollable Container Styles */
+.scrollable-container {
+  overflow-y: auto; /* Enables scrolling */
+  height: calc(100vh - 64px); /*  header height */
+  padding-bottom: 24px; /* Add padding at the bottom */
 }
 
-/* Enhanced surface elements with smoother hover transitions */
-.m3-surface-container-low,
-.pub-card,
-.m3-assist-chip-container {
-  border: 1px solid rgba(var(--md-sys-color-outline-variant), 0.5);
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+    padding: 1rem; /* Add padding to the content */
+
+}
+
+/* Key Info Styles */
+.key-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+}
+
+.info-icon {
+  color: rgb(var(--md-sys-color-primary));
+  font-size: 1.25rem;
+}
+
+/* Amenities Styles */
+.amenities-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+.amenity-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: rgb(var(--md-sys-color-on-surface));
+}
+
+.amenity-icon {
+  color: rgb(var(--md-sys-color-primary));
+  font-size: 1.25rem;
+    margin-right: 0.25rem;
+
+}
+.amenity-check {
+    margin-left: auto;
+    color: rgb(var(--md-sys-color-success));
+    font-size: 1.25rem;
+}
+
+/* Buttons Styles */
+.buttons-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.m3-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  color: white;
+  transition: background-color 0.2s ease;
+    height: 2.5rem;
+}
+
+.m3-filled-button {
+  background-color: rgb(var(--md-sys-color-primary));
+}
+
+.m3-tonal-button {
+  background-color: rgb(var(--md-sys-color-secondary-container));
+  color: rgb(var(--md-sys-color-on-secondary-container));
+}
+
+.m3-outlined-button {
+  border: 1px solid rgb(var(--md-sys-color-outline));
+  color: rgb(var(--md-sys-color-on-surface));
+}
+.icon-button{
+    width: 2.5rem;
+    padding: 0;
+}
+
+.secondary-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+.button-icon{
+    margin-right: 0.5rem;
+}
+
+/* Sections Styles */
+.sections-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.section {
+  background-color: rgb(var(--md-sys-color-surface-container-low));
+  border-radius: 0.75rem;
+  padding: 1rem;
+  box-shadow: var(--md-sys-elevation-level1);
+}
+
+.section-title {
+  font-size: 1rem;
+  font-weight: 500;
+  color: rgb(var(--md-sys-color-on-surface));
+  margin-bottom: 0.5rem;
+}
+.section-title-with-icon {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.section-text {
+  font-size: 0.875rem;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+  line-height: 1.4;
+}
+
+.section-list {
+    list-style: disc;
+    padding-left: 1.5rem;
+}
+
+.section-list-item {
+    font-size: 0.875rem;
+    color: rgb(var(--md-sys-color-on-surface-variant));
+  line-height: 1.4;
+  margin-bottom: 0.25rem;
+}
+
+/* POI Styles */
+.poi-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.poi-chip {
+  display: flex;
+  align-items: center;
+  background-color: rgb(var(--md-sys-color-surface-container-high));
+  border-radius: 1rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+}
+
+.poi-icon {
+  font-size: 1rem;
+  margin-right: 0.25rem;
+}
+
+.poi-text {
+  white-space: nowrap;
+}
+
+.poi-subtext {
+  font-size: 0.625rem;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+  margin-left: 0.25rem;
+}
+
+.poi-badge {
+  background-color: rgb(var(--md-sys-color-primary-container));
+  color: rgb(var(--md-sys-color-on-primary-container));
+  border-radius: 0.75rem;
+  padding: 0.125rem 0.375rem;
+  font-size: 0.625rem;
+  font-weight: 500;
+  margin-left: auto;
+}
+
+.poi-count {
+  font-size: 0.75rem;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+}
+
+/* Feature Styles */
+.feature-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.feature-chip {
+  background-color: rgb(var(--md-sys-color-surface-container-high));
+  border-radius: 1rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+}
+
+/* Pub Styles */
+.pub-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.pub-card {
+  background-color: rgb(var(--md-sys-color-surface-container-low));
+  border-radius: 0.75rem;
   box-shadow: var(--md-sys-elevation-level1);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
-
-.m3-surface-container-low:hover,
-.pub-card:hover,
-.m3-assist-chip-container:hover {
-  border-color: rgba(var(--md-sys-color-outline), 0.7);
-  box-shadow: var(--md-sys-elevation-level2);
+.pub-card:hover {
   transform: translateY(-2px);
+  box-shadow: var(--md-sys-elevation-level2);
 }
 
-/* Style for details summary element */
-details summary {
+.pub-button {
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
   cursor: pointer;
-  transition: all 0.3s ease;
-  padding: 8px;
-  border-radius: 8px;
+  text-align: left;
 }
 
-details summary:hover {
-  background-color: rgba(var(--md-sys-color-primary), 0.08);
+.pub-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem;
 }
 
-/* Indicate interactive elements */
-details summary::after {
-  content: "▼";
-  display: inline-block;
-  margin-left: 8px;
+.pub-icon-container {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.75rem;
+  background-color: rgb(var(--md-sys-color-surface-container-high));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pub-main-icon {
+  font-size: 1.5rem;
+  color: rgb(var(--md-sys-color-primary));
+}
+
+.pub-details {
+  flex-grow: 1; /* Allow details to take available space */
+}
+
+.pub-name-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pub-name {
+  font-size: 1rem;
+  font-weight: 500;
+  color: rgb(var(--md-sys-color-on-surface));
+  margin: 0;
+}
+
+.dog-friendly-icon {
+  font-size: 1.25rem;
+  color: rgb(var(--md-sys-color-primary));
+}
+
+.pub-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-top: 0.25rem;
+}
+
+.pub-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+}
+
+.pub-meta-icon {
+  font-size: 0.875rem;
+  color: rgb(var(--md-sys-color-primary));
+}
+
+.pub-opening-hours {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+  margin-top: 0.25rem;
+}
+
+.pub-opening-hours-icon {
+  font-size: 0.875rem;
+}
+
+.pub-open-icon {
+  margin-left: auto; /* Push to right */
+  font-size: 1.25rem;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.pub-button:hover .pub-open-icon {
+  opacity: 1;
+}
+
+/* Practical Information Styles */
+.practical-info-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.footwear-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.footwear-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgb(var(--md-sys-color-on-surface));
+}
+
+.footwear-text {
+  font-size: 0.875rem;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+}
+
+.details-container {
+  border-top: 1px solid rgba(var(--md-sys-color-outline-variant), 0.3);
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+}
+
+.details-summary {
+  cursor: pointer;
+  padding: 0.5rem 0.75rem;
+  border-radius: 1rem;
+  user-select: none;
+  color: rgb(var(--md-sys-color-primary));
+  font-weight: 500;
+  background-color: rgba(var(--md-sys-color-primary), 0.05);
+  display: flex;
+  align-items: center;
+  width: fit-content; /* Fit to content */
+}
+.details-summary:hover {
+  background-color: rgba(var(--md-sys-color-primary), 0.1);
+}
+
+.details-icon {
   transition: transform 0.3s ease;
+  margin-left: 0.5rem;
 }
 
-details[open] summary::after {
-  transform: rotate(180deg);
+.details-content {
+  padding: 0.5rem 1rem;
+  border-left: 2px solid rgba(var(--md-sys-color-primary), 0.3);
+  margin-left: 0.5rem;
+  margin-top: 0.5rem;
 }
 
-/* Animation helpers for buttons */
-.m3-button {
-  transform-origin: center;
+.considerations-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.dog-considerations {
+  margin-bottom: 0.5rem; /* Add some space below dog chip */
+}
+
+.dog-chip-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.dog-chip-icon {
+  font-size: 1.25rem;
+  color: rgb(var(--md-sys-color-primary));
+}
+
+.dog-chip-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgb(var(--md-sys-color-on-surface));
+}
+
+.dog-chip-content {
+  padding-left: 2rem;
+}
+
+.considerations-list {
+  list-style: disc;
+  padding-left: 1.5rem;
+}
+
+.considerations-list-item {
+  font-size: 0.875rem;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+  line-height: 1.4;
+  margin-bottom: 0.25rem; /* Spacing between list items */
+}
+
+.pub-count {
+  margin-left: auto; /* Align to the right */
+  font-size: 0.75rem;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+}
+
+.section-icon {
+  font-size: 1.25rem; /* Adjust as needed */
+  color: rgb(var(--md-sys-color-primary));
+}
+/* Additional Info Styles */
+.extra-info-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+.extra-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(var(--md-sys-color-outline-variant), 0.3);
+}
+
+.extra-info-label {
+  font-weight: 500;
+  color: rgb(var(--md-sys-color-on-surface));
+  text-transform: capitalize;
+}
+.extra-info-value {
+  color: rgb(var(--md-sys-color-on-surface-variant));
+  font-size: 0.875rem;
 }
 </style>

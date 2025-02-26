@@ -123,7 +123,7 @@ const props = defineProps({
 /**
  * Emits for component communication
  */
-const emit = defineEmits(['walk-selected', 'fab-click', 'walk-expanded']);
+const emit = defineEmits(['walk-selected', 'fab-click', 'walk-expanded', 'drawer-closed', 'location-selected']);
 
 // Router and stores
 const router = useRouter();
@@ -166,6 +166,22 @@ const visible = computed(() => {
 const toggleExpanded = () => {
   isExpanded.value = !isExpanded.value;
   localStorage.setItem("sidebarExpanded", isExpanded.value.toString());
+  
+  // If we're expanding and have a selected walk, emit to close drawer
+  if (isExpanded.value && props.selectedWalkId) {
+    emit('walk-selected', null);
+  }
+};
+
+/**
+ * Explicitly expand the sidebar
+ * Used when closing the drawer to return to expanded state
+ */
+const expandSidebar = () => {
+  if (!isExpanded.value) {
+    isExpanded.value = true;
+    localStorage.setItem("sidebarExpanded", "true");
+  }
 };
 
 /**
@@ -176,8 +192,12 @@ const handleFabClick = async () => {
   await router.push({ name: "home" });
   
   if (!isExpanded.value) {
-    isExpanded.value = true;
-    localStorage.setItem("sidebarExpanded", "true");
+    expandSidebar();
+  }
+  
+  // If we have a selected walk, deselect it
+  if (props.selectedWalkId) {
+    emit('walk-selected', null);
   }
   
   emit('fab-click');
@@ -190,6 +210,7 @@ const handleFabClick = async () => {
 const handleWalkSelection = (walk) => {
   if (walk?.id) {
     isExpanded.value = false;
+    localStorage.setItem("sidebarExpanded", "false");
     emit('walk-selected', walk);
   }
 };
@@ -215,6 +236,14 @@ const handleExploreClick = () => {
   searchStore.setSearchMode("walks");
   locationStore.clearLocation();
   searchStore.setError(null);
+  
+  // If we have a selected walk, deselect it
+  if (props.selectedWalkId) {
+    emit('walk-selected', null);
+  }
+  
+  // Always ensure sidebar is expanded when using Explore
+  expandSidebar();
 };
 
 /**
@@ -224,9 +253,12 @@ const handleExploreClick = () => {
 const handleLocationSearchClick = () => {
   searchStore.setSearchMode("locations");
   
-  if (!isExpanded.value) {
-    isExpanded.value = true;
-    localStorage.setItem("sidebarExpanded", "true");
+  // Always ensure sidebar is expanded when using Find Nearby
+  expandSidebar();
+  
+  // If we have a selected walk, deselect it
+  if (props.selectedWalkId) {
+    emit('walk-selected', null);
   }
   
   searchStore.setError(null);
@@ -247,6 +279,9 @@ const handleLocationSearchClick = () => {
     });
   }
 };
+
+// Make the expandSidebar function available to parent components
+defineExpose({ expandSidebar });
 
 // Watch for search mode changes
 watch(
