@@ -34,8 +34,7 @@ const normalizeWalkData = (data) => {
     walk_name: walk.walk_name || 'Unnamed Walk',
     highlights: walk.highlights || '',
     steepness_level: walk.steepness_level || 'Unknown',
-    pubs_list: Array.isArray(walk.pubs_list) ? walk.pubs_list : [],
-    isExpanded: walk.isExpanded || false
+    slug: walk.slug || `walk-${walk.id}` // Ensure we always have a slug
   });
   
   if (Array.isArray(data)) {
@@ -58,13 +57,12 @@ const filterWalks = async (params = {}) => {
   try {
     // If location parameters are provided, use the nearby endpoint
     if (params.latitude && params.longitude) {
-      console.log('Fetching nearby walks:', params)
       const searchParams = new URLSearchParams({
         latitude: params.latitude,
         longitude: params.longitude,
         radius: params.radius || 5000,
         limit: params.limit || 50
-      })
+      });
       
       const response = await fetch(`/api/walks/nearby?${searchParams}`, {
         method: 'GET',
@@ -72,53 +70,61 @@ const filterWalks = async (params = {}) => {
           'Accept': 'application/json',
           'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value
         }
-      })
+      });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json()
-      console.log('Nearby walks response:', data)
-      
-      return normalizeWalkData(data)
+      const data = await response.json();
+      return normalizeWalkData(data);
     }
     
     // Otherwise use the standard filtering endpoint
-    console.log('Fetching walks with params:', params)
-    const response = await fetch('/api/walks', {
+    const searchParams = new URLSearchParams();
+    if (params.search) searchParams.append('search', params.search);
+    if (params.categories?.length) {
+      searchParams.append('categories', params.categories.join(','));
+    }
+    
+    const response = await fetch(`/api/walks${searchParams.toString() ? '?' + searchParams.toString() : ''}`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return normalizeWalkData(data);
+  } catch (error) {
+    console.error('Error fetching walks:', error);
+    throw error;
+  }
+};
+
+const search = async (query) => {
+  try {
+    const response = await fetch(`/api/walks/search?q=${encodeURIComponent(query)}`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json'
       }
-    })
-
+    });
+    
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const data = await response.json()
-    console.log('Raw API Response:', data)
-
-    // Ensure we return an array of walks
-    return normalizeWalkData(data)
-  } catch (error) {
-    console.error('Error fetching walks:', error)
-    throw error
-  }
-}
-
-const search = async (query) => {
-  try {
-    const response = await api.get('walks', {
-      searchParams: { search: query }
-    }).json();
-    
-    const normalizedWalks = normalizeWalkData(response);
-    return { walks: normalizedWalks };
+    const data = await response.json();
+    return { walks: normalizeWalkData(data) };
   } catch (error) {
     console.error('API search error:', error);
-    throw new Error(`Failed to search walks: ${error.message}`);
+    throw error;
   }
 };
 
@@ -141,16 +147,15 @@ const getGeometry = async (walkId) => {
     const response = await fetch(`/api/walks/${walkId}/geometry`, {
       method: 'GET',
       headers: {
-        'Accept': 'application/json',
+        'Accept': 'application/json'
       }
     });
-
+    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const data = await response.json();
-    return data;
+    return await response.json();
   } catch (error) {
     console.error('Error fetching route geometry:', error);
     throw error;

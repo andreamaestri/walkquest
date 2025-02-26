@@ -174,6 +174,13 @@ const isLocationSearchVisible = computed({
 const handleWalkSelection = (walk) => {
   closeMobileMenu();
   emit('walk-selected', walk);
+
+  // Use path parameter instead of query parameter
+  if (walk?.slug) {
+    router.push({ name: 'walk-by-slug', params: { walk_slug: walk.slug } });
+  } else {
+    router.push({ name: 'walk', params: { walk_id: walk.id } });
+  }
 };
 
 /**
@@ -202,6 +209,9 @@ const handleLocationSelected = (location) => {
  */
 const setSearchMode = (mode) => {
   searchStore.setSearchMode(mode);
+  
+  // When changing search mode, ensure we're on the home route
+  router.push({ name: 'home' });
 };
 
 /**

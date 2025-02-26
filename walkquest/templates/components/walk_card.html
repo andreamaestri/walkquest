@@ -3,7 +3,7 @@
 
 <div class="walk-item p-3 md:p-5 backdrop-blur-md rounded-xl shadow-sm hover:shadow-lg
             transition-all duration-300 ease-out cursor-pointer"
-            :data-walk-id="walk.id"
+            :data-walk-id="walk.walk_id"
             border border-white/20 hover:border-primary-200/50
             bg-white/5 hover:bg-white/10 group relative
             w-full max-w-4xl mx-auto transform-gpu backface-visibility-hidden"
@@ -15,8 +15,8 @@
      x-data="walkCardMixin(walk)" 
      x-init="init()"
      x-intersect.once="handleVisibility()"
-     :key="walk.id"
-     x-bind:data-walk-id="walk.id"
+     :key="walk.walk_id"
+     x-bind:data-walk-id="walk.walk_id"
      x-bind="walkTransition(walk, index)"
      @click="toggleExpand($event)"
      @mouseenter="showBadges = true"

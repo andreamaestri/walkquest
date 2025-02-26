@@ -212,6 +212,13 @@ const handleWalkSelection = (walk) => {
     isExpanded.value = false;
     localStorage.setItem("sidebarExpanded", "false");
     emit('walk-selected', walk);
+
+    // Always use slug-based routing when available
+    if (walk.walk_id) {
+      router.push({ name: 'walk', params: { walk_slug: walk.walk_id } });
+    } else {
+      router.push({ name: 'walk-by-id', params: { walk_id: walk.id } });
+    }
   }
 };
 
@@ -256,9 +263,10 @@ const handleLocationSearchClick = () => {
   // Always ensure sidebar is expanded when using Find Nearby
   expandSidebar();
   
-  // If we have a selected walk, deselect it
+  // If we have a selected walk, deselect it and return to home
   if (props.selectedWalkId) {
     emit('walk-selected', null);
+    router.push({ name: 'home' });
   }
   
   searchStore.setError(null);

@@ -41,8 +41,8 @@ onMounted(() => {
     }
   }, { immediate: true })
   
-  // Set initial search mode from URL or localStorage
-  const searchMode = route.query.searchMode || localStorage.getItem('searchMode') || 'walks'
+  // Set initial search mode from localStorage or default to 'walks'
+  const searchMode = localStorage.getItem('searchMode') || 'walks'
   if (['walks', 'locations'].includes(searchMode)) {
     searchStore.setSearchMode(searchMode)
   }

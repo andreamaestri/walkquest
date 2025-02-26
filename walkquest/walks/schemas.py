@@ -49,7 +49,6 @@ class WalkOutSchema(Schema):
     recommended_footwear: str
     pubs_list: List[PubSchema]  # Changed to use PubSchema
     trail_considerations: str
-    rewritten_trail_considerations: str
     has_stiles: bool
     has_bus_access: bool
     created_at: datetime  # Changed to datetime

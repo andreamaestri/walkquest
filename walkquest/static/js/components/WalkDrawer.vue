@@ -96,7 +96,7 @@
               <button
                 :ref="(el) => (buttonRefs[3] = el)"
                 class="m3-button m3-outlined-button icon-button"
-                @click="() => {}"
+                @click="handleShare"
               >
                 <Icon icon="mdi:share" class="button-icon" />
               </button>
@@ -280,6 +280,7 @@
 import { ref, computed, onMounted, watch, nextTick } from "vue";
 import { animate, stagger } from "motion";
 import { Icon } from "@iconify/vue";
+import { useRouter } from 'vue-router';
 
 const props = defineProps({
   walk: { type: Object, required: true },
@@ -306,6 +307,8 @@ const accentLineRef = ref(null);
 const animationConfigs = {
   fluid: { duration: 0.5, easing: [0.22, 1, 0.36, 1] },
 };
+
+const router = useRouter();
 
 watch(() => props.isOpen, (isOpen) => {
   if (isOpen) {
@@ -595,7 +598,31 @@ function openInGoogleMaps(pub) {
 }
 
 function handleBackClick() {
+  router.push({ name: 'home' });
   emit("close", { expandSidebar: true });
+}
+
+function handleShare() {
+  if (!props.walk) return;
+  
+  // Use slug if available, otherwise use ID
+  const walkPath = props.walk.slug 
+    ? `/${props.walk.slug}` 
+    : `/walk/${props.walk.id}`;
+  
+  const shareUrl = `${window.location.origin}${walkPath}`;
+  
+  if (navigator.share) {
+    navigator.share({
+      title: props.walk.title || props.walk.walk_name,
+      text: props.walk.description,
+      url: shareUrl
+    }).catch(console.error);
+  } else {
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      // Show copy success message
+    }).catch(console.error);
+  }
 }
 </script>
 

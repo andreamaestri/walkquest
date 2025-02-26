@@ -104,3 +104,29 @@ export function walkList() {
         }
     });
 }
+
+export default {
+  props: {
+    walks: {
+      type: Array,
+      required: true,
+    },
+    selectedWalkId: {
+      type: String,
+      default: null,
+    },
+    expandedWalkIds: {
+      type: Array,
+      default: () => [],
+    },
+    isCompact: {
+      type: Boolean,
+      default: false,
+    },
+  },
+
+  emits: ['walk-selected', 'walk-expanded'],
+
+  setup(props, { emit }) {
+    const handleWalkClick = (walk) => {
+      emit('walk-selected', walk);

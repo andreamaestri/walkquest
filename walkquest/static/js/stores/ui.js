@@ -68,8 +68,8 @@ export const useUiStore = defineStore('ui', () => {
   const initializeResponsiveState = () => {
     const checkMobile = () => {
       isMobile.value = window.innerWidth < 768
-      // Only set showSidebar if no walk is selected and drawer is not showing
-      if (!window.location.search.includes('walkId')) {
+      // Only set showSidebar if we're not on a walk detail route
+      if (!window.location.pathname.includes('/walk/')) {
         showSidebar.value = !isMobile.value
       }
     }

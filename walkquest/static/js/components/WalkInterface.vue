@@ -189,15 +189,18 @@ const walks = computed(() => {
  * Finds walk by ID from available walks
  */
 const selectedWalk = computed(() => {
-  if (!selectedWalkId.value) return null;
-  return walks.value.find((walk) => walk.id === selectedWalkId.value);
+  if (!route.params.walk_slug && !route.params.walk_id) return null;
+  
+  // Try to find walk by slug first
+  if (route.params.walk_slug) {
+    return walks.value.find(walk => walk.walk_id === route.params.walk_slug);
+  }
+  
+  // Fallback to ID lookup
+  return walks.value.find(walk => walk.id === route.params.walk_id);
 });
 
-/**
- * Computed property for selected walk ID
- * Extracts from route query parameters
- */
-const selectedWalkId = computed(() => route.query.walkId);
+const selectedWalkId = computed(() => selectedWalk.value?.id);
 
 /**
  * Computed property for drawer open state
@@ -222,26 +225,24 @@ const handleWalkSelection = async (walk) => {
     drawerAnimating.value = true;
     uiStore.handleWalkSelected();
 
-    await router.push({ query: { walkId: walk.id } });
+    // Navigate using slug if available, fallback to ID
+    if (walk.walk_id) {
+      await router.push({ name: 'walk', params: { walk_slug: walk.walk_id } });
+    } else {
+      await router.push({ name: 'walk-by-id', params: { walk_id: walk.id } });
+    }
 
     // Wait for next tick to ensure drawer is mounted
     await nextTick();
     if (walkDrawerRef.value) {
-      // Force a reflow
-      walkDrawerRef.value.$el?.offsetHeight;
+      walkDrawerRef.value.$el?.offsetHeight; // Force a reflow
       drawerMounted.value = true;
-      console.log(
-        "Drawer mounted and visible:",
-        uiStore.showDrawer,
-        "with walk ID:",
-        selectedWalkId.value
-      );
       drawerAnimating.value = false;
     }
   } else {
     isExpanded.value = true; // Expand sidebar
     uiStore.handleWalkClosed(); // Show sidebar
-    router.push({ query: {} });
+    router.push({ name: 'home' });
   }
 };
 
@@ -256,7 +257,7 @@ const handleDrawerClose = async () => {
   // Close drawer
   drawerAnimating.value = true;
   console.log("Closing drawer");
-  await router.push({ query: {} });
+  await router.push({ name: 'home' });
   isExpanded.value = true;
   uiStore.handleWalkClosed();
   drawerAnimating.value = false;

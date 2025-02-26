@@ -419,14 +419,17 @@ class WalkDetailView(View):
     model = Walk
     template_name = "walks/detail.html"
 
-    def get(self, request, id):
+    def get_walk(self, **kwargs):
+        if 'id' in kwargs:
+            return Walk.objects.get(id=kwargs['id'])
+        elif 'slug' in kwargs:
+            return Walk.objects.get(slug=kwargs['slug'])
+        raise Http404("Walk not found")
+
+    def get(self, request, **kwargs):
         """Handle GET request for walk details."""
         try:
-            walk = get_object_or_404(
-                Walk.objects.select_related('adventure')
-                .prefetch_related('features', 'categories', 'related_categories'),
-                id=id
-            )
+            walk = self.get_walk(**kwargs)
 
             # Prepare walk data
             walk_data = {
@@ -482,17 +485,24 @@ class WalkGeometryView(View):
     CONTENT_TYPE = "application/geo+json"
     CACHE_TIMEOUT = 60 * 30  # 30 minutes
 
+    def get_walk(self, **kwargs):
+        if 'id' in kwargs:
+            return Walk.objects.get(id=kwargs['id'])
+        elif 'slug' in kwargs:
+            return Walk.objects.get(slug=kwargs['slug'])
+        raise Http404("Walk not found")
+
     @method_decorator(csrf_protect)
-    def get(self, request, walk_id):
+    def get(self, request, **kwargs):
         """Handle GET request for walk geometry."""
-        cache_key = f"walk_geometry_{walk_id}"
+        cache_key = f"walk_geometry_{kwargs.get('id') or kwargs.get('slug')}"
 
         try:
             # Try to get cached geometry
             geometry_data = cache.get(cache_key)
 
             if not geometry_data:
-                walk = Walk.objects.get(id=walk_id)
+                walk = self.get_walk(**kwargs)
 
                 if not walk.route_geometry:
                     return HttpResponse(
@@ -524,7 +534,7 @@ class WalkGeometryView(View):
                 status=404,
             )
         except Exception:
-            logger.exception("Error fetching geometry for walk %s", walk_id)
+            logger.exception("Error fetching geometry for walk %s", kwargs.get('id') or kwargs.get('slug'))
             return HttpResponse(
                 '{"error": "Internal server error"}',
                 content_type=self.CONTENT_TYPE,

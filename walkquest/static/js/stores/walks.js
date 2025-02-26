@@ -1,8 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { useUiStore } from './ui'
-import { WalksAPI } from '../services/api'  // Updated import path
-import { filterWalks } from '../services/api'
+import { WalksAPI } from '../services/api'
 
 export const useWalksStore = defineStore('walks', {
   state: () => ({
@@ -13,82 +12,57 @@ export const useWalksStore = defineStore('walks', {
     loading: false
   }),
 
+  getters: {
+    selectedWalk: (state) => state.walks.find(walk => walk.id === state.selectedWalkId),
+    getWalkBySlug: (state) => (slug) => state.walks.find(walk => walk.slug === slug),
+  },
+
   actions: {
     async loadWalks() {
+      if (this.loading) return;
+      this.loading = true;
+      this.error = null;
+
       try {
-        if (this.loading) {
-          console.debug('Walks already loading, waiting...')
-          return
-        }
-
-        this.loading = true
-        this.error = null
-        console.log('Fetching walks...')
-        const response = await filterWalks()
-        
-        console.log('API Response:', response)
-        
-        if (!response) {
-          throw new Error('No response from walks API')
-        }
-
-        const walks = Array.isArray(response) ? response : response.walks
-
-        if (!Array.isArray(walks)) {
-          throw new Error('Invalid walks data format')
-        }
-
-        this.walks = walks.map(walk => ({
-          ...walk,
-          title: walk.title || walk.walk_name || 'Unnamed Walk',
-          location: walk.location || 'Unknown Location',
-          latitude: Number(walk.latitude),
-          longitude: Number(walk.longitude)
-        }))
-
-        console.log('Walks loaded:', this.walks.length)
-        return this.walks
+        const walks = await WalksAPI.filterWalks();
+        this.walks = walks;
+        return walks;
       } catch (err) {
-        console.error('Error loading walks:', err)
-        this.error = err.message
-        this.walks = []
-        throw err // Re-throw to allow proper error handling upstream
+        console.error('Failed to load walks:', err);
+        this.error = err.message;
+        throw err;
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
 
     setSelectedWalk(walkId) {
-      this.selectedWalkId = walkId
+      this.selectedWalkId = walkId;
     },
 
     getWalkById(id) {
-      return this.walks.find(walk => walk.id === id)
+      return this.walks.find(walk => walk.id === id);
     },
 
     isPendingFavorite(walkId) {
-      return this.pendingFavorites.has(walkId)
+      return this.pendingFavorites.has(walkId);
     },
 
     async toggleFavorite(walkId) {
+      if (this.pendingFavorites.has(walkId)) return;
+
+      this.pendingFavorites.add(walkId);
       try {
-        this.pendingFavorites.add(walkId)
-        const walk = this.walks.find(w => w.id === walkId)
-        if (!walk) return
+        const walk = this.walks.find(w => w.id === walkId);
+        if (!walk) throw new Error('Walk not found');
 
-        // Toggle the favorite status
-        walk.is_favorite = !walk.is_favorite
-
-        // Here you would typically make an API call to persist the change
-        // await api.updateWalkFavorite(walkId, walk.is_favorite)
-
+        const result = await WalksAPI.toggleFavorite(walkId);
+        walk.is_favorite = result.is_favorite;
       } catch (error) {
-        console.error('Failed to toggle favorite:', error)
-        // Revert the change on error
-        const walk = this.walks.find(w => w.id === walkId)
-        if (walk) walk.is_favorite = !walk.is_favorite
+        console.error('Error toggling favorite:', error);
+        throw error;
       } finally {
-        this.pendingFavorites.delete(walkId)
+        this.pendingFavorites.delete(walkId);
       }
     },
 
@@ -97,44 +71,32 @@ export const useWalksStore = defineStore('walks', {
         limit = 50,
         offset = 0,
         forceRefresh = false
-      } = options
-
-      // Check cache first unless force refresh is requested
-      if (!forceRefresh) {
-        const cachedWalks = await locationCache.getCachedWalksInArea(bounds)
-        if (cachedWalks) {
-          // Merge with existing walks to avoid duplicates
-          this.walks = [...new Map([...this.walks, ...cachedWalks].map(walk => [walk.id, walk])).values()]
-          return cachedWalks
-        }
-      }
+      } = options;
 
       try {
-        // TODO: Implement API call
-        // const response = await fetch(`/api/walks/in-area?` + new URLSearchParams({
-        //   north: bounds.north,
-        //   south: bounds.south,
-        //   east: bounds.east,
-        //   west: bounds.west,
-        //   limit,
-        //   offset
-        // }))
-        // const newWalks = await response.json()
+        // Use the updated API method with location parameters
+        const walks = await WalksAPI.filterWalks({
+          latitude: bounds.north,
+          longitude: bounds.west,
+          radius: 5000, // 5km radius
+          limit
+        });
         
-        // For now, simulate pagination of existing walks
-        const newWalks = this.walks.slice(offset, offset + limit)
+        // Merge with existing walks to avoid duplicates
+        this.walks = [...new Map([...this.walks, ...walks].map(walk => [walk.id, walk])).values()];
         
-        // Cache the results
-        await locationCache.cacheWalksInArea(bounds, newWalks)
-        
-        // Merge with existing walks
-        this.walks = [...new Map([...this.walks, ...newWalks].map(walk => [walk.id, walk])).values()]
-        
-        return newWalks
+        return walks;
       } catch (error) {
-        console.error('Error loading walks in area:', error)
-        throw error
+        console.error('Error loading walks in area:', error);
+        throw error;
+      }
+    },
+
+    setLoading(status) {
+      this.loading = status;
+      if (status) {
+        this.error = null;
       }
     }
   }
-})
+});

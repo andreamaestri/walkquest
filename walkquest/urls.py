@@ -1,32 +1,32 @@
 from django.conf import settings
-from django.conf.urls.static import static
-from django.contrib import admin
-from django.urls import include
-from django.urls import path
-from django.views import defaults as default_views
+from django.urls import include, path
 from django.views.generic import TemplateView
+from django.conf.urls.static import static
+from django.shortcuts import redirect
 from . import views
 
+app_name = "walkquest"
+
 urlpatterns = [
-    # Django Admin
-    path("admin/", admin.site.urls),
+    # API routes
+    path("api/", include("walkquest.api.urls")),
+    path("api/walks/", include("walkquest.walks.urls", namespace="walks")),
+    path("api/users/", include("walkquest.users.urls", namespace="users")),
 
-    # User management
-    path("users/", include("walkquest.users.urls", namespace="users")),
-    path("accounts/", include("allauth.urls")),
-
-    # Your apps
-    path("", TemplateView.as_view(template_name="pages/home.html"), name="home"),
-    path("about/", TemplateView.as_view(template_name="pages/about.html"), name="about"),
-
-    # Walks app URLs (includes both regular views and API)
-    path("walks/", include("walkquest.walks.urls", namespace="walks")),
-    path('walks/<uuid:id>', views.index, name='walk-detail'),
-    path('api/walks/<uuid:id>/geometry', views.walk_geometry, name='walk-geometry'),
-    *static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT),
-]
+    # Frontend routes - prefer slug routes
+    path("<slug:walk_id>/", views.index, name="walk-detail-by-slug"),  # Primary route using slug
+    path("walk/<uuid:id>/", views.legacy_walk_view, name="walk-detail-legacy"),  # Legacy UUID route with redirect
+    
+    # Default route - handled by Vue router
+    path("", views.index, name="home"),
+    
+    # Catch-all route for client-side routing
+    path("<path:path>", views.index, name="catch-all"),
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 if settings.DEBUG:
+    from django.views import defaults as default_views
+    
     urlpatterns += [
         path(
             "400/",
