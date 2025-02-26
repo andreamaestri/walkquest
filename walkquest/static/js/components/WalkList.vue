@@ -209,19 +209,7 @@ const handleScrollerUpdate = () => {
 // Walk selection handler with improved error handling
 const handleWalkSelection = async (walk) => {
   if (!walk) return
-  
-  try {
-    if (walk.latitude && walk.longitude) {
-      await flyToLocation({
-        center: [walk.longitude, walk.latitude],
-        zoom: 14,
-        pitch: 45
-      })
-    }
-    emit('walk-selected', walk)
-  } catch (error) {
-    console.error('Error handling walk selection:', error)
-  }
+  emit('walk-selected', walk)
 }
 
 // Helper function for debounced operations

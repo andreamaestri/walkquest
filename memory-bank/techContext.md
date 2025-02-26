@@ -4,11 +4,11 @@
 
 ### Virtual List Implementation - CRITICAL ISSUES 🔴
 - **Vue Virtual Scroller**
-  - RecycleScroller component not rendering cards
-  - Item wrapper has 0px height and no children
-  - No card elements in DOM
+  - DynamicScroller/DynamicScrollerItem components not rendering cards properly
+  - CSS is properly imported in main.js: 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
+  - Props appear to be correctly configured
   - Required Investigation:
-    - Data flow to RecycleScroller
+    - Data flow to DynamicScroller
     - Item size configuration
     - Key field verification
     - Scoped slot implementation
@@ -16,15 +16,15 @@
 
 ### Virtual List Debug Areas
 1. **Component Setup**
-   - Verify RecycleScroller import and registration
-   - Check CSS import: 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
+   - DynamicScroller and DynamicScrollerItem are properly imported and registered
+   - CSS import is present: 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
    - Review scoped slot implementation
    - Verify keyField configuration
    - Check item size settings
 
 2. **Component Integration**
    - Verify items prop passing
-   - Check item-size prop
+   - Check min-item-size prop
    - Review key-field prop
    - Validate scoped slot usage
    - Check wrapper class sizing
@@ -37,6 +37,7 @@
    - Review hover state handling
 
 ### MapBox Integration
+- Using @studiometa/vue-mapbox-gl
 - Proper CSS inclusion in base.html
 - Empty container pattern
 - Controls outside map container
@@ -80,7 +81,7 @@
    ```
 
 ### Testing Environment - CRITICAL NEED 🔴
-- RecycleScroller rendering tests
+- DynamicScroller rendering tests
 - Component integration tests
 - Item recycling tests
 - Size calculation tests
@@ -116,7 +117,7 @@
 
 - **Frontend Dependencies**
   - vue-virtual-scroller (needs debugging)
-  - Mapbox GL (map integration)
+  - @studiometa/vue-mapbox-gl (map integration)
   - Tailwind CSS (styling)
   - ky (HTTP client)
   - iconify-prerendered (icons)
@@ -149,7 +150,7 @@
 ## Debug Requirements 🔴
 
 ### Vue Virtual Scroller
-- Verify RecycleScroller setup
+- Verify DynamicScroller setup
 - Debug item rendering
 - Check DOM recycling
 - Test size calculations
@@ -159,7 +160,7 @@
 ### Component Integration
 - Test data passing
 - Verify scoped slots
-- Check RecycleScroller props
+- Check DynamicScroller props
 - Review cleanup processes
 - Test item recycling
 
@@ -189,7 +190,7 @@
 ## Development Workflow
 
 ### Testing Strategy - PRIORITY 🔴
-- RecycleScroller tests
+- DynamicScroller tests
 - Component integration tests
 - Item recycling tests
 - Size calculation tests

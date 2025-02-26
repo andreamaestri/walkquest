@@ -126,7 +126,7 @@ const geocoderProps = computed(() => ({
   countries: 'GB',
   language: 'en-GB',
   limit: 5,
-  types: 'address,poi,locality,neighborhood',
+  types: 'poi,locality,neighborhood,postcode,district,place',
   minLength: 2,
   flyTo: false, // Disable default flyTo since we handle it ourselves
   showResultMarkers: false,
@@ -382,7 +382,8 @@ function deg2rad(deg) {
 
 // Clear search state with proper store coordination
 const clearSearchState = () => {
-  locationStore.clearSearched()
+  // Replace the non-existent clearSearched method with direct state update
+  locationStore.$patch({ hasSearched: false })
   walkStore.clearWalks()
   locationStore.clearLocation()
   searchStore.setError(null)
@@ -503,6 +504,7 @@ watch(() => searchError.value, async (error) => {
 @import '../../css/material3.css';
 .location-search {
   width: 100% !important;
+  position: relative !important; /* Ensure relative positioning for absolute children */
 }
 
 .search-field-container {
@@ -527,10 +529,10 @@ watch(() => searchError.value, async (error) => {
   background-color: rgb(var(--md-sys-color-surface));
   width: 100%;
   min-width: 240px;
-  z-index: 1;
+  z-index: 10; /* Increased z-index */
   border-radius: 24px;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: var(--md-sys-elevation-0);
+  box-shadow: var(--md-sys-elevation-1);
 }
 
 .mapboxgl-ctrl-geocoder--input {
@@ -539,9 +541,9 @@ watch(() => searchError.value, async (error) => {
   border: 0;
   background-color: transparent;
   margin: 0;
-  height: 40px;
+  height: 48px; /* Increase height for better touch targets */
   color: rgb(var(--md-sys-color-on-surface));
-  padding: 2px 45px 2px 44px;
+  padding: 6px 45px 6px 44px !important;
   text-overflow: ellipsis;
   white-space: nowrap;
   overflow: hidden;
@@ -558,12 +560,11 @@ watch(() => searchError.value, async (error) => {
 }
 
 .mapboxgl-ctrl-geocoder .mapboxgl-ctrl-geocoder--pin-right > * {
-  z-index: 2;
+  z-index: 12; /* Increased z-index */
   position: absolute;
   right: 8px;
   top: 50%;
   transform: translateY(-50%);
-  display: none;
 }
 
 .mapboxgl-ctrl-geocoder .mapboxgl-ctrl-geocoder--icon {
@@ -575,22 +576,23 @@ watch(() => searchError.value, async (error) => {
   fill: rgb(var(--md-sys-color-on-surface))!important;
   width: 18px;
   height: 18px;
-  z-index: 2;
+  z-index: 12; /* Increased z-index */
 }
 
 /* Add specific styles for the close icon */
 .mapboxgl-ctrl-geocoder .mapboxgl-ctrl-geocoder--icon-close {
   right: 8px;
   left: auto;
-  width: 18px;
-  height: 18px;
-  color: rgb(var(--md-sys-color-on-surface))!important;
+  width: 20px;
+  height: 20px;
+  color: rgb(var(--md-sys-color-on-surface-variant))!important;
   padding: 4px;
   margin-right: 4px;
   border-radius: 16px;
   cursor: pointer;
   background: transparent;
   transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: block; /* Ensure it's displayed */
 }
 
 .mapboxgl-ctrl-geocoder .mapboxgl-ctrl-geocoder--icon-close:hover {
@@ -604,7 +606,7 @@ watch(() => searchError.value, async (error) => {
 
 .mapboxgl-ctrl-geocoder,
 .mapboxgl-ctrl-geocoder .suggestions {
-  box-shadow: var(--md-sys-elevation-0);
+  box-shadow: var(--md-sys-elevation-2); /* Increase shadow for better visibility */
 }
 
 /* Collapsed */
@@ -617,18 +619,30 @@ watch(() => searchError.value, async (error) => {
 /* Suggestions */
 .mapboxgl-ctrl-geocoder .suggestions {
   background-color: rgb(var(--md-sys-color-surface));
-  border-radius: 4px;
+  border-radius: 12px; /* More rounded corners */
   left: 0;
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 8px 0;
   position: absolute;
   width: 100%;
   top: 110%;
   top: calc(100% + 6px);
-  z-index: 1000;
-  overflow: hidden;
+  z-index: 9999; /* Very high z-index to ensure visibility */
+  overflow: hidden; /* Changed from hidden to visible */
   font-size: 15px;
+  box-shadow: var(--md-sys-elevation-3); /* Stronger shadow for dropdown */
+}
+
+/* Make sure suggestions are always visible when present */
+.mapboxgl-ctrl-geocoder .suggestions:not(:empty) {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.mapboxgl-ctrl-geocoder .suggestions > li {
+  cursor: pointer;
 }
 
 .mapboxgl-ctrl-geocoder .suggestions > li > a {
@@ -638,6 +652,7 @@ watch(() => searchError.value, async (error) => {
   flex-direction: column;
   gap: 4px;
   transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-decoration: none;
 }
 
 .mapboxgl-ctrl-geocoder .suggestions > .active > a,
@@ -646,6 +661,33 @@ watch(() => searchError.value, async (error) => {
   background-color: rgb(var(--md-sys-color-surface-container));
   text-decoration: none;
   cursor: pointer;
+}
+
+/* Fix for suggestions container */
+.geocoder-container {
+  position: relative !important;
+  width: 100% !important;
+  z-index: 15; /* Keep above other UI elements */
+}
+
+/* Ensure dropdown is shown above other elements */
+.mapboxgl-ctrl-geocoder--powered-by {
+  display: none !important; /* Hide powered by if it's causing issues */
+}
+
+/* Fix for suggestion display */
+.geocoder-suggestion {
+  display: flex;
+  flex-direction: column;
+}
+
+.geocoder-suggestion-title {
+  font-weight: 500;
+}
+
+.geocoder-suggestion-address {
+  font-size: 0.85em;
+  opacity: 0.75;
 }
 
 .search-error {
@@ -717,7 +759,42 @@ watch(() => searchError.value, async (error) => {
   border-width: 2px;
 }
 
+.is-loading::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(var(--md-sys-color-surface) / 0.7);
+  border-radius: 24px;
+  z-index: 11;
+  pointer-events: none;
+}
+
+/* Loading spinner positioning */
+.is-loading::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgb(var(--md-sys-color-primary));
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spinner 0.8s linear infinite;
+  z-index: 12;
+}
+
 @keyframes spinner {
   to {transform: rotate(360deg);}
+}
+
+/* Fix the positioning when inside the search header */
+.location-search .search-field-container {
+  width: 100%;
+  position: relative;
 }
 </style>

@@ -65,7 +65,7 @@ uiStore.$patch({
     error: null,
     loading: false,
     mapLoading: true,
-    showSidebar: false,
+    showSidebar: true, // Set to true by default
     fullscreen: false,
     mobileMenuOpen: false,
     isMobile: window.innerWidth <= 768,  // Add initial mobile state

@@ -7,7 +7,7 @@ export const useUiStore = defineStore('ui', () => {
   const loading = ref(false)
   const mobileMenuOpen = ref(false)
   const fullscreen = ref(false)
-  const showSidebar = ref(true)
+  const showSidebar = ref(true) // Change default to true
   const isMobile = ref(false)
   const loadingStates = ref({
     walks: false,
@@ -16,6 +16,9 @@ export const useUiStore = defineStore('ui', () => {
     path: false,
     search: false
   })
+
+  // Add drawer state
+  const showDrawer = ref(false)
 
   // Computed
   const isAnyLoading = computed(() => {
@@ -45,10 +48,28 @@ export const useUiStore = defineStore('ui', () => {
     showSidebar.value = value
   }
 
+  // Update handleWalkSelected to be more explicit
+  const handleWalkSelected = () => {
+    showSidebar.value = false
+    showDrawer.value = true
+  }
+
+  const handleWalkClosed = () => {
+    showDrawer.value = false
+    showSidebar.value = !isMobile.value
+  }
+
+  const toggleSidebar = () => {
+    showSidebar.value = !showSidebar.value
+  }
+
   const initializeResponsiveState = () => {
     const checkMobile = () => {
       isMobile.value = window.innerWidth < 768
-      showSidebar.value = !isMobile.value
+      // Only set showSidebar if no walk is selected
+      if (!window.location.search.includes('walkId')) {
+        showSidebar.value = !isMobile.value
+      }
     }
 
     checkMobile()
@@ -65,6 +86,7 @@ export const useUiStore = defineStore('ui', () => {
     fullscreen,
     showSidebar,
     isMobile,
+    showDrawer,
 
     // Computed
     isAnyLoading,
@@ -75,6 +97,9 @@ export const useUiStore = defineStore('ui', () => {
     setLoadingState,
     setMobileMenuOpen,
     setSidebarVisibility,
+    handleWalkSelected,
+    handleWalkClosed,
+    toggleSidebar,
     initializeResponsiveState
   }
 })

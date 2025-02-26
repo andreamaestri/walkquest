@@ -14,7 +14,7 @@ WalkQuest follows a Model-View-Template (MVT) architecture on the backend with D
 ### Frontend Architecture
 - **Vue.js 3:** Selected for its Composition API and reactive system
 - **Pinia:** Implements centralized state management
-- **Vue Virtual Scroller:** For efficient list virtualization (currently experiencing issues)
+- **Virtual List Implementation:** Using vue-virtual-scroller (DynamicScroller/DynamicScrollerItem)
 - **Tailwind CSS:** Enables rapid UI development with utility classes
 
 ## Design Patterns
@@ -22,13 +22,13 @@ WalkQuest follows a Model-View-Template (MVT) architecture on the backend with D
 ### Frontend Patterns - NEEDS REVISION 🔴
 
 1. **Virtual List Pattern - CRITICAL ISSUES**
-   - RecycleScroller not rendering cards
-   - Empty item wrapper (0px height)
-   - Missing card elements in DOM
+   - DynamicScroller not rendering cards properly
+   - CSS is properly imported in main.js
+   - Props appear to be correctly configured
    - Required fixes:
-     - Review scoped slot implementation
-     - Fix item size configuration
-     - Debug DOM recycling
+     - Verify DynamicScroller and DynamicScrollerItem implementation
+     - Check container sizing and item height calculations
+     - Debug data flow to virtual scroller
      - Verify key field setup
      - Update cleanup handling
 
@@ -37,7 +37,7 @@ WalkQuest follows a Model-View-Template (MVT) architecture on the backend with D
    - Clean parent-child communication
    - Proper prop/event handling
    - Needs review:
-     - RecycleScroller integration
+     - DynamicScroller integration
      - Item template structure
      - Store integration
      - Rendering lifecycle
@@ -47,12 +47,13 @@ WalkQuest follows a Model-View-Template (MVT) architecture on the backend with D
    - Action-based mutations
    - Computed property caching
    - Needs investigation:
-     - Data flow to RecycleScroller
+     - Data flow to DynamicScroller
      - Item recycling
      - State updates
      - View recycling
 
 4. **Map Integration Pattern**
+   - Using @studiometa/vue-mapbox-gl
    - Empty container initialization
    - External control placement
    - Proper event handling
@@ -92,25 +93,25 @@ WalkQuest follows a Model-View-Template (MVT) architecture on the backend with D
      - Store integration
 
 2. **WalkList.vue - CRITICAL ISSUES 🔴**
-   - RecycleScroller implementation
-   - Item wrapper empty
+   - DynamicScroller implementation
+   - Item wrapper not rendering properly
    - No card elements rendered
    - Required fixes:
-     - Scoped slot template
-     - Item size settings
+     - Verify DynamicScroller props
+     - Check item size settings
      - Key field configuration
      - Component recycling
      - View management
 
 3. **WalkCard.vue**
-   - Component exists but not rendering
+   - Component is properly implemented
    - Displays walk information
    - Handles user interactions
    - Manages local state
    - Emits relevant events
 
 4. **MapView.vue**
-   - Manages map display
+   - Manages map display using @studiometa/vue-mapbox-gl
    - Handles map interactions
    - Controls map state
    - Manages markers
@@ -120,7 +121,7 @@ WalkQuest follows a Model-View-Template (MVT) architecture on the backend with D
 
 1. **walks.js - NEEDS REVIEW 🔴**
    - Review required:
-     - Data flow to RecycleScroller
+     - Data flow to DynamicScroller
      - Item management
      - Loading states
      - Store subscriptions
@@ -143,7 +144,7 @@ WalkQuest follows a Model-View-Template (MVT) architecture on the backend with D
    - Implements retries
 
 2. **map.js**
-   - Manages map setup
+   - Manages map setup with @studiometa/vue-mapbox-gl
    - Controls map state
    - Handles map events
    - Manages markers
@@ -153,7 +154,7 @@ WalkQuest follows a Model-View-Template (MVT) architecture on the backend with D
 
 ### Frontend Flow - NEEDS REVIEW 🔴
 1. **Virtual List Flow**
-   - RecycleScroller setup
+   - DynamicScroller setup
    - Item template rendering
    - View recycling
    - DOM element reuse
@@ -196,6 +197,7 @@ WalkQuest follows a Model-View-Template (MVT) architecture on the backend with D
 
 ### External Services
 1. **Mapbox**
+   - Using @studiometa/vue-mapbox-gl
    - Token management
    - Map initialization
    - Event handling
@@ -207,4 +209,12 @@ WalkQuest follows a Model-View-Template (MVT) architecture on the backend with D
    - Cache control
    - Resource optimization
 
-This system patterns documentation reflects the critical issues with the Vue Virtual Scroller implementation that require immediate attention and debugging.
+## Animation System
+1. **Motion Integration**
+   - Using motion.dev/vue
+   - Transition animations
+   - Enter/exit animations
+   - Scroll-linked animations
+   - Viewport detection
+
+This system patterns documentation reflects the critical issues with the vue-virtual-scroller implementation that require immediate attention and debugging.

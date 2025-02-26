@@ -7,14 +7,20 @@
 - All components must integrate with Pinia stores for state
 
 # Virtual List Implementation
-- Use @tanstack/vue-virtual with computed options
-- Base item height: 200px, expanded padding: 150px
+- Use vue-virtual-scroller (DynamicScroller/DynamicScrollerItem)
+- Min item size: isCompact ? 56 : 180, with buffer: 500
 - Always implement proper cleanup in onBeforeUnmount
 
 # Map Integration
+- Use @studiometa/vue-mapbox-gl for all map functionality
 - Include Mapbox CSS in base.html
 - Use empty container pattern for map
 - Place controls outside map container
+
+# Animation System
+- Use motion.dev/vue for all animations
+- Implement proper cleanup for animations
+- Use transition components with JS hooks
 
 # Development Flow
 - Format with both Prettier (frontend) and Ruff (backend)

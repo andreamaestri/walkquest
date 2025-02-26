@@ -1,7 +1,11 @@
 <template>
-  <div id="app" class="app-root">
-    <Loading ref="loadingComponent" />
-    <RouterView :mapbox-token="mapboxToken" />
+  <div class="app-container">
+    <main>
+      <div id="app" class="app-root">
+        <Loading ref="loadingComponent" />
+        <RouterView :mapbox-token="mapboxToken" />
+      </div>
+    </main>
   </div>
 </template>
 
@@ -61,5 +65,26 @@ onMounted(() => {
   position: relative;
   background: rgb(var(--md-sys-color-background));
   color: rgb(var(--md-sys-color-on-background));
+}
+
+/* Keep other styles but remove sidebar-related ones */
+.hover-reveal-zone {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 16px;
+  z-index: 60;
+  opacity: 0;
+  background: linear-gradient(
+    to right,
+    rgb(var(--md-sys-color-surface-container-highest) / 0.1),
+    transparent
+  );
+  transition: opacity 0.3s ease;
+}
+
+.hover-reveal-zone:hover {
+  opacity: 1;
 }
 </style>

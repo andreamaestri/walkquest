@@ -123,6 +123,7 @@ import WalkList from './WalkList.vue'
 import { useLocationStore } from '../stores/locationStore'
 import { useSearchStore } from '../stores/searchStore'
 import { useWalksStore } from '../stores/walks'
+import { formatDistance } from '../utils/distance'
 import { useMap } from '../composables/useMap'
 import { Icon } from '@iconify/vue'
 import { storeToRefs } from 'pinia'
@@ -172,7 +173,7 @@ const {
   suggestions: storeSuggestions 
 } = storeToRefs(searchStore)
 
-const { userLocation, nearbyWalks, hasSearched: hasLocationSearched } = storeToRefs(locationStore)
+const { userLocation, nearbyWalks, hasSearched: hasLocationSearched, searchRadius } = storeToRefs(locationStore)
 
 // References with appropriate performance optimization
 const searchInput = shallowRef(null)
@@ -337,24 +338,7 @@ const selectSuggestion = async (suggestion) => {
       // Update query to show selected walk
       searchQuery.value = suggestion.walk_name || suggestion.title || ''
       
-      // Fly to location if coordinates available
-      if (suggestion.latitude && suggestion.longitude) {
-        try {
-          await mapTools.flyToLocation({
-            center: [Number(suggestion.longitude), Number(suggestion.latitude)],
-            zoom: 14,
-            pitch: 60,
-            bearing: 30,
-            duration: 2000,
-            essential: true
-          })
-        } catch (error) {
-          console.error('Error flying to walk location:', error)
-          // Continue with selection even if fly fails
-        }
-      }
-      
-      // Emit selection event
+      // Emit selection event without camera movement
       emit('walk-selected', suggestion)
     }
     
@@ -362,9 +346,11 @@ const selectSuggestion = async (suggestion) => {
     showSuggestions.value = false
     selectedIndex.value = -1
     
+    // Clear suggestions to prevent stale data
+    searchStore.clearLocationSuggestions()
   } catch (error) {
-    console.error('Error selecting suggestion:', error)
-    searchStore.setError(`Failed to select ${props.searchMode === 'walks' ? 'walk' : 'location'}: ${error.message}`)
+    console.error('Error handling suggestion selection:', error)
+    searchStore.setError('Failed to process selection')
   }
 }
 
@@ -453,7 +439,8 @@ const resultCountText = computed(() => {
   const count = nearbyWalks.value?.length || 0
   if (count === 0) return 'No walks found nearby'
   
-  const radius = locationStore.formattedSearchRadius || '10km'
+  // Format the radius directly using the utility function
+  const radius = searchRadius.value ? formatDistance(searchRadius.value) : '10km'
   return `${count} ${count === 1 ? 'walk' : 'walks'} within ${radius}`
 })
 
@@ -480,7 +467,17 @@ onMounted(() => {
   
   // Restore location if we're in location mode
   if (props.searchMode === 'locations' && userLocation.value) {
-    handleLocationResult(userLocation.value)
+    try {
+      // Create a properly formatted location object for handleLocationResult
+      if (userLocation.value?.latitude && userLocation.value?.longitude) {
+        handleLocationResult({
+          center: [userLocation.value.longitude, userLocation.value.latitude],
+          place_name: userLocation.value.place_name || ''
+        })
+      }
+    } catch (error) {
+      console.error('Error restoring location:', error)
+    }
   }
 })
 
@@ -510,9 +507,10 @@ watch(
         // If we have a stored location, restore its display
         if (userLocation.value) {
           nextTick(() => {
+            // Create a properly formatted location object for handleLocationResult
             handleLocationResult({
               center: [userLocation.value.longitude, userLocation.value.latitude],
-              place_name: userLocation.value.place_name
+              place_name: userLocation.value.place_name || ''
             })
           })
         }
@@ -546,32 +544,47 @@ watch(
 // Helper for location result handling
 const handleLocationResult = (location) => {
   if (!location?.center || !Array.isArray(location.center)) {
+    console.warn('Invalid location format in handleLocationResult:', JSON.stringify(location))
     return
   }
 
-  // Reformat for consistency
-  const formattedLocation = {
-    center: location.center,
-    place_name: location.place_name || userLocation.value?.place_name,
-    latitude: location.center[1],
-    longitude: location.center[0]
-  }
+  try {
+    // Reformat for consistency
+    const formattedLocation = {
+      center: location.center,
+      place_name: location.place_name || userLocation.value?.place_name || '',
+      latitude: location.center[1],
+      longitude: location.center[0]
+    }
 
-  // Update UI with location name
-  emit('update:modelValue', formattedLocation.place_name || '')
-  
-  // Emit location selected event
-  emit('location-selected', formattedLocation)
+    // Update UI with location name
+    emit('update:modelValue', formattedLocation.place_name)
+    
+    // Emit location selected event
+    emit('location-selected', formattedLocation)
+  } catch (error) {
+    console.error('Error in handleLocationResult:', error)
+  }
 }
 </script>
 
 <style>
+.search-view {
+  width: 100%;
+  position: relative;
+}
+
+.search-container {
+  width: 100%;
+  position: relative;
+}
+
 /* Material Design 3 Search Field */
 .m3-search-field {
   position: relative;
   width: 100%;
-  height: 40px;
-  border-radius: 20px;
+  height: 48px; /* Increased height for better touch targets */
+  border-radius: 24px; /* Increased radius for more modern look */
   background: rgb(var(--md-sys-color-surface-container-low));
   transition: background 200ms cubic-bezier(0.2, 0, 0, 1);
 }
@@ -693,7 +706,7 @@ const handleLocationResult = (location) => {
   background: rgb(var(--md-sys-color-surface-container));
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: none;
+  box-shadow: var(--md-sys-elevation-2);
   z-index: 1000;
   border: 1px solid rgb(var(--md-sys-color-outline-variant) / 0.12);
 }

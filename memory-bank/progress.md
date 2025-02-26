@@ -5,25 +5,25 @@
 ### 🔴 Critical Issues
 
 #### Vue Virtual Scroller Implementation
-- RecycleScroller not rendering cards
-- Zero height item wrapper
-- No card elements in DOM
-- Missing requirements:
-  - CSS import not found
-  - Item size configuration
-  - Key field setup
-  - Scoped slot implementation
+- DynamicScroller/DynamicScrollerItem not rendering cards properly
+- Item wrapper has sizing issues
+- No card elements visible in DOM
+- Implementation status:
+  - CSS import is present in main.js
+  - Component registration is correct
+  - Props appear to be properly configured
+  - Scoped slot implementation needs verification
 
 ### 🟡 Working Features with Issues
 
 #### Frontend
 - Vue.js 3 setup complete
-- Mapbox integration with proper CSS
-- Virtual list implementation (RecycleScroller) - NEEDS FIXING:
-  - CSS import required
-  - Item size configuration needed
-  - Key field implementation missing
-  - Scoped slot template issues
+- Mapbox integration with @studiometa/vue-mapbox-gl
+- Virtual list implementation (DynamicScroller/DynamicScrollerItem) - NEEDS FIXING:
+  - CSS import is present
+  - Component registration is correct
+  - Props appear to be properly configured
+  - Scoped slot implementation needs verification
 - User registration/login flow
 - Clean Pinia store integration
 - Proper component lifecycle
@@ -42,16 +42,15 @@
 
 ### 🟡 In Progress - HIGHEST PRIORITY
 
-#### RecycleScroller Implementation
-- Add CSS import
-- Configure item sizes
-- Set up key field
-- Implement scoped slot
-- Fix container sizing
+#### Virtual List Implementation
+- Debug DynamicScroller/DynamicScrollerItem
+- Verify data flow to virtual scroller
+- Check container sizing
 - Test recycling behavior
+- Verify cleanup processes
 
 #### Testing Implementation
-- RecycleScroller rendering tests
+- Virtual list rendering tests
 - Store integration tests
 - Component unit tests
 - Integration tests
@@ -67,7 +66,7 @@
 - Team/group challenges
 
 #### Documentation
-- RecycleScroller setup guide
+- Virtual list setup guide
 - Component integration docs
 - Testing procedures
 - Deployment guides
@@ -76,11 +75,11 @@
 ## Known Issues
 
 ### Critical Problems 🔴
-1. Missing vue-virtual-scroller CSS
-2. Item size not configured
-3. Key field not implemented
-4. Scoped slot template issues
-5. Container height problems
+1. DynamicScroller/DynamicScrollerItem not rendering cards
+2. Item size configuration may need adjustment
+3. Data flow to virtual scroller needs verification
+4. Scoped slot implementation may have issues
+5. Container sizing problems
 
 ### Technical Debt
 1. Testing coverage incomplete
@@ -90,7 +89,7 @@
 5. Store data flow problems
 
 ### Performance Issues
-1. RecycleScroller rendering
+1. Virtual list rendering
 2. Store integration
 3. Component recycling
 4. Height calculations
@@ -99,20 +98,32 @@
 ## Next Milestones
 
 ### Immediate Priority (This Week)
-1. Implement RecycleScroller properly
+1. Fix DynamicScroller/DynamicScrollerItem implementation
    ```html
-   <RecycleScroller
-     class="scroller"
-     :items="list"
-     :item-size="32"
-     key-field="id"
-     v-slot="{ item }"
-   >
+   <template>
+     <DynamicScroller
+       class="scroller"
+       :items="filteredResults"
+       :min-item-size="isCompact ? 56 : 180"
+       key-field="id"
+       :buffer="500"
+       v-slot="{ item, index, active }"
+     >
+       <DynamicScrollerItem
+         :item="item"
+         :active="active"
+         :data-index="index"
+         :size-dependencies="[...]"
+       >
+         <WalkCard :walk="item" />
+       </DynamicScrollerItem>
+     </DynamicScroller>
+   </template>
    ```
-2. Add required CSS import
-3. Configure item sizes
-4. Set up key field
-5. Fix scoped slot template
+2. Verify data flow to virtual scroller
+3. Check container sizing
+4. Test recycling behavior
+5. Verify cleanup processes
 
 ### Short Term (2-4 Weeks)
 1. Complete testing framework
@@ -135,7 +146,7 @@
 ## Testing Status
 
 ### Critical Tests 🔴
-- RecycleScroller setup
+- DynamicScroller setup
 - CSS import verification
 - Item size configuration
 - Key field implementation
@@ -149,7 +160,7 @@
 - 🔴 Container sizing tests
 
 ### Integration Tests
-- 🔴 RecycleScroller integration
+- 🔴 Virtual list integration
 - 🟡 Component integration
 - 🟡 Store interactions
 - 🟡 API integration
@@ -158,7 +169,7 @@
 ## Documentation Status
 
 ### Technical Documentation
-- 🔴 RecycleScroller setup (urgent)
+- 🔴 Virtual list setup (urgent)
 - 🟡 Testing procedures
 - 🟡 Component documentation
 - 🟡 Store patterns
