@@ -2,13 +2,13 @@
   <Transition
     :css="false"
     @enter="onEnter"
-    @leave="onLeave"
+    @leave="onLeave" 
   >
-    <div v-if="isOpen" ref="drawerRef" class="walk-drawer">
+    <div v-if="isOpen" ref="drawerRef" class="walk-drawer" :class="{ 'loading': isLoading }">
       <div ref="connectorRef" class="rail-connector"></div>
 
       <header ref="headerRef" class="header-container">
-        <div class="header-content">
+        <div class="header-content" :class="{ 'loading': isLoading }">
           <button
             ref="backButtonRef"
             class="m3-icon-button"
@@ -17,13 +17,16 @@
           >
             <Icon icon="mdi:arrow-back" class="text-2xl" />
           </button>
-          <h2 ref="titleRef" class="m3-headline-small">
+          <h2 ref="titleRef" class="m3-headline-small" :class="{ 'loading': isLoading }">
             {{ walk.title || walk.walk_name }}
           </h2>
         </div>
       </header>
 
       <!-- Scrollable Container -->
+      <div v-if="isLoading" class="loading-overlay">
+        <Icon icon="mdi:loading" class="loading-icon animate-spin" />
+      </div>
       <div class="scrollable-container">
         <div class="content">
           <div ref="keyInfoRef" class="key-info">
@@ -277,18 +280,21 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, nextTick } from "vue";
-import { animate, stagger } from "motion";
+import { ref, computed, onMounted, watch, nextTick, onBeforeUnmount } from "vue";
+import { animate, stagger, inView } from "motion";
 import { Icon } from "@iconify/vue";
 import { useRouter } from 'vue-router';
+import { useWalksStore } from "../stores/walks";
 
 const props = defineProps({
   walk: { type: Object, required: true },
   isOpen: { type: Boolean, default: false },
   sidebarWidth: { type: Number, default: 80 },
+  fromMapMarker: { type: Boolean, default: false },
+  isLoading: { type: Boolean, default: false } // Add loading prop
 });
 
-const emit = defineEmits(["close"]);
+const emit = defineEmits(["close", "start-walk", "loading-change"]);
 
 const drawerRef = ref(null);
 const connectorRef = ref(null);
@@ -302,6 +308,11 @@ const buttonRefs = ref([]);
 const sectionRefs = ref([]);
 const footwearDetailsRef = ref(null);
 const detailsOpen = ref(false);
+const isTransitioning = ref(false); // Add transitioning state
+const scrollPosition = ref(0);
+const previousWalkId = ref(null);
+const contentAnimations = ref([]);
+const inViewObservers = ref([]);
 const accentLineRef = ref(null);
 
 const animationConfigs = {
@@ -309,20 +320,182 @@ const animationConfigs = {
 };
 
 const router = useRouter();
+const walksStore = useWalksStore();
 
-watch(() => props.isOpen, (isOpen) => {
+// Watch for walk changes to handle transitions
+watch(() => props.walk?.id, async (newWalkId, oldWalkId) => {
+  if (newWalkId && oldWalkId && newWalkId !== oldWalkId) {
+    isTransitioning.value = true;
+    emit('loading-change', true);
+    
+    // Save current walk ID and scroll position before transition
+    previousWalkId.value = oldWalkId;
+    if (drawerRef.value) {
+      const scrollContainer = drawerRef.value.querySelector('.scrollable-container');
+      if (scrollContainer) {
+        scrollPosition.value = scrollContainer.scrollTop;
+      }
+    }
+    
+    try {
+      // Animate content out
+      await animateContentOut();
+      
+      // Wait for data
+      await nextTick();
+      
+      // Reset scroll for new content
+      const scrollContainer = drawerRef.value?.querySelector('.scrollable-container');
+      if (scrollContainer) {
+        scrollContainer.scrollTop = 0;
+      }
+      
+      // Animate new content in
+      await animateContentIn();
+    } catch (error) {
+      console.error('Transition error:', error);
+    } finally {
+      isTransitioning.value = false;
+      emit('loading-change', false);
+    }
+  }
+}, { immediate: true });
+
+// Watch for open state changes
+watch(() => props.isOpen, async (isOpen) => {
   if (isOpen) {
-    nextTick(initializeDrawer);
+    await nextTick();
+    initializeDrawer();
+    
+    // Restore scroll position if reopening same walk
+    if (previousWalkId.value === props.walk?.id && scrollPosition.value > 0) {
+      await nextTick(() => {
+        restoreScrollPosition();
+      });
+    }
   }
 }, { immediate: true });
 
 function initializeDrawer() {
   if (drawerRef.value) {
-    drawerRef.value.style.width = "380px";
-    drawerRef.value.style.transform = "translateX(0)";
+    // Calculate drawer position based on sidebar state and transition source
+    const offset = props.fromMapMarker ? 0 : props.sidebarWidth;
+    drawerRef.value.style.transition = 'transform 0.3s ease, left 0.3s ease';
+    
     if (connectorRef.value) {
-      animate(connectorRef.value, { opacity: [0, 1], width: ["0px", "28px"] }, { delay: 0.2, duration: 0.6, easing: "ease-out" });
+      animate(connectorRef.value, { opacity: [0, 1], width: ["0px", "28px"] }, { 
+        delay: 0.2,
+        duration: 0.6,
+        easing: "ease-out" 
+      });
     }
+  }
+}
+
+async function animateContentOut() {
+  // Clean up existing animations
+  cleanupAnimations();
+  
+  if (!drawerRef.value) return;
+  
+  const elements = [
+    ...drawerRef.value.querySelectorAll('.section'),
+    ...drawerRef.value.querySelectorAll('.key-info'),
+    ...drawerRef.value.querySelectorAll('.amenities-grid'),
+    ...drawerRef.value.querySelectorAll('.buttons-container')
+  ];
+  
+  if (elements.length) {
+    const animation = animate(
+      elements,
+      { 
+        opacity: [1, 0],
+        transform: ["translateY(0)", "translateY(10px)"],
+        filter: ["blur(0px)", "blur(4px)"]
+      },
+      { 
+        duration: 0.2,
+        easing: "ease-in",
+        delay: stagger(0.02, { from: "last" })
+      }
+    );
+    contentAnimations.value.push(animation);
+    await animation.finished;
+  }
+}
+
+async function animateContentIn() {
+  await nextTick();
+  
+  if (!drawerRef.value) return;
+  
+  // Animate header elements first
+  const headerElements = [titleRef.value, keyInfoRef.value].filter(Boolean);
+  if (headerElements.length) {
+    const headerAnimation = animate(
+      headerElements,
+      { 
+        opacity: [0, 1],
+        transform: ["translateY(-10px)", "translateY(0)"],
+        filter: ["blur(4px)", "blur(0px)"]
+      },
+      { 
+        duration: 0.3,
+        easing: "ease-out",
+        delay: stagger(0.1)
+      }
+    );
+    contentAnimations.value.push(headerAnimation);
+  }
+  
+  // Then animate content sections
+  const sections = drawerRef.value.querySelectorAll('.section');
+  if (sections.length) {
+    const animation = animate(
+      sections,
+      {
+        opacity: [0, 1],
+        transform: ["translateY(10px)", "translateY(0)"],
+        filter: ["blur(4px)", "blur(0px)"]
+      },
+      {
+        delay: stagger(0.08, { start: 0.2 }),
+        duration: 0.4,
+        easing: "ease-out"
+      }
+    );
+    contentAnimations.value.push(animation);
+    
+    // Set up in-view animations for section content
+    sections.forEach(section => {
+      const observer = inView(section, () => {
+        animate(
+          section.querySelectorAll('.amenity-item, .poi-chip, .feature-chip, .pub-card'),
+          {
+            opacity: [0, 1],
+            scale: [0.95, 1],
+            filter: ["blur(2px)", "blur(0px)"]
+          },
+          {
+            delay: stagger(0.03),
+            duration: 0.3,
+            easing: "ease-out"
+          }
+        );
+      }, { 
+        margin: "-10% 0px -10% 0px",
+        amount: 0.2
+      });
+      
+      inViewObservers.value.push(observer);
+    });
+  }
+}
+
+function restoreScrollPosition() {
+  const scrollContainer = drawerRef.value?.querySelector('.scrollable-container');
+  if (scrollContainer && scrollPosition.value > 0) {
+    scrollContainer.scrollTop = scrollPosition.value;
   }
 }
 
@@ -333,6 +506,9 @@ async function onEnter(el, onComplete) {
             return;
         }
 
+        // Reset loading state
+        isLoading.value = false;
+
         const accentLine = el.querySelector('.drawer-accent-line');
         if (accentLine) accentLine.style.opacity = '0';
 
@@ -340,7 +516,7 @@ async function onEnter(el, onComplete) {
             el,
             {
                 transform: ["translateX(-100%) scale(0.95)", "translateX(0) scale(1)"],
-                opacity: [0, 1],
+                opacity: [0.5, 1],
                 filter: ["blur(8px)", "blur(0px)"]
             },
             { duration: 0.5, easing: [0.22, 1, 0.36, 1] }
@@ -348,7 +524,7 @@ async function onEnter(el, onComplete) {
 
         const headerElements = el.querySelectorAll(".header-content > *");
         if (headerElements.length) {
-            animate(
+            const headerAnimation = animate(
                 headerElements,
                 { opacity: [0, 1], transform: ["translateY(-15px)", "translateY(0)"], filter: ["blur(4px)", "blur(0px)"] },
                 { delay: stagger(0.08, { start: 0.2 }), duration: 0.4, easing: "ease-out" }
@@ -357,7 +533,7 @@ async function onEnter(el, onComplete) {
 
         const sections = el.querySelectorAll(".scrollable-container section"); // Target sections within scrollable-container
         if (sections.length) {
-            animate(
+            const sectionsAnimation = animate(
                 sections,
                 { opacity: [0, 1], transform: ["translateY(20px)", "translateY(0)"], filter: ["blur(4px)", "blur(0px)"] },
                 { delay: stagger(0.08, { start: 0.3 }), duration: 0.5, easing: "ease-out" }
@@ -367,7 +543,7 @@ async function onEnter(el, onComplete) {
         await drawerAnimation.finished;
 
         if (accentLine) {
-            animate(accentLine, { scaleY: [0, 1], opacity: [0, 0.8] }, { duration: 0.6, easing: "ease-out", delay: 0.1 });
+            const accentAnimation = animate(accentLine, { scaleY: [0, 1], opacity: [0, 0.8] }, { duration: 0.6, easing: "ease-out", delay: 0.1 });
         }
 
         animate(el, { x: [0, 3, 0] }, { duration: 0.5, easing: "ease-in-out" });
@@ -389,6 +565,8 @@ async function onLeave(el, onComplete) {
       onComplete();
       return;
     }
+
+    cleanupAnimations();
 
     const accentLine = el.querySelector(".drawer-accent-line");
     if (accentLine) {
@@ -417,6 +595,16 @@ async function onLeave(el, onComplete) {
     if (el) el.style.opacity = '0';
     onComplete();
   }
+}
+
+function cleanupAnimations() {
+  // Clean up content animations
+  contentAnimations.value.forEach(animation => animation.cancel());
+  contentAnimations.value = [];
+  
+  // Clean up inView observers
+  inViewObservers.value.forEach(observer => observer.stop());
+  inViewObservers.value = [];
 }
 
 function toggleFootwearDetails(e) {
@@ -598,9 +786,22 @@ function openInGoogleMaps(pub) {
 }
 
 function handleBackClick() {
-  router.push({ name: 'home' });
-  emit("close", { expandSidebar: true });
+  emit("close", { expandSidebar: true, fromMapMarker: props.fromMapMarker });
 }
+
+function handleStartWalkClick() {
+  emit("start-walk", props.walk);
+}
+
+// Clean up animations and observers when component is unmounted
+onBeforeUnmount(() => {
+  cleanupAnimations();
+  
+  // Save scroll position in case we're coming back to this walk
+  if (drawerRef.value) {
+    scrollPosition.value = drawerRef.value.querySelector('.scrollable-container')?.scrollTop || 0;
+  }
+});
 
 function handleShare() {
   if (!props.walk) return;
@@ -633,6 +834,7 @@ function handleShare() {
 .walk-drawer {
   width: 380px;
   height: 100vh;
+  max-width: 90vw;
   position: fixed;
   top: 0;
   left: 0;
@@ -643,6 +845,7 @@ function handleShare() {
   z-index: 20;
   overflow: hidden; /* Important: Keep this to prevent double scrollbars */
 }
+
 
 .rail-connector {
   position: absolute;
@@ -688,6 +891,7 @@ function handleShare() {
     margin-left: var(--md-sys-sidebar-collapsed);
 }
 .m3-icon-button {
+  flex-shrink: 0;
   width: 40px;
   height: 40px;
   border-radius: 20px;
@@ -703,6 +907,7 @@ function handleShare() {
 .m3-headline-small {
   font-size: 1.25rem;
   font-weight: 500;
+  width: 100%;
   color: rgb(var(--md-sys-color-on-surface));
     margin: 0;
     padding: 1rem;
@@ -712,8 +917,9 @@ function handleShare() {
 /* Scrollable Container Styles */
 .scrollable-container {
   overflow-y: auto; /* Enables scrolling */
-  height: calc(100vh - 64px); /*  header height */
+  height: calc(100vh - 64px); /* header height */
   padding-bottom: 24px; /* Add padding at the bottom */
+  position: relative;
 }
 
 .content {
@@ -1174,5 +1380,54 @@ function handleShare() {
 .extra-info-value {
   color: rgb(var(--md-sys-color-on-surface-variant));
   font-size: 0.875rem;
+}
+
+/* Loading state styles */
+.loading-overlay {
+  position: absolute;
+  top: 64px; /* Below header */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(var(--md-sys-color-surface-container), 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 30;
+}
+
+.loading-icon {
+  font-size: 2.5rem;
+  color: rgb(var(--md-sys-color-primary));
+}
+
+.walk-drawer.loading .scrollable-container {
+  opacity: 0.7;
+}
+
+.header-content.loading, .m3-headline-small.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* Animation for content transitions */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(10px); }
+}
+
+.animate-spin {
+  animation: spin 1.5s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 </style>

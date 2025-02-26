@@ -1,21 +1,20 @@
 <template>
   <div
-    class="fixed top-0 left-0 z-10 transition-all duration-300 flex w-full"
+    class="fixed top-0 z-10 transition-all duration-300 flex"
+    :class="[uiStore.isMobile ? 'w-full' : '']"
     :style="{
       paddingLeft: showNavigationRail
         ? isExpanded
           ? '410px'
-          : '72px'
+          : '80px'
         : '0px',
+      width: uiStore.isMobile ? '100%' : 'calc(100% - 16px)'
     }"
   >
     <header class="py-3 bg-surface-variant w-full">
-      <!-- Search Bar -->
       <div
         class="transition-all duration-300 mx-auto"
-        :class="[
-          showNavigationRail ? (isExpanded ? 'search-container-expanded' : 'search-container-collapsed') : 'search-container-full',
-        ]"
+        :class="searchContainerClass"
       >
         <SearchView
           v-model="searchQuery"
@@ -78,6 +77,19 @@ const showNavigationRail = computed(() => {
 });
 
 /**
+ * Computed property for search container class based on layout state
+ */
+const searchContainerClass = computed(() => {
+  if (uiStore.isMobile) return 'search-container-mobile';
+  if (showNavigationRail.value) {
+    return props.isExpanded 
+      ? 'search-container-expanded' 
+      : 'search-container-collapsed';
+  }
+  return 'search-container-full';
+});
+
+/**
  * Handle location selection
  * Emits event to parent component
  */
@@ -104,24 +116,26 @@ const handleWalkSelection = (walk) => {
 
 <style scoped>
 .search-container-expanded {
-  width: calc(100% - 2rem);
+  width: 60%;
   max-width: 800px;
-  margin-left: 1rem;
-  margin-right: 1rem;
+  margin: 0 auto;
 }
 
 .search-container-collapsed {
-  width: calc(100% - 2rem);
+  width: 30%;
   max-width: 800px;
-  margin-left: 1rem;
-  margin-right: 1rem;
+  margin: 0 auto;
 }
 
 .search-container-full {
-  width: calc(100% - 2rem);
+  width: 60%;
   max-width: 800px;
-  margin-left: 1rem;
-  margin-right: 1rem;
+  margin: 0 auto;
+}
+
+.search-container-mobile {
+  width: calc(100% - 1rem);
+  margin: 0 0.5rem;
 }
 
 .bg-surface-variant {
