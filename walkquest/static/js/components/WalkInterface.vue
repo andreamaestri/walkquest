@@ -4,7 +4,7 @@
     <NavigationRail
       :walks="walks"
       :selected-walk-id="selectedWalkId"
-      :filtered-walks="filteredWalks" 
+      :filtered-walks="filteredWalks"
       @walk-selected="handleWalkSelection"
       @fab-click="handleFabClick"
       @walk-expanded="handleWalkExpanded"
@@ -44,22 +44,30 @@
     />
 
     <!-- Walk Drawer -->
-    <Teleport to="body">
-      <WalkDrawer v-show="selectedWalkId && uiStore.showDrawer"
-        v-if="selectedWalkId"
-        :walk="selectedWalk"
-        :is-open="uiStore.showDrawer"
-        :sidebar-width="sidebarWidth"
-        ref="walkDrawerRef"
-        @close="handleDrawerClose"
-        @start-walk="handleStartWalk"
-        />
-    </Teleport>
+    <WalkDrawer
+      v-show="selectedWalkId && uiStore.showDrawer"
+      v-if="selectedWalkId"
+      :key="selectedWalkId"
+      :walk="selectedWalk"
+      :is-open="uiStore.showDrawer"
+      :sidebar-width="sidebarWidth"
+      ref="walkDrawerRef"
+      @close="handleDrawerClose"
+      @start-walk="handleStartWalk"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick, shallowRef } from "vue";
+import {
+  ref,
+  computed,
+  onMounted,
+  onBeforeUnmount,
+  watch,
+  nextTick,
+  shallowRef,
+} from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { storeToRefs } from "pinia";
 import { animate } from "motion"; // Import animate from motion library
@@ -88,16 +96,16 @@ import WalkDrawer from "./WalkDrawer.vue";
 const props = defineProps({
   mapboxToken: {
     type: String,
-    required: true
+    required: true,
   },
   mapConfig: {
     type: Object,
-    default: () => ({})
+    default: () => ({}),
   },
   walkId: {
     type: [String, Number],
-    default: null
-  }
+    default: null,
+  },
 });
 
 // Initialize router and route
@@ -195,7 +203,9 @@ const selectedWalkId = computed(() => route.query.walkId);
  * Computed property for drawer open state
  * Combines selected walk and drawer visibility
  */
-const isDrawerOpen = computed(() => Boolean(selectedWalk.value) && uiStore.showDrawer);
+const isDrawerOpen = computed(
+  () => Boolean(selectedWalk.value) && uiStore.showDrawer
+);
 
 /**
  * Handle walk selection
@@ -204,14 +214,14 @@ const isDrawerOpen = computed(() => Boolean(selectedWalk.value) && uiStore.showD
 const handleWalkSelection = async (walk) => {
   if (walk?.id) {
     isExpanded.value = false; // Collapse sidebar
-    
-    // Don't process if animation is in progress 
+
+    // Don't process if animation is in progress
     if (drawerAnimating.value) return;
-    
+
     // Hide sidebar and show drawer
     drawerAnimating.value = true;
     uiStore.handleWalkSelected();
-    
+
     await router.push({ query: { walkId: walk.id } });
 
     // Wait for next tick to ensure drawer is mounted
@@ -220,7 +230,12 @@ const handleWalkSelection = async (walk) => {
       // Force a reflow
       walkDrawerRef.value.$el?.offsetHeight;
       drawerMounted.value = true;
-      console.log('Drawer mounted and visible:', uiStore.showDrawer, 'with walk ID:', selectedWalkId.value); 
+      console.log(
+        "Drawer mounted and visible:",
+        uiStore.showDrawer,
+        "with walk ID:",
+        selectedWalkId.value
+      );
       drawerAnimating.value = false;
     }
   } else {
@@ -237,15 +252,15 @@ const handleWalkSelection = async (walk) => {
 const handleDrawerClose = async () => {
   // Don't process if animation is in progress
   if (drawerAnimating.value) return;
-  
+
   // Close drawer
   drawerAnimating.value = true;
-  console.log('Closing drawer');
+  console.log("Closing drawer");
   await router.push({ query: {} });
   isExpanded.value = true;
-  uiStore.handleWalkClosed(); 
+  uiStore.handleWalkClosed();
   drawerAnimating.value = false;
-}
+};
 
 /**
  * Handle start walk action
@@ -280,7 +295,7 @@ const handleWalkExpanded = ({ walkId, expanded }) => {
  */
 const handleFabClick = async () => {
   await router.push({ name: "home" });
-  
+
   if (!isExpanded.value) {
     isExpanded.value = true;
     localStorage.setItem("sidebarExpanded", "true");
@@ -356,9 +371,9 @@ const handleMapLoad = () => {
 const initializeInterface = () => {
   try {
     const cleanup = uiStore.initializeResponsiveState();
-    
+
     // Load walks with proper error handling
-    walksStore.loadWalks().catch(err => {
+    walksStore.loadWalks().catch((err) => {
       console.error("Failed to load walks:", err);
       uiStore.setError("Failed to load walks. Please try again later.");
     });
@@ -370,16 +385,18 @@ const initializeInterface = () => {
     if (props.walkId) {
       const walk = walksStore.getWalkById(props.walkId);
       if (walk) {
-        handleWalkSelection(walk).catch(err => {
+        handleWalkSelection(walk).catch((err) => {
           console.error("Failed to select walk:", err);
         });
       }
     }
-    
+
     return cleanup;
   } catch (error) {
     console.error("Error initializing interface:", error);
-    uiStore.setError("Failed to initialize application. Please refresh the page.");
+    uiStore.setError(
+      "Failed to initialize application. Please refresh the page."
+    );
     return () => {}; // Return empty cleanup function in case of error
   }
 };
@@ -388,34 +405,34 @@ const initializeInterface = () => {
 onMounted(() => {
   // Add event listener to prevent route changes during map movements
   const preventRouteChange = (e) => {
-    if (drawerAnimating.value && e.type === 'popstate') {
+    if (drawerAnimating.value && e.type === "popstate") {
       e.preventDefault();
       e.stopPropagation();
       return false;
     }
   };
-  window.addEventListener('popstate', preventRouteChange);
-  
+  window.addEventListener("popstate", preventRouteChange);
+
   try {
     // Get sidebar width for proper drawer positioning
-    const sidebarElement = document.querySelector('.m3-navigation-rail');
+    const sidebarElement = document.querySelector(".m3-navigation-rail");
     if (sidebarElement) {
       sidebarWidth.value = sidebarElement.offsetWidth;
-      
+
       // Add resize observer to update sidebar width
       const resizeObserver = new ResizeObserver((entries) => {
         sidebarWidth.value = entries[0].target.offsetWidth;
       });
-      
+
       resizeObserver.observe(sidebarElement);
     }
     const cleanup = initializeInterface();
-  
+
     // Return cleanup function
     onBeforeUnmount(() => {
       try {
         cleanup();
-        window.removeEventListener('popstate', preventRouteChange);
+        window.removeEventListener("popstate", preventRouteChange);
       } catch (error) {
         console.error("Error during cleanup:", error);
       }
@@ -430,7 +447,10 @@ onMounted(() => {
 @import "tailwindcss";
 @import "../../css/material3.css";
 
-/* Background colors */
+:root {
+  --md-sys-sidebar-collapsed: 80px;
+}
+
 .bg-surface {
   background-color: rgb(var(--md-sys-color-surface));
 }

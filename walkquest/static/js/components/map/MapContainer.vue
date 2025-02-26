@@ -1,69 +1,32 @@
 <template>
-  <div
-    class="m3-content-container hardware-accelerated pointer-events-auto"
-    :class="{ 'drawer-open': isDrawerOpen }"
+  <div class="m3-content-container hardware-accelerated pointer-events-auto" :class="{ 'drawer-open': isDrawerOpen }"
     :style="[
       mapContainerStyle,
       { marginTop: '64px' }, // Add top margin to account for header
-    ]"
-    ref="mapContainerRef"
-  >
-    <div
-      class="m3-surface-container hardware-accelerated pointer-events-auto absolute inset-0"
-    >
-      <MapboxMap
-        ref="mapComponent"
-        :access-token="mapboxToken"
-        :map-style="mapStyle"
-        :max-bounds="maxBounds"
-        :center="center"
-        :zoom="zoom"
-        :min-zoom="minZoom"
-        :max-zoom="maxZoom"
-        :pitch="45"
-        :bearing="0"
-        :min-pitch="0"
-        :max-pitch="85"
-        :drag-rotate="true"
-        :touch-zoom-rotate="true"
-        :touch-pitch="true"
-        :cooperativeGestures="false"
-        @mb-created="handleMapCreated"
-        @mb-load="handleMapLoad"
-        @mb-moveend="updateVisibleMarkers"
-        class="h-full w-full absolute inset-0"
-      >
+    ]" ref="mapContainerRef">
+    <div class="m3-surface-container hardware-accelerated pointer-events-auto absolute inset-0">
+      <MapboxMap ref="mapComponent" :access-token="mapboxToken" :map-style="mapStyle" :max-bounds="maxBounds"
+        :center="center" :zoom="zoom" :min-zoom="minZoom" :max-zoom="maxZoom" :pitch="45" :bearing="0" :min-pitch="0"
+        :max-pitch="85" :drag-rotate="true" :touch-zoom-rotate="true" :touch-pitch="true" :cooperativeGestures="false"
+        @mb-created="handleMapCreated" @mb-load="handleMapLoad" @mb-moveend="updateVisibleMarkers"
+        class="h-full w-full absolute inset-0">
         <!-- Loading indicator -->
-        <div
-          v-if="loading"
-          class="absolute bottom-4 left-4 z-50 bg-white rounded-full px-4 py-2 shadow-lg"
-        >
+        <div v-if="loading" class="absolute bottom-4 left-4 z-50 bg-white rounded-full px-4 py-2 shadow-lg">
           <div class="flex items-center gap-2">
-            <div
-              class="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent"
-            ></div>
+            <div class="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent"></div>
             <span class="text-on-surface text-sm">Loading route...</span>
           </div>
         </div>
-        
+
         <!-- Map content components -->
         <template v-if="mapLoaded">
           <!-- Route layers -->
-          <WalkRouteLayer 
-            v-if="selectedWalkId && routeData"
-            :route-data="routeData"
-            @route-layer-loaded="handleRouteLayerLoaded"
-            @glow-layer-loaded="handleGlowLayerLoaded"
-          />
-          
+          <WalkRouteLayer v-if="selectedWalkId && routeData" :route-data="routeData"
+            @route-layer-loaded="handleRouteLayerLoaded" @glow-layer-loaded="handleGlowLayerLoaded" />
+
           <!-- Walk markers -->
-          <WalkMarkers
-            :walks="visibleWalks"
-            :selected-walk-id="selectedWalkId"
-            @marker-click="handleMarkerClick"
-            @marker-mounted="handleMarkerMounted"
-            @popup-open-walk="handlePopupOpenWalk"
-          />
+          <WalkMarkers :walks="visibleWalks" :selected-walk-id="selectedWalkId" @marker-click="handleMarkerClick"
+            @marker-mounted="handleMarkerMounted" @popup-open-walk="handlePopupOpenWalk" />
         </template>
       </MapboxMap>
     </div>
@@ -71,7 +34,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount, shallowRef, nextTick } from "vue";
+import { ref, computed, watch, onMounted, onBeforeUnmount, shallowRef, nextTick, watchEffect } from "vue";
 import { useElementVisibility } from "@vueuse/core";
 import {
   MapboxMap,
@@ -145,27 +108,27 @@ const CORNWALL_CENTER = [-4.95, 50.4];
  * Merge default map values with the mapConfig prop
  * Provides sensible defaults while allowing customization
  */
-const mapStyle = computed(() => 
+const mapStyle = computed(() =>
   props.mapConfig.mapStyle || "mapbox://styles/andreamaestri/cm79fegfl000z01sdhl4u32jv?optimize=true"
 );
 
-const maxBounds = computed(() => 
+const maxBounds = computed(() =>
   props.mapConfig.maxBounds || CORNWALL_BOUNDS
 );
 
-const center = computed(() => 
+const center = computed(() =>
   props.mapConfig.center || CORNWALL_CENTER
 );
 
-const zoom = computed(() => 
+const zoom = computed(() =>
   props.mapConfig.zoom || 9
 );
 
-const minZoom = computed(() => 
+const minZoom = computed(() =>
   props.mapConfig.minZoom || 1
 );
 
-const maxZoom = computed(() => 
+const maxZoom = computed(() =>
   props.mapConfig.maxZoom || 35
 );
 
@@ -210,7 +173,7 @@ const visibleWalks = computed(() => {
   }
 
   const currentVisibleWalks = Array.from(visibleSet);
-  
+
   // Avoid unnecessary re-renders by checking if the visible walks have changed
   if (
     previousVisibleWalks.value &&
@@ -273,6 +236,23 @@ const handleMapCreated = (map) => {
   mapInstance.value = map;
   setMapInstance(map);
 
+  // Setup Mapbox logo positioning
+  watchEffect(() => {
+    const logoElement = document.querySelector('.mapboxgl-ctrl-logo');
+    if (logoElement) {
+      const sidebarWidth = 80; // --md-sys-sidebar
+      const drawerWidth = props.isDrawerOpen ? 320 : 0;
+      const totalWidth = sidebarWidth + drawerWidth;
+
+      logoElement.style.position = 'fixed';
+      logoElement.style.bottom = '10px';
+      logoElement.style.left = `${totalWidth + 10}px`;
+      logoElement.style.right = 'auto';
+      logoElement.style.zIndex = '45';
+      logoElement.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+    }
+  });
+
   // Wait for style to load before enabling interactions
   map.once("style.load", () => {
     mapLoaded.value = true;
@@ -285,10 +265,10 @@ const handleMapCreated = (map) => {
     mapBounds.value = map.getBounds();
     if (!props.selectedWalkId) updateVisibleMarkers(); // Only update markers if no walk is selected
   });
-  
+
   // Initialize mapBounds
   mapBounds.value = map.getBounds();
-  
+
   emit('map-created', map);
 };
 
@@ -308,7 +288,7 @@ const handleMapLoad = () => {
  */
 const updateVisibleMarkers = debounce(() => {
   if (!mapInstance.value) return;
-  
+
   const bounds = mapInstance.value.getBounds();
   if (bounds) {
     mapBounds.value = bounds;
@@ -321,10 +301,10 @@ const updateVisibleMarkers = debounce(() => {
  */
 const handleMarkerClick = (walk) => {
   if (!walk) return;
-  
+
   // Update any selected state
   updateAllMarkerColors(walk.id);
-  
+
   // Handle the walk selection
   emit('walk-selected', walk);
 };
@@ -421,7 +401,7 @@ async function loadRouteData(walkId) {
     routeData.value = null;
     return;
   }
-  
+
   try {
     loading.value = true;
     const geometry = await getGeometry(walkId);
@@ -436,7 +416,7 @@ async function loadRouteData(walkId) {
         setTimeout(() => {
           try {
             const coordinates = geometry.geometry.coordinates;
-            
+
             if (coordinates.length > 1) {
               // Find the bounds of all coordinates
               const bounds = coordinates.reduce(
@@ -515,17 +495,17 @@ function isValidGeoJSON(data) {
   try {
     if (!data || typeof data !== 'object') return false;
     if (!data.type) return false;
-    
+
     // Handle different GeoJSON structures
     if (data.type === 'Feature') {
       if (!data.geometry || !data.geometry.coordinates) return false;
       if (!Array.isArray(data.geometry.coordinates)) return false;
-      
+
       // Check if coordinates are valid numbers
-      return data.geometry.coordinates.every(coord => 
-        Array.isArray(coord) && 
-        coord.length >= 2 && 
-        !isNaN(coord[0]) && 
+      return data.geometry.coordinates.every(coord =>
+        Array.isArray(coord) &&
+        coord.length >= 2 &&
+        !isNaN(coord[0]) &&
         !isNaN(coord[1])
       );
     } else if (data.type === 'FeatureCollection') {
@@ -535,13 +515,13 @@ function isValidGeoJSON(data) {
       if (!data.coordinates || !Array.isArray(data.coordinates)) return false;
       return true;
     }
-    
+
     return false;
   } catch (error) {
     console.error('Error validating GeoJSON:', error);
     return false;
   }
-  
+
 }
 
 /**
@@ -566,7 +546,7 @@ watch(() => props.selectedWalkId, loadRouteData);
 onMounted(() => {
   // Initialize spatial index
   updateSpatialIndex();
-  
+
   // Load route data if walk is selected
   if (props.selectedWalkId) {
     loadRouteData(props.selectedWalkId);
@@ -579,7 +559,7 @@ onBeforeUnmount(() => {
     marker?.remove?.();
   }
   markerRefs.value.clear();
-  
+
   // Clear collections
   spatialIndex.value.clear();
 });

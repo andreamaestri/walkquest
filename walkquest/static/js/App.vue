@@ -87,4 +87,14 @@ onMounted(() => {
 .hover-reveal-zone:hover {
   opacity: 1;
 }
+/* Global styles to ensure proper z-index stacking */
+body {
+  position: relative;
+  z-index: 1;
+}
+
+#app {
+  position: relative;
+  z-index: 1;
+}
 </style>

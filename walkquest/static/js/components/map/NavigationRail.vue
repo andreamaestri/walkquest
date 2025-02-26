@@ -352,13 +352,15 @@ onMounted(() => {
   left: 0;
   top: 0;
   bottom: 0;
-  z-index: 45 !important; /* Keep navigation rail above drawer */
+  z-index: 50 !important;
   background: rgb(var(--md-sys-color-surface));
   box-shadow: var(--md-sys-elevation-level2);
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   visibility: visible !important;
   pointer-events: auto !important;
   width: var(--md-sys-sidebar-collapsed);
+  /* Create a stacking context */
+  isolation: isolate;
 }
 
 /* Add interaction styles for when drawer is open */
