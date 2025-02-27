@@ -349,21 +349,35 @@ const handleMarkerMounted = (marker, walkId) => {
 
 /**
  * Update marker color
- * Changes marker color based on selection state
+ * Changes marker color based on selection state with smooth transition
  */
 const updateMarkerColor = (marker, isSelected) => {
   if (!marker) return;
-  const element = marker; // marker is already the correct element
+  
+  const element = marker;
   const svg = element.querySelector("svg");
   if (!svg) return;
+  
+  // Apply hardware acceleration to the SVG
+  if (!svg.style.transform) {
+    svg.style.transform = 'translate3d(0,0,0)';
+    svg.style.backfaceVisibility = 'hidden';
+    svg.style.willChange = 'transform';
+  }
+  
   // Select the first <path> regardless of its attributes
   const targetPath = svg.querySelector("path[fill]");
   if (!targetPath) return;
-  if (isSelected) {
-    targetPath.style.fill = "#6750A4";
-  } else {
-    targetPath.style.fill = "#3FB1CE";
+  
+  // Add transition if not already present
+  if (!targetPath.style.transition) {
+    targetPath.style.transition = 'fill 0.15s ease-out';
   }
+  
+  // Set the color with requestAnimationFrame to batch with other visual updates
+  requestAnimationFrame(() => {
+    targetPath.style.fill = isSelected ? "#6750A4" : "#3FB1CE";
+  });
 };
 
 /**
@@ -413,8 +427,13 @@ async function loadRouteData(walkId) {
 
       // Single camera movement when route is loaded
       if (mapInstance.value && geometry?.geometry?.coordinates?.length) {
+        // Add a small delay to ensure the map is ready
         setTimeout(() => {
           try {
+            // Before starting animation, prepare the GPU rendering
+            mapInstance.value.getCanvas().style.willChange = 'transform';
+            mapInstance.value.getCanvas().style.transform = 'translate3d(0, 0, 0)';
+            
             const coordinates = geometry.geometry.coordinates;
 
             if (coordinates.length > 1) {
@@ -436,6 +455,7 @@ async function loadRouteData(walkId) {
                 }
               );
 
+              // Use a smoother animation with proper easing
               mapInstance.value.flyTo({
                 center: [
                   (bounds.minLng + bounds.maxLng) / 2,
@@ -444,17 +464,18 @@ async function loadRouteData(walkId) {
                 zoom: 13,
                 pitch: 65,
                 bearing: 30,
-                duration: 2000,
+                duration: 2500, // Slightly longer duration
                 essential: true,
                 padding: {
                   top: 50,
                   bottom: 50,
                   left: 50,
                   right: 50
-                }
-              }, {
-                // Prevent the moveend event from triggering any route changes
-                preserveDrawingBuffer: true
+                },
+                easing: (t) => {
+                  return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+                }, // Smooth easing function
+                animate: true
               });
             } else if (coordinates.length === 1) {
               mapInstance.value.flyTo({
@@ -462,22 +483,30 @@ async function loadRouteData(walkId) {
                 zoom: 13,
                 pitch: 65,
                 bearing: 30,
-                duration: 2000,
+                duration: 2500,
                 essential: true,
                 padding: {
                   top: 50,
                   bottom: 50,
                   left: 50,
                   right: 50
-                }
-              }, {
-                preserveDrawingBuffer: true
+                },
+                easing: (t) => {
+                  return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+                },
+                animate: true
               });
             }
+            
+            // Reset the style after animation completes
+            mapInstance.value.once('moveend', () => {
+              mapInstance.value.getCanvas().style.willChange = 'auto';
+            });
+            
           } catch (e) {
             console.error("Error with camera movement:", e);
           }
-        }, 100);
+        }, 250); // Longer delay to ensure everything is ready
       }
     }
   } catch (error) {

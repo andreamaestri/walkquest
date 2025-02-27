@@ -1,59 +1,36 @@
 <template>
-  <div class="location-search" role="search" aria-label="Location search">
+  <div class="location-search" role="search" aria-label="Location search" :class="{ 'is-active': isActive }">
     <div class="search-field-container" :class="{ 'is-loading': isLoading }">
       <MapboxGeocoder v-bind="geocoderProps" class="geocoder-container" @mb-created="handleGeocodeCreated"
         @mb-result="handleGeocodeResult" @mb-error="handleGeocodeError" @mb-clear="handleGeocodeClear" />
+      <button v-if="isActive"
+              class="location-search-back-button"
+              @click.stop="closeSearch"
+              aria-label="Close search">
+        <Icon icon="material-symbols:arrow-back" />
+      </button>
     </div>
 
+    <!-- Display error only when needed -->
     <div v-if="searchError" class="search-error" role="alert">
-      <Icon icon="mdi:alert-circle" class="error-icon" />
-      {{ searchError }}
-    </div>
-
-    <!-- Walks count header -->
-    <div v-if="userLocation && hasSearched" class="walks-count-header" role="status">
-      <template v-if="walkLoading">
-        <div class="loading-text">
-          <div class="loading-spinner small"></div>
-          Searching for walks...
-        </div>
-      </template>
-      <template v-else>
-        <Icon icon="mdi:map-marker-radius" class="location-icon" />
-        {{ walksCountText }}
-      </template>
-    </div>
-
-    <!-- Empty state -->
-    <div v-if="hasSearched && isEmptyState && userLocation && !walkLoading" 
-         class="empty-state" 
-         role="status" 
-         aria-label="No walks found">
-      <div class="empty-state-icon">
-        <Icon icon="mdi:map-marker-off" />
-      </div>
-      <div class="empty-state-content">
-        <div class="empty-state-text">
-          No walks found near this location
-        </div>
-        <p class="empty-state-suggestion">
-          Try searching in a different area or adjusting your search criteria
-        </p>
-      </div>
-    </div>
-
-    <!-- Initial state -->
-    <div v-else-if="hasSearched && !userLocation && !walkLoading" 
-         class="empty-state" 
-         aria-label="Search prompt">
-      <div class="empty-state-icon">
-        <Icon icon="mdi:map-marker-search" />
-      </div>
-      <div class="empty-state-content">
-        <div class="empty-state-text">
-          Search for a location to find nearby walks
+      <div class="search-error-content">
+        <Icon icon="material-symbols:error-outline-rounded" class="error-icon" />
+        <div class="search-error-message">
+          {{ searchError }}
+          <div v-if="searchError.includes('Invalid')" class="search-error-help">
+            Please try a different search term or location
+          </div>
         </div>
       </div>
+      <button @click="clearSearchError" class="search-error-dismiss" aria-label="Dismiss error">
+        <Icon icon="material-symbols:close" />
+      </button>
+    </div>
+
+    <!-- Only show loading indicator, actual walk results are now handled by parent component -->
+    <div v-if="walkLoading && userLocation && hasSearched" class="loading-container" role="status" aria-label="Loading walks">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Searching for walks...</div>
     </div>
   </div>
 </template>
@@ -84,10 +61,14 @@ const props = defineProps({
   mapInstance: {
     type: Object,
     default: null
+  },
+  isActive: {
+    type: Boolean,
+    default: false
   }
 })
 
-const emit = defineEmits(['update:value', 'location-selected'])
+const emit = defineEmits(['update:value', 'location-selected', 'blur'])
 
 // Stores with storeToRefs for better reactivity
 const searchStore = useSearchStore()
@@ -103,6 +84,11 @@ const { isLoading: walkLoading, walksCountText, isEmptyState } = storeToRefs(wal
 const isLoading = ref(false)
 let geocoderInstance = shallowRef(null)
 let debounceTimers = {}
+
+// Close search method for back button
+const closeSearch = () => {
+  emit('blur')
+}
 
 // Computed properties with storeToRefs
 const hasMapboxToken = computed(() => !!props.mapboxToken)
@@ -427,6 +413,11 @@ const handleGeocodeClear = () => {
   emit('location-selected', null) // Notify parent that location was cleared
 }
 
+// Add new method in the script section
+const clearSearchError = () => {
+  searchStore.setError(null)
+}
+
 // Lifecycle hooks with proper cleanup
 onMounted(async () => {
   if (props.mapInstance && props.mapboxToken) {
@@ -504,13 +495,19 @@ watch(() => searchError.value, async (error) => {
 @import '../../css/material3.css';
 .location-search {
   width: 100% !important;
-  position: relative !important; /* Ensure relative positioning for absolute children */
+  position: relative !important;
+}
+
+.location-search.is-active .mapboxgl-ctrl-geocoder {
+  background: none;
+  border-radius: 24px;
+  box-shadow: none;
 }
 
 .search-field-container {
   position: relative !important;
   width: 100% !important;
-  margin-bottom: 8px !important;
+  margin-bottom: 4px !important;
 }
 
 /* Basics */
@@ -522,7 +519,7 @@ watch(() => searchError.value, async (error) => {
 }
 
 .mapboxgl-ctrl-geocoder {
-  font-size: 16px;
+  font-size: 14px;
   line-height: 18px;
   font-family: "Roboto", "Segoe UI", system-ui, -apple-system;
   position: relative;
@@ -532,7 +529,7 @@ watch(() => searchError.value, async (error) => {
   z-index: 10; /* Increased z-index */
   border-radius: 24px;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: var(--md-sys-elevation-1);
+  box-shadow: var(--md-sys-elevation-0);
 }
 
 .mapboxgl-ctrl-geocoder--input {
@@ -541,9 +538,9 @@ watch(() => searchError.value, async (error) => {
   border: 0;
   background-color: transparent;
   margin: 0;
-  height: 48px; /* Increase height for better touch targets */
+  height: 44px; /* Increase height for better touch targets */
   color: rgb(var(--md-sys-color-on-surface));
-  padding: 6px 45px 6px 44px !important;
+  padding: 6px 40px 6px 36px !important;
   text-overflow: ellipsis;
   white-space: nowrap;
   overflow: hidden;
@@ -572,8 +569,6 @@ watch(() => searchError.value, async (error) => {
   left: 15px;
   top: 50%;
   transform: translateY(-50%);
-  color: rgb(var(--md-sys-color-on-surface));
-  fill: rgb(var(--md-sys-color-on-surface))!important;
   width: 18px;
   height: 18px;
   z-index: 12; /* Increased z-index */
@@ -590,9 +585,22 @@ watch(() => searchError.value, async (error) => {
   margin-right: 4px;
   border-radius: 16px;
   cursor: pointer;
-  background: transparent;
   transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  display: block; /* Ensure it's displayed */
+}
+
+/* Hide loading icon by default */
+.mapboxgl-ctrl-geocoder .mapboxgl-ctrl-geocoder--icon-loading {
+  display: none;
+}
+
+/* Only show loading icon when geocoder is actually loading */
+.mapboxgl-ctrl-geocoder.mapboxgl-ctrl-geocoder--loading .mapboxgl-ctrl-geocoder--icon-loading {
+  display: block;
+  position: absolute;
+  right: 8px;
+  margin-right: 4px;
+  width: 20px;
+  height: 20px;
 }
 
 .mapboxgl-ctrl-geocoder .mapboxgl-ctrl-geocoder--icon-close:hover {
@@ -606,7 +614,7 @@ watch(() => searchError.value, async (error) => {
 
 .mapboxgl-ctrl-geocoder,
 .mapboxgl-ctrl-geocoder .suggestions {
-  box-shadow: var(--md-sys-elevation-2); /* Increase shadow for better visibility */
+  box-shadow: var(--md-sys-elevation-0); /* Increase shadow for better visibility */
 }
 
 /* Collapsed */
@@ -622,16 +630,16 @@ watch(() => searchError.value, async (error) => {
   border-radius: 12px; /* More rounded corners */
   left: 0;
   list-style: none;
-  margin: 0;
-  padding: 8px 0;
+  margin: 2px 0 0;
+  padding: 4px 0;
   position: absolute;
   width: 100%;
   top: 110%;
   top: calc(100% + 6px);
   z-index: 9999; /* Very high z-index to ensure visibility */
   overflow: hidden; /* Changed from hidden to visible */
-  font-size: 15px;
-  box-shadow: var(--md-sys-elevation-3); /* Stronger shadow for dropdown */
+  font-size: 14px;
+  box-shadow: var(--md-sys-elevation-0); /* Stronger shadow for dropdown */
 }
 
 /* Make sure suggestions are always visible when present */
@@ -646,7 +654,7 @@ watch(() => searchError.value, async (error) => {
 }
 
 .mapboxgl-ctrl-geocoder .suggestions > li > a {
-  padding: 12px 16px;
+  padding: 8px 12px;
   color: rgb(var(--md-sys-color-on-surface));
   display: flex;
   flex-direction: column;
@@ -693,21 +701,81 @@ watch(() => searchError.value, async (error) => {
 .search-error {
   color: rgb(var(--md-sys-color-on-error-container));
   background-color: rgb(var(--md-sys-color-error-container));
-  padding: 12px;
-  border-radius: 8px;
+  padding: 12px 16px;
+  border-radius: 12px;
   margin-bottom: 16px;
   display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  box-shadow: var(--md-sys-elevation-1);
+  animation: fade-in 0.3s ease-out;
+}
+
+.search-error-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex: 1;
+}
+
+.search-error-message {
+  flex: 1;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.search-error-help {
+  font-size: 13px;
+  margin-top: 4px;
+  opacity: 0.85;
+}
+
+.error-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.search-error-dismiss {
+  background: transparent;
+  border: none;
+  color: rgb(var(--md-sys-color-on-error-container));
+  opacity: 0.7;
+  width: 28px;
+  height: 28px;
+  border-radius: 14px;
+  display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+  margin-left: 8px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.search-error-dismiss:hover {
+  background-color: rgba(var(--md-sys-color-on-error-container) / 0.08);
+  opacity: 0.9;
+}
+
+.search-error-dismiss:active {
+  background-color: rgba(var(--md-sys-color-on-error-container) / 0.12);
+  opacity: 1;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .walks-count-header {
   color: rgb(var(--md-sys-color-on-surface-variant));
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 16px;
+  padding: 12px;
   background-color: rgb(var(--md-sys-color-surface-container-low));
   border-radius: 12px;
 }
@@ -717,7 +785,7 @@ watch(() => searchError.value, async (error) => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: 20px;
   text-align: center;
   color: rgb(var(--md-sys-color-on-surface-variant));
   background-color: rgb(var(--md-sys-color-surface-container-low));
@@ -725,21 +793,21 @@ watch(() => searchError.value, async (error) => {
 }
 
 .empty-state-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
+  font-size: 40px;
+  margin-bottom: 12px;
   color: rgb(var(--md-sys-color-on-surface-variant));
   opacity: 0.5;
 }
 
 .empty-state-text {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 500;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   color: rgb(var(--md-sys-color-on-surface));
 }
 
 .empty-state-suggestion {
-  font-size: 14px;
+  font-size: 13px;
   color: rgb(var(--md-sys-color-on-surface-variant));
   margin: 0;
 }
@@ -796,5 +864,47 @@ watch(() => searchError.value, async (error) => {
 .location-search .search-field-container {
   width: 100%;
   position: relative;
+}
+
+/* Add back button for active state */
+.location-search-back-button {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 16px;
+  background: transparent;
+  color: rgb(var(--md-sys-color-on-surface));
+  cursor: pointer;
+  opacity: 0.75;
+  transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.location-search-back-button:hover {
+  background: rgb(var(--md-sys-color-on-surface-variant) / 0.08);
+  opacity: 0.85;
+}
+
+.location-search-back-button:active {
+  background: rgb(var(--md-sys-color-on-surface-variant) / 0.12);
+  opacity: 1;
+}
+
+/* When back button is present, adjust the close icon position */
+.location-search.is-active .mapboxgl-ctrl-geocoder--icon-close {
+  right: 44px;
+}
+
+/* Adjust padding for input when in active state */
+.location-search.is-active .mapboxgl-ctrl-geocoder--input {
+  padding-right: 84px !important; /* Accommodate both close and back buttons */
 }
 </style>

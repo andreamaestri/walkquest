@@ -1,5 +1,5 @@
 <template>
-  <div class="search-view">
+  <div class="search-view" :class="{ 'search-view-expanded': isActive }">
     <div class="search-container">
       <template v-if="props.searchMode === 'locations'">
         <LocationSearch 
@@ -7,8 +7,10 @@
           :mapbox-token="props.mapboxToken"
           :value="modelValue"
           :map-instance="mapInstance"
+          :is-active="isActive"
           @update:value="$emit('update:modelValue', $event)"
           @location-selected="handleLocationSelected"
+          @blur="$emit('blur')"
           :initial-value="modelValue"
         />
       </template>
@@ -17,7 +19,8 @@
         <div :key="`walk-search-${props.searchMode}`" 
              class="m3-search-field"
              :class="{ 
-               'has-input': canClear
+               'has-input': canClear,
+               'is-active': isActive
              }"
              @click="handleContainerClick">
           <div class="m3-search-field-container">
@@ -47,43 +50,47 @@
                         aria-label="Clear search">
                   <Icon icon="material-symbols:close" />
                 </button>
+                <button v-if="isActive"
+                        class="m3-search-field-close"
+                        @click.stop="closeSearch"
+                        aria-label="Close search">
+                  <Icon icon="material-symbols:arrow-back" />
+                </button>
               </div>
             </div>
           </div>
         </div>
       </template>
-
-      <div v-if="hasError" class="m3-search-error">
-        {{ errorMessage }}
-      </div>
-
       <!-- Location results with proper transition -->
       <Transition
         enter-active-class="m3-animate-in"
         leave-active-class="m3-animate-out"
         @after-leave="onTransitionComplete"
       >
-        <div v-if="props.searchMode === 'locations' && showLocationResults && hasLocationSearched"
-             class="m3-location-results">
-          <div class="m3-results-count">
+        <div v-if="props.searchMode === 'locations' && showLocationResults && hasLocationSearched" class="m3-location-results">
+          <div v-if="nearbyWalks && nearbyWalks.length > 0" class="m3-results-count">
             {{ resultCountText }}
           </div>
           <WalkList 
+            v-if="nearbyWalks && nearbyWalks.length > 0"
             :key="`location-results-${nearbyWalks?.length}`"
             :walks="nearbyWalks"
             :is-compact="true"
             @walk-selected="handleWalkSelected"
           />
+          <div v-else-if="!isLoading && hasLocationSearched" class="m3-empty-state">
+            <Icon icon="material-symbols:location-off" class="m3-empty-icon" />
+            <span>No walks found nearby</span>
+          </div>
         </div>
       </Transition>
-
       <!-- Walk search results -->
       <Transition
         enter-active-class="m3-animate-in"
         leave-active-class="m3-animate-out"
         @after-leave="onTransitionComplete"
       >
-        <div v-if="showSuggestions && isFocused && props.searchMode === 'walks'" 
+        <div v-if="showSuggestions && (isFocused || isActive) && props.searchMode === 'walks'" 
              class="m3-suggestions-menu">
           <template v-if="suggestions?.length > 0">
             <button
@@ -100,13 +107,10 @@
               </div>
             </button>
           </template>
-          <!-- Only show empty state for walk search -->
-          <div v-else-if="searchQuery && !isLoading && props.searchMode === 'walks'" 
-               class="m3-empty-state">
-            <div class="m3-suggestion-item">
-              <Icon icon="material-symbols:search-off" />
-              <span>No walks found</span>
-            </div>
+          <!-- Simplified empty state -->
+          <div v-else-if="searchQuery && !isLoading" class="m3-empty-state">
+            <Icon icon="material-symbols:search-off" class="m3-empty-icon" />
+            <span>No walks found</span>
           </div>
         </div>
       </Transition>
@@ -140,7 +144,7 @@ function debounce(fn, delay) {
   }
 }
 
-// Props including mapboxToken
+// Props including mapboxToken and isActive
 const props = defineProps({
   searchMode: {
     type: String,
@@ -154,11 +158,15 @@ const props = defineProps({
   modelValue: {
     type: String,
     default: ''
+  },
+  isActive: {
+    type: Boolean,
+    default: false
   }
 })
 
 // Add to emits
-const emit = defineEmits(['update:search-mode', 'location-selected', 'walk-selected', 'update:modelValue'])
+const emit = defineEmits(['update:search-mode', 'location-selected', 'walk-selected', 'update:modelValue', 'blur', 'close'])
 
 // Initialize stores with storeToRefs for reactivity
 const searchStore = useSearchStore()
@@ -178,7 +186,12 @@ const {
 } = storeToRefs(searchStore)
 
 const { userLocation, nearbyWalks, hasSearched: hasLocationSearched } = storeToRefs(locationStore)
-const { searchRadius } = storeToRefs(walkStore) // Get searchRadius from walkStore instead
+
+// Fix: Add a default fallback value for searchRadius using computed
+const searchRadiusValue = computed(() => {
+  // Access walkStore's searchRadius safely, with a fallback value of 10000 (10km)
+  return walkStore.searchRadius || 10000
+})
 
 // References with appropriate performance optimization
 const searchInput = shallowRef(null)
@@ -190,7 +203,7 @@ const showSuggestions = ref(false)
 const shouldShowSuggestions = computed(() => 
   props.searchMode === 'walks' && 
   searchQuery.value?.trim() && 
-  isFocused.value
+  (isFocused.value || props.isActive)
 )
 
 // Sync show suggestions with computed value
@@ -267,6 +280,9 @@ const handleBlur = () => {
     // Allow click events on suggestions to complete first
     isFocused.value = false
     showSuggestions.value = false
+    
+    // Emit blur event
+    emit('blur')
   }, 150)
 }
 
@@ -444,8 +460,8 @@ const resultCountText = computed(() => {
   const count = nearbyWalks.value?.length || 0
   if (count === 0) return 'No walks found nearby'
   
-  // When using storeToRefs, all store properties become refs with .value
-  const radius = searchRadius.value ? formatDistance(searchRadius.value) : '10km'
+  // Fix: Use the safe computed value instead of directly accessing potentially undefined ref
+  const radius = formatDistance(searchRadiusValue.value)
   return `${count} ${count === 1 ? 'walk' : 'walks'} within ${radius}`
 })
 
@@ -571,12 +587,30 @@ const handleLocationResult = (location) => {
     console.error('Error in handleLocationResult:', error)
   }
 }
+
+// Add method to close search and emit close event
+const closeSearch = () => {
+  // Clear UI state
+  showSuggestions.value = false
+  selectedIndex.value = -1
+  isFocused.value = false
+  
+  // Emit close event for parent component
+  emit('close')
+}
 </script>
 
 <style>
 .search-view {
   width: 100%;
   position: relative;
+  transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.search-view-expanded {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .search-container {
@@ -586,12 +620,16 @@ const handleLocationResult = (location) => {
 
 /* Material Design 3 Search Field */
 .m3-search-field {
-  position: relative;
-  width: 100%;
-  height: 48px; /* Increased height for better touch targets */
-  border-radius: 24px; /* Increased radius for more modern look */
+  height: 44px; /* More compact height */
+  border-radius: 24px;
   background: rgb(var(--md-sys-color-surface-container-low));
-  transition: background 200ms cubic-bezier(0.2, 0, 0, 1);
+  transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Active state styling */
+.m3-search-field.is-active {
+  background: rgb(var(--md-sys-color-surface-container));
+  border-radius: 24px;
 }
 
 .m3-search-field:hover {
@@ -604,6 +642,7 @@ const handleLocationResult = (location) => {
 
 .m3-search-field-container {
   position: relative;
+  background: none;
   width: 100%;
   height: 100%;
 }
@@ -611,14 +650,15 @@ const handleLocationResult = (location) => {
 .m3-search-field-content {
   display: flex;
   align-items: center;
-  padding: 0 4px 0 16px;
-  gap: 8px;
+  padding: 0 4px 0 12px; /* Reduced left padding */
+  background: none;
+  gap: 6px; /* Reduced gap */
   height: 100%;
 }
 
 .m3-search-field-icon {
   color: rgb(var(--md-sys-color-on-surface));
-  font-size: 20px;
+  font-size: 18px; /* Slightly smaller icon */
   flex-shrink: 0;
   opacity: 0.65;
 }
@@ -627,12 +667,12 @@ const handleLocationResult = (location) => {
   flex: 1;
   min-width: 0;
   height: 100%;
-  padding: 0;
+  padding: 0 8px 0 0; /* Adjusted padding */
   background: transparent;
   border: none;
   color: rgb(var(--md-sys-color-on-surface));
   font-family: var(--md-sys-typescale-body-large-font);
-  font-size: var(--md-sys-typescale-body-large-size);
+  font-size: 14px; /* Slightly smaller text */
   line-height: var(--md-sys-typescale-body-large-line-height);
   font-weight: var(--md-sys-typescale-body-large-weight);
   letter-spacing: var(--md-sys-typescale-body-large-tracking);
@@ -649,7 +689,7 @@ const handleLocationResult = (location) => {
 .m3-search-field-actions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px; /* Reduced gap between actions */
   padding-right: 8px;
 }
 
@@ -663,7 +703,7 @@ const handleLocationResult = (location) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
+  width: 32px; /* Slightly smaller buttons */
   height: 32px;
   padding: 0;
   border: none;
@@ -671,7 +711,7 @@ const handleLocationResult = (location) => {
   background: transparent;
   color: rgb(var(--md-sys-color-on-surface));
   cursor: pointer;
-  opacity: 0.65;
+  opacity: 0.75;
   transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
 }
 
@@ -707,11 +747,11 @@ const handleLocationResult = (location) => {
   position: absolute;
   left: 0;
   right: 0;
-  margin-top: 4px;
+  margin-top: 2px; /* Reduced gap */
   background: rgb(var(--md-sys-color-surface-container));
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: var(--md-sys-elevation-2);
+  box-shadow: var(--md-sys-elevation-0);
   z-index: 1000;
   border: 1px solid rgb(var(--md-sys-color-outline-variant) / 0.12);
 }
@@ -720,8 +760,8 @@ const handleLocationResult = (location) => {
   display: flex;
   align-items: center;
   width: 100%;
-  height: 48px;
-  padding: 0 16px;
+  height: 40px; /* More compact suggestions */
+  padding: 0 12px;
   gap: 12px;
   border: none;
   background: transparent;
@@ -757,10 +797,20 @@ const handleLocationResult = (location) => {
 }
 
 .m3-empty-state {
-  padding: 12px 16px;
+  padding: 16px;
+  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   color: rgb(var(--md-sys-color-on-surface-variant));
   text-align: center;
   font-size: var(--md-sys-typescale-body-medium-size);
+}
+
+.m3-empty-icon {
+  font-size: 48px;
+  color: rgb(var(--md-sys-color-on-surface-variant));
 }
 
 /* Animations */
@@ -796,18 +846,45 @@ const handleLocationResult = (location) => {
 
 /* Location Results */
 .m3-location-results {
-  margin-top: 8px;
+  margin-top: 4px; /* Reduced margin */
   background: rgb(var(--md-sys-color-surface-container));
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: var(--md-sys-elevation-1);
+  box-shadow: var(--md-sys-elevation-0);
   border: 1px solid rgb(var(--md-sys-color-outline-variant) / 0.2);
 }
 
 .m3-results-count {
-  padding: 12px 16px;
+  padding: 12px;
   color: rgb(var(--md-sys-color-on-surface-variant));
   font-size: var(--md-sys-typescale-body-medium-size);
   border-bottom: 1px solid rgb(var(--md-sys-color-outline-variant));
+}
+
+.m3-search-field-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px; /* Slightly smaller buttons */
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 18px;
+  background: transparent;
+  color: rgb(var(--md-sys-color-on-surface));
+  cursor: pointer;
+  opacity: 0.75;
+  transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
+  margin-left: 4px;
+}
+
+.m3-search-field-close:hover {
+  background: rgb(var(--md-sys-color-on-surface-variant) / 0.08);
+  opacity: 0.85;
+}
+
+.m3-search-field-close:active {
+  background: rgb(var(--md-sys-color-on-surface-variant) / 0.12);
+  opacity: 1;
 }
 </style>

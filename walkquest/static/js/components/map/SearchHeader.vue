@@ -1,36 +1,45 @@
 <template>
-  <div
-    class="fixed top-0 z-10 transition-all duration-300 flex"
-    :class="[uiStore.isMobile ? 'w-full' : '']"
-    :style="{
-      paddingLeft: showNavigationRail
-        ? isExpanded
-          ? '410px'
-          : '80px'
-        : '0px',
-      width: uiStore.isMobile ? '100%' : 'calc(100% - 16px)'
-    }"
-  >
-    <header class="py-3 bg-surface-variant w-full">
+  <div class="search-header-wrapper">
+    <header 
+      ref="searchHeader"
+      class="py-2 w-full transition-all duration-300 ease-md3"
+      :class="[
+        isSearchActive ? 'bg-transparent' : 'bg-surface-variant',
+        isSearchActive && uiStore.isMobile ? 'fixed inset-0 z-50 py-0' : ''
+      ]"
+    >
       <div
-        class="transition-all duration-300 mx-auto"
-        :class="searchContainerClass"
+        class="search-wrapper transition-all duration-300 ease-md3 mx-auto"
+        :class="[
+          searchContainerClass,
+          isSearchActive ? 'search-active' : '',
+          isSearchActive && uiStore.isMobile ? 'h-full' : ''
+        ]"
+        @click="activateSearch"
       >
         <SearchView
           v-model="searchQuery"
           :search-mode="searchMode"
           :mapbox-token="mapboxToken"
+          :is-active="isSearchActive"
           @location-selected="handleLocationSelected"
           @walk-selected="handleWalkSelection"
+          @blur="deactivateSearch"
+          @close="deactivateSearch"
           class="md3-search-bar px-4"
         />
       </div>
+      <div 
+        v-if="isSearchActive" 
+        class="search-backdrop fixed inset-0 -z-10"
+        @click="deactivateSearch"
+      ></div>
     </header>
   </div>
 </template>
 
 <script setup>
-import { computed } from "vue";
+import { computed, onMounted, ref, onUnmounted } from "vue";
 import { useUiStore } from "../../stores/ui";
 import { useSearchStore } from "../../stores/searchStore";
 import SearchView from "../SearchView.vue";
@@ -58,6 +67,61 @@ const emit = defineEmits(['location-selected', 'walk-selected']);
 const uiStore = useUiStore();
 const searchStore = useSearchStore();
 
+// References for component state
+const searchHeader = ref(null);
+const windowWidth = ref(window.innerWidth);
+const isSearchActive = ref(false);
+
+// Breakpoints following MD3 guidelines
+const BREAKPOINTS = {
+  SMALL: 600,    // 0-599px: Extra small - Full width search bar
+  MEDIUM: 905,   // 600-904px: Small to medium - Wider search bar
+  LARGE: 1240,   // 905-1239px: Medium to large - Balanced width
+  XLARGE: 1440   // 1240px+: Extra-large - Constrained width to maintain readability
+};
+
+// Watch for window resize to update responsive sizing
+onMounted(() => {
+  window.addEventListener('resize', handleResize);
+  document.addEventListener('keydown', handleKeyDown);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize);
+  document.removeEventListener('keydown', handleKeyDown);
+});
+
+const handleResize = () => {
+  windowWidth.value = window.innerWidth;
+};
+
+const handleKeyDown = (event) => {
+  if (event.key === 'Escape' && isSearchActive.value) {
+    deactivateSearch();
+  }
+};
+
+// Methods to handle search activation state
+const activateSearch = () => {
+  if (!isSearchActive.value) {
+    isSearchActive.value = true;
+    // Add a class to the body to prevent scrolling
+    if (uiStore.isMobile) {
+      document.body.classList.add('overflow-hidden');
+    }
+  }
+};
+
+const deactivateSearch = () => {
+  if (isSearchActive.value) {
+    isSearchActive.value = false;
+    // Remove the class from the body
+    if (uiStore.isMobile) {
+      document.body.classList.remove('overflow-hidden');
+    }
+  }
+};
+
 // Computed properties
 const searchQuery = computed({
   get: () => searchStore.searchQuery,
@@ -78,15 +142,39 @@ const showNavigationRail = computed(() => {
 
 /**
  * Computed property for search container class based on layout state
+ * Enhanced to respect Material Design 3 guidelines for search components
  */
 const searchContainerClass = computed(() => {
-  if (uiStore.isMobile) return 'search-container-mobile';
+  if (isSearchActive.value) {
+    // When active, use different classes based on device size
+    if (uiStore.isMobile || windowWidth.value < BREAKPOINTS.SMALL) {
+      return 'search-container-modal-mobile';
+    }
+    return 'search-container-modal';
+  }
+
+  // For inactive state use the regular container classes
+  if (uiStore.isMobile || windowWidth.value < BREAKPOINTS.SMALL) {
+    return 'search-container-mobile';
+  }
+  
+  // When nav rail is shown, adjust based on expansion state
   if (showNavigationRail.value) {
     return props.isExpanded 
       ? 'search-container-expanded' 
       : 'search-container-collapsed';
   }
-  return 'search-container-full';
+  
+  // When there's no sidebar, use responsive widths based on screen size
+  if (windowWidth.value < BREAKPOINTS.MEDIUM) {
+    return 'search-container-small';
+  } else if (windowWidth.value < BREAKPOINTS.LARGE) {
+    return 'search-container-medium'; 
+  } else if (windowWidth.value < BREAKPOINTS.XLARGE) {
+    return 'search-container-large';
+  }
+  
+  return 'search-container-xlarge';
 });
 
 /**
@@ -98,8 +186,10 @@ const handleLocationSelected = (location) => {
     // Ensure location exists before emitting
     if (location === null || location === undefined) {
       console.warn('Location selection event received with no location data');
+      return;
     }
     emit('location-selected', location);
+    deactivateSearch();
   } catch (error) {
     console.error('Error handling location selection in SearchHeader:', error);
   }
@@ -111,31 +201,92 @@ const handleLocationSelected = (location) => {
  */
 const handleWalkSelection = (walk) => {
   emit('walk-selected', walk);
+  deactivateSearch();
 };
 </script>
 
 <style scoped>
+.search-header-wrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.search-header-wrapper > * {
+  pointer-events: auto;
+}
+
+/* Base container styles */
 .search-container-expanded {
-  width: 60%;
-  max-width: 800px;
+  width: min(720px, 70%);
   margin: 0 auto;
 }
 
 .search-container-collapsed {
-  width: 30%;
-  max-width: 800px;
+  width: min(640px, 50%);
   margin: 0 auto;
 }
 
-.search-container-full {
-  width: 60%;
-  max-width: 800px;
+/* Responsive width classes following MD3 container guidelines */
+.search-container-small {
+  width: calc(100% - 32px);
+  margin: 0 auto;
+}
+
+.search-container-medium {
+  width: min(640px, 70%);
+  margin: 0 auto;
+}
+
+.search-container-large {
+  width: min(720px, 60%);
+  margin: 0 auto;
+}
+
+.search-container-xlarge {
+  width: min(840px, 50%);
   margin: 0 auto;
 }
 
 .search-container-mobile {
-  width: calc(100% - 1rem);
-  margin: 0 0.5rem;
+  width: calc(100% - 16px);
+  margin: 0 8px;
+  max-width: 100%;
+}
+
+/* Modal styles when search is active */
+.search-container-modal {
+  width: min(840px, 80%);
+  margin: 0 auto;
+  border-radius: 28px;
+  background-color: rgb(var(--md-sys-color-surface-container));
+  box-shadow: var(--md-sys-elevation-0);
+}
+
+.search-container-modal-mobile {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background-color: rgb(var(--md-sys-color-surface));
+}
+
+/* Active search mode styles */
+.search-wrapper {
+  position: relative;
+  z-index: 1;
+}
+
+.search-wrapper.search-active {
+  z-index: 10;
+}
+
+.search-backdrop {
+  background-color: rgb(var(--md-sys-color-scrim) / 0.32);
+  backdrop-filter: blur(2px);
+  pointer-events: auto;
 }
 
 .bg-surface-variant {
@@ -143,7 +294,33 @@ const handleWalkSelection = (walk) => {
 }
 
 .md3-search-bar {
-  border-radius: 28px;
+  border-radius: 24px;
+  height: 44px;
   overflow: visible;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.search-view-active {
+  border-radius: 24px 24px 0 0;
+  box-shadow: none;
+}
+
+/* MD3 motion ease */
+.ease-md3 {
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Mobile mode adjustments */
+@media (max-width: 599px) {
+  .search-active {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .search-view-active {
+    border-radius: 0;
+    flex: 1;
+  }
 }
 </style>

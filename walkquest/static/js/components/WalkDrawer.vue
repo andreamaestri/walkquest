@@ -72,7 +72,7 @@
             <button
               :ref="(el) => (buttonRefs[0] = el)"
               class="m3-button m3-filled-button"
-              @click="() => {}"
+              @click="handleStartWalkClick"
             >
               <Icon icon="mdi:play-circle" class="button-icon" />
               <span>Start Walk</span>
@@ -115,7 +115,30 @@
               <h3 class="section-title">About</h3>
               <p class="section-text">{{ walk.description }}</p>
             </section>
-
+            <section
+              v-if="walk.features?.length || walk.related_categories?.length"
+              :ref="(el) => (sectionRefs[3] = el)"
+              class="section"
+            >
+              <h3 class="section-title">Trail Features</h3>
+              <div class="feature-container">
+                <span v-for="feature in walk.features" :key="feature.name" class="feature-chip">
+                  {{ feature.name }}
+                </span>
+                <span 
+                  v-for="category in walk.related_categories" 
+                  :key="category.name" 
+                  class="feature-chip category-chip" 
+                  :class="getCategoryClass(category.name)"
+                >
+                  <Icon 
+                    :icon="getCategoryIcon(category.name)" 
+                    class="category-icon" 
+                  />
+                  <span>{{ category.name }}</span>
+                </span>
+              </div>
+            </section>
             <section
               v-if="parsedHighlights.length"
               :ref="(el) => (sectionRefs[1] = el)"
@@ -147,27 +170,10 @@
             </section>
 
             <section
-              v-if="walk.features?.length || walk.categories?.length"
-              :ref="(el) => (sectionRefs[3] = el)"
-              class="section"
-            >
-              <h3 class="section-title">Trail Features</h3>
-              <div class="feature-container">
-                <span v-for="feature in walk.features" :key="feature.name" class="feature-chip">
-                  {{ feature.name }}
-                </span>
-                <span v-for="category in walk.categories" :key="category.name" class="feature-chip">
-                  {{ category.name }}
-                </span>
-              </div>
-            </section>
-
-            <section
               v-if="walk.pubs_list?.length"
               class="section"
             >
               <h3 class="section-title section-title-with-icon">
-                <Icon icon="mdi:beer" class="section-icon" />
                 Nearby Pubs
                 <span class="pub-count">{{ walk.pubs_list.length }} found</span>
               </h3>
@@ -291,11 +297,12 @@ const props = defineProps({
   isOpen: { type: Boolean, default: false },
   sidebarWidth: { type: Number, default: 80 },
   fromMapMarker: { type: Boolean, default: false },
-  isLoading: { type: Boolean, default: false } // Add loading prop
+  isLoading: { type: Boolean, default: false }
 });
 
 const emit = defineEmits(["close", "start-walk", "loading-change"]);
 
+// Component refs
 const drawerRef = ref(null);
 const connectorRef = ref(null);
 const headerRef = ref(null);
@@ -307,16 +314,88 @@ const buttonsContainerRef = ref(null);
 const buttonRefs = ref([]);
 const sectionRefs = ref([]);
 const footwearDetailsRef = ref(null);
+const accentLineRef = ref(null);
+
+// Component state
 const detailsOpen = ref(false);
-const isTransitioning = ref(false); // Add transitioning state
+const isTransitioning = ref(false);
 const scrollPosition = ref(0);
 const previousWalkId = ref(null);
-const contentAnimations = ref([]);
-const inViewObservers = ref([]);
-const accentLineRef = ref(null);
+const animationsEnabled = ref(true);
+
+// Animation manager for better lifecycle management
+const animations = {
+  instances: new Set(),
+  observers: new Set(),
+  
+  // Track and register a new animation
+  register(animation) {
+    if (!animation) return animation;
+    this.instances.add(animation);
+    return animation;
+  },
+  
+  // Track and register a new InView observer
+  registerObserver(observer) {
+    if (!observer) return observer;
+    this.observers.add(observer);
+    return observer;
+  },
+  
+  // Cancel all animations and stop observers
+  cleanup() {
+    // Cancel all animations
+    for (const animation of this.instances) {
+      try {
+        animation.cancel();
+      } catch (err) {
+        console.warn('Error cancelling animation:', err);
+      }
+    }
+    this.instances.clear();
+    
+    // Stop all observers
+    for (const observer of this.observers) {
+      try {
+        observer.stop();
+      } catch (err) {
+        console.warn('Error stopping observer:', err);
+      }
+    }
+    this.observers.clear();
+  },
+  
+  // Animate with proper registration
+  animate(targets, keyframes, options = {}) {
+    if (!animationsEnabled.value) return { finished: Promise.resolve() };
+    try {
+      const animation = animate(targets, keyframes, options);
+      this.register(animation);
+      return animation;
+    } catch (err) {
+      console.warn('Animation error:', err);
+      return { finished: Promise.resolve() };
+    }
+  },
+  
+  // Create an InView observer with proper registration
+  createInView(element, callback, options = {}) {
+    if (!element) return null;
+    try {
+      const observer = inView(element, callback, options);
+      this.registerObserver(observer);
+      return observer;
+    } catch (err) {
+      console.warn('InView observer error:', err);
+      return null;
+    }
+  }
+};
 
 const animationConfigs = {
   fluid: { duration: 0.5, easing: [0.22, 1, 0.36, 1] },
+  standard: { duration: 0.3, easing: "ease-out" },
+  exit: { duration: 0.25, easing: "ease-in" }
 };
 
 const router = useRouter();
@@ -324,22 +403,28 @@ const walksStore = useWalksStore();
 
 // Watch for walk changes to handle transitions
 watch(() => props.walk?.id, async (newWalkId, oldWalkId) => {
+  console.log("Walk ID changed:", { new: newWalkId, old: oldWalkId, isTransitioning: isTransitioning.value });
+  
+  // If both IDs are valid and different, and a transition isn't already in progress, handle the transition
   if (newWalkId && oldWalkId && newWalkId !== oldWalkId) {
-    isTransitioning.value = true;
-    emit('loading-change', true);
-    
-    // Save current walk ID and scroll position before transition
-    previousWalkId.value = oldWalkId;
-    if (drawerRef.value) {
-      const scrollContainer = drawerRef.value.querySelector('.scrollable-container');
-      if (scrollContainer) {
-        scrollPosition.value = scrollContainer.scrollTop;
-      }
-    }
-    
     try {
-      // Animate content out
-      await animateContentOut();
+      // Set transition state
+      isTransitioning.value = true;
+      emit('loading-change', true);
+      
+      // Save current walk ID and scroll position before transition
+      previousWalkId.value = oldWalkId;
+      if (drawerRef.value) {
+        const scrollContainer = drawerRef.value.querySelector('.scrollable-container');
+        if (scrollContainer) {
+          scrollPosition.value = scrollContainer.scrollTop;
+        }
+      }
+      
+      // Animate content out with timeout protection
+      const contentOutPromise = animateContentOut();
+      const contentOutTimeout = new Promise(resolve => setTimeout(resolve, 500));
+      await Promise.race([contentOutPromise, contentOutTimeout]);
       
       // Wait for data
       await nextTick();
@@ -350,20 +435,32 @@ watch(() => props.walk?.id, async (newWalkId, oldWalkId) => {
         scrollContainer.scrollTop = 0;
       }
       
-      // Animate new content in
-      await animateContentIn();
+      // Animate new content in with timeout protection
+      const contentInPromise = animateContentIn();
+      const contentInTimeout = new Promise(resolve => setTimeout(resolve, 800));
+      await Promise.race([contentInPromise, contentInTimeout]);
     } catch (error) {
       console.error('Transition error:', error);
     } finally {
+      // Always reset transition state, even if there was an error
       isTransitioning.value = false;
       emit('loading-change', false);
     }
+  } else if (newWalkId && !oldWalkId) {
+    // This case handles when a new walk is selected from nothing
+    isTransitioning.value = false;
+    emit('loading-change', false);
   }
 }, { immediate: true });
 
 // Watch for open state changes
 watch(() => props.isOpen, async (isOpen) => {
+  console.log("Drawer isOpen changed:", isOpen);
+  
   if (isOpen) {
+    // Ensure transition state is reset when drawer opens
+    isTransitioning.value = false;
+    
     await nextTick();
     initializeDrawer();
     
@@ -371,8 +468,11 @@ watch(() => props.isOpen, async (isOpen) => {
     if (previousWalkId.value === props.walk?.id && scrollPosition.value > 0) {
       await nextTick(() => {
         restoreScrollPosition();
-      });
+      }); 
     }
+  } else {
+    // When drawer is closed, ensure we clean up any running animations
+    animations.cleanup();
   }
 }, { immediate: true });
 
@@ -383,7 +483,7 @@ function initializeDrawer() {
     drawerRef.value.style.transition = 'transform 0.3s ease, left 0.3s ease';
     
     if (connectorRef.value) {
-      animate(connectorRef.value, { opacity: [0, 1], width: ["0px", "28px"] }, { 
+      animations.animate(connectorRef.value, { opacity: [0, 1], width: ["0px", "28px"] }, { 
         delay: 0.2,
         duration: 0.6,
         easing: "ease-out" 
@@ -394,7 +494,7 @@ function initializeDrawer() {
 
 async function animateContentOut() {
   // Clean up existing animations
-  cleanupAnimations();
+  animations.cleanup();
   
   if (!drawerRef.value) return;
   
@@ -406,7 +506,7 @@ async function animateContentOut() {
   ];
   
   if (elements.length) {
-    const animation = animate(
+    const animation = animations.animate(
       elements,
       { 
         opacity: [1, 0],
@@ -419,7 +519,6 @@ async function animateContentOut() {
         delay: stagger(0.02, { from: "last" })
       }
     );
-    contentAnimations.value.push(animation);
     await animation.finished;
   }
 }
@@ -427,12 +526,12 @@ async function animateContentOut() {
 async function animateContentIn() {
   await nextTick();
   
-  if (!drawerRef.value) return;
+  if (!drawerRef.value || isTransitioning.value) return;
   
   // Animate header elements first
   const headerElements = [titleRef.value, keyInfoRef.value].filter(Boolean);
-  if (headerElements.length) {
-    const headerAnimation = animate(
+  if (headerElements.length && !isTransitioning.value) {
+    const headerAnimation = animations.animate(
       headerElements,
       { 
         opacity: [0, 1],
@@ -445,13 +544,12 @@ async function animateContentIn() {
         delay: stagger(0.1)
       }
     );
-    contentAnimations.value.push(headerAnimation);
   }
   
   // Then animate content sections
   const sections = drawerRef.value.querySelectorAll('.section');
-  if (sections.length) {
-    const animation = animate(
+  if (sections.length && !isTransitioning.value) {
+    const animation = animations.animate(
       sections,
       {
         opacity: [0, 1],
@@ -464,12 +562,11 @@ async function animateContentIn() {
         easing: "ease-out"
       }
     );
-    contentAnimations.value.push(animation);
     
     // Set up in-view animations for section content
     sections.forEach(section => {
-      const observer = inView(section, () => {
-        animate(
+      const observer = animations.createInView(section, () => {
+        animations.animate(
           section.querySelectorAll('.amenity-item, .poi-chip, .feature-chip, .pub-card'),
           {
             opacity: [0, 1],
@@ -486,8 +583,6 @@ async function animateContentIn() {
         margin: "-10% 0px -10% 0px",
         amount: 0.2
       });
-      
-      inViewObservers.value.push(observer);
     });
   }
 }
@@ -505,14 +600,25 @@ async function onEnter(el, onComplete) {
             onComplete();
             return;
         }
-
+        
         // Reset loading state
         isLoading.value = false;
-
+        
+        // Ensure animations are enabled
+        animationsEnabled.value = true;
+        
+        // Clean up any existing animations first to prevent conflicts
+        animations.cleanup();
+        
+        // Prepare initial state
         const accentLine = el.querySelector('.drawer-accent-line');
         if (accentLine) accentLine.style.opacity = '0';
-
-        const drawerAnimation = animate(
+        
+        // Use a timeout to guard against stuck animations
+        const timeoutPromise = new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Main drawer animation
+        const drawerAnimation = animations.animate(
             el,
             {
                 transform: ["translateX(-100%) scale(0.95)", "translateX(0) scale(1)"],
@@ -521,36 +627,53 @@ async function onEnter(el, onComplete) {
             },
             { duration: 0.5, easing: [0.22, 1, 0.36, 1] }
         );
-
+        
+        // Header elements animation
         const headerElements = el.querySelectorAll(".header-content > *");
         if (headerElements.length) {
-            const headerAnimation = animate(
+            animations.animate(
                 headerElements,
                 { opacity: [0, 1], transform: ["translateY(-15px)", "translateY(0)"], filter: ["blur(4px)", "blur(0px)"] },
                 { delay: stagger(0.08, { start: 0.2 }), duration: 0.4, easing: "ease-out" }
             );
         }
-
-        const sections = el.querySelectorAll(".scrollable-container section"); // Target sections within scrollable-container
+        
+        // Content sections animation
+        const sections = el.querySelectorAll(".scrollable-container section");
         if (sections.length) {
-            const sectionsAnimation = animate(
+            animations.animate(
                 sections,
                 { opacity: [0, 1], transform: ["translateY(20px)", "translateY(0)"], filter: ["blur(4px)", "blur(0px)"] },
                 { delay: stagger(0.08, { start: 0.3 }), duration: 0.5, easing: "ease-out" }
             );
         }
-
-        await drawerAnimation.finished;
-
+        
+        // Wait for the primary animation to finish (with a timeout safeguard)
+        await Promise.race([drawerAnimation.finished, timeoutPromise]);
+        
+        // Accent line animation
         if (accentLine) {
-            const accentAnimation = animate(accentLine, { scaleY: [0, 1], opacity: [0, 0.8] }, { duration: 0.6, easing: "ease-out", delay: 0.1 });
+            animations.animate(
+                accentLine, 
+                { scaleY: [0, 1], opacity: [0, 0.8] }, 
+                { duration: 0.6, easing: "ease-out", delay: 0.1 }
+            );
         }
-
-        animate(el, { x: [0, 3, 0] }, { duration: 0.5, easing: "ease-in-out" });
+        
+        // Subtle "settled in" animation
+        animations.animate(
+            el, 
+            { x: [0, 3, 0] }, 
+            { duration: 0.5, easing: "ease-in-out" }
+        );
+        
+        // Setup animations for details elements that get expanded
+        setupDetailsAnimations();
+        
         onComplete();
-
     } catch (error) {
         console.error("Animation error:", error);
+        // Ensure the drawer is visible even if animation fails
         if (el) {
             el.style.opacity = '1';
             el.style.transform = 'translateX(0) scale(1)';
@@ -560,81 +683,146 @@ async function onEnter(el, onComplete) {
 }
 
 async function onLeave(el, onComplete) {
-  try {
-    if (!el) {
-      onComplete();
-      return;
+    try {
+        if (!el) {
+            onComplete();
+            return;
+        }
+        
+        // Always disable animations during unmounting to prevent stuck animations
+        const wasEnabled = animationsEnabled.value;
+        animationsEnabled.value = false;
+        
+        // Clean up existing animations
+        animations.cleanup();
+        
+        // Use a timeout to guard against stuck animations
+        const timeoutPromise = new Promise(resolve => setTimeout(resolve, 800));
+        
+        // First, animate out the accent line
+        const accentLine = el.querySelector(".drawer-accent-line");
+        if (accentLine) {
+            await Promise.race([
+                animations.animate(
+                    accentLine, 
+                    { scaleY: [1, 0], opacity: [0.8, 0] }, 
+                    { duration: 0.3, easing: "ease-in" }
+                ).finished,
+                new Promise(resolve => setTimeout(resolve, 400))
+            ]);
+        }
+        
+        // Then, animate out sections in sequence
+        const sections = el.querySelectorAll(".scrollable-container section");
+        if (sections.length) {
+            animations.animate(
+                sections,
+                { 
+                    opacity: [1, 0], 
+                    transform: ["translateY(0)", "translateY(15px)"], 
+                    filter: ["blur(0px)", "blur(3px)"]
+                },
+                { 
+                    delay: stagger(0.03, { from: "last" }), 
+                    duration: 0.2, 
+                    easing: "ease-in" 
+                }
+            );
+        }
+        
+        // Finally, animate out the whole drawer
+        const drawerAnimation = animations.animate(
+            el,
+            { 
+                transform: ["translateX(0) scale(1)", "translateX(-100%) scale(0.95)"], 
+                opacity: [1, 0], 
+                filter: ["blur(0px)", "blur(6px)"] 
+            },
+            { 
+                delay: 0.1, 
+                duration: 0.4, 
+                easing: "ease-in" 
+            }
+        );
+        
+        // Wait for animation to complete with timeout safeguard
+        await Promise.race([drawerAnimation.finished, timeoutPromise]);
+        
+        // Reset animations state
+        animationsEnabled.value = wasEnabled;
+        
+        // Reset transitioning state after animation is complete
+        isTransitioning.value = false;
+        onComplete();
+        // Reset transitioning state after animation is complete
+        isTransitioning.value = false;
+    } catch (error) {
+        console.error("Leave animation error:", error);
+        // Ensure drawer is hidden even if animation fails
+        if (el) el.style.opacity = '0';
+        animationsEnabled.value = true;
+        onComplete();
     }
-
-    cleanupAnimations();
-
-    const accentLine = el.querySelector(".drawer-accent-line");
-    if (accentLine) {
-      await animate(accentLine, { scaleY: [1, 0], opacity: [0.8, 0] }, { duration: 0.3, easing: "ease-in" }).finished;
-    }
-
-    const sections = el.querySelectorAll(".scrollable-container section"); // Target sections within scrollable-container
-    if (sections.length) {
-      animate(
-        sections,
-        { opacity: [1, 0], transform: ["translateY(0)", "translateY(15px)"], filter: ["blur(0px)", "blur(3px)"] },
-        { delay: stagger(0.03, { from: "last" }), duration: 0.2, easing: "ease-in" }
-      );
-    }
-
-    const drawerAnimation = animate(
-      el,
-      { transform: ["translateX(0) scale(1)", "translateX(-100%) scale(0.95)"], opacity: [1, 0], filter: ["blur(0px)", "blur(6px)"] },
-      { delay: 0.1, duration: 0.4, easing: "ease-in" }
-    );
-
-    await drawerAnimation.finished;
-    onComplete();
-  } catch (error) {
-    console.error("Leave animation error:", error);
-    if (el) el.style.opacity = '0';
-    onComplete();
-  }
 }
 
-function cleanupAnimations() {
-  // Clean up content animations
-  contentAnimations.value.forEach(animation => animation.cancel());
-  contentAnimations.value = [];
-  
-  // Clean up inView observers
-  inViewObservers.value.forEach(observer => observer.stop());
-  inViewObservers.value = [];
-}
-
-function toggleFootwearDetails(e) {
-  const detail = e.target;
-  const content = detail.querySelector(".details-content");
-  detailsOpen.value = detail.open;
-
-  if (detail.open) {
-    content.style.height = "0px";
-    content.style.overflow = "hidden";
-    content.style.opacity = "0";
-    const targetHeight = content.scrollHeight;
-    animate(
-      content,
-      { height: [0, `${targetHeight}px`], opacity: [0, 1], transform: ["translateY(-10px)", "translateY(0px)"] },
-      { duration: 0.35, easing: [0.2, 0.9, 0.4, 1] }
-    ).finished.then(() => {
-      content.style.height = "auto";
-      content.style.overflow = "visible";
+// Function to setup animations for details elements
+function setupDetailsAnimations() {
+    nextTick(() => {
+        const details = document.querySelectorAll('.details-container');
+        details.forEach(detail => {
+            detail.addEventListener('toggle', (e) => toggleDetailsAnimation(e));
+        });
     });
-  } else {
-    const currentHeight = content.offsetHeight;
-    content.style.height = `${currentHeight}px`;
-    content.style.overflow = "hidden";
-    animate(
-      content,
-      { height: [`${currentHeight}px`, "0px"], opacity: [1, 0], transform: ["translateY(0px)", "translateY(-10px)"] },
-      { duration: 0.3, easing: [0.4, 0.0, 0.6, 1] }
-    );
-  }
+}
+
+// Handle detail toggle animations
+function toggleDetailsAnimation(e) {
+    const detail = e.target;
+    const content = detail.querySelector(".details-content");
+    const isOpen = detail.open;
+    
+    if (!content) return;
+    
+    if (isOpen) {
+        content.style.height = "0px";
+        content.style.overflow = "hidden";
+        content.style.opacity = "0";
+        const targetHeight = content.scrollHeight;
+        
+        animations.animate(
+            content,
+            { 
+                height: [0, `${targetHeight}px`], 
+                opacity: [0, 1], 
+                transform: ["translateY(-10px)", "translateY(0px)"] 
+            },
+            { duration: 0.35, easing: [0.2, 0.9, 0.4, 1] }
+        ).finished.then(() => {
+            content.style.height = "auto";
+            content.style.overflow = "visible";
+        });
+    } else {
+        const currentHeight = content.offsetHeight;
+        content.style.height = `${currentHeight}px`;
+        content.style.overflow = "hidden";
+        
+        animations.animate(
+            content,
+            { 
+                height: [`${currentHeight}px`, "0px"], 
+                opacity: [1, 0], 
+                transform: ["translateY(0px)", "translateY(-10px)"] 
+            },
+            { duration: 0.3, easing: [0.4, 0.0, 0.6, 1] }
+        );
+    }
+}
+
+// Replace toggleFootwearDetails with the generic function
+function toggleFootwearDetails(e) {
+    const detail = e.target;
+    detailsOpen.value = detail.open;
+    toggleDetailsAnimation(e);
 }
 
 const poiCategories = [
@@ -786,16 +974,48 @@ function openInGoogleMaps(pub) {
 }
 
 function handleBackClick() {
-  emit("close", { expandSidebar: true, fromMapMarker: props.fromMapMarker });
+  console.log("Back button clicked", { isTransitioning: isTransitioning.value });
+  
+  // Disable any new animations while processing the close action
+  if (isTransitioning.value) {
+    console.log("Transition in progress, ignoring close request");
+    return;
+  }
+  
+  // Set transitioning state to prevent multiple clicks
+  isTransitioning.value = true;
+  
+  // Cleanup any existing animations first
+  animations.cleanup();
+  
+  // Immediately emit close event to allow for faster UI response
+  try {
+    console.log("Emitting close event");
+    emit("close", { 
+      expandSidebar: true, 
+      fromMapMarker: props.fromMapMarker,
+      animated: true
+    });
+    
+    // Reset transitioning state after a short delay
+    setTimeout(() => {
+      isTransitioning.value = false;
+    }, 50);
+  } catch (error) {
+    console.error("Error emitting close event:", error);
+    isTransitioning.value = false;
+  }
 }
 
 function handleStartWalkClick() {
+  if (isTransitioning.value) return;
+  
   emit("start-walk", props.walk);
 }
 
 // Clean up animations and observers when component is unmounted
 onBeforeUnmount(() => {
-  cleanupAnimations();
+  animations.cleanup();
   
   // Save scroll position in case we're coming back to this walk
   if (drawerRef.value) {
@@ -825,6 +1045,178 @@ function handleShare() {
     }).catch(console.error);
   }
 }
+
+// Category mappings for styling - updated to handle phrase-based categories
+const categoryMappings = {
+  // Standard categories
+  "Nature": { 
+    color: "green", 
+    bgClass: "bg-green-100 text-green-900", 
+    icon: "mdi:tree" 
+  },
+  // ...existing category mappings...
+
+  // Extended mappings for detailed categories
+  "circular walks": { 
+    color: "indigo", 
+    bgClass: "bg-indigo-100 text-indigo-900", 
+    icon: "mdi:rotate-right" 
+  },
+  "linear walks": { 
+    color: "violet", 
+    bgClass: "bg-violet-100 text-violet-900", 
+    icon: "mdi:arrow-right" 
+  },
+  "riverside walks": { 
+    color: "blue", 
+    bgClass: "bg-blue-100 text-blue-900", 
+    icon: "mdi:water" 
+  },
+  "woodland walks": { 
+    color: "emerald", 
+    bgClass: "bg-emerald-100 text-emerald-900", 
+    icon: "mdi:pine-tree" 
+  },
+  "coastal walks": { 
+    color: "cyan", 
+    bgClass: "bg-cyan-100 text-cyan-900", 
+    icon: "mdi:waves" 
+  },
+  "mountain walks": { 
+    color: "slate", 
+    bgClass: "bg-slate-100 text-slate-900", 
+    icon: "mdi:mountain" 
+  },
+  "walks with a café": { 
+    color: "amber", 
+    bgClass: "bg-amber-100 text-amber-900", 
+    icon: "mdi:coffee" 
+  },
+  "walks with a pub": { 
+    color: "amber", 
+    bgClass: "bg-amber-800 text-amber-50", 
+    icon: "mdi:glass-mug-variant" 
+  },
+  "walks without stiles": { 
+    color: "blue", 
+    bgClass: "bg-blue-100 text-blue-900", 
+    icon: "mdi:gate" 
+  },
+  "walks with a good degree of shade": { 
+    color: "green", 
+    bgClass: "bg-green-100 text-green-900", 
+    icon: "mdi:weather-sunny-off" 
+  },
+  "dog friendly walks": { 
+    color: "amber", 
+    bgClass: "bg-amber-100 text-amber-900", 
+    icon: "mdi:dog-side" 
+  },
+  "family friendly walks": { 
+    color: "pink", 
+    bgClass: "bg-pink-100 text-pink-900", 
+    icon: "mdi:human-male-female-child" 
+  },
+  "accessible walks": { 
+    color: "blue", 
+    bgClass: "bg-blue-100 text-blue-900", 
+    icon: "mdi:wheelchair-accessibility" 
+  }
+};
+
+// Default category for unknown categories
+const defaultCategory = { 
+  color: "gray", 
+  bgClass: "bg-gray-100 text-gray-900", 
+  icon: "mdi:tag" 
+};
+
+// Search patterns for partial matches
+const categoryPatterns = [
+  { pattern: /circular/i, match: "circular walks" },
+  { pattern: /linear/i, match: "linear walks" },
+  { pattern: /river/i, match: "riverside walks" },
+  { pattern: /wood/i, match: "woodland walks" },
+  { pattern: /forest/i, match: "woodland walks" },
+  { pattern: /coast/i, match: "coastal walks" },
+  { pattern: /sea/i, match: "coastal walks" },
+  { pattern: /mountain/i, match: "mountain walks" },
+  { pattern: /café|cafe/i, match: "walks with a café" },
+  { pattern: /pub|beer/i, match: "walks with a pub" },
+  { pattern: /without stile/i, match: "walks without stiles" },
+  { pattern: /shade/i, match: "walks with a good degree of shade" },
+  { pattern: /dog/i, match: "dog friendly walks" },
+  { pattern: /family/i, match: "family friendly walks" },
+  { pattern: /accessible|wheelchair/i, match: "accessible walks" }
+];
+
+// Helper functions for category styling with enhanced pattern matching
+function getCategoryClass(categoryName) {
+  // Direct match
+  if (categoryMappings[categoryName]) {
+    return categoryMappings[categoryName].bgClass;
+  }
+  
+  // Pattern match
+  for (const pattern of categoryPatterns) {
+    if (pattern.pattern.test(categoryName)) {
+      return categoryMappings[pattern.match]?.bgClass || defaultCategory.bgClass;
+    }
+  }
+  
+  return defaultCategory.bgClass;
+}
+
+function getCategoryIcon(categoryName) {
+  // Direct match
+  if (categoryMappings[categoryName]) {
+    return categoryMappings[categoryName].icon;
+  }
+  
+  // Pattern match
+  for (const pattern of categoryPatterns) {
+    if (pattern.pattern.test(categoryName)) {
+      return categoryMappings[pattern.match]?.icon || defaultCategory.icon;
+    }
+  }
+  
+  return defaultCategory.icon;
+}
+
+// Add onMounted hook at the beginning of the script to ensure proper initialization
+onMounted(() => {
+  // Initialize animations only when component is fully mounted
+  nextTick(() => {
+    setupDetailsAnimations();
+  });
+  
+  // Add event listeners for browser back/forward navigation
+  const handleRouteChange = () => {
+    // Clean up animations if the component is being navigated away from
+    animations.cleanup();
+  };
+  
+  window.addEventListener('popstate', handleRouteChange);
+  
+  // Return cleanup function to be called on unmount
+  onBeforeUnmount(() => {
+    window.removeEventListener('popstate', handleRouteChange);
+    
+    // Clean up animation resources
+    animations.cleanup();
+    
+    // Disable animations during unmount to prevent hanging animations
+    animationsEnabled.value = false;
+    
+    // Save scroll position in case we're coming back to this walk
+    if (drawerRef.value) {
+      const scrollContainer = drawerRef.value.querySelector('.scrollable-container');
+      if (scrollContainer) {
+        scrollPosition.value = scrollContainer.scrollTop || 0;
+      }
+    }
+  });
+});
 </script>
 
 <style scoped>
@@ -1128,6 +1520,48 @@ function handleShare() {
   font-size: 0.75rem;
   color: rgb(var(--md-sys-color-on-surface-variant));
 }
+
+.category-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-weight: 500;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.category-icon {
+  font-size: 1rem;
+}
+
+/* Add Tailwind color utility classes */
+.bg-green-100 { background-color: #d1fae5; }
+.text-green-900 { color: #064e3b; }
+.bg-amber-100 { background-color: #fef3c7; }
+.text-amber-900 { color: #78350f; }
+.bg-amber-800 { background-color: #92400e; }
+.text-amber-50 { color: #fffbeb; }
+.bg-blue-100 { background-color: #dbeafe; }
+.text-blue-900 { color: #1e3a8a; }
+.bg-purple-100 { background-color: #f3e8ff; }
+.text-purple-900 { color: #581c87; }
+.bg-cyan-100 { background-color: #cffafe; }
+.text-cyan-900 { color: #164e63; }
+.bg-slate-100 { background-color: #f1f5f9; }
+.text-slate-900 { color: #0f172a; }
+.bg-emerald-100 { background-color: #d1fae5; }
+.text-emerald-900 { color: #064e3b; }
+.bg-sky-100 { background-color: #e0f2fe; }
+.text-sky-900 { color: #0c4a6e; }
+.bg-gray-100 { background-color: #f3f4f6; }
+.text-gray-900 { color: #111827; }
+.bg-pink-100 { background-color: #fce7f3; }
+.text-pink-900 { color: #831843; }
+.bg-indigo-100 { background-color: #e0e7ff; }
+.text-indigo-900 { color: #312e81; }
+.bg-violet-100 { background-color: #ede9fe; }
+.text-violet-900 { color: #4c1d95; }
+.bg-red-100 { background-color: #fee2e2; }
+.text-red-900 { color: #7f1d1d; }
 
 /* Pub Styles */
 .pub-list {

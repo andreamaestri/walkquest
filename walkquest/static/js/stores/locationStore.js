@@ -30,6 +30,7 @@ export const useLocationStore = defineStore('location', () => {
   const searchRadius = ref(savedRadius)
   const nearbyWalks = shallowRef([])
   const walkDistances = new Map()
+  const hasSearched = ref(false)
   
   // Computed
   const formattedSearchRadius = computed(() => formatDistance(searchRadius.value))
@@ -132,10 +133,12 @@ export const useLocationStore = defineStore('location', () => {
       }
 
       nearbyWalks.value = results.sort((a, b) => a.distance - b.distance)
+      hasSearched.value = true
 
     } catch (error) {
       console.error('Error finding nearby walks:', error)
       nearbyWalks.value = []
+      hasSearched.value = false
     }
   }
 
@@ -144,6 +147,7 @@ export const useLocationStore = defineStore('location', () => {
     nearbyWalks.value = []
     walkDistances.clear()
     localStorage.removeItem('userLocation')
+    hasSearched.value = false
   }
 
   function setSearchRadius(radius) {
@@ -166,6 +170,7 @@ export const useLocationStore = defineStore('location', () => {
     searchRadius,
     nearbyWalks,
     hasLocation,
+    hasSearched,
 
     // Computed
     formattedSearchRadius,
