@@ -11,7 +11,7 @@
         <div class="header-content" :class="{ 'loading': isLoading }">
           <button
             ref="backButtonRef"
-            class="m3-icon-button touchable transition-smooth focus-visible"
+            class="m3-icon-button"
             @click="handleBackClick"
             aria-label="Close drawer"
           >
@@ -71,7 +71,7 @@
           <div ref="buttonsContainerRef" class="buttons-container">
             <button
               :ref="(el) => (buttonRefs[0] = el)"
-              class="m3-button m3-filled-button touchable transition-smooth focus-visible hover-bright"
+              class="m3-button m3-filled-button"
               @click="handleStartWalkClick"
             >
               <Icon icon="mdi:play-circle" class="button-icon" />
@@ -81,7 +81,7 @@
             <div class="secondary-buttons">
               <button
                 :ref="(el) => (buttonRefs[1] = el)"
-                class="m3-button m3-tonal-button touchable transition-smooth focus-visible hover-bright"
+                class="m3-button m3-tonal-button"
                 @click="() => {}"
               >
                 <Icon icon="mdi:navigation" class="button-icon" />
@@ -90,7 +90,7 @@
 
               <button
                 :ref="(el) => (buttonRefs[2] = el)"
-                class="m3-button m3-outlined-button icon-button touchable transition-gpu focus-visible"
+                class="m3-button m3-outlined-button icon-button"
                 @click="() => {}"
               >
                 <Icon icon="mdi:heart" class="button-icon" />
@@ -98,7 +98,7 @@
 
               <button
                 :ref="(el) => (buttonRefs[3] = el)"
-                class="m3-button m3-outlined-button icon-button touchable transition-gpu focus-visible"
+                class="m3-button m3-outlined-button icon-button"
                 @click="handleShare"
               >
                 <Icon icon="mdi:share" class="button-icon" />
@@ -302,9 +302,6 @@ const props = defineProps({
 
 const emit = defineEmits(["close", "start-walk", "loading-change"]);
 
-// Animation constants
-const ANIMATION_TIMEOUT = 1000; // 1 second timeout for animations
-
 // Component refs
 const drawerRef = ref(null);
 const connectorRef = ref(null);
@@ -325,7 +322,6 @@ const isTransitioning = ref(false);
 const scrollPosition = ref(0);
 const previousWalkId = ref(null);
 const animationsEnabled = ref(true);
-const prefersReducedMotion = ref(false);
 
 // Animation manager for better lifecycle management
 const animations = {
@@ -347,33 +343,21 @@ const animations = {
   },
   
   // Cancel all animations and stop observers
-  cleanup(force = false) {
-    if (force) {
-      animationsEnabled.value = false;
-    }
-    
+  cleanup() {
     // Cancel all animations
     for (const animation of this.instances) {
       try {
-        if (animation && typeof animation.cancel === 'function') {
-          animation.cancel();
-        }
+        animation.cancel();
       } catch (err) {
         console.warn('Error cancelling animation:', err);
       }
     }
     this.instances.clear();
     
-    if (force) {
-      animationsEnabled.value = true;
-    }
-    
     // Stop all observers
     for (const observer of this.observers) {
       try {
-        if (observer && typeof observer.stop === 'function') {
-          observer.stop();
-        }
+        observer.stop();
       } catch (err) {
         console.warn('Error stopping observer:', err);
       }
@@ -383,19 +367,9 @@ const animations = {
   
   // Animate with proper registration
   animate(targets, keyframes, options = {}) {
-    if (!animationsEnabled.value || prefersReducedMotion.value) {
-      return { finished: Promise.resolve() };
-    }
-    
+    if (!animationsEnabled.value) return { finished: Promise.resolve() };
     try {
-      const animation = animate(targets, keyframes, {
-        ...options,
-        onComplete: () => {
-          this.instances.delete(animation);
-          if (options.onComplete) options.onComplete();
-        }
-      });
-      
+      const animation = animate(targets, keyframes, options);
       this.register(animation);
       return animation;
     } catch (err) {
@@ -407,15 +381,8 @@ const animations = {
   // Create an InView observer with proper registration
   createInView(element, callback, options = {}) {
     if (!element) return null;
-    
     try {
-      const observer = inView(element, (info) => {
-        const cleanup = callback(info);
-        return () => {
-          if (typeof cleanup === 'function') cleanup();
-        };
-      }, options);
-      
+      const observer = inView(element, callback, options);
       this.registerObserver(observer);
       return observer;
     } catch (err) {
@@ -425,12 +392,10 @@ const animations = {
   }
 };
 
-// Standardized easing configurations
-const easings = {
-  enter: [0.22, 1, 0.36, 1], // Recommended easeOut for enter transitions
-  exit: [0.4, 0, 0.2, 1],    // Standard easing for exit
-  bounce: [0.34, 1.56, 0.64, 1], // Slight bounce effect
-  smooth: [0.4, 0, 0.2, 1]    // Standard ease
+const animationConfigs = {
+  fluid: { duration: 0.5, easing: [0.22, 1, 0.36, 1] },
+  standard: { duration: 0.3, easing: "ease-out" },
+  exit: { duration: 0.25, easing: "ease-in" }
 };
 
 const router = useRouter();
@@ -457,7 +422,7 @@ watch(() => props.walk?.id, async (newWalkId, oldWalkId) => {
       }
       
       // Animate content out with timeout protection
-      const contentOutPromise = animateContentOut(); // Using the enhanced version defined below
+      const contentOutPromise = animateContentOut();
       const contentOutTimeout = new Promise(resolve => setTimeout(resolve, 500));
       await Promise.race([contentOutPromise, contentOutTimeout]);
       
@@ -497,7 +462,7 @@ watch(() => props.isOpen, async (isOpen) => {
     isTransitioning.value = false;
     
     await nextTick();
-    initializeDrawer(); // Using the enhanced version defined below
+    initializeDrawer();
     
     // Restore scroll position if reopening same walk
     if (previousWalkId.value === props.walk?.id && scrollPosition.value > 0) {
@@ -511,6 +476,52 @@ watch(() => props.isOpen, async (isOpen) => {
   }
 }, { immediate: true });
 
+function initializeDrawer() {
+  if (drawerRef.value) {
+    // Calculate drawer position based on sidebar state and transition source
+    const offset = props.fromMapMarker ? 0 : props.sidebarWidth;
+    drawerRef.value.style.transition = 'transform 0.3s ease, left 0.3s ease';
+    
+    if (connectorRef.value) {
+      animations.animate(connectorRef.value, { opacity: [0, 1], width: ["0px", "28px"] }, { 
+        delay: 0.2,
+        duration: 0.6,
+        easing: "ease-out" 
+      });
+    }
+  }
+}
+
+async function animateContentOut() {
+  // Clean up existing animations
+  animations.cleanup();
+  
+  if (!drawerRef.value) return;
+  
+  const elements = [
+    ...drawerRef.value.querySelectorAll('.section'),
+    ...drawerRef.value.querySelectorAll('.key-info'),
+    ...drawerRef.value.querySelectorAll('.amenities-grid'),
+    ...drawerRef.value.querySelectorAll('.buttons-container')
+  ];
+  
+  if (elements.length) {
+    const animation = animations.animate(
+      elements,
+      { 
+        opacity: [1, 0],
+        transform: ["translateY(0)", "translateY(30px)"]
+      },
+      { 
+        duration: 0.3,
+        easing: [0.4, 0.0, 0.2, 1], // Modern easing curve
+        delay: stagger(0.03, { from: "last" })
+      }
+    );
+    await animation.finished;
+  }
+}
+
 async function animateContentIn() {
   await nextTick();
   
@@ -523,12 +534,11 @@ async function animateContentIn() {
       headerElements,
       { 
         opacity: [0, 1],
-        transform: ["translateY(-10px)", "translateY(0)"],
-        filter: ["blur(4px)", "blur(0px)"]
+        transform: ["translateY(-30px)", "translateY(0)"]
       },
       { 
-        duration: 0.3,
-        easing: "ease-out",
+        duration: 0.4,
+        easing: [0.0, 0.0, 0.2, 1], // Modern deceleration curve
         delay: stagger(0.1)
       }
     );
@@ -541,47 +551,202 @@ async function animateContentIn() {
       sections,
       {
         opacity: [0, 1],
-        transform: ["translateY(10px)", "translateY(0)"],
-        filter: ["blur(4px)", "blur(0px)"]
+        transform: ["translateY(40px)", "translateY(0)"]
       },
       {
         delay: stagger(0.08, { start: 0.2 }),
-        duration: 0.4,
-        easing: "ease-out"
+        duration: 0.5,
+        easing: [0.0, 0.0, 0.2, 1] // Modern deceleration curve
       }
     );
     
-    // Set up in-view animations for section content
-    sections.forEach(section => {
-      const observer = animations.createInView(section, () => {
-        animations.animate(
-          section.querySelectorAll('.amenity-item, .poi-chip, .feature-chip, .pub-card'),
-          {
-            opacity: [0, 1],
-            scale: [0.95, 1],
-            filter: ["blur(2px)", "blur(0px)"]
-          },
-          {
-            delay: stagger(0.03),
-            duration: 0.3,
-            easing: "ease-out"
-          }
+    // Animate highlights with stagger after sections appear
+    const highlightItems = drawerRef.value.querySelectorAll('.section-list-item');
+    if (highlightItems.length) {
+      animations.animate(
+        highlightItems,
+        {
+          opacity: [0, 1],
+          transform: ["translateX(-15px)", "translateX(0)"],
+          scale: [0.95, 1]
+        },
+        {
+          delay: stagger(0.06, { start: 0.5 }),
+          duration: 0.4,
+          easing: [0.0, 0.0, 0.2, 1]
+        }
+      );
+    }
+  }
+}
+
+async function onEnter(el, onComplete) {
+    try {
+        if (!el) {
+            onComplete();
+            return;
+        }
+        
+        // Reset loading state
+        isLoading.value = false;
+        
+        // Ensure animations are enabled
+        animationsEnabled.value = true;
+        
+        // Clean up any existing animations first to prevent conflicts
+        animations.cleanup();
+        
+        // Prepare initial state
+        const accentLine = el.querySelector('.drawer-accent-line');
+        if (accentLine) accentLine.style.opacity = '0';
+        
+        // Use a timeout to guard against stuck animations
+        const timeoutPromise = new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Main drawer animation
+        const drawerAnimation = animations.animate(
+            el,
+            {
+                transform: ["translateX(-120%) scale(0.95)", "translateX(0) scale(1)"],
+                opacity: [0.5, 1]
+            },
+            { duration: 0.5, easing: [0.20, 0.70, 0.20, 1.0] } // Modern pronounced spring-like curve
         );
-      }, { 
-        margin: "-10% 0px -10% 0px",
-        amount: 0.2
-      });
-    });
-  }
+        
+        // Header elements animation
+        const headerElements = el.querySelectorAll(".header-content > *");
+        if (headerElements.length) {
+            animations.animate(
+                headerElements,
+                { opacity: [0, 1], transform: ["translateY(-25px)", "translateY(0)"] },
+                { delay: stagger(0.08, { start: 0.2 }), duration: 0.4, easing: [0.0, 0.0, 0.2, 1] }
+            );
+        }
+        
+        // Content sections animation
+        const sections = el.querySelectorAll(".scrollable-container section");
+        if (sections.length) {
+            animations.animate(
+                sections,
+                { opacity: [0, 1], transform: ["translateY(40px)", "translateY(0)"] },
+                { delay: stagger(0.08, { start: 0.3 }), duration: 0.5, easing: [0.0, 0.0, 0.2, 1] }
+            );
+        }
+        
+        // Wait for the primary animation to finish (with a timeout safeguard)
+        await Promise.race([drawerAnimation.finished, timeoutPromise]);
+        
+        // Accent line animation
+        if (accentLine) {
+            animations.animate(
+                accentLine, 
+                { scaleY: [0, 1], opacity: [0, 0.8] }, 
+                { duration: 0.6, easing: [0.0, 0.0, 0.2, 1], delay: 0.1 }
+            );
+        }
+        
+        // Subtle "settled in" animation
+        animations.animate(
+            el, 
+            { x: [0, 5, 0] }, 
+            { duration: 0.7, easing: [0.34, 1.56, 0.64, 1] } // Bouncy/spring-like easing
+        );
+        
+        // Setup animations for details elements that get expanded
+        setupDetailsAnimations();
+        
+        onComplete();
+    } catch (error) {
+        console.error("Animation error:", error);
+        // Ensure the drawer is visible even if animation fails
+        if (el) {
+            el.style.opacity = '1';
+            el.style.transform = 'translateX(0) scale(1)';
+        }
+        onComplete();
+    }
 }
 
-function restoreScrollPosition() {
-  const scrollContainer = drawerRef.value?.querySelector('.scrollable-container');
-  if (scrollContainer && scrollPosition.value > 0) {
-    scrollContainer.scrollTop = scrollPosition.value;
-  }
+async function onLeave(el, onComplete) {
+    try {
+        if (!el) {
+            onComplete();
+            return;
+        }
+        
+        // Always disable animations during unmounting to prevent stuck animations
+        const wasEnabled = animationsEnabled.value;
+        animationsEnabled.value = false;
+        
+        // Clean up existing animations
+        animations.cleanup();
+        
+        // Use a timeout to guard against stuck animations
+        const timeoutPromise = new Promise(resolve => setTimeout(resolve, 800));
+        
+        // First, animate out the accent line
+        const accentLine = el.querySelector(".drawer-accent-line");
+        if (accentLine) {
+            await Promise.race([
+                animations.animate(
+                    accentLine, 
+                    { scaleY: [1, 0], opacity: [0.8, 0] }, 
+                    { duration: 0.3, easing: "ease-in" }
+                ).finished,
+                new Promise(resolve => setTimeout(resolve, 400))
+            ]);
+        }
+        
+        // Then, animate out sections in sequence
+        const sections = el.querySelectorAll(".scrollable-container section");
+        if (sections.length) {
+            animations.animate(
+                sections,
+                { 
+                    opacity: [1, 0], 
+                    transform: ["translateY(0)", "translateY(30px)"]
+                },
+                { 
+                    delay: stagger(0.03, { from: "last" }), 
+                    duration: 0.25, 
+                    easing: [0.4, 0.0, 1, 1] // Quick acceleration
+                }
+            );
+        }
+        
+        // Finally, animate out the whole drawer
+        const drawerAnimation = animations.animate(
+            el,
+            { 
+                transform: ["translateX(0) scale(1)", "translateX(-120%) scale(0.92)"], 
+                opacity: [1, 0]
+            },
+            { 
+                delay: 0.1, 
+                duration: 0.4, 
+                easing: [0.4, 0.0, 0.2, 1] // Modern easing
+            }
+        );
+        
+        // Wait for animation to complete with timeout safeguard
+        await Promise.race([drawerAnimation.finished, timeoutPromise]);
+        
+        // Reset animations state
+        animationsEnabled.value = wasEnabled;
+        
+        // Reset transitioning state after animation is complete
+        isTransitioning.value = false;
+        onComplete();
+        // Reset transitioning state after animation is complete
+        isTransitioning.value = false;
+    } catch (error) {
+        console.error("Leave animation error:", error);
+        // Ensure drawer is hidden even if animation fails
+        if (el) el.style.opacity = '0';
+        animationsEnabled.value = true;
+        onComplete();
+    }
 }
-
 
 // Function to setup animations for details elements
 function setupDetailsAnimations() {
@@ -593,70 +758,47 @@ function setupDetailsAnimations() {
     });
 }
 
-// Handle detail toggle animations
+// Handle detail toggle animations with more pronounced transformations
 function toggleDetailsAnimation(e) {
-  const detail = e.target;
-  const content = detail.querySelector(".details-content");
-  const isOpen = detail.open;
-  
-  if (!content) return;
-  
-  // Cancel any existing animations on this element
-  const currentAnimation = Array.from(animations.instances)
-    .find(a => a.target === content);
-  
-  if (currentAnimation) {
-    currentAnimation.cancel();
-    animations.instances.delete(currentAnimation);
-  }
-  
-  if (isOpen) {
-    // Prepare for animation
-    content.style.height = "0px";
-    content.style.overflow = "hidden";
-    content.style.opacity = "0";
+    const detail = e.target;
+    const content = detail.querySelector(".details-content");
+    const isOpen = detail.open;
     
-    // Get target height
-    const targetHeight = content.scrollHeight;
+    if (!content) return;
     
-    // Animate open
-    animations.animate(
-      content,
-      { 
-        height: [0, `${targetHeight}px`], 
-        opacity: [0, 1], 
-        transform: ["translateY(-10px)", "translateY(0px)"] 
-      },
-      { 
-        duration: 0.35, 
-        easing: easings.bounce,
-        onComplete: () => {
-          // Reset styles once animation is done
-          content.style.height = "auto";
-          content.style.overflow = "visible";
-        }
-      }
-    );
-  } else {
-    // Prepare for animation
-    const currentHeight = content.offsetHeight;
-    content.style.height = `${currentHeight}px`;
-    content.style.overflow = "hidden";
-    
-    // Animate close
-    animations.animate(
-      content,
-      { 
-        height: [`${currentHeight}px`, "0px"], 
-        opacity: [1, 0], 
-        transform: ["translateY(0px)", "translateY(-10px)"] 
-      },
-      { 
-        duration: 0.3, 
-        easing: easings.exit 
-      }
-    );
-  }
+    if (isOpen) {
+        content.style.height = "0px";
+        content.style.overflow = "hidden";
+        content.style.opacity = "0";
+        const targetHeight = content.scrollHeight;
+        
+        animations.animate(
+            content,
+            { 
+                height: [0, `${targetHeight}px`], 
+                opacity: [0, 1], 
+                transform: ["translateY(-20px)", "translateY(0px)"] 
+            },
+            { duration: 0.4, easing: [0.0, 0.0, 0.2, 1] }
+        ).finished.then(() => {
+            content.style.height = "auto";
+            content.style.overflow = "visible";
+        });
+    } else {
+        const currentHeight = content.offsetHeight;
+        content.style.height = `${currentHeight}px`;
+        content.style.overflow = "hidden";
+        
+        animations.animate(
+            content,
+            { 
+                height: [`${currentHeight}px`, "0px"], 
+                opacity: [1, 0], 
+                transform: ["translateY(0px)", "translateY(-20px)"] 
+            },
+            { duration: 0.35, easing: [0.4, 0.0, 0.2, 1] }
+        );
+    }
 }
 
 // Replace toggleFootwearDetails with the generic function
@@ -816,31 +958,35 @@ function openInGoogleMaps(pub) {
 
 function handleBackClick() {
   console.log("Back button clicked", { isTransitioning: isTransitioning.value });
-
+  
+  // Disable any new animations while processing the close action
+  if (isTransitioning.value) {
+    console.log("Transition in progress, ignoring close request");
+    return;
+  }
+  
+  // Set transitioning state to prevent multiple clicks
+  isTransitioning.value = true;
+  
+  // Cleanup any existing animations first
+  animations.cleanup();
+  
+  // Immediately emit close event to allow for faster UI response
   try {
-    // Prevent multiple clicks while transitioning
-    if (isTransitioning.value) {
-      console.log("Transition in progress, ignoring close request");
-      return;
-    }
-
-    // Set transitioning state
-    isTransitioning.value = true;
-
-    // Cleanup any existing animations first
-    animations.cleanup();
-
-    // Emit close event with callback to track when animation completes
     console.log("Emitting close event");
-    emit("close", {
-      expandSidebar: true,
+    emit("close", { 
+      expandSidebar: true, 
       fromMapMarker: props.fromMapMarker,
       animated: true
     });
-
+    
+    // Reset transitioning state after a short delay
+    setTimeout(() => {
+      isTransitioning.value = false;
+    }, 50);
   } catch (error) {
-    console.error("Error handling back button click:", error);
-    handleTransitionError(error);
+    console.error("Error emitting close event:", error);
+    isTransitioning.value = false;
   }
 }
 
@@ -852,18 +998,7 @@ function handleStartWalkClick() {
 
 // Clean up animations and observers when component is unmounted
 onBeforeUnmount(() => {
-  try {
-    // Force cleanup all animations and observers
-    animations.cleanup(true);
-    
-    // Remove any event listeners
-    const details = document.querySelectorAll('.details-container');
-    details.forEach(detail => {
-      detail.removeEventListener('toggle', toggleDetailsAnimation);
-    });
-  } catch (error) {
-    console.error("Error during cleanup:", error);
-  }
+  animations.cleanup();
   
   // Save scroll position in case we're coming back to this walk
   if (drawerRef.value) {
@@ -1036,32 +1171,60 @@ onMounted(() => {
   // Initialize animations only when component is fully mounted
   nextTick(() => {
     setupDetailsAnimations();
+    
+    // Set up scroll-linked animations for elements that should animate as they come into view
+    if (drawerRef.value) {
+      const sections = drawerRef.value.querySelectorAll('.section');
+      sections.forEach((section, index) => {
+        const observer = animations.createInView(section, (info) => {
+          // Animate amenities, chips, etc.
+          const elements = section.querySelectorAll('.amenity-item, .poi-chip, .feature-chip, .pub-card');
+          if (elements.length) {
+            animations.animate(
+              elements,
+              {
+                opacity: [0, 1],
+                scale: [0.92, 1],
+                transform: ["translateY(20px)", "translateY(0)"]
+              },
+              {
+                delay: stagger(0.04),
+                duration: 0.4,
+                easing: [0.0, 0.0, 0.2, 1]
+              }
+            );
+          }
+          
+          // Animate highlight list items with horizontal stagger
+          const highlightItems = section.querySelectorAll('.section-list-item');
+          if (highlightItems.length) {
+            animations.animate(
+              highlightItems,
+              {
+                opacity: [0, 1],
+                transform: ["translateX(-15px)", "translateX(0)"],
+                scale: [0.95, 1]
+              },
+              {
+                delay: stagger(0.06),
+                duration: 0.45,
+                easing: [0.0, 0.0, 0.2, 1]
+              }
+            );
+          }
+          
+          // Return exit handler for when element leaves viewport
+          return () => {
+            // Optional: animate out when scrolling away
+            // We're not animating out in this case as it would be distracting
+          };
+        }, { 
+          margin: "-5% 0px -10% 0px",
+          amount: 0.15
+        });
+      });
+    }
   });
-
-  // Handle resize and orientation changes
-  const handleResize = () => {
-    if (!drawerRef.value) return;
-
-    // Disable animations temporarily during resize
-    animationsEnabled.value = false;
-
-    // Update drawer position and width
-    const offset = props.fromMapMarker ? 0 : props.sidebarWidth;
-    drawerRef.value.style.transition = 'none';
-    drawerRef.value.style.width = `${Math.min(380, window.innerWidth - offset)}px`;
-
-    // Re-enable animations after a short delay
-    setTimeout(() => {
-      if (drawerRef.value) {
-        drawerRef.value.style.transition = 'transform 0.3s ease, left 0.3s ease';
-        animationsEnabled.value = true;
-      }
-    }, 100);
-  };
-
-  window.addEventListener('resize', handleResize);
-  window.addEventListener('orientationchange', handleResize);
-  handleResize(); // Initial setup
   
   // Add event listeners for browser back/forward navigation
   const handleRouteChange = () => {
@@ -1071,12 +1234,8 @@ onMounted(() => {
   
   window.addEventListener('popstate', handleRouteChange);
   
-  // Return cleanup function to be called on unmount
+  // Cleanup function to be called on unmount
   onBeforeUnmount(() => {
-    // Remove resize listeners
-    window.removeEventListener('resize', handleResize);
-    window.removeEventListener('orientationchange', handleResize);
-
     window.removeEventListener('popstate', handleRouteChange);
     
     // Clean up animation resources
@@ -1094,372 +1253,9 @@ onMounted(() => {
     }
   });
 });
-
-const STATE_CHANGE_TIMEOUT = 800; // Timeout for state changes in ms
-const ANIMATION_DURATION = {
-  enter: 500,
-  leave: 400,
-  content: 300
-};
-
-// State tracking
-const drawerState = ref('closed'); // 'closed', 'opening', 'open', 'closing'
-const transitionLock = ref(false);
-const lastError = ref(null);
-const lastWalkId = ref(null);
-const isRecovering = ref(false);
-
-// Logger for debugging animations
-const debugLog = (message, data = {}) => {
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`[WalkDrawer] ${message}`, {
-      state: drawerState.value,
-      transitioning: isTransitioning.value,
-      locked: transitionLock.value,
-      walkId: props.walk?.id,
-      ...data
-    });
-  }
-};
-
-// Validate state before transition
-function validateTransition(from, to) {
-  const validTransitions = {
-    closed: ['opening'],
-    opening: ['open', 'closing'],
-    open: ['closing'],
-    closing: ['closed', 'opening']
-  };
-
-  if (!validTransitions[from]?.includes(to)) {
-    debugLog(`Invalid transition ${from} -> ${to}`);
-    return false;
-  }
-  return true;
-}
-
-// State management
-async function changeDrawerState(newState) {
-  if (transitionLock.value) {
-    debugLog('Transition locked, queuing state change', { newState });
-    await new Promise(resolve => setTimeout(resolve, 50));
-    return changeDrawerState(newState);
-  }
-
-  const currentState = drawerState.value;
-  if (!validateTransition(currentState, newState)) {
-    return;
-  }
-
-  try {
-    transitionLock.value = true;
-    drawerState.value = newState;
-    debugLog(`State changed: ${currentState} -> ${newState}`);
-
-    // Clear transition lock after timeout
-    setTimeout(() => {
-      transitionLock.value = false;
-    }, STATE_CHANGE_TIMEOUT);
-
-  } catch (error) {
-    debugLog('State change error', { error });
-    handleTransitionError(error);
-  }
-}
-
-// Error recovery
-function handleTransitionError(error) {
-  lastError.value = error;
-  isRecovering.value = true;
-
-  // Force cleanup any running animations
-  animations.cleanup(true);
-
-  // Reset to a known good state
-  setTimeout(() => {
-    isTransitioning.value = false;
-    transitionLock.value = false;
-    drawerState.value = props.isOpen ? 'open' : 'closed';
-    isRecovering.value = false;
-    
-    // Ensure elements are in correct state
-    if (drawerRef.value) {
-      if (props.isOpen) {
-        drawerRef.value.style.opacity = '1';
-        drawerRef.value.style.transform = 'translateX(0) scale(1)';
-      } else {
-        drawerRef.value.style.opacity = '0';
-        drawerRef.value.style.transform = 'translateX(-100%) scale(0.95)';
-      }
-    }
-    
-    debugLog('Recovered from error state');
-  }, STATE_CHANGE_TIMEOUT);
-}
-
-// Enhanced drawer initialization
-function initializeDrawer() {
-  if (!drawerRef.value) return;
-
-  debugLog('Initializing drawer');
-  
-  try {
-    // Calculate drawer position and handle screen edge cases
-    const offset = props.fromMapMarker ? 0 : props.sidebarWidth;
-    const screenWidth = window.innerWidth;
-    const maxWidth = Math.min(380, screenWidth - offset - 20); // 20px safety margin
-    
-    drawerRef.value.style.width = `${maxWidth}px`;
-    
-    // Use Motion's animate for smooth transition
-    animations.animate(
-      drawerRef.value,
-      { 
-        transform: ['translateX(0) scale(1)', 'translateX(0) scale(1)'],
-        opacity: [1, 1]
-      },
-      { 
-        duration: 0.3, 
-        easing: easings.smooth 
-      }
-    );
-    
-    // Initialize connector animation if present
-    if (connectorRef.value && !isRecovering.value) {
-      animations.animate(
-        connectorRef.value, 
-        { 
-          opacity: [0, 1], 
-          width: ["0px", "28px"] 
-        },
-        { 
-          duration: 0.6,
-          delay: 0.2,
-          easing: easings.enter
-        }
-      );
-    }
-
-  } catch (error) {
-    debugLog('Initialization error', { error });
-    handleTransitionError(error);
-  }
-}
-
-// Enhanced content transitions
-async function animateContentOut() {
-  if (!drawerRef.value || transitionLock.value) return;
-  
-  debugLog('Animating content out');
-  
-  try {
-    // Clean up any existing animations to prevent conflicts
-    animations.cleanup();
-    
-    // Collect all elements that need to be animated
-    const elements = [
-      ...Array.from(drawerRef.value.querySelectorAll('.section')),
-      ...Array.from(drawerRef.value.querySelectorAll('.key-info')),
-      ...Array.from(drawerRef.value.querySelectorAll('.amenities-grid')),
-      ...Array.from(drawerRef.value.querySelectorAll('.buttons-container'))
-    ].filter(Boolean);
-    
-    if (elements.length === 0) {
-      return Promise.resolve();
-    }
-
-    // Create animation with staggered delay
-    const animation = animations.animate(
-      elements,
-      { 
-        opacity: [1, 0],
-        transform: ["translateY(0)", "translateY(10px)"],
-        filter: ["blur(0px)", "blur(4px)"]
-      },
-      { 
-        duration: 0.25,
-        easing: easings.exit,
-        delay: stagger(0.02, { from: "last" })
-      }
-    );
-
-    // Return a promise that resolves when animation is complete
-    return animation.finished;
-    
-  } catch (error) {
-    debugLog('Content out animation error', { error });
-    handleTransitionError(error);
-    return Promise.resolve(); // Resolve immediately if there's an error
-  }
-}
-
-async function onEnter(el, onComplete) {
-    try {
-        console.log("Starting enter animation");
-        if (!el) {
-            onComplete();
-            return;
-        }
-        
-        // Reset loading state
-        isLoading.value = false;
-        
-        // Ensure animations are enabled
-        animationsEnabled.value = true;
-        
-        // Clean up any existing animations first to prevent conflicts
-        animations.cleanup();
-        
-        // Prepare initial state
-        const accentLine = el.querySelector('.drawer-accent-line');
-        if (accentLine) accentLine.style.opacity = '0';
-        
-        // Use a timeout to guard against stuck animations
-        const timeoutPromise = new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Safety timeout to reset transitioning state
-        const safetyTimeout = setTimeout(() => {
-            isTransitioning.value = false;
-        }, ANIMATION_TIMEOUT);
-        
-        // Main drawer animation
-        const drawerAnimation = animations.animate(
-            el,
-            {
-                transform: ["translateX(-100%) scale(0.95)", "translateX(0) scale(1)"],
-                opacity: [0.5, 1],
-                filter: ["blur(8px)", "blur(0px)"]
-            },
-            { duration: 0.5, easing: [0.22, 1, 0.36, 1] }
-        );
-        
-        // Header elements animation
-        const headerElements = el.querySelectorAll(".header-content > *");
-        if (headerElements.length) {
-            animations.animate(
-                headerElements,
-                { opacity: [0, 1], transform: ["translateY(-15px)", "translateY(0)"], filter: ["blur(4px)", "blur(0px)"] },
-                { delay: stagger(0.08, { start: 0.2 }), duration: 0.4, easing: "ease-out" }
-            );
-        }
-        
-        // Content sections animation
-        const sections = el.querySelectorAll(".scrollable-container section");
-        if (sections.length) {
-            animations.animate(
-                sections,
-                { opacity: [0, 1], transform: ["translateY(20px)", "translateY(0)"], filter: ["blur(4px)", "blur(0px)"] },
-                { delay: stagger(0.08, { start: 0.3 }), duration: 0.5, easing: "ease-out" }
-            );
-        }
-        
-        // Wait for the primary animation to finish (with a timeout safeguard)
-        await Promise.race([drawerAnimation.finished, timeoutPromise]);
-        
-        // Accent line animation
-        if (accentLine) {
-            animations.animate(
-                accentLine, 
-                { scaleY: [0, 1], opacity: [0, 0.8] }, 
-                { duration: 0.6, easing: "ease-out", delay: 0.1 }
-            );
-        }
-        
-        // Subtle "settled in" animation
-        animations.animate(
-            el, 
-            { x: [0, 3, 0] }, 
-            { duration: 0.5, easing: "ease-in-out" }
-        );
-        
-        // Setup animations for details elements that get expanded
-        setupDetailsAnimations();
-        
-        // Set up in-view animations for components (from the enhanced version)
-        setupInViewAnimations(el);
-        
-        // Clear safety timeout if animation completes normally
-        clearTimeout(safetyTimeout);
-        
-        onComplete();
-    } catch (error) {
-        console.error("Animation error:", error);
-        // Log detailed error information
-        console.error("onEnter failed with error:", error.message, error.stack);
-        // Ensure the drawer is visible even if animation fails
-        if (el) {
-            el.style.opacity = '1';
-            el.style.transform = 'translateX(0) scale(1)';
-        }
-        
-        // Ensure animations are re-enabled and state is reset
-        animationsEnabled.value = true;
-        isTransitioning.value = false;
-        
-        onComplete();
-    }
-}
-
-// New function to set up InView animations for section content
-function setupInViewAnimations(container) {
-  if (!container) return;
-  
-  try {
-    // Configuration for different section types
-    const sectionConfigs = [
-      {
-        selector: '.section',
-        itemSelector: '.amenity-item, .poi-chip, .feature-chip, .pub-card, .extra-info-item',
-        animationOptions: {
-          keyframes: {
-            opacity: [0, 1],
-            scale: [0.95, 1],
-            filter: ["blur(2px)", "blur(0px)"]
-          },
-          options: {
-            delay: stagger(0.03),
-            duration: 0.3,
-            easing: easings.smooth
-          }
-        }
-      }
-    ];
-    
-    // Apply animations for each configuration
-    sectionConfigs.forEach(config => {
-      const sections = Array.from(container.querySelectorAll(config.selector)).filter(Boolean);
-      
-      sections.forEach(section => {
-        animations.createInView(
-          section, 
-          () => {
-            const items = Array.from(section.querySelectorAll(config.itemSelector)).filter(Boolean);
-            
-            if (items.length) {
-              animations.animate(
-                items,
-                config.animationOptions.keyframes,
-                config.animationOptions.options
-              );
-            }
-            
-            // Return cleanup function
-            return () => {}; 
-          }, 
-          { 
-            margin: "-10% 0px -10% 0px",
-            amount: 0.2,
-            once: false // Allow re-animation when scrolling back into view
-          }
-        );
-      });
-    });
-  } catch (error) {
-    console.warn('Error setting up in-view animations:', error);
-  }
-}
 </script>
 
 <style scoped>
-@import '../../../static/css/walkdrawer.css';
+@import "../../../static/css/walkdrawer.css";
+
 </style>
