@@ -11,7 +11,7 @@
         <div class="header-content" :class="{ 'loading': isLoading }">
           <button
             ref="backButtonRef"
-            class="m3-icon-button"
+            class="m3-icon-button touchable transition-smooth focus-visible"
             @click="handleBackClick"
             aria-label="Close drawer"
           >
@@ -71,7 +71,7 @@
           <div ref="buttonsContainerRef" class="buttons-container">
             <button
               :ref="(el) => (buttonRefs[0] = el)"
-              class="m3-button m3-filled-button"
+              class="m3-button m3-filled-button touchable transition-smooth focus-visible hover-bright"
               @click="handleStartWalkClick"
             >
               <Icon icon="mdi:play-circle" class="button-icon" />
@@ -81,7 +81,7 @@
             <div class="secondary-buttons">
               <button
                 :ref="(el) => (buttonRefs[1] = el)"
-                class="m3-button m3-tonal-button"
+                class="m3-button m3-tonal-button touchable transition-smooth focus-visible hover-bright"
                 @click="() => {}"
               >
                 <Icon icon="mdi:navigation" class="button-icon" />
@@ -90,7 +90,7 @@
 
               <button
                 :ref="(el) => (buttonRefs[2] = el)"
-                class="m3-button m3-outlined-button icon-button"
+                class="m3-button m3-outlined-button icon-button touchable transition-gpu focus-visible"
                 @click="() => {}"
               >
                 <Icon icon="mdi:heart" class="button-icon" />
@@ -98,7 +98,7 @@
 
               <button
                 :ref="(el) => (buttonRefs[3] = el)"
-                class="m3-button m3-outlined-button icon-button"
+                class="m3-button m3-outlined-button icon-button touchable transition-gpu focus-visible"
                 @click="handleShare"
               >
                 <Icon icon="mdi:share" class="button-icon" />
@@ -302,6 +302,9 @@ const props = defineProps({
 
 const emit = defineEmits(["close", "start-walk", "loading-change"]);
 
+// Animation constants
+const ANIMATION_TIMEOUT = 1000; // 1 second timeout for animations
+
 // Component refs
 const drawerRef = ref(null);
 const connectorRef = ref(null);
@@ -322,6 +325,7 @@ const isTransitioning = ref(false);
 const scrollPosition = ref(0);
 const previousWalkId = ref(null);
 const animationsEnabled = ref(true);
+const prefersReducedMotion = ref(false);
 
 // Animation manager for better lifecycle management
 const animations = {
@@ -343,21 +347,33 @@ const animations = {
   },
   
   // Cancel all animations and stop observers
-  cleanup() {
+  cleanup(force = false) {
+    if (force) {
+      animationsEnabled.value = false;
+    }
+    
     // Cancel all animations
     for (const animation of this.instances) {
       try {
-        animation.cancel();
+        if (animation && typeof animation.cancel === 'function') {
+          animation.cancel();
+        }
       } catch (err) {
         console.warn('Error cancelling animation:', err);
       }
     }
     this.instances.clear();
     
+    if (force) {
+      animationsEnabled.value = true;
+    }
+    
     // Stop all observers
     for (const observer of this.observers) {
       try {
-        observer.stop();
+        if (observer && typeof observer.stop === 'function') {
+          observer.stop();
+        }
       } catch (err) {
         console.warn('Error stopping observer:', err);
       }
@@ -367,9 +383,19 @@ const animations = {
   
   // Animate with proper registration
   animate(targets, keyframes, options = {}) {
-    if (!animationsEnabled.value) return { finished: Promise.resolve() };
+    if (!animationsEnabled.value || prefersReducedMotion.value) {
+      return { finished: Promise.resolve() };
+    }
+    
     try {
-      const animation = animate(targets, keyframes, options);
+      const animation = animate(targets, keyframes, {
+        ...options,
+        onComplete: () => {
+          this.instances.delete(animation);
+          if (options.onComplete) options.onComplete();
+        }
+      });
+      
       this.register(animation);
       return animation;
     } catch (err) {
@@ -381,8 +407,15 @@ const animations = {
   // Create an InView observer with proper registration
   createInView(element, callback, options = {}) {
     if (!element) return null;
+    
     try {
-      const observer = inView(element, callback, options);
+      const observer = inView(element, (info) => {
+        const cleanup = callback(info);
+        return () => {
+          if (typeof cleanup === 'function') cleanup();
+        };
+      }, options);
+      
       this.registerObserver(observer);
       return observer;
     } catch (err) {
@@ -392,10 +425,12 @@ const animations = {
   }
 };
 
-const animationConfigs = {
-  fluid: { duration: 0.5, easing: [0.22, 1, 0.36, 1] },
-  standard: { duration: 0.3, easing: "ease-out" },
-  exit: { duration: 0.25, easing: "ease-in" }
+// Standardized easing configurations
+const easings = {
+  enter: [0.22, 1, 0.36, 1], // Recommended easeOut for enter transitions
+  exit: [0.4, 0, 0.2, 1],    // Standard easing for exit
+  bounce: [0.34, 1.56, 0.64, 1], // Slight bounce effect
+  smooth: [0.4, 0, 0.2, 1]    // Standard ease
 };
 
 const router = useRouter();
@@ -422,7 +457,7 @@ watch(() => props.walk?.id, async (newWalkId, oldWalkId) => {
       }
       
       // Animate content out with timeout protection
-      const contentOutPromise = animateContentOut();
+      const contentOutPromise = animateContentOut(); // Using the enhanced version defined below
       const contentOutTimeout = new Promise(resolve => setTimeout(resolve, 500));
       await Promise.race([contentOutPromise, contentOutTimeout]);
       
@@ -462,7 +497,7 @@ watch(() => props.isOpen, async (isOpen) => {
     isTransitioning.value = false;
     
     await nextTick();
-    initializeDrawer();
+    initializeDrawer(); // Using the enhanced version defined below
     
     // Restore scroll position if reopening same walk
     if (previousWalkId.value === props.walk?.id && scrollPosition.value > 0) {
@@ -475,53 +510,6 @@ watch(() => props.isOpen, async (isOpen) => {
     animations.cleanup();
   }
 }, { immediate: true });
-
-function initializeDrawer() {
-  if (drawerRef.value) {
-    // Calculate drawer position based on sidebar state and transition source
-    const offset = props.fromMapMarker ? 0 : props.sidebarWidth;
-    drawerRef.value.style.transition = 'transform 0.3s ease, left 0.3s ease';
-    
-    if (connectorRef.value) {
-      animations.animate(connectorRef.value, { opacity: [0, 1], width: ["0px", "28px"] }, { 
-        delay: 0.2,
-        duration: 0.6,
-        easing: "ease-out" 
-      });
-    }
-  }
-}
-
-async function animateContentOut() {
-  // Clean up existing animations
-  animations.cleanup();
-  
-  if (!drawerRef.value) return;
-  
-  const elements = [
-    ...drawerRef.value.querySelectorAll('.section'),
-    ...drawerRef.value.querySelectorAll('.key-info'),
-    ...drawerRef.value.querySelectorAll('.amenities-grid'),
-    ...drawerRef.value.querySelectorAll('.buttons-container')
-  ];
-  
-  if (elements.length) {
-    const animation = animations.animate(
-      elements,
-      { 
-        opacity: [1, 0],
-        transform: ["translateY(0)", "translateY(10px)"],
-        filter: ["blur(0px)", "blur(4px)"]
-      },
-      { 
-        duration: 0.2,
-        easing: "ease-in",
-        delay: stagger(0.02, { from: "last" })
-      }
-    );
-    await animation.finished;
-  }
-}
 
 async function animateContentIn() {
   await nextTick();
@@ -594,176 +582,6 @@ function restoreScrollPosition() {
   }
 }
 
-async function onEnter(el, onComplete) {
-    try {
-        if (!el) {
-            onComplete();
-            return;
-        }
-        
-        // Reset loading state
-        isLoading.value = false;
-        
-        // Ensure animations are enabled
-        animationsEnabled.value = true;
-        
-        // Clean up any existing animations first to prevent conflicts
-        animations.cleanup();
-        
-        // Prepare initial state
-        const accentLine = el.querySelector('.drawer-accent-line');
-        if (accentLine) accentLine.style.opacity = '0';
-        
-        // Use a timeout to guard against stuck animations
-        const timeoutPromise = new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Main drawer animation
-        const drawerAnimation = animations.animate(
-            el,
-            {
-                transform: ["translateX(-100%) scale(0.95)", "translateX(0) scale(1)"],
-                opacity: [0.5, 1],
-                filter: ["blur(8px)", "blur(0px)"]
-            },
-            { duration: 0.5, easing: [0.22, 1, 0.36, 1] }
-        );
-        
-        // Header elements animation
-        const headerElements = el.querySelectorAll(".header-content > *");
-        if (headerElements.length) {
-            animations.animate(
-                headerElements,
-                { opacity: [0, 1], transform: ["translateY(-15px)", "translateY(0)"], filter: ["blur(4px)", "blur(0px)"] },
-                { delay: stagger(0.08, { start: 0.2 }), duration: 0.4, easing: "ease-out" }
-            );
-        }
-        
-        // Content sections animation
-        const sections = el.querySelectorAll(".scrollable-container section");
-        if (sections.length) {
-            animations.animate(
-                sections,
-                { opacity: [0, 1], transform: ["translateY(20px)", "translateY(0)"], filter: ["blur(4px)", "blur(0px)"] },
-                { delay: stagger(0.08, { start: 0.3 }), duration: 0.5, easing: "ease-out" }
-            );
-        }
-        
-        // Wait for the primary animation to finish (with a timeout safeguard)
-        await Promise.race([drawerAnimation.finished, timeoutPromise]);
-        
-        // Accent line animation
-        if (accentLine) {
-            animations.animate(
-                accentLine, 
-                { scaleY: [0, 1], opacity: [0, 0.8] }, 
-                { duration: 0.6, easing: "ease-out", delay: 0.1 }
-            );
-        }
-        
-        // Subtle "settled in" animation
-        animations.animate(
-            el, 
-            { x: [0, 3, 0] }, 
-            { duration: 0.5, easing: "ease-in-out" }
-        );
-        
-        // Setup animations for details elements that get expanded
-        setupDetailsAnimations();
-        
-        onComplete();
-    } catch (error) {
-        console.error("Animation error:", error);
-        // Ensure the drawer is visible even if animation fails
-        if (el) {
-            el.style.opacity = '1';
-            el.style.transform = 'translateX(0) scale(1)';
-        }
-        onComplete();
-    }
-}
-
-async function onLeave(el, onComplete) {
-    try {
-        if (!el) {
-            onComplete();
-            return;
-        }
-        
-        // Always disable animations during unmounting to prevent stuck animations
-        const wasEnabled = animationsEnabled.value;
-        animationsEnabled.value = false;
-        
-        // Clean up existing animations
-        animations.cleanup();
-        
-        // Use a timeout to guard against stuck animations
-        const timeoutPromise = new Promise(resolve => setTimeout(resolve, 800));
-        
-        // First, animate out the accent line
-        const accentLine = el.querySelector(".drawer-accent-line");
-        if (accentLine) {
-            await Promise.race([
-                animations.animate(
-                    accentLine, 
-                    { scaleY: [1, 0], opacity: [0.8, 0] }, 
-                    { duration: 0.3, easing: "ease-in" }
-                ).finished,
-                new Promise(resolve => setTimeout(resolve, 400))
-            ]);
-        }
-        
-        // Then, animate out sections in sequence
-        const sections = el.querySelectorAll(".scrollable-container section");
-        if (sections.length) {
-            animations.animate(
-                sections,
-                { 
-                    opacity: [1, 0], 
-                    transform: ["translateY(0)", "translateY(15px)"], 
-                    filter: ["blur(0px)", "blur(3px)"]
-                },
-                { 
-                    delay: stagger(0.03, { from: "last" }), 
-                    duration: 0.2, 
-                    easing: "ease-in" 
-                }
-            );
-        }
-        
-        // Finally, animate out the whole drawer
-        const drawerAnimation = animations.animate(
-            el,
-            { 
-                transform: ["translateX(0) scale(1)", "translateX(-100%) scale(0.95)"], 
-                opacity: [1, 0], 
-                filter: ["blur(0px)", "blur(6px)"] 
-            },
-            { 
-                delay: 0.1, 
-                duration: 0.4, 
-                easing: "ease-in" 
-            }
-        );
-        
-        // Wait for animation to complete with timeout safeguard
-        await Promise.race([drawerAnimation.finished, timeoutPromise]);
-        
-        // Reset animations state
-        animationsEnabled.value = wasEnabled;
-        
-        // Reset transitioning state after animation is complete
-        isTransitioning.value = false;
-        onComplete();
-        // Reset transitioning state after animation is complete
-        isTransitioning.value = false;
-    } catch (error) {
-        console.error("Leave animation error:", error);
-        // Ensure drawer is hidden even if animation fails
-        if (el) el.style.opacity = '0';
-        animationsEnabled.value = true;
-        onComplete();
-    }
-}
 
 // Function to setup animations for details elements
 function setupDetailsAnimations() {
@@ -777,45 +595,68 @@ function setupDetailsAnimations() {
 
 // Handle detail toggle animations
 function toggleDetailsAnimation(e) {
-    const detail = e.target;
-    const content = detail.querySelector(".details-content");
-    const isOpen = detail.open;
+  const detail = e.target;
+  const content = detail.querySelector(".details-content");
+  const isOpen = detail.open;
+  
+  if (!content) return;
+  
+  // Cancel any existing animations on this element
+  const currentAnimation = Array.from(animations.instances)
+    .find(a => a.target === content);
+  
+  if (currentAnimation) {
+    currentAnimation.cancel();
+    animations.instances.delete(currentAnimation);
+  }
+  
+  if (isOpen) {
+    // Prepare for animation
+    content.style.height = "0px";
+    content.style.overflow = "hidden";
+    content.style.opacity = "0";
     
-    if (!content) return;
+    // Get target height
+    const targetHeight = content.scrollHeight;
     
-    if (isOpen) {
-        content.style.height = "0px";
-        content.style.overflow = "hidden";
-        content.style.opacity = "0";
-        const targetHeight = content.scrollHeight;
-        
-        animations.animate(
-            content,
-            { 
-                height: [0, `${targetHeight}px`], 
-                opacity: [0, 1], 
-                transform: ["translateY(-10px)", "translateY(0px)"] 
-            },
-            { duration: 0.35, easing: [0.2, 0.9, 0.4, 1] }
-        ).finished.then(() => {
-            content.style.height = "auto";
-            content.style.overflow = "visible";
-        });
-    } else {
-        const currentHeight = content.offsetHeight;
-        content.style.height = `${currentHeight}px`;
-        content.style.overflow = "hidden";
-        
-        animations.animate(
-            content,
-            { 
-                height: [`${currentHeight}px`, "0px"], 
-                opacity: [1, 0], 
-                transform: ["translateY(0px)", "translateY(-10px)"] 
-            },
-            { duration: 0.3, easing: [0.4, 0.0, 0.6, 1] }
-        );
-    }
+    // Animate open
+    animations.animate(
+      content,
+      { 
+        height: [0, `${targetHeight}px`], 
+        opacity: [0, 1], 
+        transform: ["translateY(-10px)", "translateY(0px)"] 
+      },
+      { 
+        duration: 0.35, 
+        easing: easings.bounce,
+        onComplete: () => {
+          // Reset styles once animation is done
+          content.style.height = "auto";
+          content.style.overflow = "visible";
+        }
+      }
+    );
+  } else {
+    // Prepare for animation
+    const currentHeight = content.offsetHeight;
+    content.style.height = `${currentHeight}px`;
+    content.style.overflow = "hidden";
+    
+    // Animate close
+    animations.animate(
+      content,
+      { 
+        height: [`${currentHeight}px`, "0px"], 
+        opacity: [1, 0], 
+        transform: ["translateY(0px)", "translateY(-10px)"] 
+      },
+      { 
+        duration: 0.3, 
+        easing: easings.exit 
+      }
+    );
+  }
 }
 
 // Replace toggleFootwearDetails with the generic function
@@ -975,35 +816,31 @@ function openInGoogleMaps(pub) {
 
 function handleBackClick() {
   console.log("Back button clicked", { isTransitioning: isTransitioning.value });
-  
-  // Disable any new animations while processing the close action
-  if (isTransitioning.value) {
-    console.log("Transition in progress, ignoring close request");
-    return;
-  }
-  
-  // Set transitioning state to prevent multiple clicks
-  isTransitioning.value = true;
-  
-  // Cleanup any existing animations first
-  animations.cleanup();
-  
-  // Immediately emit close event to allow for faster UI response
+
   try {
+    // Prevent multiple clicks while transitioning
+    if (isTransitioning.value) {
+      console.log("Transition in progress, ignoring close request");
+      return;
+    }
+
+    // Set transitioning state
+    isTransitioning.value = true;
+
+    // Cleanup any existing animations first
+    animations.cleanup();
+
+    // Emit close event with callback to track when animation completes
     console.log("Emitting close event");
-    emit("close", { 
-      expandSidebar: true, 
+    emit("close", {
+      expandSidebar: true,
       fromMapMarker: props.fromMapMarker,
       animated: true
     });
-    
-    // Reset transitioning state after a short delay
-    setTimeout(() => {
-      isTransitioning.value = false;
-    }, 50);
+
   } catch (error) {
-    console.error("Error emitting close event:", error);
-    isTransitioning.value = false;
+    console.error("Error handling back button click:", error);
+    handleTransitionError(error);
   }
 }
 
@@ -1015,7 +852,18 @@ function handleStartWalkClick() {
 
 // Clean up animations and observers when component is unmounted
 onBeforeUnmount(() => {
-  animations.cleanup();
+  try {
+    // Force cleanup all animations and observers
+    animations.cleanup(true);
+    
+    // Remove any event listeners
+    const details = document.querySelectorAll('.details-container');
+    details.forEach(detail => {
+      detail.removeEventListener('toggle', toggleDetailsAnimation);
+    });
+  } catch (error) {
+    console.error("Error during cleanup:", error);
+  }
   
   // Save scroll position in case we're coming back to this walk
   if (drawerRef.value) {
@@ -1189,6 +1037,31 @@ onMounted(() => {
   nextTick(() => {
     setupDetailsAnimations();
   });
+
+  // Handle resize and orientation changes
+  const handleResize = () => {
+    if (!drawerRef.value) return;
+
+    // Disable animations temporarily during resize
+    animationsEnabled.value = false;
+
+    // Update drawer position and width
+    const offset = props.fromMapMarker ? 0 : props.sidebarWidth;
+    drawerRef.value.style.transition = 'none';
+    drawerRef.value.style.width = `${Math.min(380, window.innerWidth - offset)}px`;
+
+    // Re-enable animations after a short delay
+    setTimeout(() => {
+      if (drawerRef.value) {
+        drawerRef.value.style.transition = 'transform 0.3s ease, left 0.3s ease';
+        animationsEnabled.value = true;
+      }
+    }, 100);
+  };
+
+  window.addEventListener('resize', handleResize);
+  window.addEventListener('orientationchange', handleResize);
+  handleResize(); // Initial setup
   
   // Add event listeners for browser back/forward navigation
   const handleRouteChange = () => {
@@ -1200,6 +1073,10 @@ onMounted(() => {
   
   // Return cleanup function to be called on unmount
   onBeforeUnmount(() => {
+    // Remove resize listeners
+    window.removeEventListener('resize', handleResize);
+    window.removeEventListener('orientationchange', handleResize);
+
     window.removeEventListener('popstate', handleRouteChange);
     
     // Clean up animation resources
@@ -1217,651 +1094,372 @@ onMounted(() => {
     }
   });
 });
+
+const STATE_CHANGE_TIMEOUT = 800; // Timeout for state changes in ms
+const ANIMATION_DURATION = {
+  enter: 500,
+  leave: 400,
+  content: 300
+};
+
+// State tracking
+const drawerState = ref('closed'); // 'closed', 'opening', 'open', 'closing'
+const transitionLock = ref(false);
+const lastError = ref(null);
+const lastWalkId = ref(null);
+const isRecovering = ref(false);
+
+// Logger for debugging animations
+const debugLog = (message, data = {}) => {
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[WalkDrawer] ${message}`, {
+      state: drawerState.value,
+      transitioning: isTransitioning.value,
+      locked: transitionLock.value,
+      walkId: props.walk?.id,
+      ...data
+    });
+  }
+};
+
+// Validate state before transition
+function validateTransition(from, to) {
+  const validTransitions = {
+    closed: ['opening'],
+    opening: ['open', 'closing'],
+    open: ['closing'],
+    closing: ['closed', 'opening']
+  };
+
+  if (!validTransitions[from]?.includes(to)) {
+    debugLog(`Invalid transition ${from} -> ${to}`);
+    return false;
+  }
+  return true;
+}
+
+// State management
+async function changeDrawerState(newState) {
+  if (transitionLock.value) {
+    debugLog('Transition locked, queuing state change', { newState });
+    await new Promise(resolve => setTimeout(resolve, 50));
+    return changeDrawerState(newState);
+  }
+
+  const currentState = drawerState.value;
+  if (!validateTransition(currentState, newState)) {
+    return;
+  }
+
+  try {
+    transitionLock.value = true;
+    drawerState.value = newState;
+    debugLog(`State changed: ${currentState} -> ${newState}`);
+
+    // Clear transition lock after timeout
+    setTimeout(() => {
+      transitionLock.value = false;
+    }, STATE_CHANGE_TIMEOUT);
+
+  } catch (error) {
+    debugLog('State change error', { error });
+    handleTransitionError(error);
+  }
+}
+
+// Error recovery
+function handleTransitionError(error) {
+  lastError.value = error;
+  isRecovering.value = true;
+
+  // Force cleanup any running animations
+  animations.cleanup(true);
+
+  // Reset to a known good state
+  setTimeout(() => {
+    isTransitioning.value = false;
+    transitionLock.value = false;
+    drawerState.value = props.isOpen ? 'open' : 'closed';
+    isRecovering.value = false;
+    
+    // Ensure elements are in correct state
+    if (drawerRef.value) {
+      if (props.isOpen) {
+        drawerRef.value.style.opacity = '1';
+        drawerRef.value.style.transform = 'translateX(0) scale(1)';
+      } else {
+        drawerRef.value.style.opacity = '0';
+        drawerRef.value.style.transform = 'translateX(-100%) scale(0.95)';
+      }
+    }
+    
+    debugLog('Recovered from error state');
+  }, STATE_CHANGE_TIMEOUT);
+}
+
+// Enhanced drawer initialization
+function initializeDrawer() {
+  if (!drawerRef.value) return;
+
+  debugLog('Initializing drawer');
+  
+  try {
+    // Calculate drawer position and handle screen edge cases
+    const offset = props.fromMapMarker ? 0 : props.sidebarWidth;
+    const screenWidth = window.innerWidth;
+    const maxWidth = Math.min(380, screenWidth - offset - 20); // 20px safety margin
+    
+    drawerRef.value.style.width = `${maxWidth}px`;
+    
+    // Use Motion's animate for smooth transition
+    animations.animate(
+      drawerRef.value,
+      { 
+        transform: ['translateX(0) scale(1)', 'translateX(0) scale(1)'],
+        opacity: [1, 1]
+      },
+      { 
+        duration: 0.3, 
+        easing: easings.smooth 
+      }
+    );
+    
+    // Initialize connector animation if present
+    if (connectorRef.value && !isRecovering.value) {
+      animations.animate(
+        connectorRef.value, 
+        { 
+          opacity: [0, 1], 
+          width: ["0px", "28px"] 
+        },
+        { 
+          duration: 0.6,
+          delay: 0.2,
+          easing: easings.enter
+        }
+      );
+    }
+
+  } catch (error) {
+    debugLog('Initialization error', { error });
+    handleTransitionError(error);
+  }
+}
+
+// Enhanced content transitions
+async function animateContentOut() {
+  if (!drawerRef.value || transitionLock.value) return;
+  
+  debugLog('Animating content out');
+  
+  try {
+    // Clean up any existing animations to prevent conflicts
+    animations.cleanup();
+    
+    // Collect all elements that need to be animated
+    const elements = [
+      ...Array.from(drawerRef.value.querySelectorAll('.section')),
+      ...Array.from(drawerRef.value.querySelectorAll('.key-info')),
+      ...Array.from(drawerRef.value.querySelectorAll('.amenities-grid')),
+      ...Array.from(drawerRef.value.querySelectorAll('.buttons-container'))
+    ].filter(Boolean);
+    
+    if (elements.length === 0) {
+      return Promise.resolve();
+    }
+
+    // Create animation with staggered delay
+    const animation = animations.animate(
+      elements,
+      { 
+        opacity: [1, 0],
+        transform: ["translateY(0)", "translateY(10px)"],
+        filter: ["blur(0px)", "blur(4px)"]
+      },
+      { 
+        duration: 0.25,
+        easing: easings.exit,
+        delay: stagger(0.02, { from: "last" })
+      }
+    );
+
+    // Return a promise that resolves when animation is complete
+    return animation.finished;
+    
+  } catch (error) {
+    debugLog('Content out animation error', { error });
+    handleTransitionError(error);
+    return Promise.resolve(); // Resolve immediately if there's an error
+  }
+}
+
+async function onEnter(el, onComplete) {
+    try {
+        console.log("Starting enter animation");
+        if (!el) {
+            onComplete();
+            return;
+        }
+        
+        // Reset loading state
+        isLoading.value = false;
+        
+        // Ensure animations are enabled
+        animationsEnabled.value = true;
+        
+        // Clean up any existing animations first to prevent conflicts
+        animations.cleanup();
+        
+        // Prepare initial state
+        const accentLine = el.querySelector('.drawer-accent-line');
+        if (accentLine) accentLine.style.opacity = '0';
+        
+        // Use a timeout to guard against stuck animations
+        const timeoutPromise = new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Safety timeout to reset transitioning state
+        const safetyTimeout = setTimeout(() => {
+            isTransitioning.value = false;
+        }, ANIMATION_TIMEOUT);
+        
+        // Main drawer animation
+        const drawerAnimation = animations.animate(
+            el,
+            {
+                transform: ["translateX(-100%) scale(0.95)", "translateX(0) scale(1)"],
+                opacity: [0.5, 1],
+                filter: ["blur(8px)", "blur(0px)"]
+            },
+            { duration: 0.5, easing: [0.22, 1, 0.36, 1] }
+        );
+        
+        // Header elements animation
+        const headerElements = el.querySelectorAll(".header-content > *");
+        if (headerElements.length) {
+            animations.animate(
+                headerElements,
+                { opacity: [0, 1], transform: ["translateY(-15px)", "translateY(0)"], filter: ["blur(4px)", "blur(0px)"] },
+                { delay: stagger(0.08, { start: 0.2 }), duration: 0.4, easing: "ease-out" }
+            );
+        }
+        
+        // Content sections animation
+        const sections = el.querySelectorAll(".scrollable-container section");
+        if (sections.length) {
+            animations.animate(
+                sections,
+                { opacity: [0, 1], transform: ["translateY(20px)", "translateY(0)"], filter: ["blur(4px)", "blur(0px)"] },
+                { delay: stagger(0.08, { start: 0.3 }), duration: 0.5, easing: "ease-out" }
+            );
+        }
+        
+        // Wait for the primary animation to finish (with a timeout safeguard)
+        await Promise.race([drawerAnimation.finished, timeoutPromise]);
+        
+        // Accent line animation
+        if (accentLine) {
+            animations.animate(
+                accentLine, 
+                { scaleY: [0, 1], opacity: [0, 0.8] }, 
+                { duration: 0.6, easing: "ease-out", delay: 0.1 }
+            );
+        }
+        
+        // Subtle "settled in" animation
+        animations.animate(
+            el, 
+            { x: [0, 3, 0] }, 
+            { duration: 0.5, easing: "ease-in-out" }
+        );
+        
+        // Setup animations for details elements that get expanded
+        setupDetailsAnimations();
+        
+        // Set up in-view animations for components (from the enhanced version)
+        setupInViewAnimations(el);
+        
+        // Clear safety timeout if animation completes normally
+        clearTimeout(safetyTimeout);
+        
+        onComplete();
+    } catch (error) {
+        console.error("Animation error:", error);
+        // Log detailed error information
+        console.error("onEnter failed with error:", error.message, error.stack);
+        // Ensure the drawer is visible even if animation fails
+        if (el) {
+            el.style.opacity = '1';
+            el.style.transform = 'translateX(0) scale(1)';
+        }
+        
+        // Ensure animations are re-enabled and state is reset
+        animationsEnabled.value = true;
+        isTransitioning.value = false;
+        
+        onComplete();
+    }
+}
+
+// New function to set up InView animations for section content
+function setupInViewAnimations(container) {
+  if (!container) return;
+  
+  try {
+    // Configuration for different section types
+    const sectionConfigs = [
+      {
+        selector: '.section',
+        itemSelector: '.amenity-item, .poi-chip, .feature-chip, .pub-card, .extra-info-item',
+        animationOptions: {
+          keyframes: {
+            opacity: [0, 1],
+            scale: [0.95, 1],
+            filter: ["blur(2px)", "blur(0px)"]
+          },
+          options: {
+            delay: stagger(0.03),
+            duration: 0.3,
+            easing: easings.smooth
+          }
+        }
+      }
+    ];
+    
+    // Apply animations for each configuration
+    sectionConfigs.forEach(config => {
+      const sections = Array.from(container.querySelectorAll(config.selector)).filter(Boolean);
+      
+      sections.forEach(section => {
+        animations.createInView(
+          section, 
+          () => {
+            const items = Array.from(section.querySelectorAll(config.itemSelector)).filter(Boolean);
+            
+            if (items.length) {
+              animations.animate(
+                items,
+                config.animationOptions.keyframes,
+                config.animationOptions.options
+              );
+            }
+            
+            // Return cleanup function
+            return () => {}; 
+          }, 
+          { 
+            margin: "-10% 0px -10% 0px",
+            amount: 0.2,
+            once: false // Allow re-animation when scrolling back into view
+          }
+        );
+      });
+    });
+  } catch (error) {
+    console.warn('Error setting up in-view animations:', error);
+  }
+}
 </script>
 
 <style scoped>
-@import "tailwindcss";
-
-/* General Styles */
-.walk-drawer {
-  width: 380px;
-  height: 100vh;
-  max-width: 90vw;
-  position: fixed;
-  top: 0;
-  left: 0;
-  background-color: rgb(var(--md-sys-color-surface-container));
-  box-shadow: var(--md-sys-elevation-level2);
-  border-radius: 0 24px 24px 0;
-  padding-left: var(--md-sys-sidebar-collapsed);
-  z-index: 20;
-  overflow: hidden; /* Important: Keep this to prevent double scrollbars */
-}
-
-
-.rail-connector {
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  height: 56px;
-  width: 28px;
-  background-color: rgb(var(--md-sys-color-surface-container-highest));
-  border-radius: 0 28px 28px 0;
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
-  z-index: 1;
-}
-
-.drawer-accent-line {
-  position: absolute;
-  top: 24px;
-  bottom: 24px;
-  left: calc(var(--md-sys-sidebar-collapsed) - 1px);
-  width: 4px;
-  background: linear-gradient(to bottom, rgb(var(--md-sys-color-primary)), rgb(var(--md-sys-color-tertiary)));
-  border-radius: 4px;
-  opacity: 0.8;
-}
-
-/* Header Styles */
-.header-container {
-  background-color: rgb(var(--md-sys-color-surface-container-highest));
-  box-shadow: var(--md-sys-elevation-level1);
-  border-top-right-radius: 24px;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  margin-left: calc(0px - var(--md-sys-sidebar-collapsed));
-  width: calc(100% + var(--md-sys-sidebar-collapsed));
-}
-
-.header-content {
-    display: flex;
-    align-items: center;
-    min-height: 64px;
-    padding: 0 16px;
-    margin-left: var(--md-sys-sidebar-collapsed);
-}
-.m3-icon-button {
-  flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  border-radius: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgb(var(--md-sys-color-on-surface));
-  position: relative;
-  overflow: hidden;
-    margin-right: 16px;
-}
-
-.m3-headline-small {
-  font-size: 1.25rem;
-  font-weight: 500;
-  width: 100%;
-  color: rgb(var(--md-sys-color-on-surface));
-    margin: 0;
-    padding: 1rem;
-    word-break: break-word;
-}
-
-/* Scrollable Container Styles */
-.scrollable-container {
-  overflow-y: auto; /* Enables scrolling */
-  height: calc(100vh - 64px); /* header height */
-  padding-bottom: 24px; /* Add padding at the bottom */
-  position: relative;
-}
-
-.content {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-    padding: 1rem; /* Add padding to the content */
-
-}
-
-/* Key Info Styles */
-.key-info {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.info-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-  color: rgb(var(--md-sys-color-on-surface-variant));
-}
-
-.info-icon {
-  color: rgb(var(--md-sys-color-primary));
-  font-size: 1.25rem;
-}
-
-/* Amenities Styles */
-.amenities-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.75rem;
-}
-
-.amenity-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-  color: rgb(var(--md-sys-color-on-surface));
-}
-
-.amenity-icon {
-  color: rgb(var(--md-sys-color-primary));
-  font-size: 1.25rem;
-    margin-right: 0.25rem;
-
-}
-.amenity-check {
-    margin-left: auto;
-    color: rgb(var(--md-sys-color-success));
-    font-size: 1.25rem;
-}
-
-/* Buttons Styles */
-.buttons-container {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.m3-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  color: white;
-  transition: background-color 0.2s ease;
-    height: 2.5rem;
-}
-
-.m3-filled-button {
-  background-color: rgb(var(--md-sys-color-primary));
-}
-
-.m3-tonal-button {
-  background-color: rgb(var(--md-sys-color-secondary-container));
-  color: rgb(var(--md-sys-color-on-secondary-container));
-}
-
-.m3-outlined-button {
-  border: 1px solid rgb(var(--md-sys-color-outline));
-  color: rgb(var(--md-sys-color-on-surface));
-}
-.icon-button{
-    width: 2.5rem;
-    padding: 0;
-}
-
-.secondary-buttons {
-  display: flex;
-  gap: 0.5rem;
-}
-.button-icon{
-    margin-right: 0.5rem;
-}
-
-/* Sections Styles */
-.sections-container {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.section {
-  background-color: rgb(var(--md-sys-color-surface-container-low));
-  border-radius: 0.75rem;
-  padding: 1rem;
-  box-shadow: var(--md-sys-elevation-level1);
-}
-
-.section-title {
-  font-size: 1rem;
-  font-weight: 500;
-  color: rgb(var(--md-sys-color-on-surface));
-  margin-bottom: 0.5rem;
-}
-.section-title-with-icon {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.section-text {
-  font-size: 0.875rem;
-  color: rgb(var(--md-sys-color-on-surface-variant));
-  line-height: 1.4;
-}
-
-.section-list {
-    list-style: disc;
-    padding-left: 1.5rem;
-}
-
-.section-list-item {
-    font-size: 0.875rem;
-    color: rgb(var(--md-sys-color-on-surface-variant));
-  line-height: 1.4;
-  margin-bottom: 0.25rem;
-}
-
-/* POI Styles */
-.poi-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.poi-chip {
-  display: flex;
-  align-items: center;
-  background-color: rgb(var(--md-sys-color-surface-container-high));
-  border-radius: 1rem;
-  padding: 0.25rem 0.5rem;
-  font-size: 0.75rem;
-  color: rgb(var(--md-sys-color-on-surface-variant));
-}
-
-.poi-icon {
-  font-size: 1rem;
-  margin-right: 0.25rem;
-}
-
-.poi-text {
-  white-space: nowrap;
-}
-
-.poi-subtext {
-  font-size: 0.625rem;
-  color: rgb(var(--md-sys-color-on-surface-variant));
-  margin-left: 0.25rem;
-}
-
-.poi-badge {
-  background-color: rgb(var(--md-sys-color-primary-container));
-  color: rgb(var(--md-sys-color-on-primary-container));
-  border-radius: 0.75rem;
-  padding: 0.125rem 0.375rem;
-  font-size: 0.625rem;
-  font-weight: 500;
-  margin-left: auto;
-}
-
-.poi-count {
-  font-size: 0.75rem;
-  color: rgb(var(--md-sys-color-on-surface-variant));
-}
-
-/* Feature Styles */
-.feature-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.feature-chip {
-  background-color: rgb(var(--md-sys-color-surface-container-high));
-  border-radius: 1rem;
-  padding: 0.25rem 0.5rem;
-  font-size: 0.75rem;
-  color: rgb(var(--md-sys-color-on-surface-variant));
-}
-
-.category-chip {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-weight: 500;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-}
-
-.category-icon {
-  font-size: 1rem;
-}
-
-/* Add Tailwind color utility classes */
-.bg-green-100 { background-color: #d1fae5; }
-.text-green-900 { color: #064e3b; }
-.bg-amber-100 { background-color: #fef3c7; }
-.text-amber-900 { color: #78350f; }
-.bg-amber-800 { background-color: #92400e; }
-.text-amber-50 { color: #fffbeb; }
-.bg-blue-100 { background-color: #dbeafe; }
-.text-blue-900 { color: #1e3a8a; }
-.bg-purple-100 { background-color: #f3e8ff; }
-.text-purple-900 { color: #581c87; }
-.bg-cyan-100 { background-color: #cffafe; }
-.text-cyan-900 { color: #164e63; }
-.bg-slate-100 { background-color: #f1f5f9; }
-.text-slate-900 { color: #0f172a; }
-.bg-emerald-100 { background-color: #d1fae5; }
-.text-emerald-900 { color: #064e3b; }
-.bg-sky-100 { background-color: #e0f2fe; }
-.text-sky-900 { color: #0c4a6e; }
-.bg-gray-100 { background-color: #f3f4f6; }
-.text-gray-900 { color: #111827; }
-.bg-pink-100 { background-color: #fce7f3; }
-.text-pink-900 { color: #831843; }
-.bg-indigo-100 { background-color: #e0e7ff; }
-.text-indigo-900 { color: #312e81; }
-.bg-violet-100 { background-color: #ede9fe; }
-.text-violet-900 { color: #4c1d95; }
-.bg-red-100 { background-color: #fee2e2; }
-.text-red-900 { color: #7f1d1d; }
-
-/* Pub Styles */
-.pub-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.pub-card {
-  background-color: rgb(var(--md-sys-color-surface-container-low));
-  border-radius: 0.75rem;
-  box-shadow: var(--md-sys-elevation-level1);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.pub-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--md-sys-elevation-level2);
-}
-
-.pub-button {
-  width: 100%;
-  padding: 0;
-  border: none;
-  background: none;
-  cursor: pointer;
-  text-align: left;
-}
-
-.pub-info {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 0.75rem;
-}
-
-.pub-icon-container {
-  width: 3rem;
-  height: 3rem;
-  border-radius: 0.75rem;
-  background-color: rgb(var(--md-sys-color-surface-container-high));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.pub-main-icon {
-  font-size: 1.5rem;
-  color: rgb(var(--md-sys-color-primary));
-}
-
-.pub-details {
-  flex-grow: 1; /* Allow details to take available space */
-}
-
-.pub-name-line {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.pub-name {
-  font-size: 1rem;
-  font-weight: 500;
-  color: rgb(var(--md-sys-color-on-surface));
-  margin: 0;
-}
-
-.dog-friendly-icon {
-  font-size: 1.25rem;
-  color: rgb(var(--md-sys-color-primary));
-}
-
-.pub-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 1rem;
-  margin-top: 0.25rem;
-}
-
-.pub-meta-item {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.75rem;
-  color: rgb(var(--md-sys-color-on-surface-variant));
-}
-
-.pub-meta-icon {
-  font-size: 0.875rem;
-  color: rgb(var(--md-sys-color-primary));
-}
-
-.pub-opening-hours {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.75rem;
-  color: rgb(var(--md-sys-color-on-surface-variant));
-  margin-top: 0.25rem;
-}
-
-.pub-opening-hours-icon {
-  font-size: 0.875rem;
-}
-
-.pub-open-icon {
-  margin-left: auto; /* Push to right */
-  font-size: 1.25rem;
-  color: rgb(var(--md-sys-color-on-surface-variant));
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-.pub-button:hover .pub-open-icon {
-  opacity: 1;
-}
-
-/* Practical Information Styles */
-.practical-info-container {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.footwear-section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.footwear-title {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: rgb(var(--md-sys-color-on-surface));
-}
-
-.footwear-text {
-  font-size: 0.875rem;
-  color: rgb(var(--md-sys-color-on-surface-variant));
-}
-
-.details-container {
-  border-top: 1px solid rgba(var(--md-sys-color-outline-variant), 0.3);
-  margin-top: 0.5rem;
-  padding-top: 0.5rem;
-}
-
-.details-summary {
-  cursor: pointer;
-  padding: 0.5rem 0.75rem;
-  border-radius: 1rem;
-  user-select: none;
-  color: rgb(var(--md-sys-color-primary));
-  font-weight: 500;
-  background-color: rgba(var(--md-sys-color-primary), 0.05);
-  display: flex;
-  align-items: center;
-  width: fit-content; /* Fit to content */
-}
-.details-summary:hover {
-  background-color: rgba(var(--md-sys-color-primary), 0.1);
-}
-
-.details-icon {
-  transition: transform 0.3s ease;
-  margin-left: 0.5rem;
-}
-
-.details-content {
-  padding: 0.5rem 1rem;
-  border-left: 2px solid rgba(var(--md-sys-color-primary), 0.3);
-  margin-left: 0.5rem;
-  margin-top: 0.5rem;
-}
-
-.considerations-section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.dog-considerations {
-  margin-bottom: 0.5rem; /* Add some space below dog chip */
-}
-
-.dog-chip-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.25rem;
-}
-
-.dog-chip-icon {
-  font-size: 1.25rem;
-  color: rgb(var(--md-sys-color-primary));
-}
-
-.dog-chip-title {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: rgb(var(--md-sys-color-on-surface));
-}
-
-.dog-chip-content {
-  padding-left: 2rem;
-}
-
-.considerations-list {
-  list-style: disc;
-  padding-left: 1.5rem;
-}
-
-.considerations-list-item {
-  font-size: 0.875rem;
-  color: rgb(var(--md-sys-color-on-surface-variant));
-  line-height: 1.4;
-  margin-bottom: 0.25rem; /* Spacing between list items */
-}
-
-.pub-count {
-  margin-left: auto; /* Align to the right */
-  font-size: 0.75rem;
-  color: rgb(var(--md-sys-color-on-surface-variant));
-}
-
-.section-icon {
-  font-size: 1.25rem; /* Adjust as needed */
-  color: rgb(var(--md-sys-color-primary));
-}
-/* Additional Info Styles */
-.extra-info-container {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  margin-top: 0.5rem;
-}
-.extra-info-item {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid rgba(var(--md-sys-color-outline-variant), 0.3);
-}
-
-.extra-info-label {
-  font-weight: 500;
-  color: rgb(var(--md-sys-color-on-surface));
-  text-transform: capitalize;
-}
-.extra-info-value {
-  color: rgb(var(--md-sys-color-on-surface-variant));
-  font-size: 0.875rem;
-}
-
-/* Loading state styles */
-.loading-overlay {
-  position: absolute;
-  top: 64px; /* Below header */
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(var(--md-sys-color-surface-container), 0.7);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 30;
-}
-
-.loading-icon {
-  font-size: 2.5rem;
-  color: rgb(var(--md-sys-color-primary));
-}
-
-.walk-drawer.loading .scrollable-container {
-  opacity: 0.7;
-}
-
-.header-content.loading, .m3-headline-small.loading {
-  opacity: 0.7;
-  pointer-events: none;
-}
-
-/* Animation for content transitions */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes fadeOut {
-  from { opacity: 1; transform: translateY(0); }
-  to { opacity: 0; transform: translateY(10px); }
-}
-
-.animate-spin {
-  animation: spin 1.5s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
+@import '../../../static/css/walkdrawer.css';
 </style>

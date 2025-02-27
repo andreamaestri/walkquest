@@ -1,0 +1,341 @@
+@import "tailwindcss";
+
+/* WalkDrawer.css */
+
+.walk-drawer {
+  @apply h-full fixed top-0 left-0 z-20 bg-surface-container rounded-r-2xl shadow-level2 overflow-hidden min-w-[280px] max-w-[90vw] w-[380px] pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] px-[--md-sys-sidebar-collapsed] transition-transform transition-opacity touch-manipulation will-change-transform will-change-opacity backface-visibility-hidden transform-style-preserve-3d overflow-y-hidden; /* overflow-hidden to prevent double scrollbars */
+  /* Dynamic viewport height for mobile */
+  height: 100dvh;
+
+  /* Safe area insets support - Tailwind handles safe area with py-safe, but for custom padding-left: */
+  @supports(padding: max(0px)) {
+    & {
+      padding-top: max(0px, env(safe-area-inset-top));
+      padding-bottom: max(0px, env(safe-area-inset-bottom));
+      height: calc(100vh - max(0px, env(safe-area-inset-top)) - max(0px, env(safe-area-inset-bottom)));
+    }
+  }
+}
+
+.rail-connector {
+  @apply absolute left-0 top-1/2 -translate-y-1/2 h-14 w-7 bg-surface-container-highest rounded-r-full shadow-[2px_0_10px_rgba(0,0,0,0.1)] z-10;
+}
+
+.drawer-accent-line {
+  @apply absolute top-6 bottom-6 left-[calc(var(--md-sys-sidebar-collapsed)_-_1px)] w-1 rounded-md opacity-80;
+  background: linear-gradient(to bottom, rgb(var(--md-sys-color-primary)), rgb(var(--md-sys-color-tertiary)));
+}
+
+/* Header Styles - Moved to WalkDrawerHeader.vue */
+
+/* Scrollable Container Styles */
+.scrollable-container {
+  @apply overflow-y-auto h-[calc(100vh_-_64px)] pb-6 overscroll-contain scroll-smooth relative; /* header height: 64px - consider making this a variable */
+}
+
+.content {
+  @apply flex flex-col gap-6 p-4; /* Padding to the content */
+}
+
+/* Key Info Styles - Moved to WalkDrawerKeyInfo.vue */
+
+/* Amenities Styles - Moved to WalkDrawerAmenities.vue */
+
+/* Buttons Styles - Moved to WalkDrawerButtons.vue */
+
+/* Sections Styles */
+.sections-container {
+  @apply flex flex-col gap-4;
+}
+
+.section {
+  @apply bg-surface-container-low rounded-lg p-4 shadow-level1;
+}
+
+.section-title {
+  @apply text-lg font-medium text-on-surface mb-2;
+}
+
+.section-title-with-icon {
+  @apply flex items-center gap-2;
+}
+
+.section-text,
+.section-list-item,
+.poi-count,
+.feature-chip,
+.extra-info-value,
+.footwear-text,
+.dog-chip-content p,
+.considerations-list-item,
+.pub-meta-item span,
+.pub-opening-hours span {
+  @apply text-sm text-on-surface-variant leading-relaxed;
+}
+
+.section-list {
+  @apply list-disc pl-6;
+}
+
+.section-list-item {
+  @apply mb-1;
+}
+
+/* POI Styles */
+.poi-container {
+  @apply flex flex-wrap gap-2 mb-2;
+}
+
+.poi-chip {
+  @apply flex items-center bg-surface-container-high rounded-full px-2 py-0.5 text-xs text-on-surface-variant whitespace-nowrap;
+}
+
+.poi-icon {
+  @apply text-lg mr-1;
+}
+
+.poi-subtext {
+  @apply text-xs text-on-surface-variant ml-1;
+}
+
+.poi-badge {
+  @apply bg-primary-container text-on-primary-container rounded-full px-1 py-0.5 text-xs font-medium ml-auto;
+}
+
+/* Feature Styles */
+.feature-container {
+  @apply flex flex-wrap gap-2;
+}
+
+.feature-chip {
+  @apply bg-surface-container-high rounded-full px-2 py-0.5 text-xs text-on-surface-variant;
+}
+
+.category-chip {
+  @apply flex items-center gap-1 font-medium shadow-[0_1px_2px_rgba(0,0,0,0.05)];
+}
+
+.category-icon {
+  @apply text-lg;
+}
+
+/* Pub Styles */
+.pub-list {
+  @apply flex flex-col gap-3;
+}
+
+.pub-card {
+  @apply bg-surface-container-low rounded-lg shadow-level1 transition-all duration-300 ease-out hover:translate-y-[-2px] hover:shadow-level2;
+}
+
+.pub-button {
+  @apply w-full p-0 touch-manipulation -webkit-tap-highlight-color-transparent border-none bg-none outline-none transition-transform duration-300 ease-out cursor-pointer text-left focus-visible:outline-primary focus-visible:outline-2 focus-visible:outline-offset-2;
+}
+
+.pub-info {
+  @apply flex items-start gap-3 p-3;
+}
+
+.pub-icon-container {
+  @apply w-12 h-12 rounded-lg bg-surface-container-high flex items-center justify-center flex-shrink-0;
+}
+
+.pub-main-icon {
+  @apply text-xl text-primary;
+}
+
+.pub-details {
+  @apply flex-grow; /* Allow details to take available space */
+}
+
+.pub-name-line {
+  @apply flex items-center gap-2;
+}
+
+.pub-name {
+  @apply text-lg font-medium text-on-surface m-0;
+}
+
+.dog-friendly-icon {
+  @apply text-xl text-primary;
+}
+
+.pub-meta {
+  @apply flex flex-wrap gap-y-1 gap-x-2 mt-1;
+}
+
+.pub-meta-item {
+  @apply flex items-center gap-0.5 text-xs text-on-surface-variant;
+}
+
+.pub-meta-icon {
+  @apply text-sm text-primary;
+}
+
+.pub-opening-hours {
+  @apply flex items-center gap-0.5 text-xs text-on-surface-variant mt-1;
+}
+
+.pub-opening-hours-icon {
+  @apply text-sm;
+}
+
+.pub-open-icon {
+  @apply ml-auto text-xl text-on-surface-variant opacity-0 transition-opacity duration-200 ease-in-out;
+}
+.pub-button:hover .pub-open-icon {
+  @apply opacity-100;
+}
+
+/* Practical Information Styles */
+.practical-info-container {
+  @apply flex flex-col gap-4;
+}
+
+.footwear-section {
+  @apply flex flex-col gap-2;
+}
+
+.footwear-title {
+  @apply text-sm font-medium text-on-surface;
+}
+
+.details-container {
+  @apply border-t border-outline-variant/30 mt-2 pt-2;
+}
+
+.details-summary {
+  @apply cursor-pointer px-3 py-2 rounded-full user-select-none text-primary font-medium bg-primary/5 flex items-center w-fit hover:bg-primary/10;
+}
+
+.details-icon {
+  @apply transition-transform duration-300 ease-in-out ml-2;
+}
+
+.details-content {
+  @apply pl-4 pt-2 ml-2 border-l-2 border-primary/30;
+}
+
+.considerations-section {
+  @apply flex flex-col gap-2;
+}
+
+.dog-considerations {
+  @apply mb-2; /* Add some space below dog chip */
+}
+
+.dog-chip-header {
+  @apply flex items-center gap-2 mb-1;
+}
+
+.dog-chip-icon {
+  @apply text-xl text-primary;
+}
+
+.dog-chip-title {
+  @apply text-sm font-medium text-on-surface;
+}
+
+.dog-chip-content {
+  @apply pl-8;
+}
+
+.considerations-list {
+  @apply list-disc pl-6;
+}
+
+.considerations-list-item {
+  @apply mb-1; /* Spacing between list items */
+}
+
+.pub-count {
+  @apply ml-auto text-xs text-on-surface-variant; /* Align to the right */
+}
+
+.section-icon {
+  @apply text-xl text-primary; /* Adjust as needed */
+}
+
+/* Additional Info Styles */
+.extra-info-container {
+  @apply flex flex-col gap-3 mt-2;
+}
+.extra-info-item {
+  @apply flex flex-col gap-1 pb-2 border-b border-outline-variant/30 pt-2;
+}
+
+.extra-info-label {
+  @apply font-medium text-on-surface capitalize;
+}
+
+/* Loading state styles */
+.loading-overlay {
+  @apply absolute top-[64px] left-0 right-0 bottom-0 bg-surface-container/70 backdrop-blur-sm flex items-center justify-center z-30; /* Below header: 64px */
+}
+
+.loading-icon {
+  @apply text-5xl text-primary;
+}
+
+.walk-drawer.loading .scrollable-container {
+  @apply opacity-70;
+}
+
+.header-content.loading, .m3-headline-small.loading {
+  @apply opacity-70 pointer-events-none;
+}
+
+/* Animation for content transitions - Consider moving to global styles if reused */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(10px); }
+}
+
+.animate-spin {
+  animation: spin 1.5s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Motion preferences - Consider moving to global styles if reused */
+@media (prefers-reduced-motion: reduce) {
+  .transition-smooth,
+  .transition-gpu,
+  .hover-lift:hover,
+  .pub-card:hover {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+/* Utility classes for transitions and interactions - Move to global utility styles or keep in WalkDrawer.css if specific */
+.touchable {
+  @apply touch-manipulation -webkit-tap-highlight-color-transparent user-select-none cursor-pointer;
+}
+
+.transition-smooth {
+  @apply transition-transform transition-opacity transition-filter duration-300 ease-out;
+}
+
+.transition-gpu {
+  @apply backface-visibility-hidden transform-style-preserve-3d will-change-transform;
+}
+
+/* Focus states for better accessibility - Consider moving to global styles if reused */
+.focus-visible:focus-visible {
+  @apply outline-primary outline-2 outline-offset-2;
+}
+
+/* Active states for better touch feedback - Consider moving to global styles if reused */
+@media (hover: hover) {
+  .hover-lift:hover { transform: translateY(-2px); }
+  .hover-bright:hover { filter: brightness(1.1); }
+}

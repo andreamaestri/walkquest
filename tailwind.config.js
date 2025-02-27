@@ -3,11 +3,12 @@ module.exports = {
   content: [
     "./walkquest/templates/**/*.html",
     "./walkquest/static/**/*.{js,vue}",
+    "./walkquest/static/css/**/*.css",
   ],
   theme: {
     extend: {
       fontFamily: {
-        'Outfit': ['Outfit', 'sans-serif'],
+        'Sora': ['Sora', 'sans-serif'],
       },
     },
   },

@@ -11,6 +11,7 @@ import { StoreLocator, MapboxMarker, MapboxNavigationControl, MapboxCluster, Map
 
 // Import CSS
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
+import '/walkquest/static/css/project.css'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
 // Create Pinia instance first

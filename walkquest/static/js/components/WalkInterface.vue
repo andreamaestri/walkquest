@@ -43,14 +43,13 @@
       @walk-selected="handleWalkSelection"
     />
 
-    <!-- Walk Drawer -->
+    <!-- Walk Drawer - remove sidebarWidth prop -->
     <WalkDrawer
       v-show="selectedWalkId && uiStore.showDrawer"
       v-if="selectedWalkId"
       :key="selectedWalkId"
       :walk="selectedWalk"
       :is-open="uiStore.showDrawer"
-      :sidebar-width="sidebarWidth"
       ref="walkDrawerRef"
       @close="handleDrawerClose"
       @start-walk="handleStartWalk"
@@ -126,13 +125,11 @@ const { animateInterfaceElement, animationConfigs } = useAnimations();
 // Component refs
 const mapContainer = shallowRef(null);
 const walkDrawerRef = ref(null);
-
-// Component state
-const expandedWalkIds = ref([]);
-const isExpanded = ref(localStorage.getItem("sidebarExpanded") === "true");
-const drawerAnimating = ref(false);
 const drawerMounted = ref(false);
-const sidebarWidth = ref(80); // Default collapsed sidebar width (--md-sys-sidebar-collapsed)
+// Removed sidebarWidth ref as it's defined in CSS variables
+
+// Add isExpanded ref to track sidebar expansion state
+const isExpanded = ref(localStorage.getItem("sidebarExpanded") === "true");
 
 /**
  * Extract reactive state from stores using storeToRefs
@@ -218,11 +215,7 @@ const handleWalkSelection = async (walk) => {
   if (walk?.id) {
     isExpanded.value = false; // Collapse sidebar
 
-    // Don't process if animation is in progress
-    if (drawerAnimating.value) return;
-
     // Hide sidebar and show drawer
-    drawerAnimating.value = true;
     uiStore.handleWalkSelected();
 
     // Navigate using slug if available, fallback to ID
@@ -234,10 +227,8 @@ const handleWalkSelection = async (walk) => {
 
     // Wait for next tick to ensure drawer is mounted
     await nextTick();
-    if (walkDrawerRef.value) {
-      walkDrawerRef.value.$el?.offsetHeight; // Force a reflow
-      drawerMounted.value = true;
-      drawerAnimating.value = false;
+    if (walkDrawerRef.value && walkDrawerRef.value.$el) {
+      drawerMounted.value = true
     }
   } else {
     isExpanded.value = true; // Expand sidebar
@@ -251,16 +242,11 @@ const handleWalkSelection = async (walk) => {
  * Clears route query and updates UI state
  */
 const handleDrawerClose = async () => {
-  // Don't process if animation is in progress
-  if (drawerAnimating.value) return;
-
   // Close drawer
-  drawerAnimating.value = true;
   console.log("Closing drawer");
   await router.push({ name: 'home' });
   isExpanded.value = true;
   uiStore.handleWalkClosed();
-  drawerAnimating.value = false;
 };
 
 /**
@@ -406,27 +392,16 @@ const initializeInterface = () => {
 onMounted(() => {
   // Add event listener to prevent route changes during map movements
   const preventRouteChange = (e) => {
-    if (drawerAnimating.value && e.type === "popstate") {
-      e.preventDefault();
-      e.stopPropagation();
-      return false;
+    if (e.type === "popstate") {
+      e.preventDefault()
+      e.stopPropagation()
+      return false
     }
-  };
-  window.addEventListener("popstate", preventRouteChange);
+  }
+  window.addEventListener("popstate", preventRouteChange)
 
   try {
-    // Get sidebar width for proper drawer positioning
-    const sidebarElement = document.querySelector(".m3-navigation-rail");
-    if (sidebarElement) {
-      sidebarWidth.value = sidebarElement.offsetWidth;
-
-      // Add resize observer to update sidebar width
-      const resizeObserver = new ResizeObserver((entries) => {
-        sidebarWidth.value = entries[0].target.offsetWidth;
-      });
-
-      resizeObserver.observe(sidebarElement);
-    }
+    // Removed ResizeObserver code for sidebarWidth
     const cleanup = initializeInterface();
 
     // Return cleanup function
