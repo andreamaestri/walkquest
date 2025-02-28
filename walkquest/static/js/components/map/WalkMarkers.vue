@@ -4,7 +4,7 @@
       v-for="walk in walks"
       :key="`${walk.id}-${markerKey}`"
     >
-      <MapboxMarker
+    <MapboxMarker
         :lng-lat="[
           Number(walk.longitude) || Number(walk.lng),
           Number(walk.latitude) || Number(walk.lat),
@@ -15,16 +15,16 @@
           anchor: 'bottom',
           closeButton: true,
           closeOnClick: true,
-          className: 'm3-popup hardware-accelerated',
+          className: 'm3-popup',
           maxWidth: 'none',
           focusTrap: true
         }"
-        class="hardware-accelerated"
+        class="map-marker"
         @mounted="(marker) => handleMarkerMounted(marker, walk.id)"
         @click="() => handleMarkerClick(walk)"
       >
         <template #popup>
-          <div class="flex flex-col walk-popup hardware-accelerated">
+          <div class="flex flex-col walk-popup">
             <div class="p-4 pb-3">
               <h3 class="m3-title-medium mb-3">
                 {{ walk.title || walk.walk_name }}
@@ -167,14 +167,6 @@ defineExpose({
 <style scoped>
 @import "tailwindcss";
 @import "../../../css/material3.css";
-
-/* Hardware acceleration class */
-.hardware-accelerated {
-  transform: translate3d(0, 0, 0);
-  backface-visibility: hidden;
-  will-change: transform;
-  transition: transform 0.15s ease-out;
-}
 
 /* Popup styles */
 .m3-popup {

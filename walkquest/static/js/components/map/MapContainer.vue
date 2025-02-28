@@ -91,6 +91,9 @@ const spatialIndex = shallowRef(new Map());
 const mapBounds = shallowRef(null);
 const previousVisibleWalks = shallowRef(null);
 const markerKey = ref(0);
+const isAnimating = ref(false); // Track if map animation is in progress
+const pendingMarkerUpdates = ref(false); // Track if marker updates are pending
+const animationInProgress = ref(false); // Track any animation in progress
 
 // Extract setMapInstance from useMap
 const { setMapInstance, flyToLocation } = useMap();
@@ -129,7 +132,7 @@ const minZoom = computed(() =>
 );
 
 const maxZoom = computed(() =>
-  props.mapConfig.maxZoom || 35
+  props.mapConfig.maxZoom || 20
 );
 
 /**
@@ -265,6 +268,27 @@ const handleMapCreated = (map) => {
     mapBounds.value = map.getBounds();
     if (!props.selectedWalkId) updateVisibleMarkers(); // Only update markers if no walk is selected
   });
+  
+  // Track animation state
+  map.on("movestart", () => {
+    isAnimating.value = true;
+    animationInProgress.value = true;
+  });
+  
+  map.on("moveend", () => {
+    isAnimating.value = false;
+    // Reset the canvas style after animation completes
+    map.getCanvas().style.willChange = 'auto';
+    
+    // Process any pending marker updates after animation completes
+    setTimeout(() => {
+      if (pendingMarkerUpdates.value) {
+        updateAllMarkerColors(props.selectedWalkId);
+        pendingMarkerUpdates.value = false;
+      }
+      animationInProgress.value = false;
+    }, 100);
+  });
 
   // Initialize mapBounds
   mapBounds.value = map.getBounds();
@@ -299,14 +323,21 @@ const updateVisibleMarkers = debounce(() => {
  * Handle marker click
  * Updates marker colors and emits walk selection event
  */
-const handleMarkerClick = (walk) => {
-  if (!walk) return;
+ const handleMarkerClick = (walk) => {
+  if (!walk || animationInProgress.value) return;
 
-  // Update any selected state
-  updateAllMarkerColors(walk.id);
-
-  // Handle the walk selection
-  emit('walk-selected', walk);
+  // Lock out animations
+  animationInProgress.value = true;
+  
+  // First: update all markers to avoid flicker
+  markerRefs.value.forEach((marker, id) => {
+    updateMarkerColorImmediate(marker, id === walk.id);
+  });
+  
+  // Then: emit walk selected with enough delay for marker update
+  setTimeout(() => {
+    emit('walk-selected', walk);
+  }, 50);
 };
 
 /**
@@ -315,6 +346,10 @@ const handleMarkerClick = (walk) => {
  */
 const handlePopupOpenWalk = async (event, walk) => {
   event.stopPropagation();
+  
+  if (animationInProgress.value) return;
+  animationInProgress.value = true;
+  
   try {
     // Close all popups first
     if (mapInstance.value) {
@@ -323,10 +358,30 @@ const handlePopupOpenWalk = async (event, walk) => {
         popup.remove();
       }
     }
-    // Select the walk to show route and details - the route loading will handle the camera movement
-    emit('walk-selected', walk);
+    
+    // Immediately update just the clicked marker
+    const clickedMarker = markerRefs.value.get(walk.id);
+    if (clickedMarker) {
+      const svg = clickedMarker.querySelector("svg");
+      if (svg) {
+        const targetPath = svg.querySelector("path[fill]");
+        if (targetPath) {
+          targetPath.style.transition = 'none';
+          targetPath.style.fill = "#6750A4"; // Selected color
+        }
+      }
+    }
+    
+    // Set flag to update other markers after map animation
+    pendingMarkerUpdates.value = true;
+    
+    // Then select the walk with a brief delay
+    setTimeout(() => {
+      emit('walk-selected', walk);
+    }, 100);
   } catch (error) {
     console.error("Error handling walk selection:", error);
+    animationInProgress.value = false;
   }
 };
 
@@ -348,36 +403,57 @@ const handleMarkerMounted = (marker, walkId) => {
 };
 
 /**
- * Update marker color
- * Changes marker color based on selection state with smooth transition
+ * Update marker color with no transition during animations
+ * Used for immediate updates when needed
  */
-const updateMarkerColor = (marker, isSelected) => {
+ const updateMarkerColorImmediate = (marker, isSelected) => {
   if (!marker) return;
   
   const element = marker;
   const svg = element.querySelector("svg");
   if (!svg) return;
   
-  // Apply hardware acceleration to the SVG
-  if (!svg.style.transform) {
-    svg.style.transform = 'translate3d(0,0,0)';
-    svg.style.backfaceVisibility = 'hidden';
-    svg.style.willChange = 'transform';
-  }
-  
-  // Select the first <path> regardless of its attributes
   const targetPath = svg.querySelector("path[fill]");
   if (!targetPath) return;
   
-  // Add transition if not already present
-  if (!targetPath.style.transition) {
-    targetPath.style.transition = 'fill 0.15s ease-out';
-  }
+  // Remove hardware acceleration usage
+  svg.style.willChange = '';
+  svg.style.transform = '';
   
-  // Set the color with requestAnimationFrame to batch with other visual updates
-  requestAnimationFrame(() => {
-    targetPath.style.fill = isSelected ? "#6750A4" : "#3FB1CE";
-  });
+  // No transition, direct update
+  targetPath.style.transition = 'none';
+  targetPath.style.fill = isSelected ? "#6750A4" : "#3FB1CE";
+};
+
+/**
+ * Update marker color with normal transition
+ * Used for smooth updates when not during map animations
+ */
+ const updateMarkerColorWithTransition = (marker, isSelected) => {
+  if (!marker) return;
+  
+  const element = marker;
+  const svg = element.querySelector("svg");
+  if (!svg) return;
+  
+  const targetPath = svg.querySelector("path[fill]");
+  if (!targetPath) return;
+  
+  // Add transition
+  targetPath.style.transition = 'fill 0.15s ease-out';
+  targetPath.style.fill = isSelected ? "#6750A4" : "#3FB1CE";
+};
+
+/**
+ * Update marker color
+ * Smart decision on which update method to use based on current animation state
+ */
+const updateMarkerColor = (marker, isSelected) => {
+  if (isAnimating.value || loading.value || animationInProgress.value) {
+    updateMarkerColorImmediate(marker, isSelected);
+  } else {
+    updateMarkerColorWithTransition(marker, isSelected);
+  }
 };
 
 /**
@@ -385,6 +461,12 @@ const updateMarkerColor = (marker, isSelected) => {
  * Updates colors for all markers based on selection state
  */
 const updateAllMarkerColors = (selectedId = null) => {
+  // Don't update markers during animations
+  if (isAnimating.value) {
+    pendingMarkerUpdates.value = true;
+    return;
+  }
+  
   markerRefs.value.forEach((marker, id) => {
     updateMarkerColor(marker, id === selectedId);
   });
@@ -392,7 +474,6 @@ const updateAllMarkerColors = (selectedId = null) => {
 
 /**
  * Handle route layer loaded
- * Starts route animation
  */
 const handleRouteLayerLoaded = () => {
   console.log(`Route layer loaded`);
@@ -400,7 +481,6 @@ const handleRouteLayerLoaded = () => {
 
 /**
  * Handle glow layer loaded
- * Logs successful loading of glow layer
  */
 const handleGlowLayerLoaded = () => {
   console.log('Glow layer loaded');
@@ -430,8 +510,7 @@ async function loadRouteData(walkId) {
         // Add a small delay to ensure the map is ready
         setTimeout(() => {
           try {
-            // Before starting animation, prepare the GPU rendering
-            mapInstance.value.getCanvas().style.willChange = 'transform';
+            // Just apply minimal transform
             mapInstance.value.getCanvas().style.transform = 'translate3d(0, 0, 0)';
             
             const coordinates = geometry.geometry.coordinates;
@@ -464,7 +543,7 @@ async function loadRouteData(walkId) {
                 zoom: 13,
                 pitch: 65,
                 bearing: 30,
-                duration: 2500, // Slightly longer duration
+                duration: 2500,
                 essential: true,
                 padding: {
                   top: 50,
@@ -474,7 +553,7 @@ async function loadRouteData(walkId) {
                 },
                 easing: (t) => {
                   return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-                }, // Smooth easing function
+                },
                 animate: true
               });
             } else if (coordinates.length === 1) {
@@ -497,16 +576,10 @@ async function loadRouteData(walkId) {
                 animate: true
               });
             }
-            
-            // Reset the style after animation completes
-            mapInstance.value.once('moveend', () => {
-              mapInstance.value.getCanvas().style.willChange = 'auto';
-            });
-            
           } catch (e) {
             console.error("Error with camera movement:", e);
           }
-        }, 250); // Longer delay to ensure everything is ready
+        }, 250);
       }
     }
   } catch (error) {
@@ -550,7 +623,6 @@ function isValidGeoJSON(data) {
     console.error('Error validating GeoJSON:', error);
     return false;
   }
-
 }
 
 /**
@@ -570,6 +642,17 @@ watch(() => props.walks, updateSpatialIndex, { immediate: true });
 
 // Watch for changes in selectedWalkId to load route data
 watch(() => props.selectedWalkId, loadRouteData);
+
+// Watch for animation end to update markers if needed
+watch(() => isAnimating.value, (newValue) => {
+  if (!newValue && pendingMarkerUpdates.value) {
+    // Wait for a frame to complete before updating markers
+    requestAnimationFrame(() => {
+      updateAllMarkerColors(props.selectedWalkId);
+      pendingMarkerUpdates.value = false;
+    });
+  }
+});
 
 // Lifecycle hooks
 onMounted(() => {
