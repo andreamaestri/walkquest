@@ -322,6 +322,7 @@ const isTransitioning = ref(false);
 const scrollPosition = ref(0);
 const previousWalkId = ref(null);
 const animationsEnabled = ref(true);
+const initialAnimationCompleted = ref(false);
 
 // Animation manager for better lifecycle management
 const animations = {
@@ -363,39 +364,14 @@ const animations = {
       }
     }
     this.observers.clear();
-  },
-  
-  // Animate with proper registration
-  animate(targets, keyframes, options = {}) {
-    if (!animationsEnabled.value) return { finished: Promise.resolve() };
-    try {
-      const animation = animate(targets, keyframes, options);
-      this.register(animation);
-      return animation;
-    } catch (err) {
-      console.warn('Animation error:', err);
-      return { finished: Promise.resolve() };
-    }
-  },
-  
-  // Create an InView observer with proper registration
-  createInView(element, callback, options = {}) {
-    if (!element) return null;
-    try {
-      const observer = inView(element, callback, options);
-      this.registerObserver(observer);
-      return observer;
-    } catch (err) {
-      console.warn('InView observer error:', err);
-      return null;
-    }
   }
 };
 
+// Animation configurations
 const animationConfigs = {
   fluid: { duration: 0.5, easing: [0.22, 1, 0.36, 1] },
-  standard: { duration: 0.3, easing: "ease-out" },
-  exit: { duration: 0.25, easing: "ease-in" }
+  standard: { duration: 0.3, easing: "easeOut" },
+  exit: { duration: 0.25, easing: "easeIn" }
 };
 
 const router = useRouter();
@@ -411,6 +387,9 @@ watch(() => props.walk?.id, async (newWalkId, oldWalkId) => {
       // Set transition state
       isTransitioning.value = true;
       emit('loading-change', true);
+      
+      // Reset the animation flag for the new walk
+      initialAnimationCompleted.value = false;
       
       // Save current walk ID and scroll position before transition
       previousWalkId.value = oldWalkId;
@@ -450,6 +429,8 @@ watch(() => props.walk?.id, async (newWalkId, oldWalkId) => {
     // This case handles when a new walk is selected from nothing
     isTransitioning.value = false;
     emit('loading-change', false);
+    // Make sure initial animation runs for first walk
+    initialAnimationCompleted.value = false;
   }
 }, { immediate: true });
 
@@ -483,12 +464,27 @@ function initializeDrawer() {
     drawerRef.value.style.transition = 'transform 0.3s ease, left 0.3s ease';
     
     if (connectorRef.value) {
-      animations.animate(connectorRef.value, { opacity: [0, 1], width: ["0px", "28px"] }, { 
-        delay: 0.2,
-        duration: 0.6,
-        easing: "ease-out" 
-      });
+      // Using Motion's API directly
+      animate(connectorRef.value, 
+        { 
+          opacity: [0, 1], 
+          width: ["0px", "28px"] 
+        }, 
+        { 
+          delay: 0.2,
+          duration: 0.6,
+          easing: "easeOut" 
+        }
+      );
     }
+  }
+}
+
+function restoreScrollPosition() {
+  const scrollContainer = drawerRef.value?.querySelector('.scrollable-container');
+  if (scrollContainer && scrollPosition.value > 0) {
+    scrollContainer.scrollTop = scrollPosition.value;
+    console.log("Restored scroll position:", scrollPosition.value);
   }
 }
 
@@ -521,291 +517,240 @@ async function animateContentOut() {
     await animation.finished;
   }
 }
-
 async function animateContentIn() {
-  await nextTick();
+  // Prevent duplicate animations and only run initial animation once
+  if (!drawerRef.value || isTransitioning.value || drawerRef.value.dataset.animatingIn === 'true') return;
   
-  if (!drawerRef.value || isTransitioning.value) return;
+  // Skip if initial animation has already been completed for this instance
+  if (initialAnimationCompleted.value && !isTransitioning.value) return;
   
-  // Animate header elements first
-  const headerElements = [titleRef.value, keyInfoRef.value].filter(Boolean);
-  if (headerElements.length && !isTransitioning.value) {
-    const headerAnimation = animations.animate(
-      headerElements,
-      { 
-        opacity: [0, 1],
-        transform: ["translateY(-30px)", "translateY(0)"]
-      },
-      { 
-        duration: 0.4,
-        easing: [0.0, 0.0, 0.2, 1], // Modern deceleration curve
-        delay: stagger(0.1)
-      }
-    );
-  }
-  
-  // Then animate content sections
-  const sections = drawerRef.value.querySelectorAll('.section');
-  if (sections.length && !isTransitioning.value) {
-    const animation = animations.animate(
-      sections,
-      {
-        opacity: [0, 1],
-        transform: ["translateY(40px)", "translateY(0)"]
-      },
-      {
-        delay: stagger(0.08, { start: 0.2 }),
-        duration: 0.5,
-        easing: [0.0, 0.0, 0.2, 1] // Modern deceleration curve
-      }
-    );
+  try {
+    // Mark as animating to prevent duplicate calls
+    drawerRef.value.dataset.animatingIn = 'true';
     
-    // Animate highlights with stagger after sections appear
-    const highlightItems = drawerRef.value.querySelectorAll('.section-list-item');
-    if (highlightItems.length) {
-      animations.animate(
-        highlightItems,
-        {
-          opacity: [0, 1],
-          transform: ["translateX(-15px)", "translateX(0)"],
-          scale: [0.95, 1]
-        },
-        {
-          delay: stagger(0.06, { start: 0.5 }),
-          duration: 0.4,
-          easing: [0.0, 0.0, 0.2, 1]
-        }
+    await nextTick();
+    
+    // Animate header elements first
+    const headerElements = [titleRef.value, keyInfoRef.value].filter(Boolean);
+    if (headerElements.length) {
+      const headerAnimation = animations.register(
+        animate(
+          headerElements,
+          { 
+            opacity: [0, 1],
+            transform: ["translateY(-30px)", "translateY(0)"]
+          },
+          { 
+            duration: 0.4,
+            easing: [0.0, 0.0, 0.2, 1], // Modern deceleration curve
+            delay: stagger(0.1)
+          }
+        )
       );
     }
+    
+    // Then animate content sections
+    const sections = drawerRef.value.querySelectorAll('.section');
+    if (sections.length) {
+      const animation = animations.register(
+        animate(
+          sections,
+          {
+            opacity: [0, 1],
+            transform: ["translateY(40px)", "translateY(0)"]
+          },
+          {
+            delay: stagger(0.08, { start: 0.2 }),
+            duration: 0.5,
+            easing: [0.0, 0.0, 0.2, 1] // Modern deceleration curve
+          }
+        )
+      );
+      
+      // Animate highlights with stagger after sections appear
+      const highlightItems = drawerRef.value.querySelectorAll('.section-list-item');
+      if (highlightItems.length) {
+        animations.register(
+          animate(
+            highlightItems,
+            {
+              opacity: [0, 1],
+              transform: ["translateX(-15px)", "translateX(0)"],
+              scale: [0.95, 1]
+            },
+            {
+              delay: stagger(0.06, { start: 0.5 }),
+              duration: 0.4,
+              easing: [0.0, 0.0, 0.2, 1]
+            }
+          )
+        );
+      }
+    }
+    
+    // Mark initial animation as completed
+    initialAnimationCompleted.value = true;
+  } finally {
+    // Set a timeout to remove the flag after animations should be complete
+    setTimeout(() => {
+      if (drawerRef.value) {
+        drawerRef.value.dataset.animatingIn = 'false';
+      }
+    }, 1000);
   }
 }
 
 async function onEnter(el, onComplete) {
-    try {
-        if (!el) {
-            onComplete();
-            return;
-        }
-        
-        // Reset loading state
-        isLoading.value = false;
-        
-        // Ensure animations are enabled
-        animationsEnabled.value = true;
-        
-        // Clean up any existing animations first to prevent conflicts
-        animations.cleanup();
-        
-        // Prepare initial state
-        const accentLine = el.querySelector('.drawer-accent-line');
-        if (accentLine) accentLine.style.opacity = '0';
-        
-        // Use a timeout to guard against stuck animations
-        const timeoutPromise = new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Main drawer animation
-        const drawerAnimation = animations.animate(
-            el,
-            {
-                transform: ["translateX(-120%) scale(0.95)", "translateX(0) scale(1)"],
-                opacity: [0.5, 1]
-            },
-            { duration: 0.5, easing: [0.20, 0.70, 0.20, 1.0] } // Modern pronounced spring-like curve
+  if (!el) {
+    onComplete();
+    return;
+  }
+  
+  console.log("Starting entrance animation");
+  
+  // Set initial state
+  el.style.opacity = '0';
+  el.style.transform = 'translateX(-100%) scale(0.95)';
+  
+  // Force browser to apply initial styles first
+  await new Promise(resolve => requestAnimationFrame(() => {
+    requestAnimationFrame(resolve);
+  }));
+  
+  try {
+    // Create our animation
+    const animation = animate(
+      el,
+      {
+        transform: ["translateX(-100%) scale(0.95)", "translateX(0) scale(1)"],
+        opacity: [0, 1] 
+      },
+      { 
+        duration: 0.5, 
+        easing: [0.25, 1, 0.5, 1]
+      }
+    );
+    
+    // Important: Tell Vue we're done AFTER the animation completes
+    animation.finished.then(() => {
+      onComplete();
+      
+      // These animations can happen after the transition is "complete"
+      const accentLine = el.querySelector('.drawer-accent-line');
+      if (accentLine) {
+        animate(
+          accentLine, 
+          { scaleY: [0, 1], opacity: [0, 0.8] }, 
+          { duration: 0.6 }
         );
-        
-        // Header elements animation
-        const headerElements = el.querySelectorAll(".header-content > *");
-        if (headerElements.length) {
-            animations.animate(
-                headerElements,
-                { opacity: [0, 1], transform: ["translateY(-25px)", "translateY(0)"] },
-                { delay: stagger(0.08, { start: 0.2 }), duration: 0.4, easing: [0.0, 0.0, 0.2, 1] }
-            );
-        }
-        
-        // Content sections animation
-        const sections = el.querySelectorAll(".scrollable-container section");
-        if (sections.length) {
-            animations.animate(
-                sections,
-                { opacity: [0, 1], transform: ["translateY(40px)", "translateY(0)"] },
-                { delay: stagger(0.08, { start: 0.3 }), duration: 0.5, easing: [0.0, 0.0, 0.2, 1] }
-            );
-        }
-        
-        // Wait for the primary animation to finish (with a timeout safeguard)
-        await Promise.race([drawerAnimation.finished, timeoutPromise]);
-        
-        // Accent line animation
-        if (accentLine) {
-            animations.animate(
-                accentLine, 
-                { scaleY: [0, 1], opacity: [0, 0.8] }, 
-                { duration: 0.6, easing: [0.0, 0.0, 0.2, 1], delay: 0.1 }
-            );
-        }
-        
-        // Subtle "settled in" animation
-        animations.animate(
-            el, 
-            { x: [0, 5, 0] }, 
-            { duration: 0.7, easing: [0.34, 1.56, 0.64, 1] } // Bouncy/spring-like easing
-        );
-        
-        // Setup animations for details elements that get expanded
-        setupDetailsAnimations();
-        
-        onComplete();
-    } catch (error) {
-        console.error("Animation error:", error);
-        // Ensure the drawer is visible even if animation fails
-        if (el) {
-            el.style.opacity = '1';
-            el.style.transform = 'translateX(0) scale(1)';
-        }
-        onComplete();
-    }
+      }
+    }).catch(error => {
+      console.error("Animation error:", error);
+      onComplete();
+    });
+  } catch (error) {
+    console.error("Animation setup error:", error);
+    el.style.opacity = '1';
+    el.style.transform = 'translateX(0) scale(1)';
+    onComplete();
+  }
 }
 
 async function onLeave(el, onComplete) {
-    try {
-        if (!el) {
-            onComplete();
-            return;
-        }
-        
-        // Always disable animations during unmounting to prevent stuck animations
-        const wasEnabled = animationsEnabled.value;
-        animationsEnabled.value = false;
-        
-        // Clean up existing animations
-        animations.cleanup();
-        
-        // Use a timeout to guard against stuck animations
-        const timeoutPromise = new Promise(resolve => setTimeout(resolve, 800));
-        
-        // First, animate out the accent line
-        const accentLine = el.querySelector(".drawer-accent-line");
-        if (accentLine) {
-            await Promise.race([
-                animations.animate(
-                    accentLine, 
-                    { scaleY: [1, 0], opacity: [0.8, 0] }, 
-                    { duration: 0.3, easing: "ease-in" }
-                ).finished,
-                new Promise(resolve => setTimeout(resolve, 400))
-            ]);
-        }
-        
-        // Then, animate out sections in sequence
-        const sections = el.querySelectorAll(".scrollable-container section");
-        if (sections.length) {
-            animations.animate(
-                sections,
-                { 
-                    opacity: [1, 0], 
-                    transform: ["translateY(0)", "translateY(30px)"]
-                },
-                { 
-                    delay: stagger(0.03, { from: "last" }), 
-                    duration: 0.25, 
-                    easing: [0.4, 0.0, 1, 1] // Quick acceleration
-                }
-            );
-        }
-        
-        // Finally, animate out the whole drawer
-        const drawerAnimation = animations.animate(
-            el,
-            { 
-                transform: ["translateX(0) scale(1)", "translateX(-120%) scale(0.92)"], 
-                opacity: [1, 0]
-            },
-            { 
-                delay: 0.1, 
-                duration: 0.4, 
-                easing: [0.4, 0.0, 0.2, 1] // Modern easing
-            }
-        );
-        
-        // Wait for animation to complete with timeout safeguard
-        await Promise.race([drawerAnimation.finished, timeoutPromise]);
-        
-        // Reset animations state
-        animationsEnabled.value = wasEnabled;
-        
-        // Reset transitioning state after animation is complete
-        isTransitioning.value = false;
-        onComplete();
-        // Reset transitioning state after animation is complete
-        isTransitioning.value = false;
-    } catch (error) {
-        console.error("Leave animation error:", error);
-        // Ensure drawer is hidden even if animation fails
-        if (el) el.style.opacity = '0';
-        animationsEnabled.value = true;
-        onComplete();
+  if (!el) {
+    onComplete();
+    return;
+  }
+  
+  console.log("Starting exit animation");
+  
+  try {
+    // First animate out accent line
+    const accentLine = el.querySelector(".drawer-accent-line");
+    if (accentLine) {
+      animate(
+        accentLine, 
+        { scaleY: [1, 0], opacity: [0.8, 0] }, 
+        { duration: 0.2 }
+      );
     }
-}
-
-// Function to setup animations for details elements
-function setupDetailsAnimations() {
-    nextTick(() => {
-        const details = document.querySelectorAll('.details-container');
-        details.forEach(detail => {
-            detail.addEventListener('toggle', (e) => toggleDetailsAnimation(e));
-        });
+    
+    // Main element animation with proper promise handling
+    const animation = animate(
+      el,
+      { 
+        transform: ["translateX(0) scale(1)", "translateX(-100%) scale(0.95)"], 
+        opacity: [1, 0]
+      },
+      { 
+        duration: 0.4, 
+        easing: [0.4, 0.0, 0.2, 1] 
+      }
+    );
+    
+    // Wait for animation to complete before calling onComplete
+    animation.finished.then(() => {
+      onComplete();
+    }).catch(error => {
+      console.error("Exit animation error:", error);
+      el.style.opacity = '0';
+      onComplete();
     });
+  } catch (error) {
+    console.error("Exit animation setup error:", error);
+    el.style.opacity = '0';
+    onComplete();
+  }
 }
 
-// Handle detail toggle animations with more pronounced transformations
+// Simplified toggle details animation
 function toggleDetailsAnimation(e) {
-    const detail = e.target;
-    const content = detail.querySelector(".details-content");
-    const isOpen = detail.open;
+  const detail = e.target;
+  const content = detail.querySelector(".details-content");
+  const isOpen = detail.open;
+  
+  if (!content) return;
+  
+  if (isOpen) {
+    content.style.height = "0px";
+    content.style.overflow = "hidden";
+    content.style.opacity = "0";
+    const targetHeight = content.scrollHeight;
     
-    if (!content) return;
+    animate(
+      content,
+      { 
+        height: [0, `${targetHeight}px`], 
+        opacity: [0, 1], 
+        transform: ["translateY(-20px)", "translateY(0px)"] 
+      },
+      { duration: 0.4, easing: [0.0, 0.0, 0.2, 1] }
+    ).finished.then(() => {
+      content.style.height = "auto";
+      content.style.overflow = "visible";
+    });
+  } else {
+    const currentHeight = content.offsetHeight;
+    content.style.height = `${currentHeight}px`;
+    content.style.overflow = "hidden";
     
-    if (isOpen) {
-        content.style.height = "0px";
-        content.style.overflow = "hidden";
-        content.style.opacity = "0";
-        const targetHeight = content.scrollHeight;
-        
-        animations.animate(
-            content,
-            { 
-                height: [0, `${targetHeight}px`], 
-                opacity: [0, 1], 
-                transform: ["translateY(-20px)", "translateY(0px)"] 
-            },
-            { duration: 0.4, easing: [0.0, 0.0, 0.2, 1] }
-        ).finished.then(() => {
-            content.style.height = "auto";
-            content.style.overflow = "visible";
-        });
-    } else {
-        const currentHeight = content.offsetHeight;
-        content.style.height = `${currentHeight}px`;
-        content.style.overflow = "hidden";
-        
-        animations.animate(
-            content,
-            { 
-                height: [`${currentHeight}px`, "0px"], 
-                opacity: [1, 0], 
-                transform: ["translateY(0px)", "translateY(-20px)"] 
-            },
-            { duration: 0.35, easing: [0.4, 0.0, 0.2, 1] }
-        );
-    }
+    animate(
+      content,
+      { 
+        height: [`${currentHeight}px`, "0px"], 
+        opacity: [1, 0], 
+        transform: ["translateY(0px)", "translateY(-20px)"] 
+      },
+      { duration: 0.35, easing: [0.4, 0.0, 0.2, 1] }
+    );
+  }
 }
 
 // Replace toggleFootwearDetails with the generic function
 function toggleFootwearDetails(e) {
-    const detail = e.target;
-    detailsOpen.value = detail.open;
-    toggleDetailsAnimation(e);
+  const detail = e.target;
+  detailsOpen.value = detail.open;
+  toggleDetailsAnimation(e);
 }
 
 const poiCategories = [
@@ -957,37 +902,13 @@ function openInGoogleMaps(pub) {
 }
 
 function handleBackClick() {
-  console.log("Back button clicked", { isTransitioning: isTransitioning.value });
+  console.log("Back button clicked");
   
-  // Disable any new animations while processing the close action
-  if (isTransitioning.value) {
-    console.log("Transition in progress, ignoring close request");
-    return;
-  }
-  
-  // Set transitioning state to prevent multiple clicks
-  isTransitioning.value = true;
-  
-  // Cleanup any existing animations first
-  animations.cleanup();
-  
-  // Immediately emit close event to allow for faster UI response
-  try {
-    console.log("Emitting close event");
-    emit("close", { 
-      expandSidebar: true, 
-      fromMapMarker: props.fromMapMarker,
-      animated: true
-    });
-    
-    // Reset transitioning state after a short delay
-    setTimeout(() => {
-      isTransitioning.value = false;
-    }, 50);
-  } catch (error) {
-    console.error("Error emitting close event:", error);
-    isTransitioning.value = false;
-  }
+  emit("close", { 
+    expandSidebar: true, 
+    fromMapMarker: props.fromMapMarker,
+    animated: true
+  });
 }
 
 function handleStartWalkClick() {
@@ -1165,22 +1086,28 @@ function getCategoryIcon(categoryName) {
   
   return defaultCategory.icon;
 }
-
 // Add onMounted hook at the beginning of the script to ensure proper initialization
 onMounted(() => {
   // Initialize animations only when component is fully mounted
   nextTick(() => {
-    setupDetailsAnimations();
-    
     // Set up scroll-linked animations for elements that should animate as they come into view
     if (drawerRef.value) {
       const sections = drawerRef.value.querySelectorAll('.section');
       sections.forEach((section, index) => {
-        const observer = animations.createInView(section, (info) => {
+        // Add data attribute to track animation state
+        if (section.dataset.animated === 'true') return;
+        
+        const observer = inView(section, (info) => {
+          // Skip if already animated
+          if (section.dataset.animated === 'true') return;
+          
+          // Mark as animated to prevent repeating
+          section.dataset.animated = 'true';
+          
           // Animate amenities, chips, etc.
           const elements = section.querySelectorAll('.amenity-item, .poi-chip, .feature-chip, .pub-card');
           if (elements.length) {
-            animations.animate(
+            animate(
               elements,
               {
                 opacity: [0, 1],
@@ -1198,7 +1125,7 @@ onMounted(() => {
           // Animate highlight list items with horizontal stagger
           const highlightItems = section.querySelectorAll('.section-list-item');
           if (highlightItems.length) {
-            animations.animate(
+            animate(
               highlightItems,
               {
                 opacity: [0, 1],
@@ -1213,23 +1140,25 @@ onMounted(() => {
             );
           }
           
-          // Return exit handler for when element leaves viewport
-          return () => {
-            // Optional: animate out when scrolling away
-            // We're not animating out in this case as it would be distracting
-          };
+          // Stop observing once animation has run
+          observer.stop();
+          
+          // No need for exit handler as we're stopping observation
+          return () => {};
         }, { 
           margin: "-5% 0px -10% 0px",
           amount: 0.15
         });
+        
+        // Register the observer for cleanup
+        animations.registerObserver(observer);
       });
     }
   });
-  
   // Add event listeners for browser back/forward navigation
   const handleRouteChange = () => {
-    // Clean up animations if the component is being navigated away from
-    animations.cleanup();
+    // Stop any running animations
+    console.log("Route change detected, cleaning up animations");
   };
   
   window.addEventListener('popstate', handleRouteChange);
@@ -1238,11 +1167,8 @@ onMounted(() => {
   onBeforeUnmount(() => {
     window.removeEventListener('popstate', handleRouteChange);
     
-    // Clean up animation resources
-    animations.cleanup();
-    
     // Disable animations during unmount to prevent hanging animations
-    animationsEnabled.value = false;
+    isTransitioning.value = false;
     
     // Save scroll position in case we're coming back to this walk
     if (drawerRef.value) {

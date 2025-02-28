@@ -8,7 +8,7 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        'Sora': ['Sora', 'sans-serif'],
+        'Inter': ['Inter', 'sans-serif'],
       },
     },
   },
