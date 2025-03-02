@@ -103,10 +103,12 @@
               <div class="features-container">
                 <!-- Categories Section -->
                 <div v-if="walk.related_categories?.length" class="feature-group">
-
                   <div class="category-chips">
-                    <div v-for="category in walk.related_categories" :key="category.name" class="category-chip-wrapper">
-                      <div class="category-chip" :class="getCategoryClass(category.name)">
+                    <div v-for="category in walk.related_categories" :key="category.name" class="category-chip-wrapper"
+                      @mouseenter="handleCategoryMouseEnter(category)" @mouseleave="handleCategoryMouseLeave">
+                      <div class="category-chip" 
+                        :class="[getCategoryClass(category.name), { 'is-hovered': isCategoryHovered(category) }]"
+                        @click="handleCategoryClick(category)">
                         <Icon :icon="getCategoryIcon(category.name)" class="category-icon" />
                         <span class="category-name">{{ category.name }}</span>
                       </div>
@@ -344,7 +346,7 @@ const props = defineProps({
   isLoading: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(["close", "start-walk", "loading-change"]);
+const emit = defineEmits(["close", "start-walk", "loading-change", "category-selected"]);
 
 // Component refs
 const drawerRef = ref(null);
@@ -367,6 +369,7 @@ const scrollPosition = ref(0);
 const previousWalkId = ref(null);
 const animationsEnabled = ref(true);
 const initialAnimationCompleted = ref(false);
+const hoveredCategory = ref(null);
 
 // Animation manager for better lifecycle management
 const animations = {
@@ -1222,6 +1225,46 @@ function handleShare() {
   }
 }
 
+// Category interaction handlers
+function handleCategoryMouseEnter(category) {
+  hoveredCategory.value = category;
+}
+
+function handleCategoryMouseLeave() {
+  hoveredCategory.value = null;
+}
+
+function isCategoryHovered(category) {
+  return hoveredCategory.value && hoveredCategory.value.name === category.name;
+}
+
+async function handleCategoryClick(category) {
+  // Find the category chip element to animate it
+  const categoryChips = document.querySelectorAll('.category-chip');
+  const targetChip = Array.from(categoryChips).find(chip => 
+    chip.querySelector('.category-name')?.textContent === category.name
+  );
+  
+  if (targetChip && window.Motion) {
+    // Add bounce animation effect when clicked
+    await window.Motion.animate(
+      targetChip,
+      {
+        scale: [1, 1.08, 1],
+        backgroundColor: [
+          'currentColor',
+          'rgb(var(--md-sys-color-primary-container))',
+          'currentColor'
+        ]
+      },
+      { duration: 0.4, easing: [0.2, 0.8, 0.2, 1] }
+    ).finished;
+  }
+  
+  // Emit event for parent components to handle category selection
+  emit('category-selected', category);
+}
+
 // Category mappings for styling - updated to handle phrase-based categories
 const categoryMappings = {
   // Standard categories
@@ -1466,4 +1509,53 @@ onMounted(() => {
 
 <style scoped>
 @import "../../../static/css/walkdrawer.css";
+
+/* Add new interactive styles for category chips */
+.category-chip {
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: center center;
+  will-change: transform, box-shadow, filter;
+  position: relative;
+  overflow: hidden;
+}
+
+.category-chip::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, 
+    rgba(255,255,255,0.1), 
+    rgba(255,255,255,0.3)
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.category-chip:hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  filter: brightness(1.05);
+}
+
+.category-chip:hover::after {
+  opacity: 1;
+}
+
+.category-chip:active {
+  transform: translateY(1px) scale(0.98);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.category-chip.is-hovered .category-icon {
+  transform: rotate(10deg) scale(1.2);
+}
+
+.category-icon {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
 </style>

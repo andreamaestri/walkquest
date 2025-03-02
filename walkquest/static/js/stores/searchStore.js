@@ -19,6 +19,8 @@ export const useSearchStore = defineStore('search', () => {
   const locationSuggestions = shallowRef([])
   const activeFilters = shallowRef(new Set())
   const filterValues = shallowRef({})
+  const selectedCategory = ref(null)
+  const availableCategories = shallowRef([])
 
   // Pre-compute searchable walks (using only titles in lowercase)
   const searchableWalks = shallowRef([])
@@ -34,11 +36,37 @@ export const useSearchStore = defineStore('search', () => {
     console.timeEnd('initializeSearchableWalks')
   }
 
+  // Extract all unique categories from walks
+  function extractCategories() {
+    const categories = new Set()
+    walksStore.walks.forEach(walk => {
+      if (walk.related_categories && Array.isArray(walk.related_categories)) {
+        walk.related_categories.forEach(category => {
+          if (typeof category === 'string') {
+            categories.add(category)
+          } else if (category && typeof category === 'object' && category.name) {
+            categories.add(category.name)
+          }
+        })
+      } else if (walk.categories && Array.isArray(walk.categories)) {
+        walk.categories.forEach(category => {
+          if (typeof category === 'string') {
+            categories.add(category)
+          } else if (category && typeof category === 'object' && category.name) {
+            categories.add(category.name)
+          }
+        })
+      }
+    })
+    availableCategories.value = Array.from(categories).sort()
+  }
+
   // Update searchableWalks when walksStore.walks changes
   watch(
     () => walksStore.walks,
     () => {
       initializeSearchableWalks()
+      extractCategories()
     },
     { immediate: true }
   )
@@ -98,6 +126,20 @@ export const useSearchStore = defineStore('search', () => {
     if (searchMode.value === 'locations' && locationStore.userLocation) {
       return locationStore.nearbyWalks
     }
+    if (searchMode.value === 'categories' && selectedCategory.value) {
+      return walksStore.walks.filter(walk => {
+        const categories = walk.related_categories || walk.categories || []
+        const selectedCat = typeof selectedCategory.value === 'string' ?
+                             selectedCategory.value.toLowerCase() :
+                             (selectedCategory.value.name ? selectedCategory.value.name.toLowerCase() : '')
+                             
+        return categories.some(cat => {
+          const catName = typeof cat === 'string' ? cat.toLowerCase() :
+                          (cat && cat.name ? cat.name.toLowerCase() : '')
+          return catName.includes(selectedCat)
+        })
+      })
+    }
     const query = searchQuery.value.toLowerCase().trim()
     let results = walksStore.walks
     if (query) {
@@ -155,7 +197,7 @@ export const useSearchStore = defineStore('search', () => {
   }
 
   function setSearchMode(mode) {
-    if (!['walks', 'locations'].includes(mode)) return
+    if (!['walks', 'locations', 'categories'].includes(mode)) return
     if (searchMode.value === mode) return
     searchMode.value = mode
     clearSearch()
@@ -221,6 +263,14 @@ export const useSearchStore = defineStore('search', () => {
     walkTextCache.clear()
   }
 
+  function setSelectedCategory(category) {
+    if (category && typeof category === 'object' && category.name) {
+      selectedCategory.value = category.name
+    } else {
+      selectedCategory.value = category
+    }
+  }
+
   return {
     // State
     searchQuery,
@@ -231,6 +281,8 @@ export const useSearchStore = defineStore('search', () => {
     locationSuggestions,
     activeFilters,
     filterValues,
+    selectedCategory,
+    availableCategories,
 
     // Computed
     filteredWalks,
@@ -247,6 +299,7 @@ export const useSearchStore = defineStore('search', () => {
     toggleFilter,
     setFilterValue,
     clearSearch,
-    initializeSearchableWalks
+    initializeSearchableWalks,
+    setSelectedCategory
   }
 })

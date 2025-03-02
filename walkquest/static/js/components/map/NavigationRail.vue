@@ -64,6 +64,26 @@
             <span class="m3-rail-label">Find<br />Nearby</span>
           </div>
         </button>
+        
+        <!-- Categories Button -->
+        <button
+          class="m3-rail-item"
+          :class="{
+            'is-active': searchMode === 'categories',
+          }"
+          @click="handleCategoriesClick"
+        >
+          <div class="m3-rail-content">
+            <div class="m3-rail-icon-container">
+              <Icon icon="mdi:tag-multiple" class="m3-rail-icon filled-icon" />
+              <Icon
+                icon="mdi:tag-multiple-outline"
+                class="m3-rail-icon outlined-icon"
+              />
+            </div>
+            <span class="m3-rail-label">Categories</span>
+          </div>
+        </button>
       </nav>
       
       <!-- Main Content Area -->
@@ -286,6 +306,25 @@ const handleLocationSearchClick = () => {
       });
     });
   }
+};
+
+/**
+ * Handle categories button click
+ * Sets search mode to categories and expands sidebar
+ */
+const handleCategoriesClick = () => {
+  searchStore.setSearchMode("categories");
+  
+  // Always ensure sidebar is expanded when using Categories
+  expandSidebar();
+  
+  // If we have a selected walk, deselect it and return to home
+  if (props.selectedWalkId) {
+    emit('walk-selected', null);
+    router.push({ name: 'home' });
+  }
+  
+  searchStore.setError(null);
 };
 
 // Make the expandSidebar function available to parent components
