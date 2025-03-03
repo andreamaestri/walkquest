@@ -587,9 +587,7 @@ onMounted(() => {
 @import "tailwindcss";
 @import "../../css/material3.css";
 
-:root {
-  --md-sys-sidebar-collapsed: 80px;
-}
+/* CSS variable is now defined in material3.css */
 
 .bg-surface {
   background-color: rgb(var(--md-sys-color-surface));

@@ -41,10 +41,15 @@ defineEmits(['close']);
   width: 100%;
   background-color: rgb(var(--md-sys-color-surface-container-high));
   z-index: 10;
-  padding: 12px 16px;
+  padding: 16px 24px;
   display: flex;
   flex-direction: column;
-  border-bottom: 1px solid rgba(var(--md-sys-color-on-surface), 0.08);
+  border-bottom: 1px solid rgba(var(--md-sys-color-outline-variant), 0.12);
+  transition: box-shadow 0.2s ease;
+}
+
+.header-container.mobile {
+  border-radius: 28px 28px 0 0; /* Match bottom sheet radius */
 }
 
 .header-content {
@@ -63,16 +68,45 @@ defineEmits(['close']);
   background: transparent;
   border: none;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   color: rgb(var(--md-sys-color-on-surface));
+  position: relative;
+  overflow: hidden;
+  margin-right: 4px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.m3-icon-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: currentColor;
+  border-radius: inherit;
+  opacity: 0;
+  transform: scale(0);
+  transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
 .m3-icon-button:hover {
   background-color: rgba(var(--md-sys-color-on-surface), 0.08);
 }
 
+.m3-icon-button:hover::before {
+  opacity: 0.08;
+  transform: scale(1);
+}
+
 .m3-icon-button:active {
   background-color: rgba(var(--md-sys-color-on-surface), 0.12);
+  transform: scale(0.96);
+}
+
+.m3-icon-button:active::before {
+  opacity: 0.12;
+  transform: scale(1);
 }
 
 .m3-headline-small {
@@ -81,10 +115,10 @@ defineEmits(['close']);
   font-weight: 500;
   color: rgb(var(--md-sys-color-on-surface));
   line-height: 32px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: calc(100% - 40px); /* Ensure title doesn't overflow, accounting for back button */
+  overflow: visible;
+  white-space: normal;
+  word-wrap: break-word;
+  padding-right: 8px;
 }
 
 .loading {

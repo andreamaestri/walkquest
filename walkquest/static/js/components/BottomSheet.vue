@@ -1,5 +1,5 @@
 <template>
-  <div v-if="modelValue || alwaysRender" class="bottom-sheet" @click.self="handleOverlayClick" :class="{ 'bottom-sheet--hidden': !modelValue }">
+  <div v-if="modelValue || alwaysRender" class="bottom-sheet" @click.self="handleOverlayClick" :class="{ 'bottom-sheet--hidden': !modelValue }" :style="cssVars">
     <div 
       ref="bottomSheetRef"
       class="bottom-sheet__container" 
@@ -38,7 +38,7 @@ const props = defineProps({
   },
   duration: {
     type: Number,
-    default: 250
+    default: 300 // MD3 standard duration
   },
   snapPoints: {
     type: Array,
@@ -67,6 +67,15 @@ const props = defineProps({
   alwaysRender: {
     type: Boolean,
     default: false
+  },
+  elevation: {
+    type: [String, Number],
+    default: "1",
+    validator: (value) => ["0", "1", "2", "3", "4", "5", 0, 1, 2, 3, 4, 5].includes(value)
+  },
+  scrimColor: {
+    type: String,
+    default: "rgba(0, 0, 0, 0.32)" // MD3 standard scrim opacity
   }
 })
 
@@ -88,7 +97,16 @@ const currentSnapPoint = ref(null)
 const snapClass = computed(() => {
   return {
     'bottom-sheet__container--active': props.modelValue,
-    'bottom-sheet--blocking': props.blocking
+    'bottom-sheet--blocking': props.blocking,
+    [`bottom-sheet__container--elevation-${props.elevation}`]: true
+  }
+})
+
+// Compute CSS variables
+const cssVars = computed(() => {
+  return {
+    '--vsbs-scrim-color': props.scrimColor,
+    '--vsbs-transition-duration': `${props.duration}ms`
   }
 })
 
@@ -410,27 +428,28 @@ defineExpose({
   right: 0;
   top: 0;
   bottom: 0;
-  background-color: var(--vsbs-backdrop-bg, rgba(0, 0, 0, 0.5));
+  background-color: var(--vsbs-scrim-color, rgba(0, 0, 0, 0.32));
   display: flex;
   align-items: flex-end;
   justify-content: center;
   overflow: hidden;
   touch-action: none;
   will-change: opacity;
+  transition: background-color var(--vsbs-transition-duration, 300ms) cubic-bezier(0.2, 0, 0, 1);
 }
 
 .bottom-sheet--hidden {
   visibility: hidden;
   pointer-events: none;
+  background-color: transparent;
 }
 
 .bottom-sheet__container {
   width: 100%;
   max-width: var(--vsbs-max-width, 640px);
   background: var(--vsbs-background, rgb(var(--md-sys-color-surface, 255, 255, 255)));
-  border-top-left-radius: var(--vsbs-border-radius, 16px);
-  border-top-right-radius: var(--vsbs-border-radius, 16px);
-  box-shadow: 0 0 20px var(--vsbs-shadow-color, rgba(89, 89, 89, 0.2));
+  border-top-left-radius: var(--vsbs-border-radius, 28px);
+  border-top-right-radius: var(--vsbs-border-radius, 28px);
   display: flex;
   flex-direction: column;
   touch-action: pan-x;
@@ -440,36 +459,82 @@ defineExpose({
   overflow: hidden;
   position: relative;
   will-change: transform, height;
+  transition: box-shadow var(--vsbs-transition-duration, 300ms) cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Material Design 3 elevation levels */
+.bottom-sheet__container--elevation-0 {
+  box-shadow: none;
+}
+
+.bottom-sheet__container--elevation-1 {
+  box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.15), 
+              0px 1px 2px 0px rgba(0, 0, 0, 0.3);
+}
+
+.bottom-sheet__container--elevation-2 {
+  box-shadow: 0px 2px 6px 2px rgba(0, 0, 0, 0.15), 
+              0px 1px 2px 0px rgba(0, 0, 0, 0.3);
+}
+
+.bottom-sheet__container--elevation-3 {
+  box-shadow: 0px 4px 8px 3px rgba(0, 0, 0, 0.15), 
+              0px 1px 3px 0px rgba(0, 0, 0, 0.3);
+}
+
+.bottom-sheet__container--elevation-4 {
+  box-shadow: 0px 6px 10px 4px rgba(0, 0, 0, 0.15), 
+              0px 2px 3px 0px rgba(0, 0, 0, 0.3);
+}
+
+.bottom-sheet__container--elevation-5 {
+  box-shadow: 0px 8px 12px 6px rgba(0, 0, 0, 0.15), 
+              0px 4px 4px 0px rgba(0, 0, 0, 0.3);
 }
 
 .bottom-sheet__container--active {
   transform: translateY(0);
-  transition: transform var(--vsbs-transition-duration, 250ms) var(--vsbs-transition-timing, cubic-bezier(0.33, 1, 0.68, 1));
+  transition: transform var(--vsbs-transition-duration, 300ms) var(--vsbs-transition-timing, cubic-bezier(0.2, 0, 0, 1));
 }
 
 .bottom-sheet__drag-handle {
-  padding: 8px 0;
+  padding: 12px 0;
   display: flex;
   justify-content: center;
   align-items: center;
   cursor: grab;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .bottom-sheet__handle {
   width: 32px;
   height: 4px;
   border-radius: 2px;
-  background: var(--vsbs-handle-background, rgba(var(--md-sys-color-on-surface-variant, 0, 0, 0), 0.28));
+  background: var(--vsbs-handle-background, rgba(var(--md-sys-color-on-surface-variant, 0, 0, 0), 0.4));
+  transition: background-color 0.2s ease;
+}
+
+.bottom-sheet__drag-handle:hover .bottom-sheet__handle {
+  background: rgba(var(--md-sys-color-on-surface-variant, 0, 0, 0), 0.6);
+}
+
+.bottom-sheet__drag-handle:active .bottom-sheet__handle {
+  background: rgba(var(--md-sys-color-on-surface-variant, 0, 0, 0), 0.8);
 }
 
 .bottom-sheet__header {
-  padding: 0 var(--vsbs-padding-x, 16px);
-  border-bottom: 1px solid var(--vsbs-border-color, rgba(46, 59, 66, 0.125));
+  padding: 0 var(--vsbs-padding-x, 24px);
+  border-bottom: 1px solid var(--vsbs-border-color, rgba(var(--md-sys-color-outline-variant, 121, 116, 126), 0.12));
+  width: 100%;
+  overflow: visible;
+  white-space: normal;
+  position: relative;
+  z-index: 2;
 }
 
 .bottom-sheet__footer {
-  padding: 16px var(--vsbs-padding-x, 16px);
-  border-top: 1px solid var(--vsbs-border-color, rgba(46, 59, 66, 0.125));
+  padding: 16px var(--vsbs-padding-x, 24px);
+  border-top: 1px solid var(--vsbs-border-color, rgba(var(--md-sys-color-outline-variant, 121, 116, 126), 0.12));
 }
 
 .bottom-sheet__content {
@@ -477,8 +542,9 @@ defineExpose({
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  padding: 16px var(--vsbs-padding-x, 16px);
+  padding: 16px var(--vsbs-padding-x, 24px);
   max-height: calc(90vh - 80px); /* Allow content to scroll within */
+  scroll-behavior: smooth;
 }
 
 /* Safe area insets for mobile */

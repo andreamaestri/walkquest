@@ -195,7 +195,7 @@ function initializeDrawer() {
     // Only apply desktop-specific styles if not in mobile mode
     if (!props.isMobile) {
       // No need to set left position here - CSS will handle this with --md-sys-sidebar-collapsed
-      drawerRef.value.style.transition = "transform 0.3s ease";
+      drawerRef.value.style.transition = "transform 0.3s ease, box-shadow 0.3s ease";
       
       // Handle connector animation
       if (connectorRef.value) {
@@ -213,7 +213,7 @@ function initializeDrawer() {
           {
             delay: 0.2,
             duration: 0.6,
-            easing: "easeOut",
+            easing: [0.2, 0, 0.2, 1], // Material Design standard easing
           }
         );
       }
@@ -230,9 +230,9 @@ function initializeDrawer() {
             opacity: [0, 0.8],
           },
           {
-            delay: 0.4,
-            duration: 0.6,
-            easing: "easeOut",
+            delay: 0.3, // Slightly faster to better coordinate with connector
+            duration: 0.5,
+            easing: [0.2, 0, 0.2, 1], // Material Design standard easing
           }
         );
       }
@@ -348,14 +348,14 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   background-color: rgb(var(--md-sys-color-surface));
-  z-index: 100;
+  z-index: 40; /* Higher than nav rail (30) but still allows modals and other overlays */
   box-shadow: var(--md-elevation-level2);
   will-change: transform;
   transform-origin: left center;
   overflow: hidden;
-  border-radius: 0 24px 24px 0;
+  border-radius: 0 28px 28px 0;
   /* Add visual overlap appearance */
-  margin-left: -1px; /* Create slight overlap with rail */
+  margin-left: -2px; /* Create overlap with rail to hide rounded corners */
 }
 
 .rail-connector {
@@ -364,7 +364,7 @@ onMounted(() => {
   left: -28px; /* Position outside drawer */
   width: 28px;
   height: 56px;
-  background-color: rgb(var(--md-sys-color-surface));
+  background-color: rgb(var(--md-sys-color-surface-container-high));
   box-shadow: var(--md-elevation-level1);
   opacity: 0;
   z-index: 5; /* Ensure proper stacking */
@@ -397,6 +397,9 @@ onMounted(() => {
   position: relative;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+  scroll-behavior: smooth;
+  scroll-padding-top: 16px;
+  padding: 0 16px 16px;
 }
 
 .drawer-accent-line {

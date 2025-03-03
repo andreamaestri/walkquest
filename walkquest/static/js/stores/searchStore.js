@@ -117,70 +117,191 @@ export const useSearchStore = defineStore('search', () => {
     return text
   }
 
-  // Detailed filtering including active filters
+  // Cache for filtered results to prevent recalculation
+  const filteredCache = shallowRef({
+    query: '',
+    filters: new Set(),
+    filterValues: {},
+    selectedCategory: null,
+    searchMode: '',
+    results: []
+  })
+  
+  // Helper to compare filter sets
+  const areFiltersEqual = (a, b) => {
+    if (a.size !== b.size) return false
+    for (const item of a) {
+      if (!b.has(item)) return false
+    }
+    return true
+  }
+  
+  // Helper to compare filter values objects
+  const areFilterValuesEqual = (a, b) => {
+    const aKeys = Object.keys(a)
+    const bKeys = Object.keys(b)
+    if (aKeys.length !== bKeys.length) return false
+    
+    return aKeys.every(key => {
+      if (Array.isArray(a[key]) && Array.isArray(b[key])) {
+        return a[key].length === b[key].length && 
+               a[key].every((val, idx) => val === b[key][idx])
+      }
+      return a[key] === b[key]
+    })
+  }
+  
+  // Helper to check if we can use the cache
+  const canUseCache = () => {
+    return filteredCache.value.query === searchQuery.value.toLowerCase().trim() &&
+           areFiltersEqual(filteredCache.value.filters, activeFilters.value) &&
+           areFilterValuesEqual(filteredCache.value.filterValues, filterValues.value) &&
+           filteredCache.value.selectedCategory === selectedCategory.value &&
+           filteredCache.value.searchMode === searchMode.value
+  }
+  
+  // Optimized filtering with caching
   const filteredWalks = computed(() => {
+    // Start timing for performance monitoring
+    console.time('filteredWalks computation')
+    
     // Early return if no query and no filters
     if (!searchQuery.value && activeFilters.value.size === 0) {
+      console.timeEnd('filteredWalks computation')
       return []
     }
+    
+    // Use cache if inputs haven't changed
+    if (canUseCache()) {
+      console.log('Using cached filtered walks')
+      console.timeEnd('filteredWalks computation')
+      return filteredCache.value.results
+    }
+    
+    // Handle location-based search
     if (searchMode.value === 'locations' && locationStore.userLocation) {
+      // Update cache
+      filteredCache.value = {
+        query: searchQuery.value.toLowerCase().trim(),
+        filters: new Set(activeFilters.value),
+        filterValues: { ...filterValues.value },
+        selectedCategory: selectedCategory.value,
+        searchMode: searchMode.value,
+        results: locationStore.nearbyWalks
+      }
+      console.timeEnd('filteredWalks computation')
       return locationStore.nearbyWalks
     }
+    
+    // Handle category-based search
     if (searchMode.value === 'categories' && selectedCategory.value) {
-      return walksStore.walks.filter(walk => {
+      const selectedCat = typeof selectedCategory.value === 'string' ?
+                           selectedCategory.value.toLowerCase() :
+                           (selectedCategory.value.name ? selectedCategory.value.name.toLowerCase() : '')
+      
+      // Avoid creating functions inside the filter
+      const results = walksStore.walks.filter(walk => {
         const categories = walk.related_categories || walk.categories || []
-        const selectedCat = typeof selectedCategory.value === 'string' ?
-                             selectedCategory.value.toLowerCase() :
-                             (selectedCategory.value.name ? selectedCategory.value.name.toLowerCase() : '')
-                             
         return categories.some(cat => {
           const catName = typeof cat === 'string' ? cat.toLowerCase() :
                           (cat && cat.name ? cat.name.toLowerCase() : '')
           return catName.includes(selectedCat)
         })
       })
+      
+      // Update cache
+      filteredCache.value = {
+        query: searchQuery.value.toLowerCase().trim(),
+        filters: new Set(activeFilters.value),
+        filterValues: { ...filterValues.value },
+        selectedCategory: selectedCategory.value,
+        searchMode: searchMode.value,
+        results
+      }
+      console.timeEnd('filteredWalks computation')
+      return results
     }
+    
+    // Handle text search and filters
     const query = searchQuery.value.toLowerCase().trim()
     let results = walksStore.walks
+    
+    // Apply text search filter first if present
     if (query) {
       const searchTerms = query.split(/\s+/)
+      // Avoid recalculating search text for each walk in every filter pass
+      const searchTextMap = new Map()
+      
       results = results.filter(walk => {
-        const text = getWalkSearchText(walk)
+        // Get or calculate search text
+        let text
+        if (searchTextMap.has(walk.id)) {
+          text = searchTextMap.get(walk.id)
+        } else {
+          text = getWalkSearchText(walk)
+          searchTextMap.set(walk.id, text)
+        }
+        
+        // Check all terms
         return searchTerms.every(term => text.includes(term))
       })
     }
+    
+    // Apply property filters if present
     if (activeFilters.value.size > 0) {
+      // Extract filter criteria once before the filter loop
+      const difficultyValue = filterValues.value.difficulty
+      const distanceValues = filterValues.value.distance
+      const durationValues = filterValues.value.duration
+      const categoryValue = filterValues.value.category
+      
+      // Create a filter function based on active filters
       results = results.filter(walk => {
+        // Check all filters
         for (const filter of activeFilters.value) {
           switch (filter) {
-            case 'difficulty': {
-              if (!filterValues.value.difficulty) return true
-              return walk.difficulty === filterValues.value.difficulty
-            }
-            case 'distance': {
-              if (!filterValues.value.distance) return true
-              const [min, max] = filterValues.value.distance
-              return walk.distance >= min && walk.distance <= max
-            }
-            case 'duration': {
-              if (!filterValues.value.duration) return true
-              const [minHours, maxHours] = filterValues.value.duration
-              return walk.duration >= minHours && walk.duration <= maxHours
-            }
-            case 'category': {
-              if (!filterValues.value.category) return true
-              return walk.categories.includes(filterValues.value.category)
-            }
-            case 'dogFriendly': {
-              return walk.dogFriendly === true
-            }
-            default:
-              return true
+            case 'difficulty':
+              if (difficultyValue && walk.difficulty !== difficultyValue) return false
+              break
+              
+            case 'distance':
+              if (distanceValues) {
+                const [min, max] = distanceValues
+                if (walk.distance < min || walk.distance > max) return false
+              }
+              break
+              
+            case 'duration':
+              if (durationValues) {
+                const [minHours, maxHours] = durationValues
+                if (walk.duration < minHours || walk.duration > maxHours) return false
+              }
+              break
+              
+            case 'category':
+              if (categoryValue && !walk.categories?.includes(categoryValue)) return false
+              break
+              
+            case 'dogFriendly':
+              if (walk.dogFriendly !== true) return false
+              break
           }
         }
         return true
       })
     }
+    
+    // Update cache with new results
+    filteredCache.value = {
+      query,
+      filters: new Set(activeFilters.value),
+      filterValues: { ...filterValues.value },
+      selectedCategory: selectedCategory.value,
+      searchMode: searchMode.value,
+      results
+    }
+    
+    console.timeEnd('filteredWalks computation')
     return results
   })
 
@@ -260,7 +381,17 @@ export const useSearchStore = defineStore('search', () => {
     locationSuggestions.value = []
     activeFilters.value = new Set()
     filterValues.value = {}
+    
+    // Clear caches
     walkTextCache.clear()
+    filteredCache.value = {
+      query: '',
+      filters: new Set(),
+      filterValues: {},
+      selectedCategory: null,
+      searchMode: searchMode.value,
+      results: []
+    }
   }
 
   function setSelectedCategory(category) {

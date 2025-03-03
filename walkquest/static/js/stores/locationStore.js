@@ -29,6 +29,8 @@ export const useLocationStore = defineStore('location', () => {
   const userLocation = ref(savedLocation)
   const searchRadius = ref(savedRadius)
   const nearbyWalks = shallowRef([])
+  // Limit the Map size to prevent unbounded growth
+  const MAX_DISTANCE_CACHE_SIZE = 1000
   const walkDistances = new Map()
   const hasSearched = ref(false)
   
@@ -115,8 +117,15 @@ export const useLocationStore = defineStore('location', () => {
               Number(walk.longitude)
             )
             
-            // Store the distance for later use
+            // Store the distance for later use with cache size management
             walkDistances.set(walk.id, distance)
+            
+            // Trim cache if it exceeds maximum size
+            if (walkDistances.size > MAX_DISTANCE_CACHE_SIZE) {
+              // Remove oldest entries (first 20% of max size)
+              const keysToDelete = Array.from(walkDistances.keys()).slice(0, MAX_DISTANCE_CACHE_SIZE * 0.2)
+              keysToDelete.forEach(key => walkDistances.delete(key))
+            }
             
             if (distance <= searchRadius.value) {
               return { ...walk, distance }

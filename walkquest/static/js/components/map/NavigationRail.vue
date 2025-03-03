@@ -434,15 +434,17 @@ onMounted(() => {
   left: 0;
   top: 0;
   bottom: 0;
-  z-index: 50 !important;
-  background: rgb(var(--md-sys-color-surface));
-  box-shadow: var(--md-sys-elevation-level2);
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 30; /* Lower z-index to ensure proper layering with drawer */
+  background: rgb(var(--md.sys.color.surface));
+  box-shadow: var(--md-sys-elevation-level1);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
   visibility: visible !important;
   pointer-events: auto !important;
   width: var(--md-sys-sidebar-collapsed);
   /* Create a stacking context */
   isolation: isolate;
+  border-radius: 0 12px 12px 0; /* Add rounded corners on the right side */
+  overflow: hidden; /* Ensure content doesn't overflow rounded corners */
   @media (max-width: 768px) {
     display: none;
   }
@@ -451,6 +453,9 @@ onMounted(() => {
 /* Add interaction styles for when drawer is open */
 .m3-navigation-rail.is-collapsed {
   box-shadow: none; /* Remove shadow when drawer is open */
+  z-index: 20; /* Lower z-index when drawer is open to ensure proper layering */
+  border-top-right-radius: 0; /* Remove top-right radius when drawer is open */
+  border-bottom-right-radius: 0; /* Remove bottom-right radius when drawer is open */
 }
 
 .m3-rail-content-area {

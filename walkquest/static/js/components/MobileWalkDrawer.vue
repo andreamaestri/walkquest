@@ -5,6 +5,8 @@
     :can-overlay-close="true"
     :snap-points="[300, 500, '90vh']"
     :default-snap-point="500"
+    elevation="3"
+    :scrim-color="scrimColor"
     @opened="onOpened"
     @closed="onClosed"
   >
@@ -13,21 +15,7 @@
         :walk="walk" 
         :isMobile="true"
         @close="close"
-      >
-        <template #header-image>
-          <div class="mobile-walk-header__image-container">
-            <img 
-              v-if="walk.image_url" 
-              :src="walk.image_url" 
-              :alt="walk.title" 
-              class="mobile-walk-header__image"
-            />
-            <div v-else class="mobile-walk-header__placeholder">
-              <Icon icon="mdi:image-outline" class="placeholder-icon" />
-            </div>
-          </div>
-        </template>
-      </WalkDrawerHeader>
+      />
     </template>
     
     <WalkDrawerContent 
@@ -43,7 +31,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue';
+import { ref, watch, onMounted, computed } from 'vue';
 import { Icon } from '@iconify/vue';
 import BottomSheet from './BottomSheet.vue';
 import WalkDrawerHeader from './shared/WalkDrawerHeader.vue';
@@ -64,6 +52,9 @@ const emit = defineEmits(['update:modelValue', 'close', 'start-walk', 'save-walk
 
 const bottomSheet = ref(null);
 const isOpen = ref(props.modelValue);
+
+// Material Design 3 scrim color with 0.32 opacity
+const scrimColor = computed(() => 'rgba(0, 0, 0, 0.32)');
 
 // Watch for changes to modelValue prop
 watch(() => props.modelValue, (newVal) => {
@@ -139,35 +130,6 @@ function handleShare() {
   height: 100%;
   max-width: 100vw;
   overflow-x: hidden;
-}
-
-.mobile-walk-header__image-container {
-  width: 100%;
-  height: 180px;
-  overflow: hidden;
-  margin: 8px 0 16px;
-  border-radius: 16px;
-  background-color: rgb(var(--md-sys-color-surface-variant));
-}
-
-.mobile-walk-header__image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.mobile-walk-header__placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgb(var(--md-sys-color-on-surface-variant));
-}
-
-.placeholder-icon {
-  font-size: 48px;
-  opacity: 0.5;
 }
 
 .mobile-walk-content {

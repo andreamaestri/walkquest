@@ -1,5 +1,18 @@
 import ky from 'ky';
 
+// Track active requests to allow cancellation
+const activeRequests = new Map();
+
+// Utility to cancel existing requests by endpoint
+const cancelActiveRequest = (endpoint) => {
+  if (activeRequests.has(endpoint)) {
+    const controller = activeRequests.get(endpoint);
+    controller.abort();
+    activeRequests.delete(endpoint);
+    console.log(`Cancelled in-flight request to: ${endpoint}`);
+  }
+};
+
 const api = ky.create({
   prefixUrl: '/api',
   headers: {
@@ -10,11 +23,29 @@ const api = ky.create({
     beforeRequest: [
       (request) => {
         console.log('Request URL:', request.url);
+        
+        // Get normalized endpoint for tracking
+        const endpoint = request.url.toString().replace(/^.*\/api\//, '');
+        
+        // Cancel any existing request to the same endpoint
+        cancelActiveRequest(endpoint);
+        
+        // Create and store new AbortController
+        const controller = new AbortController();
+        activeRequests.set(endpoint, controller);
+        
+        // Attach signal to this request
+        request.signal = controller.signal;
       }
     ],
     afterResponse: [
       async (request, options, response) => {
         console.log('Response Status:', response.status);
+        
+        // Clean up completed request
+        const endpoint = request.url.toString().replace(/^.*\/api\//, '');
+        activeRequests.delete(endpoint);
+        
         if (!response.ok) {
           const error = await response.json();
           throw new Error(error.message || 'Something went wrong');
@@ -53,8 +84,21 @@ const normalizeWalkData = (data) => {
 };
 
 // API Methods
-const filterWalks = async (params = {}) => {
+const filterWalks = async (params = {}, signal) => {
   try {
+    // Create a request-specific controller if none provided
+    const controller = signal ? null : new AbortController();
+    const requestSignal = signal || controller?.signal;
+    
+    // Determine endpoint for tracking
+    const endpoint = params.latitude && params.longitude ? 'walks/nearby' : 'walks';
+    
+    // Track this request for potential cancellation
+    if (controller) {
+      cancelActiveRequest(endpoint);
+      activeRequests.set(endpoint, controller);
+    }
+    
     // If location parameters are provided, use the nearby endpoint
     if (params.latitude && params.longitude) {
       const searchParams = new URLSearchParams({
@@ -69,8 +113,14 @@ const filterWalks = async (params = {}) => {
         headers: {
           'Accept': 'application/json',
           'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value
-        }
+        },
+        signal: requestSignal
       });
+
+      // Clean up on completion
+      if (controller) {
+        activeRequests.delete(endpoint);
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -92,8 +142,14 @@ const filterWalks = async (params = {}) => {
       headers: {
         'Accept': 'application/json',
         'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value
-      }
+      },
+      signal: requestSignal
     });
+
+    // Clean up on completion
+    if (controller) {
+      activeRequests.delete(endpoint);
+    }
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -102,19 +158,41 @@ const filterWalks = async (params = {}) => {
     const data = await response.json();
     return normalizeWalkData(data);
   } catch (error) {
+    // Don't report aborted requests as errors
+    if (error.name === 'AbortError') {
+      console.log('Walk filter request was cancelled');
+      return [];
+    }
     console.error('Error fetching walks:', error);
     throw error;
   }
 };
 
-const search = async (query) => {
+const search = async (query, signal) => {
   try {
+    // Create a request-specific controller if none provided
+    const controller = signal ? null : new AbortController();
+    const requestSignal = signal || controller?.signal;
+    
+    // Track this request for potential cancellation
+    const endpoint = 'walks/search';
+    if (controller) {
+      cancelActiveRequest(endpoint);
+      activeRequests.set(endpoint, controller);
+    }
+    
     const response = await fetch(`/api/walks/search?q=${encodeURIComponent(query)}`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json'
-      }
+      },
+      signal: requestSignal
     });
+    
+    // Clean up on completion
+    if (controller) {
+      activeRequests.delete(endpoint);
+    }
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -123,6 +201,11 @@ const search = async (query) => {
     const data = await response.json();
     return { walks: normalizeWalkData(data) };
   } catch (error) {
+    // Don't report aborted requests as errors
+    if (error.name === 'AbortError') {
+      console.log('Search request was cancelled');
+      return { walks: [] };
+    }
     console.error('API search error:', error);
     throw error;
   }
@@ -142,14 +225,31 @@ const filter = async (categories) => {
   }
 };
 
-const getGeometry = async (walkId) => {
+const getGeometry = async (walkId, signal) => {
   try {
+    // Create a request-specific controller if none provided
+    const controller = signal ? null : new AbortController();
+    const requestSignal = signal || controller?.signal;
+    
+    // Track this request for potential cancellation
+    const endpoint = `walks/${walkId}/geometry`;
+    if (controller) {
+      cancelActiveRequest(endpoint);
+      activeRequests.set(endpoint, controller);
+    }
+    
     const response = await fetch(`/api/walks/${walkId}/geometry`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json'
-      }
+      },
+      signal: requestSignal
     });
+    
+    // Clean up on completion
+    if (controller) {
+      activeRequests.delete(endpoint);
+    }
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -157,6 +257,11 @@ const getGeometry = async (walkId) => {
 
     return await response.json();
   } catch (error) {
+    // Don't report aborted requests as errors
+    if (error.name === 'AbortError') {
+      console.log(`Request for walk ${walkId} geometry was cancelled`);
+      return null;
+    }
     console.error('Error fetching route geometry:', error);
     throw error;
   }
@@ -170,6 +275,18 @@ const getFeatures = async () => {
     console.error('API getFeatures error:', error);
     throw new Error(`Failed to fetch features: ${error.message}`);
   }
+};
+
+// Export the utility function for component usage
+export const cancelRequest = cancelActiveRequest;
+
+// Cleanup utility for component unmounting
+export const cancelAllRequests = () => {
+  for (const [endpoint, controller] of activeRequests.entries()) {
+    controller.abort();
+    console.log(`Cancelled request to: ${endpoint}`);
+  }
+  activeRequests.clear();
 };
 
 // Single export of all methods
@@ -187,7 +304,9 @@ export const WalksAPI = {
   search,
   filter,
   getGeometry,
-  getFeatures
+  getFeatures,
+  cancelRequest,
+  cancelAllRequests
 }
 
 // Default export
