@@ -495,6 +495,7 @@ defineExpose({
 
 .bottom-sheet__container--active {
   transform: translateY(0);
+  pointer-events: auto!important;
   transition: transform var(--vsbs-transition-duration, 300ms) var(--vsbs-transition-timing, cubic-bezier(0.2, 0, 0, 1));
 }
 

@@ -5,11 +5,11 @@
     elevation="3"
     :blocking="false"
     :can-swipe-close="false"
+    :can-overlay-close="false"
     :default-snap-point="defaultSnapPoint"
     :snap-points="snapPoints"
     :expand-on-content-drag="true"
     :duration="320" 
-    :scrim-color="scrimColor"
     @max-height="handleMaxHeight"
     @opened="onOpened"
     @closed="onClosed"
@@ -222,5 +222,33 @@ function handleShare() {
 /* Shadow adjustments for MD3 elevation */  
 .mobile-walk-drawer-sheet :deep(.bottom-sheet__container--elevation-3) {
   box-shadow: var(--md-sys-elevation-3);
+}
+
+/* Allow interaction with content behind the drawer's backdrop */
+.mobile-walk-drawer-sheet :deep(.bottom-sheet__backdrop) {
+  pointer-events: none;
+}
+
+/* Make sure all bottom sheet container variants receive pointer events */
+.mobile-walk-drawer-sheet :deep(.bottom-sheet__container),
+.mobile-walk-drawer-sheet :deep(.bottom-sheet__container--active),
+.mobile-walk-drawer-sheet :deep(.bottom-sheet__container--elevation-3) {
+  pointer-events: auto;
+}
+
+/* Ensure header and content are clickable too */
+.mobile-walk-drawer-sheet :deep(.bottom-sheet__header),
+.mobile-walk-drawer-sheet :deep(.bottom-sheet__content) {
+  pointer-events: auto;
+}
+
+/* Allow interaction with content behind the drawer's backdrop */
+.mobile-walk-drawer-sheet {
+  pointer-events: none!important;
+}
+
+/* Make sure the bottom sheet container itself still receives pointer events */
+.mobile-walk-drawer-sheet :deep(.bottom-sheet__container) {
+  pointer-events: auto!important;
 }
 </style>
