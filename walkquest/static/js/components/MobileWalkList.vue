@@ -141,11 +141,6 @@ function handleWalkSelected(walk) {
   transform: scale(0.92);
 }
 
-/* Make sure content area of the bottom sheet accounts for mobile navigation */
-.mobile-walk-list-sheet :deep(.bottom-sheet__content) {
-  padding-bottom: calc(var(--bottom-nav-height, 80px) + env(safe-area-inset-bottom, 0px));
-}
-
 /* Smooth transitions with Material Design 3 motion easing */
 .mobile-walk-list-sheet :deep(.bottom-sheet__container) {
   transition: transform var(--md-sys-motion-duration-medium2, 320ms) 

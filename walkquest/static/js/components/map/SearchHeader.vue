@@ -2,7 +2,7 @@
   <div class="search-header-wrapper">
     <header 
       ref="searchHeader"
-      class="py-2 w-full transition-all duration-300 ease-md3"
+      class="w-full transition-all duration-300 ease-md3"
       :class="[
         isSearchActive ? 'bg-transparent' : 'bg-surface-variant',
         isSearchActive && uiStore.isMobile ? 'fixed inset-0 z-50 py-0' : ''

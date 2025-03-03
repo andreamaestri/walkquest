@@ -3,6 +3,7 @@
     ref="bottomSheet"
     v-model="isOpen"
     elevation="3"
+    :blocking="false"
     :can-swipe-close="false"
     :default-snap-point="defaultSnapPoint"
     :snap-points="snapPoints"
@@ -35,7 +36,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, computed, nextTick } from 'vue';
+import { ref, watch, onMounted, computed, nextTick, onBeforeUnmount } from 'vue';
 import { Icon } from '@iconify/vue';
 import BottomSheet from './BottomSheet.vue';
 import WalkDrawerHeader from './shared/WalkDrawerHeader.vue';
@@ -52,7 +53,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['update:modelValue', 'close', 'start-walk', 'save-walk', 'directions', 'category-selected']);
+const emit = defineEmits(['update:modelValue', 'close', 'start-walk', 'save-walk', 'directions', 'category-selected', 'map-interaction']);
 
 const bottomSheet = ref(null);
 const isOpen = ref(props.modelValue);
@@ -68,14 +69,13 @@ const safeAreaInset = typeof window !== 'undefined' ? parseInt(getComputedStyle(
 // Adjust default snap point to account for navigation bar
 const defaultSnapPoint = computed(() => Math.min(500, (maxHeight.value - navHeight) / 2));
 
-// Calculate snap points based on max height with adjustment for bottom nav
+// Compute snap points with map interaction behavior
 const snapPoints = computed(() => {
   const height = maxHeight.value - navHeight; // Adjust for nav bar
   return [
-    Math.min(200, height / 4),         // Peeking state
-    Math.min(500, height / 2),         // Half expanded
-    Math.min(800, height * 0.75),      // Most content visible
-    height                             // Full height (excluding nav bar)
+    Math.min(200, height / 4),         // Peek mode - show map
+    Math.min(500, height / 2),         // Half expanded - show map with context
+    height                             // Full height - hide map
   ].sort((a, b) => a - b); // Ensure points are in ascending order
 });
 
@@ -93,6 +93,36 @@ watch(() => isOpen.value, (newVal) => {
   emit('update:modelValue', newVal);
 });
 
+// Watch for props.modelValue changes to handle external state changes
+watch(() => props.modelValue, (newVal) => {
+  if (newVal !== isOpen.value) {
+    isOpen.value = newVal;
+    if (newVal) {
+      nextTick(() => {
+        if (bottomSheet.value) {
+          bottomSheet.value.snapToPoint(defaultSnapPoint.value);
+        }
+      });
+    }
+  }
+});
+
+// Watch snap point changes to update map visibility
+watch(() => currentSnapPoint.value, (newSnapPoint) => {
+  if (props.walk && bottomSheet.value) {
+    const height = snapPoints.value[newSnapPoint];
+    const maxViewHeight = maxHeight.value - navHeight;
+    const visibilityRatio = 1 - (height / maxViewHeight);
+    
+    // Emit map interaction event
+    emit('map-interaction', {
+      visibilityRatio,
+      isMapVisible: visibilityRatio > 0.3, // Map is visible when sheet is less than 70% of view
+      coords: [props.walk.longitude, props.walk.latitude]
+    });
+  }
+});
+
 // Lifecycle hooks
 onMounted(() => {
   // Initialize maxHeight
@@ -103,6 +133,16 @@ onMounted(() => {
     // Only open if modelValue is true initially
     open();
   }
+
+  const updateMaxHeight = () => {
+    maxHeight.value = window.innerHeight;
+  };
+  
+  window.addEventListener('resize', updateMaxHeight);
+  
+  onBeforeUnmount(() => {
+    window.removeEventListener('resize', updateMaxHeight);
+  });
 });
 
 // Methods to control the bottom sheet
@@ -123,7 +163,22 @@ function onOpened() {
   // Snap to default point on open
   if (bottomSheet.value) {
     nextTick(() => {
-      bottomSheet.value.snapToPoint(defaultSnapPoint.value);
+      // Start with peek mode to show the map
+      bottomSheet.value.snapToPoint(snapPoints.value[0]);
+      
+      // Emit map interaction to focus the location
+      if (props.walk) {
+        emit('map-interaction', {
+          visibilityRatio: 0.8, // Show most of the map
+          isMapVisible: true,
+          coords: [props.walk.longitude, props.walk.latitude]
+        });
+      }
+      
+      // After a short delay, expand to half height
+      setTimeout(() => {
+        bottomSheet.value.snapToPoint(snapPoints.value[1]);
+      }, 1000);
     });
   }
 }
@@ -186,7 +241,6 @@ function handleShare() {
 
 /* Ensure bottom sheet accounts for mobile navigation */
 .mobile-walk-drawer-sheet :deep(.bottom-sheet__content) {
-  padding-bottom: calc(var(--bottom-nav-height, 80px) + env(safe-area-inset-bottom, 0px));
   overflow-y: auto;
 }
 

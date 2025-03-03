@@ -87,7 +87,8 @@ const emit = defineEmits([
   'dragging-up',
   'dragging-down',
   'opened',
-  'closed'
+  'closed',
+  'snap-change'
 ])
 
 // Refs
@@ -121,8 +122,9 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('resize', handleResize)
-  cleanup()
+  cleanup() // Clean up all event listeners
+  cancelAnimationFrame(animationFrame)
+  currentSnapPoint.value = null
 })
 
 // Setup methods
@@ -325,6 +327,16 @@ function dragMove(clientY) {
   // Limit how small the sheet can get
   newHeight = Math.max(100, newHeight)
   
+  // Find closest snap point during drag
+  let closestPoint = findClosestSnapPoint(newHeight)
+  if (closestPoint !== null) {
+    const snapIndex = props.snapPoints.indexOf(closestPoint)
+    if (snapIndex !== currentSnapPoint.value) {
+      currentSnapPoint.value = snapIndex
+      emit('snap-change', snapIndex)
+    }
+  }
+  
   // Apply new height with transform for better performance
   animationFrame = requestAnimationFrame(() => {
     if (bottomSheetRef.value) {
@@ -394,15 +406,27 @@ function snapToPoint(point) {
   currentSnapPoint.value = index
   
   bottomSheetRef.value.style.height = `${point}px`
+  emit('snap-change', index)
 }
 
 // Watch for modelValue changes
 watch(() => props.modelValue, (newVal) => {
-  if (newVal) {
-    emit('opened')
-  } else {
-    emit('closed')
+  if (!newVal) {
+    // Reset state when sheet is closed
+    currentY = 0
+    startY = 0
+    velocity = 0
+    lastDirection = null
+    
+    // Reset snap point after animation finishes
+    setTimeout(() => {
+      if (props.defaultSnapPoint !== null) {
+        currentSnapPoint.value = props.snapPoints.indexOf(props.defaultSnapPoint)
+      }
+    }, props.duration)
   }
+  
+  emit(newVal ? 'opened' : 'closed')
 }, { immediate: true })
 
 // Expose methods

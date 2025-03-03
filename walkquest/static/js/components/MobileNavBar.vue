@@ -18,14 +18,6 @@
     </button>
     <button 
       class="nav-item"
-      :class="{ active: activeTab === 'walks' }"
-      @click="openWalksDrawer"
-    >
-      <Icon icon="mdi:routes" class="nav-icon" />
-      <span>Walks</span>
-    </button>
-    <button 
-      class="nav-item"
       :class="{ active: activeTab === 'categories' }"
       @click="$emit('tab-change', 'categories')"
     >
@@ -45,12 +37,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['tab-change', 'open-walks-drawer'])
-
-function openWalksDrawer() {
-  emit('open-walks-drawer')
-  emit('tab-change', 'walks')
-}
+const emit = defineEmits(['tab-change'])
 </script>
 
 <style scoped>

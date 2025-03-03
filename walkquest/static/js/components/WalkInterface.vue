@@ -37,6 +37,8 @@
       :selected-walk-id="selectedWalkId"
       :walks="walks"
       :is-drawer-open="isDrawerOpen"
+      :is-mobile-view="uiStore.isMobile"
+      :mobile-map-visibility="mobileMapVisibility"
       @map-created="handleMapCreated"
       @map-loaded="handleMapLoad"
       @walk-selected="handleWalkSelection"
@@ -66,7 +68,6 @@
     <!-- Walks Bottom Sheet for mobile -->
     <BottomSheet 
       v-model="showWalksBottomSheet" 
-      :title="bottomSheetTitle"
       variant="standard"
       initialHeight="50vh"
       maxHeight="90vh"
@@ -137,6 +138,7 @@
       @start-walk="handleStartWalk"
       @save-walk="handleSaveWalk"
       @category-selected="handleCategorySelected"
+      @map-interaction="handleMobileMapInteraction"
     />
   </div>
 </template>
@@ -230,6 +232,9 @@ const expandedWalkIds = ref(
   : []
 );
 
+// Add new state for mobile map visibility
+const mobileMapVisibility = ref(1); // 1 = fully visible, 0 = hidden
+
 // Add tab change handler
 function handleTabChange(tab) {
   activeTab.value = tab
@@ -237,16 +242,14 @@ function handleTabChange(tab) {
     case 'explore':
       searchStore.setSearchMode('walks')
       locationStore.clearLocation()
+      showWalksBottomSheet.value = false // Close sheet when switching to explore
       break
     case 'nearby':
       searchStore.setSearchMode('locations')
+      showWalksBottomSheet.value = false // Close sheet when switching to nearby
       break
     case 'categories':
-      // Switch to categories mode and show the walks bottom sheet with category filter
       searchStore.setSearchMode('categories')
-      showWalksBottomSheet.value = true
-      break
-    case 'walks':
       showWalksBottomSheet.value = true
       break
   }
@@ -536,6 +539,29 @@ const handleMapLoad = () => {
 };
 
 /**
+ * Handle mobile map interactions
+ * Updates map view and visibility state
+ */
+const handleMobileMapInteraction = ({ visibilityRatio, isMapVisible, coords }) => {
+  mobileMapVisibility.value = visibilityRatio;
+  
+  if (isMapVisible && coords && mapContainer.value?.mapInstance) {
+    // Update map view when drawer moves and map is visible
+    mapContainer.value.mapInstance.easeTo({
+      center: coords,
+      zoom: 14,
+      duration: 500,
+      padding: {
+        top: 100,
+        bottom: maxHeight.value / 2,
+        left: 50,
+        right: 50
+      }
+    });
+  }
+};
+
+/**
  * Initialize interface
  * Sets up responsive state and loads walks
  */
@@ -578,6 +604,28 @@ watch(selectedWalk, (newWalk) => {
     showWalkDetailSheet.value = !!newWalk;
   }
 });
+
+// Watch for mobile walk selection to properly handle bottom sheet state
+watch(selectedWalk, (newWalk) => {
+  if (uiStore.isMobile) {
+    showWalkDetailSheet.value = !!newWalk;
+    // Ensure walks bottom sheet is closed when a walk is selected
+    if (newWalk) {
+      showWalksBottomSheet.value = false;
+    }
+  }
+});
+
+// Watch for route changes to properly handle bottom sheet state
+watch(route, (newRoute) => {
+  if (uiStore.isMobile && newRoute.name === 'home') {
+    // Reset bottom sheet states when navigating home
+    showWalkDetailSheet.value = false;
+    if (!['categories', 'walks'].includes(activeTab.value)) {
+      showWalksBottomSheet.value = false;
+    }
+  }
+}, { deep: true });
 
 // Lifecycle hooks
 onMounted(() => {
