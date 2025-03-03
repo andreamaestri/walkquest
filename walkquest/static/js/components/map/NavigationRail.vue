@@ -6,21 +6,22 @@
       { 'is-expanded': isExpanded },
       { 'is-collapsed': selectedWalkId },
     ]"
+    role="navigation"
+    aria-label="Main navigation"
   >
     <div class="h-full flex flex-col relative">
       <!-- Rail Header -->
       <div class="m3-rail-header">
         <!-- Menu button -->
-        <button class="m3-rail-item menu-button" @click="toggleExpanded">
+        <button class="m3-rail-item menu-button" @click="toggleExpanded" aria-label="Toggle menu">
           <div class="m3-state-layer">
             <Icon icon="mdi:menu" class="m3-rail-icon text-[24px]" />
           </div>
         </button>
-        <!-- FAB -->
-        <button class="m3-rail-fab" @click="handleFabClick">
-          <Icon icon="mdi:hiking" class="text-[36px]" />
+        <!-- FAB - keeping color as requested -->
+        <button class="m3-rail-fab" @click="handleFabClick" aria-label="WalkQuest Home">
+          <Icon icon="mdi:hiking" class="text-[24px]" />
           <span class="m3-rail-fab-text" v-if="isExpanded">WalkQuest</span>
-          <span class="sr-only">WalkQuest Home</span>
         </button>
       </div>
       
@@ -32,6 +33,7 @@
             'is-active': searchMode === 'walks' && !selectedWalkId,
           }"
           @click="handleExploreClick"
+          aria-label="Explore walks"
         >
           <div class="m3-rail-content">
             <div class="m3-rail-icon-container">
@@ -52,6 +54,7 @@
             'is-active': searchMode === 'locations',
           }"
           @click="handleLocationSearchClick"
+          aria-label="Find nearby walks"
         >
           <div class="m3-rail-content">
             <div class="m3-rail-icon-container">
@@ -61,7 +64,7 @@
                 class="m3-rail-icon outlined-icon"
               />
             </div>
-            <span class="m3-rail-label">Find<br />Nearby</span>
+            <span class="m3-rail-label">Nearby</span>
           </div>
         </button>
         
@@ -72,6 +75,7 @@
             'is-active': searchMode === 'categories',
           }"
           @click="handleCategoriesClick"
+          aria-label="Browse by categories"
         >
           <div class="m3-rail-content">
             <div class="m3-rail-icon-container">
@@ -428,38 +432,40 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Navigation rail styles */
+/* Navigation rail styles - updated to MD3 specs */
 .m3-navigation-rail { 
   position: fixed;
   left: 0;
   top: 0;
   bottom: 0;
   z-index: 30; /* Lower z-index to ensure proper layering with drawer */
-  background: rgb(var(--md.sys.color.surface));
-  box-shadow: var(--md-sys-elevation-level1);
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+  background: rgb(var(--md-sys-color-surface));
+  box-shadow: var(--md-sys-elevation-1);
+  transition: transform 0.3s var(--md-sys-motion-easing-standard), 
+              box-shadow 0.3s var(--md-sys-motion-easing-standard);
   visibility: visible !important;
   pointer-events: auto !important;
   width: var(--md-sys-sidebar-collapsed);
-  /* Create a stacking context */
   isolation: isolate;
-  border-radius: 0 12px 12px 0; /* Add rounded corners on the right side */
-  overflow: hidden; /* Ensure content doesn't overflow rounded corners */
+  border-radius: 0 16px 16px 0; /* MD3 rounded corners */
+  overflow: hidden;
   @media (max-width: 768px) {
     display: none;
   }
 }
 
-/* Add interaction styles for when drawer is open */
+/* Interaction styles for when drawer is open */
 .m3-navigation-rail.is-collapsed {
-  box-shadow: none; /* Remove shadow when drawer is open */
-  z-index: 20; /* Lower z-index when drawer is open to ensure proper layering */
-  border-top-right-radius: 0; /* Remove top-right radius when drawer is open */
-  border-bottom-right-radius: 0; /* Remove bottom-right radius when drawer is open */
+  box-shadow: none;
+  z-index: 20;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
+/* Content area transitions */
 .m3-rail-content-area {
-  transition: opacity 0.2s ease-out, visibility 0.2s ease-out;
+  transition: opacity 0.25s var(--md-sys-motion-easing-standard), 
+              visibility 0.25s var(--md-sys-motion-easing-standard);
 }
 
 .m3-rail-content-area.content-hidden {
@@ -468,26 +474,144 @@ onMounted(() => {
   pointer-events: none;
 }
 
+/* Rail header & items */
+.m3-rail-header {
+  padding: 12px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Menu button - conforms to MD3 icon button specs */
+.menu-button {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 4px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+/* Rail FAB - kept original styling as requested */
+.m3-rail-fab {
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  margin: 8px auto;
+  transition: all 0.2s var(--md-sys-motion-easing-standard);
+}
+
+.m3-rail-fab-text {
+  margin-left: 12px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Navigation items container */
+.m3-rail-items {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  padding: 4px 0;
+  gap: 12px; /* MD3 standard spacing */
+}
+
+/* Icon container - destination indicators */
+.m3-rail-icon-container {
+  position: relative;
+  width: 24px;
+  height: 32px;
+  display: flex;
+  top: 18px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+  border-radius: 16px; /* Pill shape */
+  transition: background-color 0.2s var(--md-sys-motion-easing-standard);
+}
+
+/* Navigation item styling */
+.m3-rail-item {
+  width: 56px;
+  height: 28px;
+  margin-bottom: 16px;
+  background: transparent;
+  transition: background-color 0.2s var(--md-sys-motion-easing-standard);
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border-radius: 16px; /* Add border radius for active state */
+}
+
+/* Apply active background to rail item instead */
+.m3-rail-item.is-active {
+  background-color: rgb(var(--md-sys-color-secondary-container));
+}
+
+/* Content layout */
+.m3-rail-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+}
+
+/* Improved icon animations */
+.filled-icon, .outlined-icon {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 24px;
+  height: 24px;
+  transition: opacity 0.3s var(--md-sys-motion-easing-emphasized);
+  font-size: 24px;
+}
+
+/* Icon state transitions */
 .filled-icon {
   opacity: 0;
-  transform: scale(0.8);
 }
 
 .outlined-icon {
   opacity: 1;
-  transform: scale(1);
 }
 
-/* Show filled icon on hover and active states */
 .m3-rail-item:hover .filled-icon,
 .m3-rail-item.is-active .filled-icon {
   opacity: 1;
-  transform: scale(1);
 }
 
 .m3-rail-item:hover .outlined-icon,
 .m3-rail-item.is-active .outlined-icon {
   opacity: 0;
-  transform: scale(1.1);
+}
+
+/* Label styling per MD3 */
+.m3-rail-label {
+  margin-top: 4px;
+  font-size: var(--md-sys-typescale-label-medium-size, 12px);
+  line-height: var(--md-sys-typescale-label-medium-line-height, 16px);
+  font-weight: var(--md-sys-typescale-label-medium-weight, 500);
+  letter-spacing: var(--md-sys-typescale-label-medium-tracking, 0.5px);
+  text-align: center;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+  transition: color 0.2s var(--md-sys-motion-easing-standard);
+}
+
+/* Active state for labels */
+.m3-rail-item.is-active .m3-rail-label {
+  color: rgb(var(--md-sys-color-on-secondary-container));
+  font-weight: var(--md-sys-typescale-label-medium-weight-prominent, 600);
 }
 </style>

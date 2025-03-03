@@ -68,6 +68,7 @@
   flex-shrink: 0;
   width: 40px;
   height: 40px;
+  padding-left: 24px!important; /* Add padding to the left */
   border-radius: 20px;
   display: flex;
   align-items: center;

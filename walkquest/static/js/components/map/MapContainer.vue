@@ -707,6 +707,9 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+@import "tailwindcss";
+@import "../../../css/material3.css";
+
 .hardware-accelerated {
   transform: translateZ(0);
   backface-visibility: hidden;
@@ -738,5 +741,262 @@ onBeforeUnmount(() => {
 
 .border-primary {
   border-color: rgb(var(--md-sys-color-primary));
+}
+
+:deep(.mapboxgl-popup-close-button) {
+  background-color: rgba(0, 0, 0, 0.3) !important;
+  color: white !important;
+  font-size: 16px !important;
+  padding: 2px 5px !important;
+  border-radius: 50px !important;
+  border: none !important;
+  top: 5px !important;
+  right: 5px !important;
+}
+
+:deep(.mapboxgl-popup-close-button:hover) {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Mapbox Popup Styling - Global styles for the popup */
+:deep(.mapboxgl-popup) {
+  transform-origin: bottom center;
+  z-index: 10;
+  margin-bottom: 12px !important; /* Add margin to account for missing tip */
+}
+
+:deep(.mapboxgl-popup-tip) {
+  display: none !important; /* Hide the triangle tip as requested */
+}
+
+:deep(.mapboxgl-popup-content) {
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid rgb(var(--md-sys-color-outline-variant));
+  background-color: rgb(var(--md-sys-color-surface-container-highest));
+}
+
+/* Fix popup positioning for various anchors */
+:deep(.mapboxgl-popup-anchor-bottom),
+:deep(.mapboxgl-popup-anchor-bottom-left),
+:deep(.mapboxgl-popup-anchor-bottom-right) {
+  margin-top: -8px;
+}
+
+:deep(.mapboxgl-popup-anchor-top),
+:deep(.mapboxgl-popup-anchor-top-left),
+:deep(.mapboxgl-popup-anchor-top-right) {
+  margin-bottom: 8px;
+}
+
+:deep(.mapboxgl-popup-anchor-left) {
+  margin-right: 8px;
+}
+
+:deep(.mapboxgl-popup-anchor-right) {
+  margin-left: 8px;
+}
+
+/* Add elevation effect for the popup */
+:deep(.mapboxgl-popup) {
+  will-change: transform;
+  animation: popup-appear 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes popup-appear {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Popup styles */
+.m3-popup {
+  max-width: none !important;
+  width: min(340px, calc(100vw - 24px));
+  font-family: "Outfit", system-ui, -apple-system, BlinkMacSystemFont,
+    sans-serif !important;
+}
+
+:deep(.mapboxgl-popup-content) {
+  border-radius: 16px;
+  box-shadow: var(--md-sys-elevation-3);
+  padding: 0 !important;
+  background: rgb(var(--md-sys-color-surface-container-highest));
+  color: rgb(var(--md-sys-color-on-surface));
+  min-width: 0;
+  width: 100%;
+  border: 1px solid rgb(var(--md-sys-color-outline-variant));
+  overflow: hidden;
+  font-family: "Outfit", sans-serif !important;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+:deep(.mapboxgl-popup-close-button) {
+  width: 24px !important;
+  height: 24px !important;
+  padding: 0 !important;
+  color: white !important;
+  background-color: rgba(75, 75, 75, 0.6) !important;
+  font-size: 18px !important;
+  line-height: 24px !important;
+  border-radius: 50% !important;
+  top: 8px !important;
+  right: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: background-color 0.2s ease !important;
+  border: none !important;
+}
+
+:deep(.mapboxgl-popup-close-button span) {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  font-size: 20px !important;
+  line-height: 1 !important;
+}
+
+:deep(.mapboxgl-popup-close-button:hover) {
+  background-color: rgba(75, 75, 75, 0.8) !important;
+}
+
+:deep(.mapboxgl-popup-content h3) {
+  color: rgb(var(--md-sys-color-on-surface));
+  font-family: inherit;
+  font-size: 1.125rem;
+  line-height: 1.4;
+  font-weight: 500;
+  margin: 0;
+  letter-spacing: 0.15px;
+}
+
+:deep(.m3-button) {
+  width: 100%;
+  min-height: 48px;
+  justify-content: center;
+  margin: 0;
+  background-color: rgb(var(--md-sys-color-primary));
+  color: rgb(var(--md-sys-color-on-primary));
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+  padding: 0 16px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+:deep(.m3-button:hover) {
+  background-color: rgb(var(--md-sys-color-primary) / 0.92);
+}
+
+:deep(.m3-button:active) {
+  background-color: rgb(var(--md-sys-color-primary) / 0.85);
+  transform: scale(0.98);
+}
+
+/* Hide the popup tip */
+:deep(.mapboxgl-popup-tip) {
+  display: none !important;
+  border: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Add elevation when popup is open */
+:deep(.mapboxgl-popup) {
+  will-change: transform;
+  transform-origin: bottom center;
+  margin-top: -8px !important; /* Adjust positioning to compensate for hidden tip */
+}
+
+/* Add subtle surface tint */
+:deep(.mapboxgl-popup-content::before) {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgb(var(--md-sys-color-surface-tint));
+  opacity: 0.05;
+  pointer-events: none;
+}
+
+/* Ensure proper text wrapping */
+:deep(.mapboxgl-popup-content .m3-title-medium) {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  hyphens: auto;
+  max-width: 100%;
+}
+
+/* Add styling for the info badges */
+:deep(.popup-info-badge) {
+  display: flex;
+  align-items: center;
+  background-color: rgb(var(--md-sys-color-surface-container));
+  color: rgb(var(--md-sys-color-on-surface-variant));
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+/* Add styling for the difficulty badges */
+:deep(.popup-difficulty-badge) {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+:deep(.difficulty-easy) {
+  background-color: rgb(var(--md-sys-color-tertiary-container));
+  color: rgb(var(--md-sys-color-on-tertiary-container));
+}
+
+:deep(.difficulty-medium) {
+  background-color: rgb(var(--md-sys-color-secondary-container));
+  color: rgb(var(--md-sys-color-on-secondary-container));
+}
+
+:deep(.difficulty-hard) {
+  background-color: rgb(var(--md-sys-color-error-container));
+  color: rgb(var(--md-sys-color-on-error-container));
+}
+
+/* Feature badges */
+:deep(.popup-feature-badge) {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background-color: rgb(var(--md-sys-color-surface-container-high));
+  color: rgb(var(--md-sys-color-on-surface-variant));
+  font-size: 0.75rem;
+  border-radius: 16px;
+  font-weight: 500;
+}
+
+:deep(.popup-feature-icon) {
+  font-size: 16px;
+  color: rgb(var(--md-sys-color-primary));
+}
+
+/* Add ripple effect for better touch feedback */
+:deep(.walk-popup) {
+  position: relative;
+  overflow: hidden;
 }
 </style>

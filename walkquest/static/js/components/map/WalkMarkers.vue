@@ -11,7 +11,7 @@
         ]"
         :color="selectedWalkId === walk.id ? '#6750A4' : '#3FB1CE'"
         :popup="{
-          offset: 25,
+          offset: [0, -12], /* Adjust offset to compensate for hidden tip */
           anchor: 'bottom',
           closeButton: true,
           closeOnClick: true,
@@ -63,12 +63,14 @@
             <div class="px-4 pb-4">
               <button
                 @click="(event) => handlePopupOpenWalk(event, walk)"
-                class="m3-button m3-button-filled"
+                class="view-details-button"
                 aria-label="View walk details"
                 role="button"
               >
-                <Icon icon="mdi:information-outline" class="mr-2 w-5 h-5" />
-                <span class="m3-button-label">View Details</span>
+                <span class="ripple-container">
+                  <Icon icon="mdi:information-outline" class="details-icon" />
+                  <span class="details-text">View Details</span>
+                </span>
               </button>
             </div>
           </div>
@@ -168,6 +170,110 @@ defineExpose({
 @import "tailwindcss";
 @import "../../../css/material3.css";
 
+.hardware-accelerated {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: transform;
+}
+
+.m3-content-container {
+  position: absolute;
+  inset: 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Update to adjust map when drawer is open but keep sidebar visible */
+.m3-content-container.drawer-open {
+  margin-left: calc(var(--md-sys-sidebar-collapsed) + 320px);
+}
+
+.m3-content-container.has-mobile-nav {
+  padding-bottom: 64px;
+}
+
+.m3-surface-container {
+  background-color: rgb(var(--md-sys-color-surface-container));
+}
+
+.text-on-surface {
+  color: rgb(var(--md-sys-color-on-surface));
+}
+
+.border-primary {
+  border-color: rgb(var(--md-sys-color-primary));
+}
+
+:deep(.mapboxgl-popup-close-button) {
+  background-color: rgba(0, 0, 0, 0.3) !important;
+  color: white !important;
+  font-size: 16px !important;
+  padding: 2px 5px !important;
+  border-radius: 50px !important;
+  border: none !important;
+  top: 5px !important;
+  right: 5px !important;
+}
+
+:deep(.mapboxgl-popup-close-button:hover) {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Mapbox Popup Styling - Global styles for the popup */
+:deep(.mapboxgl-popup) {
+  transform-origin: bottom center;
+  z-index: 10;
+  margin-bottom: 12px !important; /* Add margin to account for missing tip */
+}
+
+:deep(.mapboxgl-popup-tip) {
+  display: none !important; /* Hide the triangle tip as requested */
+}
+
+:deep(.mapboxgl-popup-content) {
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid rgb(var(--md-sys-color-outline-variant));
+  background-color: rgb(var(--md-sys-color-surface-container-highest));
+}
+
+/* Fix popup positioning for various anchors */
+:deep(.mapboxgl-popup-anchor-bottom),
+:deep(.mapboxgl-popup-anchor-bottom-left),
+:deep(.mapboxgl-popup-anchor-bottom-right) {
+  margin-top: -8px;
+}
+
+:deep(.mapboxgl-popup-anchor-top),
+:deep(.mapboxgl-popup-anchor-top-left),
+:deep(.mapboxgl-popup-anchor-top-right) {
+  margin-bottom: 8px;
+}
+
+:deep(.mapboxgl-popup-anchor-left) {
+  margin-right: 8px;
+}
+
+:deep(.mapboxgl-popup-anchor-right) {
+  margin-left: 8px;
+}
+
+/* Add elevation effect for the popup */
+:deep(.mapboxgl-popup) {
+  will-change: transform;
+  animation: popup-appear 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes popup-appear {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* Popup styles */
 .m3-popup {
   max-width: none !important;
@@ -190,6 +296,7 @@ defineExpose({
   font-size: 14px;
   line-height: 1.5;
 }
+
 :deep(.mapboxgl-popup-close-button) {
   width: 24px !important;
   height: 24px !important;
@@ -264,12 +371,16 @@ defineExpose({
 /* Hide the popup tip */
 :deep(.mapboxgl-popup-tip) {
   display: none !important;
+  border: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 /* Add elevation when popup is open */
 :deep(.mapboxgl-popup) {
   will-change: transform;
   transform-origin: bottom center;
+  margin-top: -8px !important; /* Adjust positioning to compensate for hidden tip */
 }
 
 /* Add subtle surface tint */

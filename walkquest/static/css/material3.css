@@ -620,22 +620,7 @@
 .mapboxgl-canvas {
 	width: 100% !important;
 	height: 100% !important;}
-.m3-rail-item.is-active {
-	color: rgb(var(--md-sys-color-on-secondary-container));}
-.m3-rail-item.is-active .m3-rail-icon-container {
-	background-color: rgb(var(--md-sys-color-secondary-container));}
-.m3-navigation-rail.is-expanded .m3-rail-item {
-	width: 100%;
-	height: 56px;
-	padding: 0 12px;}
-.m3-navigation-rail.is-expanded .m3-rail-content {
-	flex-direction: row;
-	justify-content: flex-start;
-	padding: 0 12px;}
-.m3-navigation-rail.is-expanded .m3-rail-label {
-	margin-left: 4px;}
-.mapboxgl-control-container {
-	pointer-events: auto !important;}
+
 .m3-rail-item.menu-button {
 	width: 56px;
 	height: 48px;
