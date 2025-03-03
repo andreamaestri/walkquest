@@ -57,6 +57,7 @@
     <BottomSheet
       v-if="isMobile"
       v-model="isLocationSearchVisible"
+      :blocking="false"
       class="pb-safe-area-inset-bottom"
     >
       <div class="p-4">

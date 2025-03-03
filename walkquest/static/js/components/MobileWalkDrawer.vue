@@ -53,7 +53,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['update:modelValue', 'close', 'start-walk', 'save-walk', 'directions', 'category-selected', 'map-interaction']);
+const emit = defineEmits(['update:modelValue', 'close', 'start-walk', 'save-walk', 'directions', 'category-selected']);
 
 const bottomSheet = ref(null);
 const isOpen = ref(props.modelValue);
@@ -69,13 +69,14 @@ const safeAreaInset = typeof window !== 'undefined' ? parseInt(getComputedStyle(
 // Adjust default snap point to account for navigation bar
 const defaultSnapPoint = computed(() => Math.min(500, (maxHeight.value - navHeight) / 2));
 
-// Compute snap points with map interaction behavior
+// Calculate snap points based on max height with adjustment for bottom nav
 const snapPoints = computed(() => {
   const height = maxHeight.value - navHeight; // Adjust for nav bar
   return [
-    Math.min(200, height / 4),         // Peek mode - show map
-    Math.min(500, height / 2),         // Half expanded - show map with context
-    height                             // Full height - hide map
+    Math.min(200, height / 4),         // Peeking state
+    Math.min(500, height / 2),         // Half expanded
+    Math.min(800, height * 0.75),      // Most content visible
+    height                             // Full height (excluding nav bar)
   ].sort((a, b) => a - b); // Ensure points are in ascending order
 });
 
@@ -104,22 +105,6 @@ watch(() => props.modelValue, (newVal) => {
         }
       });
     }
-  }
-});
-
-// Watch snap point changes to update map visibility
-watch(() => currentSnapPoint.value, (newSnapPoint) => {
-  if (props.walk && bottomSheet.value) {
-    const height = snapPoints.value[newSnapPoint];
-    const maxViewHeight = maxHeight.value - navHeight;
-    const visibilityRatio = 1 - (height / maxViewHeight);
-    
-    // Emit map interaction event
-    emit('map-interaction', {
-      visibilityRatio,
-      isMapVisible: visibilityRatio > 0.3, // Map is visible when sheet is less than 70% of view
-      coords: [props.walk.longitude, props.walk.latitude]
-    });
   }
 });
 
@@ -163,22 +148,7 @@ function onOpened() {
   // Snap to default point on open
   if (bottomSheet.value) {
     nextTick(() => {
-      // Start with peek mode to show the map
-      bottomSheet.value.snapToPoint(snapPoints.value[0]);
-      
-      // Emit map interaction to focus the location
-      if (props.walk) {
-        emit('map-interaction', {
-          visibilityRatio: 0.8, // Show most of the map
-          isMapVisible: true,
-          coords: [props.walk.longitude, props.walk.latitude]
-        });
-      }
-      
-      // After a short delay, expand to half height
-      setTimeout(() => {
-        bottomSheet.value.snapToPoint(snapPoints.value[1]);
-      }, 1000);
+      bottomSheet.value.snapToPoint(defaultSnapPoint.value);
     });
   }
 }

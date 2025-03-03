@@ -4,7 +4,7 @@
     :snap-points="adjustedSnapPoints"
     :default-snap-point="0"
     @max-height="handleMaxHeight"
-    elevation="3"
+    :elevation="3"
     :blocking="false"
     :can-swipe-close="true"
     :duration="320"

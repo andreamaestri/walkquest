@@ -29,7 +29,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
-
+ 
 // Props definition
 const props = defineProps({
   modelValue: {
@@ -87,8 +87,7 @@ const emit = defineEmits([
   'dragging-up',
   'dragging-down',
   'opened',
-  'closed',
-  'snap-change'
+  'closed'
 ])
 
 // Refs
@@ -327,16 +326,6 @@ function dragMove(clientY) {
   // Limit how small the sheet can get
   newHeight = Math.max(100, newHeight)
   
-  // Find closest snap point during drag
-  let closestPoint = findClosestSnapPoint(newHeight)
-  if (closestPoint !== null) {
-    const snapIndex = props.snapPoints.indexOf(closestPoint)
-    if (snapIndex !== currentSnapPoint.value) {
-      currentSnapPoint.value = snapIndex
-      emit('snap-change', snapIndex)
-    }
-  }
-  
   // Apply new height with transform for better performance
   animationFrame = requestAnimationFrame(() => {
     if (bottomSheetRef.value) {
@@ -406,7 +395,6 @@ function snapToPoint(point) {
   currentSnapPoint.value = index
   
   bottomSheetRef.value.style.height = `${point}px`
-  emit('snap-change', index)
 }
 
 // Watch for modelValue changes
@@ -425,7 +413,6 @@ watch(() => props.modelValue, (newVal) => {
       }
     }, props.duration)
   }
-  
   emit(newVal ? 'opened' : 'closed')
 }, { immediate: true })
 
@@ -440,7 +427,6 @@ defineExpose({
 <style>
 .bottom-sheet {
   position: fixed;
-  z-index: 1000;
   left: 0;
   right: 0;
   top: 0;

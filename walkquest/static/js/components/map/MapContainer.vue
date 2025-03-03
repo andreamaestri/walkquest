@@ -79,15 +79,6 @@ const props = defineProps({
   isDrawerOpen: {
     type: Boolean,
     default: false
-  },
-  // Add new props for mobile interactions
-  mobileMapVisibility: {
-    type: Number,
-    default: 1
-  },
-  isMobileView: {
-    type: Boolean,
-    default: false
   }
 });
 
@@ -164,32 +155,10 @@ const mapContainerStyle = computed(() => ({
   position: "absolute",
   inset: "0",
   width: "100vw",
-  height: props.isMobileView ? `${props.mobileMapVisibility * 100}%` : "100vh",
+  height: "100vh",
   marginLeft: "var(--md-sys-sidebar-collapsed)", // Always keep margin for sidebar
   paddingRight: "0", // No padding needed on right side
-  transition: "height 0.32s var(--md-sys-motion-easing-emphasized-decelerate)",
 }));
-
-// Add padding computation for mobile view
-const mapPadding = computed(() => {
-  const base = {
-    top: 50,
-    bottom: 50,
-    left: props.isDrawerOpen && !props.isMobileView ? 384 + 50 : 50,
-    right: 50
-  };
-
-  if (props.isMobileView) {
-    // Adjust bottom padding based on drawer state and visibility
-    base.bottom = Math.max(
-      100, // Minimum padding
-      (window.innerHeight * (1 - props.mobileMapVisibility)) + 50
-    );
-    base.top = 100; // Extra top padding for mobile
-  }
-
-  return base;
-});
 
 /**
  * Computed property for visible walks
@@ -337,16 +306,6 @@ const handleMapCreated = (map) => {
   mapBounds.value = map.getBounds();
 
   emit('map-created', map);
-
-  // Apply initial padding
-  map.setPadding(mapPadding.value);
-
-  // Watch for padding changes
-  watch(mapPadding, (newPadding) => {
-    if (map && !isAnimating.value) {
-      map.easeTo({ padding: newPadding, duration: 300 });
-    }
-  });
 };
 
 /**
@@ -376,9 +335,10 @@ const updateVisibleMarkers = debounce(() => {
  * Handle marker click
  * Updates marker colors and emits walk selection event
  */
-const handleMarkerClick = (walk) => {
+ const handleMarkerClick = (walk) => {
   if (!walk || animationInProgress.value) return;
 
+  // Lock out animations
   animationInProgress.value = true;
   
   // First: update all markers to avoid flicker
@@ -386,27 +346,6 @@ const handleMarkerClick = (walk) => {
     updateMarkerColorImmediate(marker, id === walk.id);
   });
   
-  // For mobile: adjust the map view before emitting selection
-  if (props.isMobileView) {
-    const map = mapInstance.value;
-    if (map) {
-      map.flyTo({
-        center: [walk.longitude, walk.latitude],
-        zoom: 15,
-        pitch: 45,
-        bearing: 0,
-        duration: 1000,
-        essential: true,
-        padding: {
-          top: 100,
-          bottom: maxHeight.value / 2, // Account for half-height drawer
-          left: 50,
-          right: 50
-        }
-      });
-    }
-  }
-
   // Then: emit walk selected with enough delay for marker update
   setTimeout(() => {
     emit('walk-selected', walk);

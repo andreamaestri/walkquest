@@ -37,8 +37,6 @@
       :selected-walk-id="selectedWalkId"
       :walks="walks"
       :is-drawer-open="isDrawerOpen"
-      :is-mobile-view="uiStore.isMobile"
-      :mobile-map-visibility="mobileMapVisibility"
       @map-created="handleMapCreated"
       @map-loaded="handleMapLoad"
       @walk-selected="handleWalkSelection"
@@ -68,6 +66,7 @@
     <!-- Walks Bottom Sheet for mobile -->
     <BottomSheet 
       v-model="showWalksBottomSheet" 
+      :blocking="false" 
       variant="standard"
       initialHeight="50vh"
       maxHeight="90vh"
@@ -86,7 +85,7 @@
               <button 
                 v-for="category in availableCategories" 
                 :key="category.id" 
-                class="category-chip"
+                class="category-chip" 
                 :class="{ 'active': activeCategory === category.name }"
                 @click="selectCategory(category)"
               >
@@ -138,7 +137,6 @@
       @start-walk="handleStartWalk"
       @save-walk="handleSaveWalk"
       @category-selected="handleCategorySelected"
-      @map-interaction="handleMobileMapInteraction"
     />
   </div>
 </template>
@@ -226,14 +224,37 @@ const showWalksBottomSheet = ref(false); // Initialize to false to ensure it's c
 const showWalkDetailSheet = ref(false);
 const isWalksSheetExpanded = ref(false);
 const isWalkDetailSheetExpanded = ref(false);
+const activeCategory = ref(null);
+
+// Available categories
+const availableCategories = ref([
+  { id: 1, name: 'Nature', icon: 'mdi:tree' },
+  { id: 2, name: 'Urban', icon: 'mdi:city' },
+  { id: 3, name: 'Historical', icon: 'mdi:bank' },
+  { id: 4, name: 'Adventure', icon: 'mdi:hiking' },
+  { id: 5, name: 'Family', icon: 'mdi:account-group' }
+]);
+
+// Get category icon
+function getCategoryIcon(categoryName) {
+  const category = availableCategories.value.find(c => c.name === categoryName);
+  return category?.icon || 'mdi:help-circle';
+}
+
+// Select category
+function selectCategory(category) {
+  if (activeCategory.value === category.name) {
+    activeCategory.value = null;
+  } else {
+    activeCategory.value = category.name;
+  }
+}
+
 const expandedWalkIds = ref(
   localStorage.getItem("expandedWalks") 
   ? JSON.parse(localStorage.getItem("expandedWalks")) 
   : []
 );
-
-// Add new state for mobile map visibility
-const mobileMapVisibility = ref(1); // 1 = fully visible, 0 = hidden
 
 // Add tab change handler
 function handleTabChange(tab) {
@@ -536,29 +557,6 @@ const handleMapCreated = (map) => {
  */
 const handleMapLoad = () => {
   uiStore.setLoadingState("map", false);
-};
-
-/**
- * Handle mobile map interactions
- * Updates map view and visibility state
- */
-const handleMobileMapInteraction = ({ visibilityRatio, isMapVisible, coords }) => {
-  mobileMapVisibility.value = visibilityRatio;
-  
-  if (isMapVisible && coords && mapContainer.value?.mapInstance) {
-    // Update map view when drawer moves and map is visible
-    mapContainer.value.mapInstance.easeTo({
-      center: coords,
-      zoom: 14,
-      duration: 500,
-      padding: {
-        top: 100,
-        bottom: maxHeight.value / 2,
-        left: 50,
-        right: 50
-      }
-    });
-  }
 };
 
 /**
