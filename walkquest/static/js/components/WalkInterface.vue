@@ -71,7 +71,6 @@
       initialHeight="50vh"
       maxHeight="90vh"
       :snapPoints="[0.5, 0.85]"
-      :alwaysRender="true"
       @snap-change="handleWalksSheetSnapChange"
     >
       <div class="md3-surface p-0">
@@ -198,7 +197,7 @@ const drawerMounted = ref(false);
 // State refs
 const isExpanded = ref(localStorage.getItem("sidebarExpanded") === "true");
 const activeTab = ref('explore');
-const showWalksBottomSheet = ref(false);
+const showWalksBottomSheet = ref(false); // Initialize to false to ensure it's closed on page load
 const showWalkDetailSheet = ref(false);
 const isWalksSheetExpanded = ref(false);
 const isWalkDetailSheetExpanded = ref(false);
@@ -221,6 +220,9 @@ function handleTabChange(tab) {
       break
     case 'categories':
       searchStore.setSearchMode('categories')
+      break
+    case 'walks':
+      showWalksBottomSheet.value = true
       break
   }
 }

@@ -448,19 +448,28 @@ export function useWalkData(walkProp) {
    * Get icon for a category
    */
   function getCategoryIcon(categoryName) {
-    // Direct match
-    if (categoryMappings[categoryName]) {
-      return categoryMappings[categoryName].icon;
-    }
-
-    // Pattern match
-    for (const pattern of categoryPatterns) {
-      if (pattern.pattern.test(categoryName)) {
-        return categoryMappings[pattern.match]?.icon || defaultCategory.icon;
-      }
-    }
-
-    return defaultCategory.icon;
+    // Convert to lowercase for case-insensitive matching
+    const category = categoryName.toLowerCase();
+    
+    // Return appropriate icon based on category name
+    if (category.includes('coastal')) return 'mdi:waves';
+    if (category.includes('woodland')) return 'mdi:tree';
+    if (category.includes('river')) return 'mdi:water';
+    if (category.includes('circular')) return 'mdi:refresh';
+    if (category.includes('linear')) return 'mdi:ray-start-arrow';
+    if (category.includes('moorland')) return 'mdi:mountain';
+    // Add new category icons
+    if (category.includes('saints way')) return 'mdi:church';
+    if (category.includes('off the beaten track')) return 'mdi:road-variant';
+    if (category.includes('visiting a church')) return 'mdi:church-outline';
+    if (category.includes('nice autumn colours')) return 'mdi:leaf-maple';
+    if (category.includes('fishing village')) return 'mdi:fish';
+    if (category.includes('lighthouse') || category.includes('daymark')) return 'mdi:lighthouse';
+    if (category.includes('shipwreck')) return 'mdi:sail-boat-sink';
+    if (category.includes('beach')) return 'mdi:beach';
+    
+    // Return default icon if no match
+    return 'mdi:map-marker-path';
   }
 
   /**

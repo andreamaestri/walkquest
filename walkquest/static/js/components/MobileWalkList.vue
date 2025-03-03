@@ -1,10 +1,12 @@
 <template>
   <BottomSheet 
     v-model="isOpen" 
-    :snap-points="['40vh', '75vh']"
-    :default-snap-point="'40vh'"
+    :snap-points="[maxHeight / 3, maxHeight / 1.5, maxHeight]"
+    :default-snap-point="0"
+    @max-height="(n) => (maxHeight = n)"
     elevation="3"
-    :scrim-color="scrimColor"
+    :blocking="false"
+    :can-swipe-close="true"
   >
     <template #header>
       <div class="mobile-walk-list-header">
@@ -44,7 +46,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['walk-selected'])
-const isOpen = ref(true)
+const isOpen = ref(false)  // Initialize to false so sheet starts closed
 
 // Material Design 3 scrim color with 0.32 opacity
 const scrimColor = computed(() => 'rgba(0, 0, 0, 0.32)')

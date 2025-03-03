@@ -681,11 +681,7 @@ watch(selectedCategory, (newCategory) => {
     border-top-right-radius: 16px;
     background: rgb(var(--md-sys-color-surface));
     overflow: hidden;
-    
-    .walks-section {
-      padding: 8px 0;
-    }
-    
+        
     .walk-card-wrapper {
       padding: 4px 8px;
     }

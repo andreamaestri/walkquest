@@ -1,5 +1,5 @@
 <template>
-  <div v-if="modelValue || alwaysRender" class="bottom-sheet" @click.self="handleOverlayClick" :class="{ 'bottom-sheet--hidden': !modelValue }" :style="cssVars">
+  <div v-if="modelValue || alwaysRender" class="bottom-sheet" @click.self="handleOverlayClick" :class="{ 'bottom-sheet--hidden': !modelValue }">
     <div 
       ref="bottomSheetRef"
       class="bottom-sheet__container" 
@@ -102,13 +102,6 @@ const snapClass = computed(() => {
   }
 })
 
-// Compute CSS variables
-const cssVars = computed(() => {
-  return {
-    '--vsbs-scrim-color': props.scrimColor,
-    '--vsbs-transition-duration': `${props.duration}ms`
-  }
-})
 
 // Sheet state
 let startY = 0
@@ -428,12 +421,10 @@ defineExpose({
   right: 0;
   top: 0;
   bottom: 0;
-  background-color: var(--vsbs-scrim-color, rgba(0, 0, 0, 0.32));
   display: flex;
   align-items: flex-end;
   justify-content: center;
   overflow: hidden;
-  touch-action: none;
   will-change: opacity;
   transition: background-color var(--vsbs-transition-duration, 300ms) cubic-bezier(0.2, 0, 0, 1);
 }
@@ -523,8 +514,6 @@ defineExpose({
 }
 
 .bottom-sheet__header {
-  padding: 0 var(--vsbs-padding-x, 24px);
-  border-bottom: 1px solid var(--vsbs-border-color, rgba(var(--md-sys-color-outline-variant, 121, 116, 126), 0.12));
   width: 100%;
   overflow: visible;
   white-space: normal;
@@ -542,16 +531,12 @@ defineExpose({
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  padding: 16px var(--vsbs-padding-x, 24px);
   max-height: calc(90vh - 80px); /* Allow content to scroll within */
   scroll-behavior: smooth;
 }
 
 /* Safe area insets for mobile */
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
-  .bottom-sheet__content {
-    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-  }
   
   .bottom-sheet__footer {
     padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));

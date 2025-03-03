@@ -50,8 +50,8 @@ defineEmits(['close']);
 }
 
 .header-container.mobile {
-  border-radius: 28px 28px 0 0; /* Match bottom sheet radius */
-  padding-left: 16px; /* Add padding back for mobile */
+  border-radius: 0; /* Match bottom sheet radius */
+  background-color: rgb(var(--md-sys-color-surface));
 }
 
 .header-content {

@@ -75,66 +75,32 @@ const handleFavorite = async () => {
   }
 }
 
-const formatDuration = (duration) => {
-  if (duration == null) return ''
-  const minutes = Number.parseFloat(duration)
-  if (Number.isNaN(minutes)) return ''
-  const hours = Math.floor(minutes / 60)
-  const mins = Math.round(minutes % 60)
-  return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`
-}
-
 const formatDistance = (distance) => {
-  if (!distance) return ''
-  // Convert km to miles (1 km = 0.621371 miles)
-  const miles = (Number.parseFloat(distance) * 0.621371).toFixed(1)
-  return `${miles} miles`
+  if (!distance) return '-- mi'
+  return `${distance.toFixed(1)} mi`
 }
 
-const difficultyText = computed(() => {
-  console.log('Steepness level:', props.walk.steepness_level) // Debug log
-  const level = props.walk.steepness_level?.toUpperCase()
-  if (!level) return 'Unknown'
-  
-  switch (level) {
-    case 'NOVICE WANDERER':
-      return 'Easy'
-    case "GREY'S PATHFINDER":
-    case 'TRAIL RANGER':
-      return 'Medium'
-    case "WARDEN'S ASCENT":
-    case 'MASTER WAYFARER':
-      return 'Hard'
-    default:
-      console.log('Unmatched level:', level) // Debug log
-      return 'Unknown'
+const formatDuration = (duration) => {
+  if (!duration) return ''
+  return `${duration} min`
+}
+
+const difficultyClass = computed(() => {
+  const difficulty = props.walk.difficulty?.toLowerCase() || 'easy'
+  return {
+    'easy': difficulty.includes('easy'),
+    'medium': difficulty.includes('medium') || difficulty.includes('moderate'),
+    'hard': difficulty.includes('hard') || difficulty.includes('challenging')
   }
 })
 
-const difficultyClass = computed(() => {
-  const level = props.walk.steepness_level?.toUpperCase()
-  if (!level) return 'medium'
-  
-  switch (level) {
-    case 'NOVICE WANDERER':
-      return 'easy'
-    case "GREY'S PATHFINDER":
-    case 'TRAIL RANGER':
-      return 'medium'
-    case "WARDEN'S ASCENT":
-    case 'MASTER WAYFARER':
-      return 'hard'
-    default:
-      return 'medium'
-  }
+const difficultyText = computed(() => {
+  return props.walk.difficulty || 'Easy'
 })
 
 const firstCategories = computed(() => {
   const cats = props.walk.related_categories || []
-  return cats.slice(0, 3).map(cat => ({
-    ...cat,
-    name: cat.name.charAt(0).toUpperCase() + cat.name.slice(1)
-  }))
+  return cats.slice(0, 3)
 })
 
 const moreCount = computed(() => {
@@ -156,7 +122,7 @@ const getCategoryStyle = (cat) => {
 }
 </script>
 
-<style scoped>
+<style>
 .walk-card {
   background: rgb(var(--md-sys-color-surface-container-low));
   border-radius: 16px;
@@ -198,47 +164,35 @@ const getCategoryStyle = (cat) => {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 0.875rem;
-  color: rgb(var(--md-sys-color-on-surface-variant));
-  line-height: 1.25;
 }
 
-.location {
+.walk-details {
   display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.location Icon {
-  color: rgb(var(--md-sys-color-primary));
-  font-size: 16px;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .badges {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 12px;
 }
 
 .badge {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 6px;
   padding: 4px 12px;
-  border-radius: 8px;
-  font-size: 0.875rem;
+  border-radius: 16px;
+  font-size: 0.75rem;
   font-weight: 500;
-  background: rgb(var(--md-sys-color-surface-container-highest));
+  background: rgba(var(--md-sys-color-surface-variant), 0.5);
+  color: rgb(var(--md-sys-color-on-surface-variant));
 }
 
-.badge Icon {
-  font-size: 18px;
-}
-
-.badge.difficulty {
-  background: rgb(var(--md-sys-color-secondary-container));
-  color: rgb(var(--md-sys-color-on-secondary-container));
+.badge.distance {
+  background: rgb(var(--md-sys-color-primary-container));
+  color: rgb(var(--md-sys-color-on-primary-container));
 }
 
 .badge.difficulty.easy {
@@ -260,7 +214,6 @@ const getCategoryStyle = (cat) => {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 12px;
 }
 
 .category-tag {
@@ -286,10 +239,6 @@ const getCategoryStyle = (cat) => {
   padding: 12px;
 }
 
-.walk-card.is-compact .walk-title {
-  font-size: 0.875rem;
-}
-
 .walk-card.is-compact .walk-meta {
   font-size: 0.75rem;
 }
@@ -301,5 +250,81 @@ const getCategoryStyle = (cat) => {
 .walk-card.is-compact .badge {
   padding: 2px 8px;
   font-size: 0.75rem;
+}
+
+/* Mobile improvements */
+@media (max-width: 768px) {
+  .walk-card {
+    margin: 8px 4px;
+    border-radius: 20px;
+    box-shadow: var(--md-sys-elevation-2);
+  }
+  
+  .walk-content {
+    padding: 20px;
+  }
+  
+  .walk-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+  
+  .badges {
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  
+  .badge {
+    padding: 6px 14px;
+    font-size: 0.875rem;
+    border-radius: 20px;
+  }
+  
+  .category-tag {
+    padding: 6px 14px;
+    font-size: 0.875rem;
+    border-radius: 20px;
+  }
+  
+  .walk-card:active {
+    transform: scale(0.98);
+  }
+  
+  /* Improve touch area */
+  .walk-details {
+    gap: 8px;
+  }
+  
+  /* Add subtle animation */
+  .walk-card {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+                box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  /* Add a subtle gradient effect to highlight importance */
+  .walk-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      to bottom,
+      rgba(var(--md-sys-color-primary), 0.05),
+      rgba(var(--md-sys-color-surface), 0.02)
+    );
+    border-radius: inherit;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+  }
+  
+  .walk-card:hover::before,
+  .walk-card:active::before {
+    opacity: 1;
+  }
 }
 </style>

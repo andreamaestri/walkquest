@@ -2,11 +2,12 @@
   <BottomSheet 
     ref="bottomSheet"
     v-model="isOpen"
-    :can-overlay-close="true"
-    :snap-points="[300, 500, '90vh']"
-    :default-snap-point="500"
     elevation="3"
-    :scrim-color="scrimColor"
+    :can-swipe-close="false"
+    :default-snap-point="defaultSnapPoint"
+    :snap-points="snapPoints"
+    :expand-on-content-drag="true"
+    @max-height="handleMaxHeight"
     @opened="onOpened"
     @closed="onClosed"
   >
@@ -56,6 +57,25 @@ const isOpen = ref(props.modelValue);
 // Material Design 3 scrim color with 0.32 opacity
 const scrimColor = computed(() => 'rgba(0, 0, 0, 0.32)');
 
+// Sheet height management
+const maxHeight = ref(window.innerHeight);
+const defaultSnapPoint = computed(() => Math.min(500, maxHeight.value / 2));
+
+// Calculate snap points based on max height
+const snapPoints = computed(() => {
+  const height = maxHeight.value;
+  return [
+    Math.min(200, height / 4),         // Peeking state
+    Math.min(500, height / 2),         // Half expanded
+    Math.min(800, height * 0.75),      // Most content visible
+    height                             // Full height
+  ].sort((a, b) => a - b); // Ensure points are in ascending order
+});
+
+function handleMaxHeight(height) {
+  maxHeight.value = height;
+}
+
 // Watch for changes to modelValue prop
 watch(() => props.modelValue, (newVal) => {
   isOpen.value = newVal;
@@ -68,7 +88,12 @@ watch(() => isOpen.value, (newVal) => {
 
 // Lifecycle hooks
 onMounted(() => {
+  // Initialize maxHeight
+  maxHeight.value = window.innerHeight;
+  
+  // Handle initial open state
   if (props.modelValue) {
+    // Only open if modelValue is true initially
     open();
   }
 });
@@ -76,6 +101,7 @@ onMounted(() => {
 // Methods to control the bottom sheet
 function open() {
   if (bottomSheet.value) {
+    isOpen.value = true;
     bottomSheet.value.open();
   }
 }
@@ -87,7 +113,12 @@ function close() {
 }
 
 function onOpened() {
-  // Any additional logic when sheet is opened
+  // Snap to default point on open
+  if (bottomSheet.value) {
+    nextTick(() => {
+      bottomSheet.value.snapToPoint(defaultSnapPoint.value);
+    });
+  }
 }
 
 function onClosed() {

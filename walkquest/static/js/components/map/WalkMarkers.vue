@@ -1,23 +1,20 @@
 <template>
   <div>
-    <template
-      v-for="walk in walks"
-      :key="`${walk.id}-${markerKey}`"
-    >
-    <MapboxMarker
+    <template v-for="walk in walks" :key="`${walk.id}-${markerKey}`">
+      <MapboxMarker
         :lng-lat="[
           Number(walk.longitude) || Number(walk.lng),
           Number(walk.latitude) || Number(walk.lat),
         ]"
         :color="selectedWalkId === walk.id ? '#6750A4' : '#3FB1CE'"
         :popup="{
-          offset: [0, -12], /* Adjust offset to compensate for hidden tip */
+          offset: [0, -12] /* Adjust offset to compensate for hidden tip */,
           anchor: 'bottom',
           closeButton: true,
           closeOnClick: true,
           className: 'm3-popup',
           maxWidth: 'none',
-          focusTrap: true
+          focusTrap: true,
         }"
         class="map-marker"
         @mounted="(marker) => handleMarkerMounted(marker, walk.id)"
@@ -34,17 +31,23 @@
                   <Icon icon="mdi:map-marker-distance" class="w-4 h-4" />
                   <span>{{ walk.distance?.toFixed(1) || 0 }} miles</span>
                 </div>
-                <div v-if="walk.duration" class="flex items-center gap-2 popup-info-badge">
+                <div
+                  v-if="walk.duration"
+                  class="flex items-center gap-2 popup-info-badge"
+                >
                   <Icon icon="mdi:clock-outline" class="w-4 h-4" />
                   <span>{{ walk.duration }} mins</span>
                 </div>
-                <div v-if="walk.steepness_level" class="flex items-center gap-2 popup-difficulty-badge"
-                     :class="getDifficultyClass(walk.steepness_level)">
+                <div
+                  v-if="walk.steepness_level"
+                  class="flex items-center gap-2 popup-difficulty-badge"
+                  :class="getDifficultyClass(walk.steepness_level)"
+                >
                   <Icon icon="mdi:terrain" class="w-4 h-4" />
                   <span>{{ walk.steepness_level }}</span>
                 </div>
               </div>
-              
+
               <div class="flex flex-wrap gap-2 mt-3">
                 <div v-if="walk.has_pub" class="popup-feature-badge">
                   <Icon icon="mdi:beer" class="popup-feature-icon" />
@@ -66,9 +69,22 @@
                 class="view-details-button"
                 aria-label="View walk details"
                 role="button"
+                style="
+                  background-color: rgb(var(--md-sys-color-primary));
+                  color: white;
+                  border: none;
+                  padding: 10px 20px;
+                  width: 100%;
+                  text-align: center;
+                  display: block;
+                  border-radius: 5px;
+                  cursor: pointer;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                "
               >
                 <span class="ripple-container">
-                  <Icon icon="mdi:information-outline" class="details-icon" />
                   <span class="details-text">View Details</span>
                 </span>
               </button>
@@ -92,23 +108,28 @@ const props = defineProps({
     type: Array,
     required: true,
     validator: (value) => {
-      return Array.isArray(value) && value.every(walk => 
-        walk && 
-        (typeof walk.longitude === 'number' || typeof walk.lng === 'number') &&
-        (typeof walk.latitude === 'number' || typeof walk.lat === 'number')
+      return (
+        Array.isArray(value) &&
+        value.every(
+          (walk) =>
+            walk &&
+            (typeof walk.longitude === "number" ||
+              typeof walk.lng === "number") &&
+            (typeof walk.latitude === "number" || typeof walk.lat === "number")
+        )
       );
-    }
+    },
   },
   selectedWalkId: {
     type: [String, Number],
-    default: null
-  }
+    default: null,
+  },
 });
 
 /**
  * Emits for component communication
  */
-const emit = defineEmits(['marker-click', 'marker-mounted', 'popup-open-walk']);
+const emit = defineEmits(["marker-click", "marker-mounted", "popup-open-walk"]);
 
 // Component state
 const markerKey = ref(0);
@@ -121,9 +142,9 @@ const getDifficultyClass = (level) => {
     "Village Trail": "difficulty-easy",
     "Merchant Path": "difficulty-medium",
     "Warden's Ascent": "difficulty-hard",
-    "Easy": "difficulty-easy",
-    "Moderate": "difficulty-medium",
-    "Challenging": "difficulty-hard"
+    Easy: "difficulty-easy",
+    Moderate: "difficulty-medium",
+    Challenging: "difficulty-hard",
   };
   return levelMap[level] || "";
 };
@@ -133,7 +154,7 @@ const getDifficultyClass = (level) => {
  * Emits event to parent component
  */
 const handleMarkerClick = (walk) => {
-  emit('marker-click', walk);
+  emit("marker-click", walk);
 };
 
 /**
@@ -141,7 +162,7 @@ const handleMarkerClick = (walk) => {
  * Emits event to parent component with marker reference
  */
 const handleMarkerMounted = (marker, walkId) => {
-  emit('marker-mounted', marker, walkId);
+  emit("marker-mounted", marker, walkId);
 };
 
 /**
@@ -149,7 +170,7 @@ const handleMarkerMounted = (marker, walkId) => {
  * Emits event to parent component
  */
 const handlePopupOpenWalk = (event, walk) => {
-  emit('popup-open-walk', event, walk);
+  emit("popup-open-walk", event, walk);
 };
 
 /**
@@ -162,7 +183,7 @@ const refreshMarkers = () => {
 
 // Expose methods to parent component
 defineExpose({
-  refreshMarkers
+  refreshMarkers,
 });
 </script>
 
