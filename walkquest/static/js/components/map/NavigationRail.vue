@@ -443,6 +443,9 @@ onMounted(() => {
   width: var(--md-sys-sidebar-collapsed);
   /* Create a stacking context */
   isolation: isolate;
+  @media (max-width: 768px) {
+    display: none;
+  }
 }
 
 /* Add interaction styles for when drawer is open */

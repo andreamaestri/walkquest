@@ -164,6 +164,7 @@ const emit = defineEmits(['walk-selected', 'location-selected'])
 const scroller = shallowRef(null)
 const listContainer = shallowRef(null)
 const hoverCategory = ref(null) // Track hovered category for visual feedback
+const resizeObserver = shallowRef(null) // Define resizeObserver as a ref
 
 // Initialize stores with storeToRefs for reactivity
 const searchStore = useSearchStore()
@@ -187,7 +188,7 @@ const categoryIcons = {
   'one-way coastal walks': 'mdi:waves-arrow-right',
   'mountain walks': 'mdi:mountain',
   'riverside walks': 'mdi:water',
-  'woodland walks': 'mdi:pine-tree',
+  'woodland walks': 'maki:natural',
   
   // Amenities walks
   'pub walks': 'mdi:glass-mug-variant',
@@ -202,9 +203,9 @@ const categoryIcons = {
   'walks visiting a church': 'mdi:church',
   'walks including the saints way': 'mdi:church-outline',
   'walks with a holy well': 'mdi:water-well-outline',
-  'walks with prehistoric remains': 'game-icons:ancient-ruins',
+  'walks with prehistoric remains': 'maki:historic',
   'walks with mining/quarrying heritage': 'bitcoin-icons:mining-filled',
-  'walks on the mining trails': 'game-icons:mining-helmet',
+  'walks on the mining trails': 'healthicons:miner-worker-alt',
   'walks on the clay trails': 'mdi:terrain',
   'walks with nice autumn colours': 'stash:leaf-solid',
   
@@ -561,12 +562,12 @@ onMounted(() => {
   updateFilteredResults();
 
   // Setup ResizeObserver for responsive updates
-  const resizeObserver = new ResizeObserver(debounce(() => {
-    handleScrollerUpdate();
-  }, 100));
-
-  if (listContainer.value) {
-    resizeObserver.observe(listContainer.value);
+  if (listContainer.value && window.ResizeObserver) {
+    resizeObserver.value = new ResizeObserver(debounce(() => {
+      handleScrollerUpdate();
+    }, 100));
+    
+    resizeObserver.value.observe(listContainer.value);
   }
 
   // Prepare animation function for Motion with proper promise handling
@@ -601,7 +602,10 @@ onMounted(() => {
 
 // Clean up on unmount
 onBeforeUnmount(() => {
-  resizeObserver.disconnect();
+  if (resizeObserver.value) {
+    resizeObserver.value.disconnect();
+    resizeObserver.value = null;
+  }
 })
 
 // More efficient watchers
@@ -670,6 +674,27 @@ watch(selectedCategory, (newCategory) => {
   height: 100%;
   width: 100%;
   overflow: hidden;
+  
+  @media (max-width: 768px) {
+    height: 100%;
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+    background: rgb(var(--md-sys-color-surface));
+    overflow: hidden;
+    
+    .walks-section {
+      padding: 8px 0;
+    }
+    
+    .walk-card-wrapper {
+      padding: 4px 8px;
+    }
+    
+    .category-selection {
+      padding: 12px;
+      border-bottom: 1px solid rgb(var(--md-sys-color-outline-variant));
+    }
+  }
 }
 
 /* Search Wrapper Styles */
@@ -1033,7 +1058,7 @@ watch(selectedCategory, (newCategory) => {
 }
 
 .category-card:active .category-card-icon {
-  transform: scale(0.95);
+  transform: scale(1.25);
   /* Icon active animation */
 }
 
@@ -1202,26 +1227,54 @@ watch(selectedCategory, (newCategory) => {
 .selected-category {
   display: flex;
   align-items: center;
-  justify-content: center;
-  /* Center icon in category */
-  gap: 12px;
-  /* Spacing between icon and text */
+  gap: 14px; /* Increased spacing between icon and text */
+  position: relative; /* For potential pseudo-elements */
+  transition: transform 0.2s ease-out;
+}
+
+.selected-category:hover {
+  transform: translateX(4px); /* Slight shift on hover */
 }
 
 .selected-category Icon {
   color: rgb(var(--md-sys-color-primary));
-  /* Selected category icon color */
-  font-size: 24px;
-  width: 40px;
-  height: 40px;
+  font-size: 22px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  background-color: rgba(var(--md-sys-color-primary), 0.1);
-  /* Light background for icon */
-  transition: transform 0.3s ease;
-  /* Icon transform transition */
+  border-radius: 12px; /* Squared corners for more modern look */
+  background: linear-gradient(135deg, 
+    rgba(var(--md-sys-color-primary), 0.15),
+    rgba(var(--md-sys-color-tertiary), 0.1));
+  box-shadow: 0 2px 6px rgba(var(--md-sys-color-primary), 0.15);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); /* Bouncy animation */
+  flex-shrink: 0; /* Prevent icon from shrinking */
+}
+
+.selected-category span {
+  font-weight: 500;
+  font-size: 0.9375rem;
+  letter-spacing: 0.01em;
+  color: rgb(var(--md-sys-color-on-surface));
+  position: relative;
+  padding-bottom: 2px; /* Space for underline */
+}
+
+.selected-category span::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 0;
+  height: 2px;
+  background: rgb(var(--md-sys-color-primary));
+  transition: width 0.3s ease;
+}
+
+.selected-category:hover span::after {
+  width: 100%; /* Animate underline on hover */
 }
 
 .selected-category-info:hover .selected-category Icon {
@@ -1397,5 +1450,231 @@ watch(selectedCategory, (newCategory) => {
 
 .selected-category-info.default-category {
   border-left: 4px solid #37474f;
+}
+
+/* Enhanced Media Queries for Responsiveness */
+@media (max-width: 600px) {
+  .category-cards-direct {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    /* Smaller cards on smaller screens */
+    gap: 8px;
+    padding: 4px 0;
+  }
+
+  .category-card {
+    min-height: 100px; /* Reduce height on mobile */
+    padding: 12px 8px; /* Reduce padding on mobile */
+  }
+
+  .category-card-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
+
+  .category-card-name {
+    font-size: 0.8125rem;
+    margin-top: 6px;
+  }
+
+  .selected-category {
+    gap: 8px;
+    /* Reduced gap in selected category for smaller screens */
+  }
+
+  .selected-category Icon {
+    font-size: 18px;
+    /* Smaller icon in selected category for smaller screens */
+    width: 32px;
+    height: 32px;
+  }
+
+  .selected-category-info {
+    padding: 8px 12px;
+    margin-top: 12px;
+  }
+
+  .clear-category {
+    padding: 6px 12px;
+    font-size: 0.75rem;
+  }
+
+  .clear-category Icon {
+    font-size: 14px;
+  }
+
+  .category-header {
+    margin-bottom: 12px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .category-title {
+    font-size: 1.125rem;
+  }
+
+  .result-count {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+  }
+
+  .walk-list-container.is-compact .search-wrapper {
+    padding: 2px;
+    min-height: 160px;
+  }
+
+  .empty-state {
+    min-height: 160px;
+    padding: 16px;
+  }
+
+  .empty-icon {
+    font-size: 36px;
+  }
+
+  .empty-message {
+    gap: 12px;
+    font-size: 0.875rem;
+  }
+
+  .error-message {
+    padding: 12px;
+    margin: 6px;
+    font-size: 0.8125rem;
+  }
+
+  .walks-section {
+    gap: 12px;
+  }
+
+  .category-selection {
+    padding: 12px;
+  }
+
+  .distance-badge {
+    font-size: 0.75rem;
+  }
+
+  .distance-badge Icon {
+    font-size: 14px;
+  }
+}
+
+/* Additional mobile breakpoint for extra small screens */
+@media (max-width: 375px) {
+  .category-cards-direct {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 6px;
+  }
+
+  .category-card {
+    min-height: 90px;
+    padding: 10px 6px;
+  }
+
+  .category-card-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+  }
+
+  .category-card-name {
+    font-size: 0.75rem;
+    margin-top: 4px;
+  }
+
+  .category-title {
+    font-size: 1rem;
+  }
+
+  .selected-category-info {
+    padding: 6px 10px;
+  }
+
+  .selected-category span {
+    font-size: 0.875rem;
+  }
+
+  .clear-category {
+    padding: 4px 8px;
+    font-size: 0.6875rem;
+  }
+
+  /* Improve touch targets on very small screens */
+  .walk-card-wrapper {
+    padding: 6px 0;
+  }
+}
+
+/* Add landscape orientation styles for better horizontal layout */
+@media (max-height: 500px) and (orientation: landscape) {
+  .category-cards-direct {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .category-selection {
+    max-height: 260px;
+    overflow-y: auto;
+  }
+
+  .category-card {
+    min-height: 100px;
+  }
+
+  .empty-state {
+    min-height: 120px;
+  }
+
+  /* Use horizontal layout for some elements to maximize space */
+  .empty-message {
+    flex-direction: row;
+    gap: 16px;
+  }
+
+  .category-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+}
+
+/* Improve scroller touch interaction on mobile */
+@media (hover: none) and (pointer: coarse) {
+  .scroller {
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+    scroll-behavior: smooth;
+  }
+
+  /* Increase touch targets */
+  .category-card {
+    transition: background-color 0.3s ease;
+  }
+
+  /* Active state for touch devices */
+  .category-card:active {
+    background-color: rgb(var(--md-sys-color-surface-container-high));
+  }
+
+  /* Remove hover effects that don't work well on touch */
+  .category-card:hover {
+    transform: none;
+  }
+
+  .category-card:hover .category-card-icon {
+    transform: none;
+  }
+
+  /* Provide visual feedback on touch instead */
+  .category-card:active .category-card-icon {
+    transform: scale(1.05);
+  }
+
+  /* Better feedback for buttons on touch */
+  .clear-category:active {
+    opacity: 0.8;
+  }
 }
 </style>

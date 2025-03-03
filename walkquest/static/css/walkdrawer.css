@@ -9,14 +9,13 @@
   background-color: rgb(var(--md-sys-color-surface-container));
   box-shadow: var(--md-sys-elevation-level2);
   border-radius: 0 24px 24px 0;
-  padding-left: var(--md-sys-sidebar-collapsed);
   z-index: 20;
   overflow: hidden; /* Important: Keep this to prevent double scrollbars */
 }
 
 .rail-connector {
   position: absolute;
-  left: 0;
+  left: -28px; /* Position outside drawer */
   top: 50%;
   transform: translateY(-50%);
   height: 56px;
@@ -24,7 +23,7 @@
   background-color: rgb(var(--md-sys-color-surface-container-highest));
   border-radius: 0 28px 28px 0;
   box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
-  z-index: 1;
+  z-index: 5; /* Ensure proper stacking */
 }
 
 .drawer-accent-line {
@@ -50,8 +49,8 @@
   position: sticky;
   top: 0;
   z-index: 10;
-  margin-left: calc(0px - var(--md-sys-sidebar-collapsed));
-  width: calc(100% + var(--md-sys-sidebar-collapsed));
+  margin-left: -28px; /* Extend to cover the rail connector space */
+  width: calc(100% + 28px); /* Ensure full width accounting for negative margin */
   transition: box-shadow 0.2s ease;
 }
 
@@ -60,8 +59,9 @@
   align-items: center;
   min-height: 64px;
   padding: 0.5rem 1.25rem;
-  margin-left: var(--md-sys-sidebar-collapsed);
+  margin-left: 28px; /* Exact space to align with drawer edge */
   gap: 0.75rem;
+  overflow: hidden; /* Ensure content doesn't overflow */
 }
 
 .m3-icon-button {
@@ -106,7 +106,7 @@
   content: '';
   position: absolute;
   bottom: 0;
-  left: var(--md-sys-sidebar-collapsed);
+  left: 28px; /* Align with content edge */
   right: 0;
   height: 1px;
   background: linear-gradient(

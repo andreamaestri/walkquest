@@ -1,9 +1,16 @@
 <template>
-  <div class="m3-content-container hardware-accelerated pointer-events-auto" :class="{ 'drawer-open': isDrawerOpen }"
+  <div 
+    class="m3-content-container hardware-accelerated pointer-events-auto" 
+    :class="{ 
+      'drawer-open': isDrawerOpen,
+      'has-mobile-nav': uiStore.isMobile && !selectedWalkId 
+    }"
     :style="[
       mapContainerStyle,
       { marginTop: '64px' }, // Add top margin to account for header
-    ]" ref="mapContainerRef">
+    ]" 
+    ref="mapContainerRef"
+  >
     <div class="m3-surface-container hardware-accelerated pointer-events-auto absolute inset-0">
       <MapboxMap ref="mapComponent" :access-token="mapboxToken" :map-style="mapStyle" :max-bounds="maxBounds"
         :center="center" :zoom="zoom" :min-zoom="minZoom" :max-zoom="maxZoom" :pitch="45" :bearing="0" :min-pitch="0"
@@ -44,6 +51,10 @@ import { useMap } from "../../composables/useMap";
 import { getGeometry } from "../../services/api";
 import WalkRouteLayer from "./WalkRouteLayer.vue";
 import WalkMarkers from "./WalkMarkers.vue";
+import { useUiStore } from "../../stores/ui"; // Fix the import name to match the actual export
+
+// Add this line to access the UI store
+const uiStore = useUiStore();
 
 /**
  * Props definition with proper validation
@@ -80,6 +91,7 @@ const emit = defineEmits(['map-created', 'map-loaded', 'walk-selected']);
 const mapContainerRef = shallowRef(null);
 const mapComponent = shallowRef(null);
 const mapInstance = shallowRef(null);
+const resizeObserver = shallowRef(null); // Add this line to define the resize observer
 
 // Component state
 const mapLoaded = ref(false);
@@ -663,9 +675,26 @@ onMounted(() => {
   if (props.selectedWalkId) {
     loadRouteData(props.selectedWalkId);
   }
+  
+  // Initialize resize observer for the map container
+  if (mapContainerRef.value && window.ResizeObserver) {
+    resizeObserver.value = new ResizeObserver(debounce(() => {
+      if (mapInstance.value) {
+        mapInstance.value.resize();
+      }
+    }, 100));
+    
+    resizeObserver.value.observe(mapContainerRef.value);
+  }
 });
 
 onBeforeUnmount(() => {
+  // Clean up resize observer
+  if (resizeObserver.value) {
+    resizeObserver.value.disconnect();
+    resizeObserver.value = null;
+  }
+
   // Clean up markers
   for (const marker of markerRefs.value.values()) {
     marker?.remove?.();
@@ -693,6 +722,10 @@ onBeforeUnmount(() => {
 /* Update to adjust map when drawer is open but keep sidebar visible */
 .m3-content-container.drawer-open {
   margin-left: calc(var(--md-sys-sidebar-collapsed) + 320px);
+}
+
+.m3-content-container.has-mobile-nav {
+  padding-bottom: 64px;
 }
 
 .m3-surface-container {

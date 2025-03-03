@@ -2,6 +2,7 @@
   <div class="h-screen w-screen overflow-hidden flex relative bg-surface">
     <!-- Navigation Rail (Desktop) -->
     <NavigationRail
+      v-if="!uiStore.isMobile"
       :walks="walks"
       :selected-walk-id="selectedWalkId"
       :filtered-walks="filteredWalks"
@@ -19,15 +20,13 @@
       @walk-selected="handleWalkSelection"
     />
 
-    <!-- Mobile Navigation Components -->
-    <MobileNavigation
-      :walks="walks"
+    <!-- Mobile Walk List -->
+    <MobileWalkList
+      v-if="uiStore.isMobile && !selectedWalkId"
+      :walks="filteredWalks"
       :selected-walk-id="selectedWalkId"
-      :error="error"
-      :mapbox-token="mapboxToken"
+      :key="activeTab"
       @walk-selected="handleWalkSelection"
-      @walk-expanded="handleWalkExpanded"
-      @location-selected="handleLocationSelected"
     />
 
     <!-- Map Container -->
@@ -43,16 +42,79 @@
       @walk-selected="handleWalkSelection"
     />
 
-    <!-- Walk Drawer - remove sidebarWidth prop -->
+    <!-- Walk Drawer (Desktop) -->
     <WalkDrawer
-      v-show="selectedWalkId && uiStore.showDrawer"
-      v-if="selectedWalkId"
+      v-if="selectedWalkId && !uiStore.isMobile && uiStore.showDrawer"
       :key="selectedWalkId"
       :walk="selectedWalk"
       :is-open="uiStore.showDrawer"
+      :isMobile="false"
       ref="walkDrawerRef"
       @close="handleDrawerClose"
       @start-walk="handleStartWalk"
+      @category-selected="handleCategorySelected"
+    />
+
+    <!-- Mobile Navigation Bar -->
+    <MobileNavBar
+      v-if="uiStore.isMobile && !selectedWalkId"
+      :active-tab="activeTab"
+      @tab-change="handleTabChange"
+      @open-walks-drawer="showWalksBottomSheet = true"
+    />
+
+    <!-- Walks Bottom Sheet for mobile -->
+    <BottomSheet 
+      v-model="showWalksBottomSheet" 
+      title="Walks"
+      variant="standard"
+      initialHeight="50vh"
+      maxHeight="90vh"
+      :snapPoints="[0.5, 0.85]"
+      :alwaysRender="true"
+      @snap-change="handleWalksSheetSnapChange"
+    >
+      <div class="md3-surface p-0">
+        <div class="md3-search-container px-4 py-2 mb-2">
+          <div class="md3-search-field">
+            <div class="md3-search-icon-container">
+              <Icon icon="mdi:magnify" class="md3-search-icon" />
+            </div>
+            <input 
+              v-model="searchQuery" 
+              type="text" 
+              placeholder="Search walks..." 
+              class="md3-search-input"
+              @focus="handleSearchFocus"
+            />
+            <button 
+              v-if="searchQuery" 
+              @click="searchQuery = ''" 
+              class="md3-search-clear"
+            >
+              <Icon icon="mdi:close" />
+            </button>
+          </div>
+        </div>
+        
+        <WalkList
+          :walks="filteredWalks"
+          :selected-walk-id="selectedWalkId"
+          :is-compact="!isWalksSheetExpanded"
+          @walk-selected="handleWalkListSelection"
+        />
+      </div>
+    </BottomSheet>
+    
+    <!-- Mobile Walk Detail Bottom Sheet -->
+    <MobileWalkDrawer 
+      v-if="selectedWalk && uiStore.isMobile"
+      :walk="selectedWalk"
+      v-model="showWalkDetailSheet"
+      @close="handleDrawerClose"
+      @start-walk="handleStartWalk"
+      @save-walk="handleSaveWalk"
+      @category-selected="handleCategorySelected"
     />
   </div>
 </template>
@@ -88,6 +150,12 @@ import SearchHeader from "./map/SearchHeader.vue";
 import MobileNavigation from "./map/MobileNavigation.vue";
 import MapContainer from "./map/MapContainer.vue";
 import WalkDrawer from "./WalkDrawer.vue";
+import MobileWalkDrawer from "./MobileWalkDrawer.vue"; // Add MobileWalkDrawer import
+import MobileWalkList from './MobileWalkList.vue'; 
+import MobileNavBar from './MobileNavBar.vue';
+import BottomSheet from './BottomSheet.vue';
+import WalkList from './WalkList.vue';
+import { Icon } from '@iconify/vue';
 
 /**
  * Props definition with proper validation
@@ -126,10 +194,66 @@ const { animateInterfaceElement, animationConfigs } = useAnimations();
 const mapContainer = shallowRef(null);
 const walkDrawerRef = ref(null);
 const drawerMounted = ref(false);
-// Removed sidebarWidth ref as it's defined in CSS variables
 
-// Add isExpanded ref to track sidebar expansion state
+// State refs
 const isExpanded = ref(localStorage.getItem("sidebarExpanded") === "true");
+const activeTab = ref('explore');
+const showWalksBottomSheet = ref(false);
+const showWalkDetailSheet = ref(false);
+const isWalksSheetExpanded = ref(false);
+const isWalkDetailSheetExpanded = ref(false);
+const expandedWalkIds = ref(
+  localStorage.getItem("expandedWalks") 
+  ? JSON.parse(localStorage.getItem("expandedWalks")) 
+  : []
+);
+
+// Add tab change handler
+function handleTabChange(tab) {
+  activeTab.value = tab
+  switch (tab) {
+    case 'explore':
+      searchStore.setSearchMode('walks')
+      locationStore.clearLocation()
+      break
+    case 'nearby':
+      searchStore.setSearchMode('locations')
+      break
+    case 'categories':
+      searchStore.setSearchMode('categories')
+      break
+  }
+}
+
+/**
+ * Handle snap changes in the walks bottom sheet
+ */
+function handleWalksSheetSnapChange(snapIndex) {
+  // snapIndex 0 = half expanded, 1 = fully expanded
+  isWalksSheetExpanded.value = snapIndex === 1;
+}
+
+/**
+ * Handle snap changes in the walk detail bottom sheet
+ */
+function handleWalkDetailSheetSnapChange(snapIndex) {
+  isWalkDetailSheetExpanded.value = snapIndex === 1;
+}
+
+/**
+ * Handle search input focus - auto-expand the sheet
+ */
+function handleSearchFocus() {
+  isWalksSheetExpanded.value = true;
+}
+
+/**
+ * Handle saving a walk for later
+ */
+function handleSaveWalk(walk) {
+  // TODO: Implement save functionality
+  console.log("Saving walk for later:", walk);
+}
 
 /**
  * Extract reactive state from stores using storeToRefs
@@ -171,6 +295,7 @@ const filteredWalks = computed(() => {
  */
 const walks = computed(() => {
   if (!Array.isArray(walksStore.walks)) return [];
+  
   return walksStore.walks.map((walk) => ({
     id: walk.id,
     lat: walk.latitude,
@@ -208,15 +333,28 @@ const isDrawerOpen = computed(
 );
 
 /**
+ * Handle walk selection from WalkList in bottom sheet
+ */
+const handleWalkListSelection = (walk) => {
+  showWalksBottomSheet.value = false;
+  handleWalkSelection(walk);
+};
+
+/**
  * Handle walk selection
  * Updates route and UI state
  */
 const handleWalkSelection = async (walk) => {
   if (walk?.id) {
     isExpanded.value = false; // Collapse sidebar
-
+    
     // Hide sidebar and show drawer
     uiStore.handleWalkSelected();
+
+    // For mobile, show the walk detail bottom sheet
+    if (uiStore.isMobile) {
+      showWalkDetailSheet.value = true;
+    }
 
     // Navigate using slug if available, fallback to ID
     if (walk.walk_id) {
@@ -228,11 +366,12 @@ const handleWalkSelection = async (walk) => {
     // Wait for next tick to ensure drawer is mounted
     await nextTick();
     if (walkDrawerRef.value && walkDrawerRef.value.$el) {
-      drawerMounted.value = true
+      drawerMounted.value = true;
     }
   } else {
     isExpanded.value = true; // Expand sidebar
     uiStore.handleWalkClosed(); // Show sidebar
+    showWalkDetailSheet.value = false; // Hide mobile walk detail
     router.push({ name: 'home' });
   }
 };
@@ -247,6 +386,7 @@ const handleDrawerClose = async () => {
   await router.push({ name: 'home' });
   isExpanded.value = true;
   uiStore.handleWalkClosed();
+  showWalkDetailSheet.value = false; // Also close mobile walk detail sheet
 };
 
 /**
@@ -262,6 +402,23 @@ const handleStartWalk = (walk) => {
 
   // Example: Navigate to a walk route page
   // router.push({ name: 'walk-route', params: { id: walk.id } });
+};
+
+/**
+ * Handle category selection
+ * Could filter walks by category or navigate to category view
+ */
+const handleCategorySelected = (category) => {
+  console.log("Category selected:", category);
+  
+  // Close the mobile sheet if on mobile
+  if (uiStore.isMobile) {
+    showWalkDetailSheet.value = false;
+  }
+  
+  // Filter walks by the selected category
+  searchStore.setSearchMode('categories');
+  searchStore.setSearchQuery(category.name);
 };
 
 /**
@@ -302,7 +459,7 @@ const handleLocationSelected = async (location) => {
 
   try {
     uiStore.setLoadingState("location", true);
-
+    
     // Ensure map is ready
     if (mapContainer.value) {
       // Fly to the location
@@ -316,7 +473,7 @@ const handleLocationSelected = async (location) => {
         },
       });
     }
-
+    
     // Store the selected location
     if (location.center && location.place_name) {
       await locationStore.setUserLocation({
@@ -325,7 +482,7 @@ const handleLocationSelected = async (location) => {
         place_name: location.place_name,
       });
     }
-
+    
     searchStore.setError(null);
   } catch (error) {
     console.error("Error handling location selection:", error);
@@ -358,17 +515,17 @@ const handleMapLoad = () => {
 const initializeInterface = () => {
   try {
     const cleanup = uiStore.initializeResponsiveState();
-
+    
     // Load walks with proper error handling
     walksStore.loadWalks().catch((err) => {
       console.error("Failed to load walks:", err);
       uiStore.setError("Failed to load walks. Please try again later.");
     });
-
+    
     if (walksStore.walks.length && !uiStore.isMobile) {
       uiStore.setSidebarVisibility(true);
     }
-
+    
     if (props.walkId) {
       const walk = walksStore.getWalkById(props.walkId);
       if (walk) {
@@ -377,7 +534,7 @@ const initializeInterface = () => {
         });
       }
     }
-
+    
     return cleanup;
   } catch (error) {
     console.error("Error initializing interface:", error);
@@ -387,6 +544,13 @@ const initializeInterface = () => {
     return () => {}; // Return empty cleanup function in case of error
   }
 };
+
+// Watch for selected walk changes to update mobile walk detail sheet visibility
+watch(selectedWalk, (newWalk) => {
+  if (uiStore.isMobile) {
+    showWalkDetailSheet.value = !!newWalk;
+  }
+});
 
 // Lifecycle hooks
 onMounted(() => {
@@ -399,11 +563,11 @@ onMounted(() => {
     }
   }
   window.addEventListener("popstate", preventRouteChange)
-
+  
   try {
     // Removed ResizeObserver code for sidebarWidth
     const cleanup = initializeInterface();
-
+    
     // Return cleanup function
     onBeforeUnmount(() => {
       try {
@@ -429,5 +593,80 @@ onMounted(() => {
 
 .bg-surface {
   background-color: rgb(var(--md-sys-color-surface));
+}
+
+/* Search field styling */
+.md3-search-container {
+  position: relative;
+}
+
+.md3-search-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background-color: rgb(var(--md-sys-color-surface-container-high));
+  border-radius: 28px;
+  height: 48px;
+  padding: 0 16px;
+  box-shadow: var(--md-sys-elevation-1);
+  transition: box-shadow 0.2s;
+}
+
+.md3-search-field:focus-within {
+  box-shadow: var(--md-sys-elevation-2);
+}
+
+.md3-search-icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+}
+
+.md3-search-icon {
+  font-size: 20px;
+}
+
+.md3-search-input {
+  flex: 1;
+  height: 100%;
+  background-color: transparent;
+  border: none;
+  color: rgb(var(--md-sys-color-on-surface));
+  font-size: 16px;
+  outline: none;
+  padding: 0;
+}
+
+.md3-search-input::placeholder {
+  color: rgb(var(--md-sys-color-on-surface-variant));
+  opacity: 0.7;
+}
+
+.md3-search-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  background: transparent;
+  border: none;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+  cursor: pointer;
+}
+
+.md3-search-clear:hover {
+  background-color: rgba(var(--md-sys-color-on-surface-variant), 0.08);
+}
+
+.md3-search-clear:active {
+  background-color: rgba(var(--md-sys-color-on-surface-variant), 0.12);
+}
+
+.md3-surface {
+  background-color: rgb(var(--md-sys-color-surface));
+  color: rgb(var(--md-sys-color-on-surface));
 }
 </style>
