@@ -442,7 +442,8 @@ onMounted(() => {
   background: rgb(var(--md-sys-color-surface));
   box-shadow: var(--md-sys-elevation-1);
   transition: transform 0.3s var(--md-sys-motion-easing-standard), 
-              box-shadow 0.3s var(--md-sys-motion-easing-standard);
+              box-shadow 0.3s var(--md-sys-motion-easing-standard),
+              width 0.3s var(--md-sys-motion-easing-standard); /* Added width transition */
   visibility: visible !important;
   pointer-events: auto !important;
   width: var(--md-sys-sidebar-collapsed);
@@ -452,6 +453,11 @@ onMounted(() => {
   @media (max-width: 768px) {
     display: none;
   }
+}
+
+/* Add expanded state width */
+.m3-navigation-rail.is-expanded {
+  width: 412px; /* Standard navigation drawer width */
 }
 
 /* Interaction styles for when drawer is open */
@@ -510,37 +516,27 @@ onMounted(() => {
   font-weight: 500;
 }
 
-/* Navigation items container */
+/* Navigation items container - keep centered even when expanded */
 .m3-rail-items {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: center; /* Always center-aligned */
   width: 100%;
   padding: 4px 0;
   gap: 12px; /* MD3 standard spacing */
 }
 
-/* Icon container - destination indicators */
-.m3-rail-icon-container {
-  position: relative;
-  width: 24px;
-  height: 32px;
-  display: flex;
-  top: 18px;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 10px;
-  border-radius: 16px; /* Pill shape */
-  transition: background-color 0.2s var(--md-sys-motion-easing-standard);
+/* Remove alignment changes for expanded state */
+.is-expanded .m3-rail-items {
+  padding: 4px 0; /* Keep padding consistent with collapsed state */
 }
 
-/* Navigation item styling */
+/* Navigation item styling - maintain vertical layout */
 .m3-rail-item {
   width: 56px;
   height: 28px;
   margin-bottom: 16px;
   background: transparent;
-  transition: background-color 0.2s var(--md-sys-motion-easing-standard);
   border: none;
   cursor: pointer;
   padding: 0;
@@ -550,14 +546,18 @@ onMounted(() => {
   justify-content: center;
   position: relative;
   border-radius: 16px; /* Add border radius for active state */
+  transition: background-color 0.2s var(--md-sys-motion-easing-standard);
 }
 
-/* Apply active background to rail item instead */
-.m3-rail-item.is-active {
-  background-color: rgb(var(--md-sys-color-secondary-container));
+/* Keep rail items same size and layout when expanded */
+.is-expanded .m3-rail-item {
+  width: 56px; /* Keep consistent width */
+  height: 28px; /* Keep consistent height */
+  padding: 0;  /* Keep consistent padding */
+  justify-content: center; /* Keep centered */
 }
 
-/* Content layout */
+/* Content layout - always vertical */
 .m3-rail-content {
   display: flex;
   flex-direction: column;
@@ -565,6 +565,41 @@ onMounted(() => {
   justify-content: center;
   height: 100%;
   width: 100%;
+}
+
+/* Keep rail content in column direction even when expanded */
+.is-expanded .m3-rail-content {
+  flex-direction: column;
+  padding-left: 0;
+}
+
+/* Icon container - consistent in both states */
+.m3-rail-icon-container {
+  position: relative;
+  width: 24px;
+  height: 32px;
+  display: flex;
+  top: 18px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+  border-radius: 16px;
+  transition: background-color 0.2s var(--md-sys-motion-easing-standard);
+}
+
+/* Keep icon container positioning the same when expanded */
+.is-expanded .m3-rail-icon-container {
+  top: 18px; /* Keep same top position */
+  margin-bottom: 10px; /* Keep same bottom margin */
+  margin-right: 0; /* No right margin */
+}
+
+/* Only modify the FAB when expanded */
+.is-expanded .m3-rail-fab {
+  width: calc(100% - 24px);
+  border-radius: 28px;
+  justify-content: flex-start;
+  padding-left: 16px;
 }
 
 /* Improved icon animations */
@@ -606,7 +641,38 @@ onMounted(() => {
   letter-spacing: var(--md-sys-typescale-label-medium-tracking, 0.5px);
   text-align: center;
   color: rgb(var(--md-sys-color-on-surface-variant));
-  transition: color 0.2s var(--md-sys-motion-easing-standard);
+  transition: color 0.2s var(--md-sys-motion-easing-standard),
+              margin-top 0.3s var(--md-sys-motion-easing-standard);
+}
+
+/* Adjust label position and style in expanded mode */
+.is-expanded .m3-rail-label {
+  margin-top: 0;
+  text-align: left;
+  font-size: 14px;
+}
+
+/* Adjust FAB in expanded mode */
+.is-expanded .m3-rail-fab {
+  width: calc(100% - 24px);
+  border-radius: 28px;
+  justify-content: flex-start;
+  padding-left: 16px;
+}
+
+/* Apply active background to rail item instead */
+.m3-rail-item.is-active {
+  background-color: rgb(var(--md-sys-color-secondary-container));
+}
+
+/* Content layout */
+.m3-rail-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
 }
 
 /* Active state for labels */

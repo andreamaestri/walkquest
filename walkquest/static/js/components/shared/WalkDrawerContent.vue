@@ -147,7 +147,7 @@
       <section v-if="parsedPOIs.length" :ref="el => setSectionRef(3, el)" class="section">
         <div class="enhanced-section-header">
           <div class="header-title-container">
-            <Icon icon="mdi:map-marker" class="header-icon" />
+            <Icon icon="icon-park-solid:road-sign-both" class="header-icon" />
             <h3 class="section-title">Points of Interest</h3>
           </div>
           <span class="count-badge">{{ parsedPOIs.length }}</span>
@@ -180,7 +180,7 @@
       <section v-if="walk.pubs_list?.length" :ref="el => setSectionRef(4, el)" class="section">
         <div class="enhanced-section-header">
           <div class="header-title-container">
-            <Icon icon="mdi:glass-mug-variant" class="header-icon" />
+            <Icon icon="fa-solid:sign" class="header-icon" />
             <h3 class="section-title">Nearby Pubs</h3>
           </div>
           <span class="count-badge">{{ walk.pubs_list.length }}</span>
@@ -252,7 +252,7 @@
           <!-- Footwear Card -->
           <div v-if="walk.footwear_category" class="info-card footwear-info-card">
             <div class="info-card-header">
-              <Icon icon="maki:shoe" class="info-card-icon" />
+              <Icon icon="ph:boot-fill" class="info-card-icon" />
               <h4 class="m3-title-medium">Footwear type:</h4>
             </div>
             <div class="info-card-divider"></div>
