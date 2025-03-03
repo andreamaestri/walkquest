@@ -22,7 +22,7 @@
 
     <!-- Mobile Walk List -->
     <MobileWalkList
-      v-if="uiStore.isMobile && !selectedWalkId"
+      v-show="uiStore.isMobile && !selectedWalk"
       :walks="filteredWalks"
       :selected-walk-id="selectedWalkId"
       :key="activeTab"
@@ -55,78 +55,8 @@
       @category-selected="handleCategorySelected"
     />
 
-    <!-- Mobile Navigation Bar -->
-    <MobileNavBar
-      v-if="uiStore.isMobile && !selectedWalkId"
-      :active-tab="activeTab"
-      @tab-change="handleTabChange"
-      @open-walks-drawer="showWalksBottomSheet = true"
-    />
-
     <!-- Walks Bottom Sheet for mobile -->
-    <BottomSheet 
-      v-model="showWalksBottomSheet" 
-      :blocking="false" 
-      variant="standard"
-      initialHeight="50vh"
-      maxHeight="90vh"
-      :snapPoints="[0.5, 0.85]"
-      @snap-change="handleWalksSheetSnapChange"
-      class="mobile-walk-list-sheet"
-    >
-      <div class="md3-surface p-0">
-        <!-- Sheet Header with dynamic title based on active tab -->
-        <div class="mobile-sheet-header px-4 py-2">
-          <h2 class="sheet-title">{{ searchMode === 'categories' ? 'Categories' : 'Walks' }}</h2>
-          
-          <!-- Categories Filter Chips - show only in Categories mode -->
-          <div v-if="searchMode === 'categories'" class="categories-filter my-2">
-            <div class="categories-scroll-container">
-              <button 
-                v-for="category in availableCategories" 
-                :key="category.id" 
-                class="category-chip" 
-                :class="{ 'active': activeCategory === category.name }"
-                @click="selectCategory(category)"
-              >
-                <Icon :icon="getCategoryIcon(category.name)" class="category-icon" />
-                <span>{{ category.name }}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Search field -->
-        <div class="md3-search-container px-4 py-2 mb-2">
-          <div class="md3-search-field">
-            <div class="md3-search-icon-container">
-              <Icon icon="mdi:magnify" class="md3-search-icon" />
-            </div>
-            <input 
-              v-model="searchQuery" 
-              type="text" 
-              placeholder="Search walks..." 
-              class="md3-search-input"
-              @focus="handleSearchFocus"
-            />
-            <button 
-              v-if="searchQuery" 
-              @click="searchQuery = ''" 
-              class="md3-search-clear"
-            >
-              <Icon icon="mdi:close" />
-            </button>
-          </div>
-        </div>
-        
-        <WalkList
-          :walks="filteredWalks"
-          :selected-walk-id="selectedWalkId"
-          :is-compact="!isWalksSheetExpanded"
-          @walk-selected="handleWalkListSelection"
-        />
-      </div>
-    </BottomSheet>
+    
     
     <!-- Mobile Walk Detail Bottom Sheet -->
     <MobileWalkDrawer 
@@ -169,12 +99,11 @@ import { useAnimations } from "../composables/useAnimations";
 // Import components
 import NavigationRail from "./map/NavigationRail.vue";
 import SearchHeader from "./map/SearchHeader.vue";
-import MobileNavigation from "./map/MobileNavigation.vue";
+
 import MapContainer from "./map/MapContainer.vue";
 import WalkDrawer from "./WalkDrawer.vue";
 import MobileWalkDrawer from "./MobileWalkDrawer.vue"; // Add MobileWalkDrawer import
 import MobileWalkList from './MobileWalkList.vue'; 
-import MobileNavBar from './MobileNavBar.vue';
 import BottomSheet from './BottomSheet.vue';
 import WalkList from './WalkList.vue';
 import { Icon } from '@iconify/vue';
@@ -677,6 +606,8 @@ onMounted(() => {
 
 .bg-surface {
   background-color: rgb(var(--md-sys-color-surface));
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
 }
 
 /* Search field styling */

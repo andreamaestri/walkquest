@@ -953,109 +953,159 @@ watch(selectedCategory, (newCategory) => {
   /* Center cards in the container */
 }
 
-/* Enhanced Interactive Category Card Styles */
+/* Category Card Base Styles with Enhanced MD3 Color System */
 .category-card {
-  background-color: rgb(var(--md-sys-color-surface-container));
-  border: 1px solid rgba(var(--md-sys-color-outline-variant), 0.5);
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-  color: rgb(var(--md-sys-color-on-surface));
-  will-change: transform, box-shadow, background-color, border-color;
   position: relative;
   isolation: isolate;
   overflow: hidden;
   text-align: center;
   max-width: 100%;
   min-height: 130px;
-  /* Minimum height for category cards */
   padding: 16px;
-  /* Added padding to the card itself */
   display: flex;
-  /* Flexbox for vertical alignment */
   flex-direction: column;
-  /* Stack icon and name vertically */
   align-items: center;
-  /* Center items horizontally */
   justify-content: center;
-  /* Center items vertically */
   cursor: pointer;
-  /* Indicate it's interactive */
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  /* Smooth transitions */
-  border-radius: 12px;
-  /* Consistent border radius */
-}
-
-.category-card:focus {
-  outline: none;
-  box-shadow: 0 0 0 2px rgb(var(--md-sys-color-primary));
-  /* Focus outline */
+  border-radius: 16px;
+  box-shadow: var(--md-sys-elevation-1);
+  will-change: transform, box-shadow;
+  border: 1px solid transparent;
 }
 
 .category-card:hover {
-  background-color: rgb(var(--md-sys-color-surface-container-high));
   transform: translateY(-3px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  border-color: rgba(var(--md-sys-color-primary), 0.5);
+  box-shadow: var(--md-sys-elevation-2);
 }
 
-.category-card:active {
-  transform: translateY(0px);
-  /* Reset transform on active state */
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-  /* Reset box-shadow on active state */
+/* Card backgrounds with hex values */
+.category-card.water-category {
+  background-color: #cce5ff;
+  border-color: #99ccff;
 }
 
-.category-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg,
-      rgba(var(--md-sys-color-primary), 0.1),
-      rgba(var(--md-sys-color-tertiary), 0.1));
-  opacity: 0;
-  z-index: -1;
-  transition: opacity 0.4s cubic-bezier(0, 0, 0.2, 1);
-  border-radius: inherit;
-  /* Match card border-radius */
+.category-card.nature-category {
+  background-color: #d7f0db;
+  border-color: #b3e6b8;
 }
 
-.category-card:hover::before {
-  opacity: 1;
-  /* Show gradient on hover */
+.category-card.heritage-category {
+  background-color: #ead6fd;
+  border-color: #d4acfc;
 }
 
+.category-card.amenity-category {
+  background-color: #ffd6d6;
+  border-color: #ffb3b3;
+}
 
+.category-card.mountain-category {
+  background-color: #e6d9d6;
+  border-color: #ccb4ac;
+}
+
+.category-card.access-category {
+  background-color: #fff2cc;
+  border-color: #ffe699;
+}
+
+.category-card.default-category {
+  background-color: #e0e0e0;
+  border-color: #cccccc;
+}
+
+/* Enhanced MD3 Category Icons with vibrant solid colors */
 .category-card-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, rgb(var(--md-sys-color-primary-container)), rgb(var(--md-sys-color-tertiary)));
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgb(var(--md-sys-color-on-primary-container));
-  /* Icon color */
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  /* Icon transform transition */
+  margin-bottom: 12px;
+  font-size: 28px;
+  box-shadow: var(--md-sys-elevation-1);
+}
+/* Icon backgrounds with very saturated hex colors */
+.category-card.water-category .category-card-icon {
+  background-color: #00c8ff;
+  color: #ffffff;
 }
 
-.category-card:hover .category-card-icon {
-  transform: scale(1.1) rotate(5deg);
-  /* Icon hover animation */
-  padding: 16px;
-  /* Icon padding on hover */
-  border-radius: 12px;
-  /* Icon border-radius on hover */
-  background: linear-gradient(135deg, rgb(var(--md-sys-color-primary-container)), rgb(var(--md-sys-color-tertiary)));
-  /* Re-apply gradient on hover in case it was overridden */
+.category-card.nature-category .category-card-icon {
+  background-color: #00e676;
+  color: #003b1f;
 }
 
-.category-card:active .category-card-icon {
-  transform: scale(1.25);
-  /* Icon active animation */
+.category-card.heritage-category .category-card-icon {
+  background-color: #d500f9;
+  color: #ffffff;
+}
+
+.category-card.amenity-category .category-card-icon {
+  background-color: #ff3d00;
+  color: #ffffff;
+}
+
+.category-card.mountain-category .category-card-icon {
+  background-color: #8d6e63;
+  color: #ffffff;
+}
+
+.category-card.access-category .category-card-icon {
+  background-color: #ffab00;
+  color: #3e2e00;
+}
+
+.category-card.default-category .category-card-icon {
+  background-color: #37474f;
+  color: #ffffff;
+}
+
+/* Active state styles for stronger visual feedback */
+.category-card.is-active {
+  box-shadow: var(--md-sys-elevation-2);
+}
+
+.category-card.is-active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background-color: rgb(var(--md-sys-color-primary));
+  border-radius: 0 0 16px 16px;
+}
+
+.category-card.water-category.is-active {
+  background-color: rgba(var(--md-sys-color-tertiary-container), 0.35);
+}
+
+.category-card.nature-category.is-active {
+  background-color: rgba(var(--md-sys-color-primary-container), 0.35);
+}
+
+.category-card.heritage-category.is-active {
+  background-color: rgba(var(--md-sys-color-secondary-container), 0.35);
+}
+
+.category-card.amenity-category.is-active {
+  background-color: rgba(var(--md-sys-color-error-container), 0.35);
+}
+
+.category-card.mountain-category.is-active {
+  background-color: rgba(var(--md-sys-color-tertiary), 0.25);
+}
+
+.category-card.access-category.is-active {
+  background-color: rgba(var(--md-sys-color-primary), 0.25);
+}
+
+.category-card.is-active::before {
+  height: 6px;
 }
 
 

@@ -58,7 +58,20 @@
 	--md-sys-motion-duration-medium1: 300ms;
 	--md-sys-motion-duration-medium2: 400ms;
 	--md-sys-motion-duration-long1: 500ms;
-	--sidebar-width: 80px;}
+	--sidebar-width: 80px;
+
+	/* Mobile layout variables */
+	--bottom-nav-height: 80px;
+	--safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+	--list-bottom-padding: calc(var(--bottom-nav-height) + var(--safe-area-inset-bottom));
+
+	/* Motion */
+	--md-sys-motion-duration-medium2: 320ms;
+	--md-sys-motion-easing-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1.0);
+	--md-sys-elevation-1: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+	--md-sys-elevation-2: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+	--md-sys-elevation-3: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+}
 .m3-navigation-rail {
 	position: fixed;
 	width: 80px;

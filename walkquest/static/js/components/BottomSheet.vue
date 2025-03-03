@@ -139,6 +139,7 @@ function setupBottomSheet() {
   
   // If enabled, attach drag events to content for expansion
   if (props.expandOnContentDrag && contentRef.value) {
+    // Always use passive: true for touchstart to avoid browser warnings
     contentRef.value.addEventListener('touchstart', handleContentTouchStart, { passive: true })
   }
   
@@ -197,19 +198,27 @@ function handleResize() {
   calculateMaxHeight()
 }
 
-// Event handlers
 function handleTouchStart(e) {
   if (!props.modelValue) return
-  startDrag(e.touches[0].clientY)
   
+  // Only prevent default if we're at the top of the content
+  // or if the sheet is at minimum height
+  const content = contentRef.value
+  if (content && content.scrollTop <= 0) {
+    const touch = e.touches[0]
+    const rect = bottomSheetRef.value?.getBoundingClientRect()
+    if (rect && touch.clientY >= rect.top) {
+      e.preventDefault()
+    }
+  }
+  
+  startDrag(e.touches[0].clientY)
   lastTouchTime = Date.now()
   lastTouchY = e.touches[0].clientY
   velocity = 0
   
   document.addEventListener('touchmove', handleTouchMove, { passive: false })
   document.addEventListener('touchend', handleTouchEnd)
-  
-  e.preventDefault() // Prevent default to avoid scrolling
 }
 
 function handleMouseDown(e) {
@@ -221,42 +230,58 @@ function handleMouseDown(e) {
   
   e.preventDefault() // Prevent default behaviors
 }
-
 function handleContentTouchStart(e) {
-  // Only allow upward drags from content to expand the sheet
+  const content = contentRef.value
+  if (!content || !props.expandOnContentDrag) return
+  
   const touch = e.touches[0]
   const startY = touch.clientY
+  const initialScrollTop = content.scrollTop
   
-  const initialScrollTop = contentRef.value.scrollTop
+  // Only attach move/end handlers if we're at the top of content
   if (initialScrollTop <= 0) {
-    // Allow dragging only when already at the top of the content
-    let hasMoved = false
-    
     const contentTouchMove = (moveEvent) => {
       const currentY = moveEvent.touches[0].clientY
-      if (currentY < startY) {
-        // Dragging upward from top of content
-        if (!hasMoved) {
-          hasMoved = true
-          handleTouchStart(moveEvent)
-        }
+      if (currentY < startY && !dragStarted) {
+        dragStarted = true
+        // Don't directly call handleTouchStart which tries to preventDefault
+        // Instead, simulate the behavior we need
+        startDrag(moveEvent.touches[0].clientY)
+        lastTouchTime = Date.now()
+        lastTouchY = moveEvent.touches[0].clientY
+        velocity = 0
+        
+        document.addEventListener('touchmove', handleTouchMove, { passive: false })
+        document.addEventListener('touchend', handleTouchEnd)
       }
     }
     
-    const contentTouchEnd = () => {
-      contentRef.value.removeEventListener('touchmove', contentTouchMove)
-      contentRef.value.removeEventListener('touchend', contentTouchEnd)
-    }
-    
-    contentRef.value.addEventListener('touchmove', contentTouchMove, { passive: true })
-    contentRef.value.addEventListener('touchend', contentTouchEnd)
+    let dragStarted = false
+    content.addEventListener('touchmove', contentTouchMove, { passive: true })
+    content.addEventListener('touchend', () => {
+      content.removeEventListener('touchmove', contentTouchMove)
+    }, { once: true })
   }
 }
 
 function handleTouchMove(e) {
-  e.preventDefault() // Prevent scrolling while dragging
-  const currentClientY = e.touches[0].clientY
+  const content = contentRef.value
+  const touch = e.touches[0]
+  const rect = bottomSheetRef.value?.getBoundingClientRect()
   
+  // Only prevent default if we're actually dragging the sheet
+  // or at the content boundaries
+  if (rect && touch.clientY >= rect.top) {
+    if (content) {
+      const atTop = content.scrollTop <= 0 && touch.clientY > lastTouchY
+      const atBottom = content.scrollTop + content.clientHeight >= content.scrollHeight && touch.clientY < lastTouchY
+      if (atTop || atBottom) {
+        e.preventDefault()
+      }
+    }
+  }
+  
+  const currentClientY = touch.clientY
   // Calculate velocity
   const now = Date.now()
   const elapsed = now - lastTouchTime
@@ -434,6 +459,7 @@ defineExpose({
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  pointer-events: none;
   overflow: hidden;
   will-change: opacity;
   transition: background-color var(--vsbs-transition-duration, 300ms) cubic-bezier(0.2, 0, 0, 1);

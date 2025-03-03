@@ -48,17 +48,20 @@ export const useUiStore = defineStore('ui', () => {
     showSidebar.value = value
   }
 
-  // Update handleWalkSelected to be more explicit
+  // Update handleWalkSelected to handle mobile properly
   const handleWalkSelected = () => {
-    showSidebar.value = true // Keep sidebar visible
+    if (!isMobile.value) {
+      showSidebar.value = true
+    }
     showDrawer.value = true
-    console.log('handleWalkSelected called - showing drawer:', showDrawer.value)
   }
 
   const handleWalkClosed = () => {
     showDrawer.value = false
-    console.log('handleWalkClosed called - hiding drawer:', showDrawer.value) 
-    showSidebar.value = !isMobile.value
+    // Only restore sidebar on desktop
+    if (!isMobile.value) {
+      showSidebar.value = true
+    }
   }
 
   const toggleSidebar = () => {
@@ -68,13 +71,16 @@ export const useUiStore = defineStore('ui', () => {
   const initializeResponsiveState = () => {
     const checkMobile = () => {
       isMobile.value = window.innerWidth < 768
-      // Only set showSidebar if we're not on a walk detail route
-      if (!window.location.pathname.includes('/walk/')) {
-        showSidebar.value = !isMobile.value
+      // Don't automatically hide sidebar on mobile - let components control visibility
+      if (!isMobile.value && !window.location.pathname.includes('/walk/')) {
+        showSidebar.value = true
       }
     }
 
+    // Initial check
     checkMobile()
+    
+    // Listen for resize
     window.addEventListener('resize', checkMobile)
     return () => window.removeEventListener('resize', checkMobile)
   }
