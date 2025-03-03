@@ -68,7 +68,13 @@ function openWalksDrawer() {
   height: 80px;
   box-sizing: border-box;
   /* MD3 elevation */
-  box-shadow: 0 -1px 2px 0 rgba(0, 0, 0, 0.05);
+  box-shadow: var(--md-sys-elevation-1);
+  padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+}
+
+/* Add this to :root in a mounted hook to make available to other components */
+:root {
+  --bottom-nav-height: 80px;
 }
 
 .nav-item {
@@ -80,12 +86,17 @@ function openWalksDrawer() {
   padding: 8px 0;
   flex: 1;
   min-width: 56px;
+  min-height: 48px; /* Ensure proper touch target size */
   color: rgb(var(--md-sys-color-on-surface-variant));
   border: none;
   background: none;
   cursor: pointer;
   border-radius: 16px;
   transition: background-color 0.2s, color 0.2s;
+  position: relative; /* For ripple effect positioning */
+  
+  /* Provide touch feedback with ripple effect */
+  -webkit-tap-highlight-color: transparent;
 }
 
 .nav-item:hover {
@@ -94,6 +105,28 @@ function openWalksDrawer() {
 
 .nav-item:active {
   background-color: rgba(var(--md-sys-color-on-surface), 0.1);
+}
+
+/* Material Design 3 style ripple effect */
+.nav-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: currentColor;
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.8);
+  transition: opacity 0.2s, transform 0.3s;
+}
+
+.nav-item:active::before {
+  opacity: 0.12;
+  transform: scale(1);
+  transition: opacity 0.1s, transform 0.1s;
 }
 
 .nav-item.active {

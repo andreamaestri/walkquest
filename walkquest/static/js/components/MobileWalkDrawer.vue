@@ -7,9 +7,12 @@
     :default-snap-point="defaultSnapPoint"
     :snap-points="snapPoints"
     :expand-on-content-drag="true"
+    :duration="320" 
+    :scrim-color="scrimColor"
     @max-height="handleMaxHeight"
     @opened="onOpened"
     @closed="onClosed"
+    class="mobile-walk-drawer-sheet"
   >
     <template #header>
       <WalkDrawerHeader 
@@ -32,7 +35,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, computed } from 'vue';
+import { ref, watch, onMounted, computed, nextTick } from 'vue';
 import { Icon } from '@iconify/vue';
 import BottomSheet from './BottomSheet.vue';
 import WalkDrawerHeader from './shared/WalkDrawerHeader.vue';
@@ -57,18 +60,22 @@ const isOpen = ref(props.modelValue);
 // Material Design 3 scrim color with 0.32 opacity
 const scrimColor = computed(() => 'rgba(0, 0, 0, 0.32)');
 
-// Sheet height management
+// Sheet height management with bottom nav adjustment
 const maxHeight = ref(window.innerHeight);
-const defaultSnapPoint = computed(() => Math.min(500, maxHeight.value / 2));
+const navHeight = 80; // Height of the mobile navigation bar
+const safeAreaInset = typeof window !== 'undefined' ? parseInt(getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || '0') : 0;
+  
+// Adjust default snap point to account for navigation bar
+const defaultSnapPoint = computed(() => Math.min(500, (maxHeight.value - navHeight) / 2));
 
-// Calculate snap points based on max height
+// Calculate snap points based on max height with adjustment for bottom nav
 const snapPoints = computed(() => {
-  const height = maxHeight.value;
+  const height = maxHeight.value - navHeight; // Adjust for nav bar
   return [
     Math.min(200, height / 4),         // Peeking state
     Math.min(500, height / 2),         // Half expanded
     Math.min(800, height * 0.75),      // Most content visible
-    height                             // Full height
+    height                             // Full height (excluding nav bar)
   ].sort((a, b) => a - b); // Ensure points are in ascending order
 });
 
@@ -123,6 +130,13 @@ function onOpened() {
 
 function onClosed() {
   emit('close');
+  
+  // Reset to default snap point for next opening
+  nextTick(() => {
+    if (bottomSheet.value) {
+      bottomSheet.value.snapToPoint(defaultSnapPoint.value);
+    }
+  });
 }
 
 // Share handler
@@ -168,5 +182,21 @@ function handleShare() {
   overflow-y: auto;
   overflow-x: hidden;
   padding: 0 16px 24px;
+}
+
+/* Ensure bottom sheet accounts for mobile navigation */
+.mobile-walk-drawer-sheet :deep(.bottom-sheet__content) {
+  padding-bottom: calc(var(--bottom-nav-height, 80px) + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+}
+
+/* Smooth transition overrides */
+.mobile-walk-drawer-sheet :deep(.bottom-sheet__container) {
+  transition: transform var(--md-sys-motion-duration-medium2, 320ms) var(--md-sys-motion-easing-emphasized-decelerate, cubic-bezier(0.05, 0.7, 0.1, 1.0));
+}
+
+/* Shadow adjustments for MD3 elevation */  
+.mobile-walk-drawer-sheet :deep(.bottom-sheet__container--elevation-3) {
+  box-shadow: var(--md-sys-elevation-3);
 }
 </style>

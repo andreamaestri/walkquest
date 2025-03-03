@@ -611,6 +611,12 @@ const closeSearch = () => {
   height: 100%;
   display: flex;
   flex-direction: column;
+  
+  /* In mobile fullscreen mode, apply Material Design 3 search modal styles */
+  @media (max-width: 599px) {
+    background-color: rgb(var(--md-sys-color-surface));
+    padding: 8px 16px;
+  }
 }
 
 .search-container {

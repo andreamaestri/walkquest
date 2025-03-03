@@ -1,12 +1,15 @@
 <template>
   <BottomSheet 
     v-model="isOpen" 
-    :snap-points="[maxHeight / 3, maxHeight / 1.5, maxHeight]"
+    :snap-points="adjustedSnapPoints"
     :default-snap-point="0"
-    @max-height="(n) => (maxHeight = n)"
+    @max-height="handleMaxHeight"
     elevation="3"
     :blocking="false"
     :can-swipe-close="true"
+    :duration="320"
+    :scrim-color="scrimColor"
+    class="mobile-walk-list-sheet"
   >
     <template #header>
       <div class="mobile-walk-list-header">
@@ -46,10 +49,26 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['walk-selected'])
-const isOpen = ref(false)  // Initialize to false so sheet starts closed
+const isOpen = ref(true)  // Start with sheet visible
+const maxHeight = ref(window.innerHeight);
+const navHeight = 80; // Height of the mobile navigation bar
 
 // Material Design 3 scrim color with 0.32 opacity
-const scrimColor = computed(() => 'rgba(0, 0, 0, 0.32)')
+const scrimColor = computed(() => 'rgba(0, 0, 0, 0.32)');
+
+// Adjust snap points to account for bottom navigation
+const adjustedSnapPoints = computed(() => {
+  const height = maxHeight.value - navHeight;
+  return [
+    Math.min(200, height / 3),         // Peeking state
+    Math.min(400, height / 1.8),       // Half expanded
+    height                             // Full height (excluding nav bar)
+  ].sort((a, b) => a - b);
+});
+
+function handleMaxHeight(height) {
+  maxHeight.value = height;
+}
 
 function handleWalkSelected(walk) {
   emit('walk-selected', walk)
@@ -120,5 +139,21 @@ function handleWalkSelected(walk) {
 
 .header-button:active {
   transform: scale(0.92);
+}
+
+/* Make sure content area of the bottom sheet accounts for mobile navigation */
+.mobile-walk-list-sheet :deep(.bottom-sheet__content) {
+  padding-bottom: calc(var(--bottom-nav-height, 80px) + env(safe-area-inset-bottom, 0px));
+}
+
+/* Smooth transitions with Material Design 3 motion easing */
+.mobile-walk-list-sheet :deep(.bottom-sheet__container) {
+  transition: transform var(--md-sys-motion-duration-medium2, 320ms) 
+              var(--md-sys-motion-easing-emphasized-decelerate, cubic-bezier(0.05, 0.7, 0.1, 1.0));
+}
+
+/* Shadow according to MD3 elevation levels */
+.mobile-walk-list-sheet :deep(.bottom-sheet__container--elevation-3) {
+  box-shadow: var(--md-sys-elevation-3);
 }
 </style>

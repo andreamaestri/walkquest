@@ -534,7 +534,7 @@ onMounted(() => {
 /* Navigation item styling - maintain vertical layout */
 .m3-rail-item {
   width: 56px;
-  height: 28px;
+  height: 48px; /* Increased height for better touch target */
   margin-bottom: 16px;
   background: transparent;
   border: none;
@@ -547,12 +547,16 @@ onMounted(() => {
   position: relative;
   border-radius: 16px; /* Add border radius for active state */
   transition: background-color 0.2s var(--md-sys-motion-easing-standard);
+  
+  /* Ensure touch target size meets accessibility standards */
+  min-height: 48px;
+  min-width: 48px;
 }
 
 /* Keep rail items same size and layout when expanded */
 .is-expanded .m3-rail-item {
   width: 56px; /* Keep consistent width */
-  height: 28px; /* Keep consistent height */
+  height: 48px; /* Match height for consistency */
   padding: 0;  /* Keep consistent padding */
   justify-content: center; /* Keep centered */
 }

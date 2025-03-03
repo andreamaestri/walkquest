@@ -66,14 +66,37 @@
     <!-- Walks Bottom Sheet for mobile -->
     <BottomSheet 
       v-model="showWalksBottomSheet" 
-      title="Walks"
+      :title="bottomSheetTitle"
       variant="standard"
       initialHeight="50vh"
       maxHeight="90vh"
       :snapPoints="[0.5, 0.85]"
       @snap-change="handleWalksSheetSnapChange"
+      class="mobile-walk-list-sheet"
     >
       <div class="md3-surface p-0">
+        <!-- Sheet Header with dynamic title based on active tab -->
+        <div class="mobile-sheet-header px-4 py-2">
+          <h2 class="sheet-title">{{ searchMode === 'categories' ? 'Categories' : 'Walks' }}</h2>
+          
+          <!-- Categories Filter Chips - show only in Categories mode -->
+          <div v-if="searchMode === 'categories'" class="categories-filter my-2">
+            <div class="categories-scroll-container">
+              <button 
+                v-for="category in availableCategories" 
+                :key="category.id" 
+                class="category-chip"
+                :class="{ 'active': activeCategory === category.name }"
+                @click="selectCategory(category)"
+              >
+                <Icon :icon="getCategoryIcon(category.name)" class="category-icon" />
+                <span>{{ category.name }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Search field -->
         <div class="md3-search-container px-4 py-2 mb-2">
           <div class="md3-search-field">
             <div class="md3-search-icon-container">
@@ -219,7 +242,9 @@ function handleTabChange(tab) {
       searchStore.setSearchMode('locations')
       break
     case 'categories':
+      // Switch to categories mode and show the walks bottom sheet with category filter
       searchStore.setSearchMode('categories')
+      showWalksBottomSheet.value = true
       break
     case 'walks':
       showWalksBottomSheet.value = true
@@ -567,7 +592,20 @@ onMounted(() => {
   window.addEventListener("popstate", preventRouteChange)
   
   try {
-    // Removed ResizeObserver code for sidebarWidth
+    // Set CSS variables for mobile nav height
+    if (uiStore.isMobile) {
+      document.documentElement.style.setProperty('--bottom-nav-height', '80px');
+      
+      // Also set safe area inset from environment if available
+      if (CSS.supports('padding-bottom: env(safe-area-inset-bottom)')) {
+        const safeAreaInset = getComputedStyle(document.documentElement)
+          .getPropertyValue('--safe-area-inset-bottom') || '0px';
+        document.documentElement.style.setProperty('--safe-area-inset-bottom', 
+          `env(safe-area-inset-bottom, ${safeAreaInset})`);
+      }
+    }
+    
+    // Initialize interface
     const cleanup = initializeInterface();
     
     // Return cleanup function
