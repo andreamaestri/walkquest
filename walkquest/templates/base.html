@@ -1,5 +1,5 @@
-<!DOCTYPE html>
 {% load static django_vite %}
+<!DOCTYPE html>
 <html lang="en" class="h-full">
   <head>
     <meta charset="utf-8" />
@@ -16,6 +16,15 @@
     <title>{% block title %}WalkQuest{% endblock %}</title>
 
     <!-- Update favicon paths -->
+    <link 
+      rel="icon" 
+      type="image/svg+xml" 
+      href="{% static 'images/favicons/favicon.svg' %}"
+    />
+    <link
+      rel="mask-icon"
+      href="{% static 'images/favicons/favicon.svg' %}"
+    />
     <link
       rel="apple-touch-icon"
       sizes="180x180"
@@ -33,7 +42,7 @@
       sizes="16x16"
       href="{% static 'images/favicons/favicon-16x16.png' %}"
     />
-    <link rel="manifest" href="{% static 'images/favicons/site.webmanifest' %}">
+    <link rel="manifest" href="{% static 'images/favicons/site.webmanifest' %}" type="application/manifest+json" />
     <link
       rel="shortcut icon"
       href="{% static 'images/favicons/favicon.ico' %}"
@@ -45,8 +54,11 @@
       rel="stylesheet"
     />
 
-    {% if debug %} {% vite_hmr_client %} {% endif %} {% vite_asset
-    'walkquest/static/js/main.js' %} {% block extra_head %}{% endblock %}
+    {% if debug %}
+      {% vite_hmr_client %}
+    {% endif %}
+    {% vite_asset 'walkquest/static/js/main.js' %}
+    {% block extra_head %}{% endblock %}
   </head>
   <body
     class="h-full overflow-hidden"

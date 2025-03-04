@@ -44,8 +44,8 @@ EMAIL_BACKEND = env(
 
 # WhiteNoise
 # ------------------------------------------------------------------------------
-# http://whitenoise.evans.io/en/latest/django.html#using-whitenoise-in-development
-INSTALLED_APPS = ["whitenoise.runserver_nostatic", *INSTALLED_APPS]
+# Disable WhiteNoise for development to use Django's static file handling
+# INSTALLED_APPS = ["whitenoise.runserver_nostatic", *INSTALLED_APPS]
 
 # django-browser-reload
 # ------------------------------------------------------------------------------
@@ -107,10 +107,7 @@ if "corsheaders.middleware.CorsMiddleware" not in MIDDLEWARE:
 
 # django-esm
 # ------------------------------------------------------------------------------
-STATICFILES_FINDERS = [
-    "django.contrib.staticfiles.finders.FileSystemFinder",
-    "django.contrib.staticfiles.finders.AppDirectoriesFinder",
-]
 STATICFILES_DIRS = [
     BASE_DIR / "node_modules",
+    APPS_DIR / "static",
 ]

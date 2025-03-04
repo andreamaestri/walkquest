@@ -1,7 +1,6 @@
 # ruff: noqa: ERA001, E501
 """Base settings to build other settings files upon."""
 
-import os
 import re
 import ssl
 from pathlib import Path
@@ -157,7 +156,6 @@ AUTH_PASSWORD_VALIDATORS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -169,22 +167,21 @@ MIDDLEWARE = [
 ]
 # STATIC
 # ------------------------------------------------------------------------------
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATIC_URL = "/static/"
 
 STATICFILES_DIRS = [
-    str(APPS_DIR / "static")
+    str(APPS_DIR / "static"),
 ]
 
 # Django Vite Configuration
 DJANGO_VITE = {
     "default": {
         "dev_mode": DEBUG,
-        # Fix the manifest path to point to the correct location
         "manifest_path": str(APPS_DIR / "static" / "dist" / ".vite" / "manifest.json"),
         "static_url_prefix": "dist/",
-    }
+    },
 }
 
 
@@ -381,10 +378,9 @@ ICONIFY_COLLECTIONS = {
 }
 
 # Whitenoise configuration
-def immutable_file_test(path, url):
+def immutable_file_test(_path, url):
     """Test if a file should be treated as immutable."""
     return bool(re.match(r"^.+[.-][0-9a-zA-Z_-]{8,12}\..+$", url))
 
 
 WHITENOISE_IMMUTABLE_FILE_TEST = immutable_file_test
-
