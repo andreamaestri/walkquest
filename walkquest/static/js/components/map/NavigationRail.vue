@@ -511,9 +511,12 @@ onMounted(() => {
 }
 
 .m3-rail-fab-text {
-  margin-left: 12px;
-  font-size: 14px;
-  font-weight: 500;
+  text-align: center;
+  margin-left: -22px;
+  flex: 1;
+  justify-items: center;
+  font-size: 27px;
+  font-weight: 400;
 }
 
 /* Navigation items container - keep centered even when expanded */
@@ -534,7 +537,7 @@ onMounted(() => {
 /* Navigation item styling - maintain vertical layout */
 .m3-rail-item {
   width: 56px;
-  height: 48px; /* Increased height for better touch target */
+  height: 28px;
   margin-bottom: 16px;
   background: transparent;
   border: none;
@@ -547,16 +550,12 @@ onMounted(() => {
   position: relative;
   border-radius: 16px; /* Add border radius for active state */
   transition: background-color 0.2s var(--md-sys-motion-easing-standard);
-  
-  /* Ensure touch target size meets accessibility standards */
-  min-height: 48px;
-  min-width: 48px;
 }
 
 /* Keep rail items same size and layout when expanded */
 .is-expanded .m3-rail-item {
   width: 56px; /* Keep consistent width */
-  height: 48px; /* Match height for consistency */
+  height: 28px; /* Keep consistent height */
   padding: 0;  /* Keep consistent padding */
   justify-content: center; /* Keep centered */
 }
@@ -569,6 +568,7 @@ onMounted(() => {
   justify-content: center;
   height: 100%;
   width: 100%;
+  transition: all 0.3s var(--md-sys-motion-easing-standard);
 }
 
 /* Keep rail content in column direction even when expanded */
@@ -588,12 +588,12 @@ onMounted(() => {
   justify-content: center;
   margin-bottom: 10px;
   border-radius: 16px;
-  transition: background-color 0.2s var(--md-sys-motion-easing-standard);
+  transition: all 0.3s var(--md-sys-motion-easing-standard);
 }
 
 /* Keep icon container positioning the same when expanded */
 .is-expanded .m3-rail-icon-container {
-  top: 18px; /* Keep same top position */
+  top: 10px; /* Keep same top position */
   margin-bottom: 10px; /* Keep same bottom margin */
   margin-right: 0; /* No right margin */
 }
@@ -626,6 +626,7 @@ onMounted(() => {
   opacity: 1;
 }
 
+/* Hover and active states for icons */
 .m3-rail-item:hover .filled-icon,
 .m3-rail-item.is-active .filled-icon {
   opacity: 1;
@@ -633,6 +634,17 @@ onMounted(() => {
 
 .m3-rail-item:hover .outlined-icon,
 .m3-rail-item.is-active .outlined-icon {
+  opacity: 0;
+}
+
+/* Explicitly set the expanded state icon behavior to match collapsed state */
+.is-expanded .m3-rail-item:hover .filled-icon,
+.is-expanded .m3-rail-item.is-active .filled-icon {
+  opacity: 1;
+}
+
+.is-expanded .m3-rail-item:hover .outlined-icon,
+.is-expanded .m3-rail-item.is-active .outlined-icon {
   opacity: 0;
 }
 
@@ -651,17 +663,9 @@ onMounted(() => {
 
 /* Adjust label position and style in expanded mode */
 .is-expanded .m3-rail-label {
-  margin-top: 0;
-  text-align: left;
-  font-size: 14px;
-}
-
-/* Adjust FAB in expanded mode */
-.is-expanded .m3-rail-fab {
-  width: calc(100% - 24px);
-  border-radius: 28px;
-  justify-content: flex-start;
-  padding-left: 16px;
+  margin-top: 4px; /* Keep consistent with collapsed state */
+  text-align: center; /* Keep text centered */
+  font-size: var(--md-sys-typescale-label-medium-size, 12px); /* Keep consistent font size */
 }
 
 /* Apply active background to rail item instead */
@@ -669,18 +673,19 @@ onMounted(() => {
   background-color: rgb(var(--md-sys-color-secondary-container));
 }
 
-/* Content layout */
-.m3-rail-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  width: 100%;
+/* Ensure this still applies in expanded state */
+.is-expanded .m3-rail-item.is-active {
+  background-color: rgb(var(--md-sys-color-secondary-container));
 }
 
 /* Active state for labels */
 .m3-rail-item.is-active .m3-rail-label {
+  color: rgb(var(--md-sys-color-on-secondary-container));
+  font-weight: var(--md-sys-typescale-label-medium-weight-prominent, 600);
+}
+
+/* Ensure active state for labels still applies in expanded state */
+.is-expanded .m3-rail-item.is-active .m3-rail-label {
   color: rgb(var(--md-sys-color-on-secondary-container));
   font-weight: var(--md-sys-typescale-label-medium-weight-prominent, 600);
 }
