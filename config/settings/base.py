@@ -173,6 +173,7 @@ STATIC_URL = "/static/"
 
 STATICFILES_DIRS = [
     str(APPS_DIR / "static"),
+    str(APPS_DIR / "static" / "dist"),
 ]
 
 # Django Vite Configuration
@@ -180,7 +181,7 @@ DJANGO_VITE = {
     "default": {
         "dev_mode": DEBUG,
         "manifest_path": str(APPS_DIR / "static" / "dist" / ".vite" / "manifest.json"),
-        "static_url_prefix": "dist/",
+        "static_url_prefix": "",
     },
 }
 

@@ -4,6 +4,7 @@ import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
+  base: '/static/',
   plugins: [vue(), tailwindcss()],
   
   define: {
@@ -14,13 +15,13 @@ export default defineConfig({
     outDir: resolve('./walkquest/static/dist'),
     rollupOptions: {
       input: {
-        main: resolve(__dirname, 'walkquest/static/js/main.js')
+        'main': './walkquest/static/js/main.js'
       }
     },
     assetsDir: '',
     emptyOutDir: true
   },
   server: {
-    origin: process.env.VITE_DEV_SERVER_URL || 'http://localhost:5174'
+    port: 5173
   }
 })

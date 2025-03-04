@@ -74,11 +74,11 @@ const defaultSnapPoint = computed(() => 1); // Index of the second snap point (h
 
 // Calculate snap points based on max height with adjustment for bottom nav
 const snapPoints = computed(() => {
-  const height = maxHeight.value - navHeight - safeAreaInset; // Adjust for nav bar and safe area
+  const adjustedHeight = maxHeight.value - navHeight - safeAreaInset; // Adjusted height for partial views
   return [
-    Math.min(320, height * 0.4),   // Peeking state (~40% of available height)
-    Math.min(550, height * 0.65),  // Half expanded (~65% of available height)
-    height                         // Full height (excluding nav bar and safe area)
+    Math.min(320, adjustedHeight * 0.4),   // Peeking state (~40% of available height)
+    Math.min(550, adjustedHeight * 0.65),  // Half expanded (~65% of available height)
+    maxHeight.value                        // Full height - uses entire maxHeight without adjustments
   ].sort((a, b) => a - b); // Ensure points are in ascending order
 });
 
@@ -185,6 +185,20 @@ function handleShare() {
       .catch(console.error);
   }
 }
+
+// Handler methods to forward events
+function handleStartWalk() {
+  emit('start-walk');
+}
+
+function handleSaveWalk() {
+  emit('save-walk');
+}
+
+function handleCategorySelected(category) {
+  emit('category-selected', category);
+}
+
 </script>
 
 <style>

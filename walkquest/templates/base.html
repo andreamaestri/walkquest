@@ -55,7 +55,7 @@
     />
 
     {% if debug %}
-      {% vite_hmr_client %}
+    {% vite_hmr_client %}
     {% endif %}
     {% vite_asset 'walkquest/static/js/main.js' %}
     {% block extra_head %}{% endblock %}
