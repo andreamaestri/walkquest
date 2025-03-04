@@ -5,7 +5,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [vue(), tailwindcss()],
-  base: '/static/dist/',
+  
   define: {
     __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: true
   },
