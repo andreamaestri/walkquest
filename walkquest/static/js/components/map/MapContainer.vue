@@ -704,6 +704,49 @@ onBeforeUnmount(() => {
   // Clear collections
   spatialIndex.value.clear();
 });
+
+const handleRecenterToWalk = () => {
+  if (!mapInstance.value || !props.selectedWalkId || animationInProgress.value) return;
+  
+  animationInProgress.value = true;
+  
+  // Find the selected walk
+  const walk = props.walks.find(w => w.id === props.selectedWalkId);
+  if (!walk) return;
+  
+  // Get the walk's coordinates
+  const lng = Number(walk.longitude) || Number(walk.lng);
+  const lat = Number(walk.latitude) || Number(walk.lat);
+  
+  try {
+    // Just apply minimal transform for performance
+    mapInstance.value.getCanvas().style.transform = 'translate3d(0, 0, 0)';
+    
+    mapInstance.value.flyTo({
+      center: [lng, lat],
+      zoom: 13,
+      pitch: 0, // Flat 2D view
+      bearing: 0, // No rotation
+      duration: 1000,
+      essential: true
+    });
+  } catch (error) {
+    console.error('Error during recenter:', error);
+  } finally {
+    setTimeout(() => {
+      animationInProgress.value = false;
+    }, 1100); // Just after animation ends
+  }
+};
+
+// Make the method available to parent components
+defineExpose({
+  flyTo: (options) => {
+    if (!mapInstance.value || animationInProgress.value) return;
+    mapInstance.value.flyTo(options);
+  },
+  handleRecenterToWalk
+});
 </script>
 
 <style scoped>

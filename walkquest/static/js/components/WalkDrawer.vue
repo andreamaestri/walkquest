@@ -25,6 +25,7 @@
           @save-walk="() => {}"
           @share="handleShare"
           @directions="() => {}"
+          @recenter="handleRecenter"
           @category-selected="handleCategoryClick"
         />
       </div>
@@ -61,7 +62,7 @@ const props = defineProps({
   isMobile: { type: Boolean, default: false }
 });
 
-const emit = defineEmits(["close", "start-walk", "loading-change", "category-selected"]);
+const emit = defineEmits(["close", "start-walk", "loading-change", "category-selected", "recenter"]);
 
 // Get UI store
 const uiStore = useUiStore();
@@ -295,6 +296,10 @@ function handleShare() {
       })
       .catch(console.error);
   }
+}
+
+function handleRecenter() {
+  emit('recenter');
 }
 
 // Clean up animations and observers when component is unmounted

@@ -203,7 +203,7 @@ const categoryIcons = {
   'walks visiting a church': 'mdi:church',
   'walks including the saints way': 'mdi:church-outline',
   'walks with a holy well': 'mdi:water-well-outline',
-  'walks with prehistoric remains': 'maki:historic',
+  'walks with prehistoric remains': 'mdi:cross-celtic',
   'walks with mining/quarrying heritage': 'bitcoin-icons:mining-filled',
   'walks on the mining trails': 'healthicons:miner-worker-alt',
   'walks on the clay trails': 'mdi:terrain',
@@ -683,7 +683,10 @@ watch(selectedCategory, (newCategory) => {
     overflow: hidden;
         
     .walk-card-wrapper {
-      padding: 4px 8px;
+      padding: 4px;
+      width: 100%;
+      display: flex;
+      justify-content: center;
     }
     
     .category-selection {
@@ -743,6 +746,8 @@ watch(selectedCategory, (newCategory) => {
 /* Walk Card Wrapper Styles */
 .walk-card-wrapper {
   padding: 4px 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* Location Info Styles */
@@ -1613,43 +1618,36 @@ watch(selectedCategory, (newCategory) => {
     grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
     gap: 6px;
   }
-
   .category-card {
     min-height: 90px;
     padding: 10px 6px;
   }
-
   .category-card-icon {
     width: 32px;
     height: 32px;
     font-size: 16px;
   }
-
   .category-card-name {
     font-size: 0.75rem;
     margin-top: 4px;
   }
-
   .category-title {
     font-size: 1rem;
   }
-
   .selected-category-info {
     padding: 6px 10px;
   }
-
   .selected-category span {
     font-size: 0.875rem;
   }
-
   .clear-category {
     padding: 4px 8px;
     font-size: 0.6875rem;
   }
-
   /* Improve touch targets on very small screens */
   .walk-card-wrapper {
-    padding: 6px 0;
+    padding: 4px 2px;
+    width: 100%;
   }
 }
 

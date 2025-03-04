@@ -39,11 +39,7 @@
 
 /* Header Styles */
 .header-container {
-  background: linear-gradient(
-    to right,
-    rgb(var(--md-sys-color-surface-container-highest)),
-    rgb(var(--md-sys-color-surface-container-high))
-  );
+  background: #EADDFF;
   box-shadow: var(--md-sys-elevation-level2);
   border-top-right-radius: 24px;
   position: sticky;
@@ -445,8 +441,8 @@
   flex-basis: auto;
   overflow: hidden;
   border: 1px solid rgba(var(--md-sys-color-outline), 0.2);
-  box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.2);
-  border-radius: 5px;
+  box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
   padding: 0.75rem;
   transition: all 0.3s ease-in-out;
   cursor: pointer;

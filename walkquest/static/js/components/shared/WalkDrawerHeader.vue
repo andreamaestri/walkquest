@@ -39,14 +39,15 @@ defineEmits(['close']);
   position: sticky;
   top: 0;
   width: 100%;
-  background-color: rgb(var(--md-sys-color-surface-container-high));
+  background-color: rgb(var(--md-sys-color-secondar-container));
   z-index: 10;
   padding: 12px 8px 12px 0; /* Remove left padding entirely */
   display: flex;
   flex-direction: column;
-  border-bottom: 1px solid rgba(var(--md-sys-color-outline-variant), 0.12);
+  border-bottom: 1px solid rgba(var(--md-sys-color-primary), 0.2);
   transition: box-shadow 0.2s ease;
   padding-left: 16px;
+  box-shadow: 0 2px 4px rgba(99, 0, 112, 0.1);
 }
 
 .header-container.mobile {
@@ -72,7 +73,7 @@ defineEmits(['close']);
   border: none;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  color: rgb(var(--md-sys-color-on-surface));
+  color: #4F378B;
   position: relative;
   overflow: hidden;
   margin: 0;
@@ -118,7 +119,7 @@ defineEmits(['close']);
   margin: 0;
   font-size: 24px;
   font-weight: 500;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: #4F378B;
   line-height: 32px;
   overflow: hidden; /* Prevent overflow */
   padding-right: 8px;

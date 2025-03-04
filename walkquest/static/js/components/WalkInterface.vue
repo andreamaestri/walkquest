@@ -20,9 +20,9 @@
       @walk-selected="handleWalkSelection"
     />
 
-    <!-- Mobile Walk List -->
+    <!-- Mobile Walk List - Notice v-if instead of v-show to properly unmount when not needed -->
     <MobileWalkList
-      v-show="uiStore.isMobile && !selectedWalk"
+      v-if="uiStore.isMobile && !selectedWalk"
       :walks="filteredWalks"
       :selected-walk-id="selectedWalkId"
       :key="activeTab"
@@ -53,10 +53,8 @@
       @close="handleDrawerClose"
       @start-walk="handleStartWalk"
       @category-selected="handleCategorySelected"
+      @recenter="handleRecenter"
     />
-
-    <!-- Walks Bottom Sheet for mobile -->
-    
     
     <!-- Mobile Walk Detail Bottom Sheet -->
     <MobileWalkDrawer 
@@ -67,6 +65,7 @@
       @start-walk="handleStartWalk"
       @save-walk="handleSaveWalk"
       @category-selected="handleCategorySelected"
+      @recenter="handleRecenter"
     />
   </div>
 </template>
@@ -486,6 +485,14 @@ const handleMapCreated = (map) => {
  */
 const handleMapLoad = () => {
   uiStore.setLoadingState("map", false);
+};
+
+/**
+ * Handle recenter request from drawer
+ */
+const handleRecenter = () => {
+  if (!mapContainer.value || !selectedWalk.value) return;
+  mapContainer.value.handleRecenterToWalk();
 };
 
 /**

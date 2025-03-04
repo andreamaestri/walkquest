@@ -467,6 +467,9 @@ onMounted(() => {
   z-index: 40; /* Increase z-index when navigation needs to be above drawer */
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
+  border-right: 1px solid rgba(var(--md-sys-color-outline-variant), 0.5);
+  transition: cubic-bezier(0.075, 0.82, 0.165, 1) 0.3s;
+  box-shadow: var(--md-sys-elevation-1);
 }
 
 /* Content area transitions */

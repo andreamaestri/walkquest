@@ -62,14 +62,16 @@
           <span>Directions</span>
         </button>
 
-        <button class="m3-button m3-outlined-button icon-button"
-          @click="$emit('save-walk', walk)">
+        <button class="m3-button m3-outlined-button icon-button" @click="$emit('save-walk', walk)">
           <Icon icon="mdi:heart" class="button-icon" />
         </button>
 
-        <button class="m3-button m3-outlined-button icon-button"
-          @click="$emit('share', walk)">
+        <button class="m3-button m3-outlined-button icon-button" @click="$emit('share', walk)">
           <Icon icon="mdi:share" class="button-icon" />
+        </button>
+
+        <button class="m3-button m3-outlined-button icon-button" @click="$emit('recenter')" title="Recenter map">
+          <Icon icon="mdi:crosshairs-gps" />
         </button>
       </div>
     </div>
@@ -81,10 +83,10 @@
         <h3 class="section-title">About</h3>
         <p class="section-text">{{ walk.description }}</p>
       </section>
-      
+
       <!-- Trail Features Section -->
-      <section v-if="walk.features?.length || walk.related_categories?.length"
-        :ref="el => setSectionRef(1, el)" class="section">
+      <section v-if="walk.features?.length || walk.related_categories?.length" :ref="el => setSectionRef(1, el)"
+        class="section">
         <!-- Section Header -->
         <div class="enhanced-section-header">
           <div class="header-title-container">
@@ -100,7 +102,7 @@
             <div class="category-chips">
               <div v-for="category in walk.related_categories" :key="category.name" class="category-chip-wrapper"
                 @mouseenter="handleCategoryMouseEnter(category)" @mouseleave="handleCategoryMouseLeave">
-                <div class="category-chip" 
+                <div class="category-chip"
                   :class="[getCategoryClass(category.name), { 'is-hovered': isCategoryHovered(category) }]"
                   @click="handleCategoryClick(category)">
                   <Icon :icon="getCategoryIcon(category.name)" class="category-icon" />
@@ -196,8 +198,7 @@
                 <div class="pub-details">
                   <div class="pub-name-line">
                     <h4 class="pub-name">{{ pub.name }}</h4>
-                    <Icon v-if="pub.is_dog_friendly" icon="mdi:dog" class="dog-friendly-icon"
-                      title="Dog Friendly" />
+                    <Icon v-if="pub.is_dog_friendly" icon="mdi:dog" class="dog-friendly-icon" title="Dog Friendly" />
                   </div>
                   <div class="pub-meta">
                     <div v-if="pub.distance" class="pub-meta-item">
@@ -215,11 +216,11 @@
                   </div>
                   <div v-if="pub.opening_hours" class="pub-opening-hours">
                     <Icon :icon="pub.opening_hours.open_now
-                        ? 'mdi:clock'
-                        : 'mdi:clock-outline'
+                      ? 'mdi:clock'
+                      : 'mdi:clock-outline'
                       " class="pub-opening-hours-icon" :class="pub.opening_hours.open_now
-                          ? 'text-primary'
-                          : 'text-error'
+                        ? 'text-primary'
+                        : 'text-error'
                         " />
                     <span>{{ pub.opening_hours.open_now ? "Open Now" : "Closed" }}</span>
                   </div>
@@ -232,8 +233,8 @@
       </section>
 
       <!-- Practical Information Section -->
-      <section v-if="walk.footwear_category || parsedConsiderations.length > 0"
-        :ref="el => setSectionRef(5, el)" class="section practical-info-section">
+      <section v-if="walk.footwear_category || parsedConsiderations.length > 0" :ref="el => setSectionRef(5, el)"
+        class="section practical-info-section">
         <h3 class="section-title">Practical Information</h3>
 
         <div class="practical-info-grid">
@@ -315,9 +316,9 @@ import { useWalkData } from "../../composables/useWalkData";
 import { useDrawerAnimations } from "../../composables/useDrawerAnimations";
 
 const props = defineProps({
-  walk: { 
-    type: Object, 
-    required: true 
+  walk: {
+    type: Object,
+    required: true
   },
   isMobile: {
     type: Boolean,
@@ -326,11 +327,12 @@ const props = defineProps({
 });
 
 const emit = defineEmits([
-  'start-walk', 
-  'share', 
-  'save-walk', 
+  'start-walk',
+  'share',
+  'save-walk',
   'directions',
-  'category-selected'
+  'category-selected',
+  'recenter'
 ]);
 
 // Component refs
@@ -375,7 +377,7 @@ const {
 } = useWalkData(walkRef);
 
 // Use the drawer animations composable
-const { 
+const {
   toggleDetailsAnimation,
   animateCategoryClick
 } = useDrawerAnimations();
@@ -443,10 +445,9 @@ onMounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(45deg, 
-    rgba(255,255,255,0.1), 
-    rgba(255,255,255,0.3)
-  );
+  background: linear-gradient(45deg,
+      rgba(255, 255, 255, 0.1),
+      rgba(255, 255, 255, 0.3));
   opacity: 0;
   transition: opacity 0.3s ease;
   pointer-events: none;
@@ -473,5 +474,32 @@ onMounted(() => {
 
 .category-icon {
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.action-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 50%;
+  background: rgb(var(--md-sys-color-surface-container-high));
+  color: rgb(var(--md-sys-color-on-surface));
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-button:hover {
+  background: rgb(var(--md-sys-color-surface-container-highest));
+}
+
+.action-button:active {
+  transform: scale(0.95);
 }
 </style>

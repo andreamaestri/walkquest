@@ -12,8 +12,8 @@ import MapService from './services/map.js';
 const MAP_CONFIG = {
     MOBILE_BREAKPOINT: 768,
     DEFAULT_ZOOM: {
-        MOBILE: 13,
-        DESKTOP: 14
+        MOBILE: 12.5,
+        DESKTOP: 13.5
     },
     PADDING: {
         TOP: 50,

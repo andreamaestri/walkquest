@@ -131,6 +131,7 @@ const getCategoryStyle = (cat) => {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: var(--md-sys-elevation-1);
   cursor: pointer;
+  width: calc(100% - 16px); /* Ensure consistent width accounting for margins */
 }
 
 .walk-card:hover {
@@ -233,6 +234,7 @@ const getCategoryStyle = (cat) => {
 .walk-card.is-compact {
   margin: 2px 8px;
   border-radius: 8px;
+  width: calc(100% - 16px);
 }
 
 .walk-card.is-compact .walk-content {
@@ -255,30 +257,36 @@ const getCategoryStyle = (cat) => {
 /* Mobile improvements */
 @media (max-width: 768px) {
   .walk-card {
-    margin: 8px 4px;
+    margin: 8px 8px; /* Equal margins on all sides */
     border-radius: 20px;
     box-shadow: var(--md-sys-elevation-2);
+    width: calc(100% - 16px); /* Ensure consistent width */
+    max-width: 100%; /* Prevent overflow */
+    box-sizing: border-box; /* Include borders and padding in width calculation */
   }
   
   .walk-content {
-    padding: 20px;
+    padding: 16px;
   }
   
   .walk-title {
     font-size: 1.25rem;
     font-weight: 600;
     margin-bottom: 10px;
+    word-break: break-word; /* Handle long titles */
   }
   
   .badges {
     gap: 10px;
     margin-bottom: 16px;
+    flex-wrap: wrap; /* Ensure badges wrap on small screens */
   }
   
   .badge {
     padding: 6px 14px;
     font-size: 0.875rem;
     border-radius: 20px;
+    white-space: nowrap; /* Prevent text wrapping inside badges */
   }
   
   .category-tag {

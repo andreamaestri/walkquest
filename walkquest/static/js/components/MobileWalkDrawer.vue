@@ -3,9 +3,9 @@
     ref="bottomSheet"
     v-model="isOpen"
     elevation="3"
-    :blocking="false"
+    :blocking="true"
     :can-swipe-close="false"
-    :can-overlay-close="false"
+    :can-overlay-close="true"
     :default-snap-point="defaultSnapPoint"
     :snap-points="snapPoints"
     :expand-on-content-drag="true"
@@ -13,6 +13,7 @@
     @max-height="handleMaxHeight"
     @opened="onOpened"
     @closed="onClosed"
+    @snap-point-changed="handleSnapPointChange"
     class="mobile-walk-drawer-sheet"
   >
     <template #header>
@@ -26,11 +27,12 @@
     <WalkDrawerContent 
       :walk="walk"
       :isMobile="true"
-      @start-walk="$emit('start-walk', walk)"
-      @save-walk="$emit('save-walk', walk)"
+      @start-walk="handleStartWalk"
+      @save-walk="handleSaveWalk"
       @share="handleShare"
-      @directions="$emit('directions', walk)"
-      @category-selected="$emit('category-selected', $event)"
+      @directions="() => {}"
+      @category-selected="handleCategorySelected"
+      @recenter="$emit('recenter')"
     />
   </BottomSheet>
 </template>
@@ -53,7 +55,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['update:modelValue', 'close', 'start-walk', 'save-walk', 'directions', 'category-selected']);
+const emit = defineEmits(['update:modelValue', 'close', 'start-walk', 'save-walk', 'directions', 'category-selected', 'snap-point-changed', 'recenter']);
 
 const bottomSheet = ref(null);
 const isOpen = ref(props.modelValue);
@@ -64,24 +66,29 @@ const scrimColor = computed(() => 'rgba(0, 0, 0, 0.32)');
 // Sheet height management with bottom nav adjustment
 const maxHeight = ref(window.innerHeight);
 const navHeight = 80; // Height of the mobile navigation bar
-const safeAreaInset = typeof window !== 'undefined' ? parseInt(getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || '0') : 0;
+const safeAreaInset = typeof window !== 'undefined' ? 
+  parseInt(getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || '0') : 0;
   
-// Adjust default snap point to account for navigation bar
-const defaultSnapPoint = computed(() => Math.min(500, (maxHeight.value - navHeight) / 2));
+// Set default snap point to half-height for better initial view
+const defaultSnapPoint = computed(() => 1); // Index of the second snap point (half height)
 
 // Calculate snap points based on max height with adjustment for bottom nav
 const snapPoints = computed(() => {
-  const height = maxHeight.value - navHeight; // Adjust for nav bar
+  const height = maxHeight.value - navHeight - safeAreaInset; // Adjust for nav bar and safe area
   return [
-    Math.min(200, height / 4),         // Peeking state
-    Math.min(500, height / 2),         // Half expanded
-    Math.min(800, height * 0.75),      // Most content visible
-    height                             // Full height (excluding nav bar)
+    Math.min(320, height * 0.4),   // Peeking state (~40% of available height)
+    Math.min(550, height * 0.65),  // Half expanded (~65% of available height)
+    height                         // Full height (excluding nav bar and safe area)
   ].sort((a, b) => a - b); // Ensure points are in ascending order
 });
 
 function handleMaxHeight(height) {
   maxHeight.value = height;
+}
+
+// Handle snap point changes
+function handleSnapPointChange(index) {
+  emit('snap-point-changed', index);
 }
 
 // Watch for changes to modelValue prop
@@ -94,31 +101,18 @@ watch(() => isOpen.value, (newVal) => {
   emit('update:modelValue', newVal);
 });
 
-// Watch for props.modelValue changes to handle external state changes
-watch(() => props.modelValue, (newVal) => {
-  if (newVal !== isOpen.value) {
-    isOpen.value = newVal;
-    if (newVal) {
-      nextTick(() => {
-        if (bottomSheet.value) {
-          bottomSheet.value.snapToPoint(defaultSnapPoint.value);
-        }
-      });
-    }
-  }
-});
-
 // Lifecycle hooks
 onMounted(() => {
-  // Initialize maxHeight
+  // Initialize maxHeight with window height
   maxHeight.value = window.innerHeight;
   
   // Handle initial open state
   if (props.modelValue) {
     // Only open if modelValue is true initially
-    open();
+    nextTick(() => open());
   }
-
+  
+  // Update dimensions on resize
   const updateMaxHeight = () => {
     maxHeight.value = window.innerHeight;
   };
@@ -212,28 +206,26 @@ function handleShare() {
 /* Ensure bottom sheet accounts for mobile navigation */
 .mobile-walk-drawer-sheet :deep(.bottom-sheet__content) {
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: calc(env(safe-area-inset-bottom) + 16px);
 }
 
 /* Smooth transition overrides */
 .mobile-walk-drawer-sheet :deep(.bottom-sheet__container) {
-  transition: transform var(--md-sys-motion-duration-medium2, 320ms) var(--md-sys-motion-easing-emphasized-decelerate, cubic-bezier(0.05, 0.7, 0.1, 1.0));
+  transition: transform var(--md-sys-motion-duration-medium2, 320ms) 
+              var(--md-sys-motion-easing-emphasized-decelerate, cubic-bezier(0.05, 0.7, 0.1, 1.0));
 }
 
 /* Shadow adjustments for MD3 elevation */  
 .mobile-walk-drawer-sheet :deep(.bottom-sheet__container--elevation-3) {
   box-shadow: var(--md-sys-elevation-3);
+  border-radius: 28px 28px 0 0;
 }
 
-/* Allow interaction with content behind the drawer's backdrop */
-.mobile-walk-drawer-sheet :deep(.bottom-sheet__backdrop) {
-  pointer-events: none;
-}
-
-/* Make sure all bottom sheet container variants receive pointer events */
-.mobile-walk-drawer-sheet :deep(.bottom-sheet__container),
-.mobile-walk-drawer-sheet :deep(.bottom-sheet__container--active),
-.mobile-walk-drawer-sheet :deep(.bottom-sheet__container--elevation-3) {
-  pointer-events: auto;
+/* Make sure the bottom sheet container itself receives pointer events */
+.mobile-walk-drawer-sheet :deep(.bottom-sheet__container) {
+  pointer-events: auto !important;
+  background: rgb(var(--md-sys-color-surface));
 }
 
 /* Ensure header and content are clickable too */
@@ -242,13 +234,8 @@ function handleShare() {
   pointer-events: auto;
 }
 
-/* Allow interaction with content behind the drawer's backdrop */
-.mobile-walk-drawer-sheet {
-  pointer-events: none!important;
-}
-
-/* Make sure the bottom sheet container itself still receives pointer events */
-.mobile-walk-drawer-sheet :deep(.bottom-sheet__container) {
-  pointer-events: auto!important;
+/* Allow passive interaction with map behind the drawer with backdrop */
+.mobile-walk-drawer-sheet :deep(.bottom-sheet__backdrop) {
+  pointer-events: auto;
 }
 </style>
