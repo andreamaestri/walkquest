@@ -60,8 +60,6 @@ SECURE_CONTENT_TYPE_NOSNIFF = env.bool(
 # STATIC & MEDIA
 # ------------------------
 STORAGES = {
-    # Enable WhiteNoise's GZip and Brotli compression of static assets:
-    # https://whitenoise.readthedocs.io/en/latest/django.html#add-compression-and-caching-support
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
@@ -71,9 +69,27 @@ STORAGES = {
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATIC_URL = "/static/"
 
-WHITENOISE_USE_FINDERS = True
-WHITENOISE_MANIFEST_STRICT = False
-WHITENOISE_AUTOREFRESH = True
+# Django Vite Configuration
+DJANGO_VITE = {
+    "default": {
+        "dev_mode": False,  # Ensure dev mode is disabled in production
+        "manifest_path": str(APPS_DIR / "static" / "dist" / ".vite" / "manifest.json"),
+        "static_url_prefix": "dist/",
+    },
+}
+
+# Additional static directories for Vite output
+STATICFILES_DIRS = [
+    str(APPS_DIR / "static"),
+]
+
+# WhiteNoise Configuration
+WHITENOISE_USE_FINDERS = False  # Disable in production
+WHITENOISE_MANIFEST_STRICT = True
+WHITENOISE_AUTOREFRESH = False
+WHITENOISE_MIMETYPES = {
+    ".webmanifest": "application/manifest+json",
+}
 
 # EMAIL
 # ------------------------------------------------------------------------------
