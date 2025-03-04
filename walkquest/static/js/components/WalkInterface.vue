@@ -608,6 +608,8 @@ onMounted(() => {
   background-color: rgb(var(--md-sys-color-surface));
   min-height: 100vh;
   min-height: -webkit-fill-available;
+  min-height: calc(100vh + env(safe-area-inset-top)); /* Add this line */
+  padding-top: env(safe-area-inset-top); /* Optional: Add padding to content */
 }
 
 /* Search field styling */

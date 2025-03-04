@@ -3,12 +3,10 @@
     class="m3-content-container hardware-accelerated pointer-events-auto" 
     :class="{ 
       'drawer-open': isDrawerOpen,
-      'has-mobile-nav': uiStore.isMobile && !selectedWalkId 
+      'has-mobile-nav': uiStore.isMobile && !selectedWalkId,
+      'has-notch': uiStore.isMobile 
     }"
-    :style="[
-      mapContainerStyle,
-      { marginTop: '64px' }, // Add top margin to account for header
-    ]" 
+    :style="mapContainerStyle" 
     ref="mapContainerRef"
   >
     <div class="m3-surface-container hardware-accelerated pointer-events-auto absolute inset-0">
@@ -149,15 +147,17 @@ const maxZoom = computed(() =>
 
 /**
  * Computed property for map container style
- * Adjusts layout based on drawer state
+ * Adjusts layout based on drawer state and notch
  */
 const mapContainerStyle = computed(() => ({
   position: "absolute",
   inset: "0",
   width: "100vw",
-  height: "100vh",
+  height: "calc(100vh + env(safe-area-inset-top, 0px))",
   marginLeft: "var(--md-sys-sidebar-collapsed)", // Always keep margin for sidebar
   paddingRight: "0", // No padding needed on right side
+  marginTop: "0", // Remove top margin to allow extending into notch
+  paddingTop: uiStore.isMobile ? "0" : "64px", // Only add header padding on desktop
 }));
 
 /**
@@ -720,6 +720,10 @@ onBeforeUnmount(() => {
   position: absolute;
   inset: 0;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-top: 0 !important; /* Override any existing margins */
+  padding-top: env(safe-area-inset-top, 0px);
+  height: calc(100vh + env(safe-area-inset-top, 0px)) !important;
+  width: 100vw;
 }
 
 /* Update to adjust map when drawer is open but keep sidebar visible */
@@ -998,5 +1002,25 @@ onBeforeUnmount(() => {
 :deep(.walk-popup) {
   position: relative;
   overflow: hidden;
+}
+
+/* Proper notch handling */
+.m3-content-container.has-notch {
+  padding-top: env(safe-area-inset-top, 0px);
+  height: calc(100vh + env(safe-area-inset-top, 0px)) !important;
+}
+
+/* Adjust controls positioning to respect safe areas */
+:deep(.mapboxgl-control-container) {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+}
+
+/* Position other map elements correctly */
+:deep(.mapboxgl-ctrl-top-right) {
+  top: calc(10px + env(safe-area-inset-top, 0px)) !important;
+  right: calc(10px + env(safe-area-inset-right, 0px)) !important;
 }
 </style>
