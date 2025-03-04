@@ -50,7 +50,7 @@
             <input 
               ref="searchInputRef"
               v-model="searchQuery" 
-              type="text" 
+              type="search" 
               placeholder="Search walks..." 
               class="md3-search-input"
               @input="handleSearchInput"
@@ -67,13 +67,13 @@
         </div>
 
         <div class="md3-search-results">
-          <div v-if="isSearching" class="md3-search-loading">
+          <div v-if="storeIsSearching" class="md3-search-loading">
             <Icon icon="mdi:loading" class="md3-spinner" />
             <span>Searching...</span>
           </div>
           <div v-else-if="searchResults.length > 0" class="md3-search-results-list">
             <WalkList
-              :walks="searchResults"
+              :walks="searchResults.slice(0, 20)"
               :selected-walk-id="selectedWalkId"
               :is-compact="true"
               @walk-selected="handleSearchResultSelect"
@@ -125,7 +125,6 @@ const searchInputRef = ref(null)
 const isOpen = ref(true)  // Ensure the walk list stays open as default state
 const maxHeight = ref(window.innerHeight)
 const navHeight = 80  // Updated to match the bottom nav height
-const isSearchOpen = ref(false)
 const showFilters = ref(false)
 const isSearching = ref(false)
 
@@ -134,9 +133,8 @@ const walksStore = useWalksStore()
 const uiStore = useUiStore()
 const searchStore = useSearchStore()
 const router = useRouter()
-const searchQuery = ref('')
 const searchDebounceTimeout = ref(null)
-const searchResults = ref([])
+const { searchQuery, searchResults, isLoading: storeIsSearching } = storeToRefs(searchStore)
 
 // Material Design 3 scrim color with 0.32 opacity
 const scrimColor = computed(() => 'rgba(0, 0, 0, 0.32)')
@@ -180,7 +178,7 @@ function closeSearch() {
   isSearchOpen.value = false
   // Clear search when closing
   searchQuery.value = ''
-  searchResults.value = []
+  searchStore.clearSearch()
 }
 
 function clearSearch() {
@@ -203,39 +201,18 @@ function handleSearchInput() {
   clearTimeout(searchDebounceTimeout.value)
   
   if (!searchQuery.value.trim()) {
-    searchResults.value = []
+    searchStore.clearSearch()
     return
   }
-  
-  // Set searching state
-  isSearching.value = true
   
   // Debounce the actual search
   searchDebounceTimeout.value = setTimeout(async () => {
     try {
-      // Filter walks based on search query
-      searchResults.value = props.walks.filter(walk => {
-        const query = searchQuery.value.toLowerCase()
-        
-        // Check various walk properties
-        return (
-          (walk.walk_name?.toLowerCase().includes(query)) ||
-          (walk.title?.toLowerCase().includes(query)) ||
-          (walk.location?.toLowerCase().includes(query)) ||
-          (walk.description?.toLowerCase().includes(query)) ||
-          (walk.related_categories?.some(cat => 
-            typeof cat === 'string'
-              ? cat.toLowerCase().includes(query)
-              : cat.name?.toLowerCase().includes(query)
-          ))
-        )
-      })
+      await searchStore.performSearch(searchQuery.value)
     } catch (error) {
       console.error('Search error:', error)
-    } finally {
-      isSearching.value = false
     }
-  }, 300)
+  }, 200)
 }
 
 // Handle search result selection

@@ -305,6 +305,22 @@ export const useSearchStore = defineStore('search', () => {
     return results
   })
 
+  // Add performSearch method
+  async function performSearch(query) {
+    if (!query?.trim()) {
+      clearSearch()
+      return []
+    }
+
+    try {
+      setIsLoading(true)
+      setSearchQuery(query)
+      return filteredWalks.value
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   // Actions
   function setSearchQuery(query) {
     if (searchQuery.value === query) return
@@ -418,6 +434,7 @@ export const useSearchStore = defineStore('search', () => {
     // Computed
     filteredWalks,
     suggestions,
+    searchResults: filteredWalks, // Expose filteredWalks as searchResults
 
     // Actions
     setSearchQuery,
@@ -431,6 +448,7 @@ export const useSearchStore = defineStore('search', () => {
     setFilterValue,
     clearSearch,
     initializeSearchableWalks,
-    setSelectedCategory
+    setSelectedCategory,
+    performSearch
   }
 })
