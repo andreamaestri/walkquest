@@ -11,7 +11,7 @@ export default defineConfig({
     __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: true
   },
   build: {
-    manifest: '.vite/manifest.json',
+    manifest: true, 
     outDir: resolve('./walkquest/static/dist'),
     rollupOptions: {
       input: {
