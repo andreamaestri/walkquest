@@ -2,7 +2,7 @@
   <div class="search-header-wrapper">
     <header 
       ref="searchHeader"
-      class="w-full transition-all duration-300 ease-md3"
+      class="w-full transition-all duration-300 ease-md3 py-2"
       :class="isSearchActive && uiStore.isMobile ? 'fixed inset-0 z-50 py-0' : 'bg-surface-variant'"
     >
       <!-- New: Always show logo on mobile -->
@@ -13,7 +13,7 @@
 
       <!-- Search bar for desktop and mobile -->
       <div
-        class="search-wrapper transition-all duration-300 ease-md3 mx-auto"
+        class="search-wrapper transition-all duration-300 ease-md3 mx-auto flex items-center"
         :class="[
           searchContainerClass,
           isSearchActive ? 'search-active' : '',
@@ -30,7 +30,7 @@
           @walk-selected="handleWalkSelection"
           @blur="deactivateSearch"
           @close="deactivateSearch"
-          class="md3-search-bar px-4"
+          class="md3-search-bar"
         />
       </div>
       
@@ -249,12 +249,12 @@ const handleWalkSelection = (walk) => {
 
 /* Base container styles */
 .search-container-expanded {
-  width: min(720px, 70%);
+  width: min(680px, 65%);
   margin: 0 auto;
 }
 
 .search-container-collapsed {
-  width: min(640px, 50%);
+  width: min(600px, 45%);
   margin: 0 auto;
 }
 
@@ -265,17 +265,17 @@ const handleWalkSelection = (walk) => {
 }
 
 .search-container-medium {
-  width: min(640px, 70%);
+  width: min(600px, 65%);
   margin: 0 auto;
 }
 
 .search-container-large {
-  width: min(720px, 60%);
+  width: min(680px, 55%);
   margin: 0 auto;
 }
 
 .search-container-xlarge {
-  width: min(840px, 50%);
+  width: min(720px, 45%);
   margin: 0 auto;
 }
 
@@ -287,10 +287,11 @@ const handleWalkSelection = (walk) => {
 
 /* Modal styles when search is active */
 .search-container-modal {
-  width: min(840px, 80%);
+  width: min(720px, 70%);
   margin: 0 auto;
   border-radius: 28px;
   background-color: rgb(var(--md-sys-color-surface-container));
+  padding: 4px 8px;
   box-shadow: var(--md-sys-elevation-0);
 }
 
@@ -305,6 +306,7 @@ const handleWalkSelection = (walk) => {
 .search-wrapper {
   position: relative;
   z-index: 1;
+  min-height: 48px;
 }
 
 .search-wrapper.search-active {
@@ -312,8 +314,9 @@ const handleWalkSelection = (walk) => {
 }
 
 .search-backdrop {
-  background-color: rgb(var(--md-sys-color-scrim) / 0.32);
-  backdrop-filter: blur(2px);
+  background-color: rgb(var(--md-sys-color-scrim) / 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   pointer-events: auto;
 }
 
@@ -322,10 +325,14 @@ const handleWalkSelection = (walk) => {
 }
 
 .md3-search-bar {
-  border-radius: 24px;
-  height: 44px;
+  width: 100%;
+  border-radius: 16px;
+  height: 40px;
   overflow: visible;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 0 12px;
+  background: rgb(var(--md-sys-color-surface-container-lowest));
+  box-shadow: var(--md-sys-elevation-1);
 }
 
 .search-view-active {
@@ -335,7 +342,7 @@ const handleWalkSelection = (walk) => {
 
 /* MD3 motion ease */
 .ease-md3 {
-  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  transition-timing-function: var(--md-sys-motion-easing-standard);
 }
 
 /* Mobile mode adjustments */
