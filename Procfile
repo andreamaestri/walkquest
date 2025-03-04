@@ -1,1 +1,1 @@
-web: python manage.py collectstatic --noinput && gunicorn config.wsgi:application
+web: npm install --production=false && npm run build && gunicorn config.wsgi:application

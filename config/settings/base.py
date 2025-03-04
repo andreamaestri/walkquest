@@ -156,6 +156,7 @@ AUTH_PASSWORD_VALIDATORS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -167,13 +168,12 @@ MIDDLEWARE = [
 ]
 # STATIC
 # ------------------------------------------------------------------------------
-STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATIC_URL = "/static/"
 
 STATICFILES_DIRS = [
     str(APPS_DIR / "static"),
-    str(APPS_DIR / "static" / "dist"),
 ]
 
 # Django Vite Configuration
@@ -181,7 +181,7 @@ DJANGO_VITE = {
     "default": {
         "dev_mode": DEBUG,
         "manifest_path": str(APPS_DIR / "static" / "dist" / ".vite" / "manifest.json"),
-        "static_url_prefix": "",
+        "static_url_prefix": "dist/",
     },
 }
 
@@ -385,3 +385,4 @@ def immutable_file_test(_path, url):
 
 
 WHITENOISE_IMMUTABLE_FILE_TEST = immutable_file_test
+

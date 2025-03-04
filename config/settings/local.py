@@ -44,8 +44,8 @@ EMAIL_BACKEND = env(
 
 # WhiteNoise
 # ------------------------------------------------------------------------------
-# Disable WhiteNoise for development to use Django's static file handling
-# INSTALLED_APPS = ["whitenoise.runserver_nostatic", *INSTALLED_APPS]
+# http://whitenoise.evans.io/en/latest/django.html#using-whitenoise-in-development
+INSTALLED_APPS = ["whitenoise.runserver_nostatic", *INSTALLED_APPS]
 
 # django-browser-reload
 # ------------------------------------------------------------------------------
@@ -107,7 +107,32 @@ if "corsheaders.middleware.CorsMiddleware" not in MIDDLEWARE:
 
 # django-esm
 # ------------------------------------------------------------------------------
-STATICFILES_DIRS = [
-    BASE_DIR / "node_modules",
-    APPS_DIR / "static",
+STATICFILES_FINDERS = [
+    "django.contrib.staticfiles.finders.FileSystemFinder",
+    "django.contrib.staticfiles.finders.AppDirectoriesFinder",
 ]
+
+# Vite Development Settings
+# ------------------------------------------------------------------------------
+DJANGO_VITE = {
+    "default": {
+        "dev_mode": True  # Same as DEBUG in development
+    }
+}
+
+# STATICFILES_DIRS needs to include Vite's build output directory
+STATICFILES_DIRS = [
+    BASE_DIR / "walkquest/static/dist"  # Match Vite's outDir
+]
+
+# Use Vite's dev server for static files in development
+if DEBUG:
+    class ViteFileLoader:
+        def __init__(self, get_response):
+            self.get_response = get_response
+
+        def __call__(self, request):
+            response = self.get_response(request)
+            return response
+
+    MIDDLEWARE.insert(0, "config.settings.local.ViteFileLoader")

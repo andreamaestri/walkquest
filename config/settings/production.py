@@ -81,6 +81,7 @@ DJANGO_VITE = {
 # Additional static directories for Vite output
 STATICFILES_DIRS = [
     str(APPS_DIR / "static"),
+    str(APPS_DIR / "static" / "dist"),
 ]
 
 # WhiteNoise Configuration

@@ -21,8 +21,6 @@ const pinia = createPinia()
 // Create main Vue app
 const app = createApp(App)
 
-// Register Icon component globally
-app.component('Icon', Icon)
 
 // Update custom element check with improved conditions
 app.config.compilerOptions.isCustomElement = tag => {
