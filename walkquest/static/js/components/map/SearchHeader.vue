@@ -3,25 +3,16 @@
     <header 
       ref="searchHeader"
       class="w-full transition-all duration-300 ease-md3"
-      :class="[
-        isSearchActive ? 'bg-transparent' : 'bg-surface-variant',
-        isSearchActive && uiStore.isMobile ? 'fixed inset-0 z-50 py-0' : ''
-      ]"
+      :class="isSearchActive && uiStore.isMobile ? 'fixed inset-0 z-50 py-0' : 'bg-surface-variant'"
     >
-      <!-- Logo for mobile view -->
-      <div v-if="uiStore.isMobile && !isSearchActive" class="mobile-header">
-        <div class="logo-container">
-          <Icon icon="mdi:hiking" class="logo-icon" />
-          <span class="logo-text">WalkQuest</span>
-        </div>
-        <button @click="activateSearch" class="search-fab">
-          <Icon icon="material-symbols:search" />
-        </button>
+      <!-- New: Always show logo on mobile -->
+      <div v-if="uiStore.isMobile" class="logo-container" style="padding: 4px 16px;">
+        <Icon icon="mdi:hiking" class="logo-icon" />
+        <span class="logo-text">WalkQuest</span>
       </div>
 
-      <!-- Search bar for desktop or when search is active -->
+      <!-- Search bar for desktop and mobile -->
       <div
-        v-else
         class="search-wrapper transition-all duration-300 ease-md3 mx-auto"
         :class="[
           searchContainerClass,

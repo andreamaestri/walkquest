@@ -73,8 +73,8 @@ STATIC_URL = "/static/"
 DJANGO_VITE = {
     "default": {
         "dev_mode": False,  # Ensure dev mode is disabled in production
-        "manifest_path": str(APPS_DIR / "static" / "dist" / ".vite" / "manifest.json"),
-        "static_url_prefix": "dist/",
+        "manifest_path": str(APPS_DIR / "static" / "dist" / "manifest.json"),
+        "static_url_prefix": "",
     },
 }
 

@@ -604,7 +604,7 @@ const closeSearch = () => {
 .search-view {
   width: 100%;
   position: relative;
-  transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
+  transition: all var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized);
 }
 
 .search-view-expanded {
@@ -703,6 +703,15 @@ const closeSearch = () => {
   color: rgb(var(--md-sys-color-on-surface-variant));
   font-size: 20px;
   opacity: 0.65;
+  animation: m3-fade-in var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-standard);
+}
+
+.m3-search-field-loading .animate-spin {
+  animation: m3-spin 1s var(--md-sys-motion-easing-linear) infinite;
+}
+
+@keyframes m3-spin {
+  to { transform: rotate(360deg); }
 }
 
 .m3-search-field-clear {
@@ -753,21 +762,21 @@ const closeSearch = () => {
   position: absolute;
   left: 0;
   right: 0;
-  margin-top: 2px; /* Reduced gap */
+  margin-top: 4px;
   background: rgb(var(--md-sys-color-surface-container));
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: var(--md-sys-elevation-0);
+  box-shadow: var(--md-sys-elevation-2);
   z-index: 1000;
-  border: 1px solid rgb(var(--md-sys-color-outline-variant) / 0.12);
+  animation: m3-slide-down var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized-decelerate);
 }
 
 .m3-suggestion-item {
   display: flex;
   align-items: center;
   width: 100%;
-  height: 40px; /* More compact suggestions */
-  padding: 0 12px;
+  height: 48px; /* More compact suggestions */
+  padding: 0 16px;
   gap: 12px;
   border: none;
   background: transparent;
@@ -781,6 +790,10 @@ const closeSearch = () => {
 .m3-suggestion-item:hover,
 .m3-suggestion-item.is-selected {
   background: rgb(var(--md-sys-color-surface-container-highest));
+}
+
+.m3-suggestion-item:active {
+  background: rgb(var(--md-sys-color-surface-container-high));
 }
 
 .m3-suggestion-icon {
@@ -812,6 +825,7 @@ const closeSearch = () => {
   color: rgb(var(--md-sys-color-on-surface-variant));
   text-align: center;
   font-size: var(--md-sys-typescale-body-medium-size);
+  animation: m3-fade-in var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-standard);
 }
 
 .m3-empty-icon {
@@ -848,6 +862,23 @@ const closeSearch = () => {
     opacity: 0;
     transform: translateY(-4px);
   }
+}
+
+/* Improved animations for suggestions */
+@keyframes m3-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes m3-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* Location Results */
@@ -892,5 +923,17 @@ const closeSearch = () => {
 .m3-search-field-close:active {
   background: rgb(var(--md-sys-color-on-surface-variant) / 0.12);
   opacity: 1;
+}
+
+/* Improved touch feedback */
+@media (hover: none) and (pointer: coarse) {
+  .m3-suggestion-item {
+    transition: background-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
+  }
+
+  .m3-suggestion-item:active {
+    background-color: rgb(var(--md-sys-color-surface-container-highest));
+    transform: scale(0.98);
+  }
 }
 </style>
