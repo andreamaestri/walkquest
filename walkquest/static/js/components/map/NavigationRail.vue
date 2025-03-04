@@ -383,6 +383,7 @@ onMounted(() => {
       {
         duration: 0.4,
         easing: [0.2, 0, 0.2, 1],
+        delay: 0.1,
       }
     );
   }
@@ -438,7 +439,7 @@ onMounted(() => {
   left: 0;
   top: 0;
   bottom: 0;
-  z-index: 30; /* Lower z-index to ensure proper layering with drawer */
+  z-index: 30; /* Higher z-index to ensure proper layering on top of drawer */
   background: rgb(var(--md-sys-color-surface));
   box-shadow: var(--md-sys-elevation-1);
   transition: transform 0.3s var(--md-sys-motion-easing-standard), 
@@ -447,7 +448,7 @@ onMounted(() => {
   visibility: visible !important;
   pointer-events: auto !important;
   width: var(--md-sys-sidebar-collapsed);
-  isolation: isolate;
+  isolation: isolate; /* Creates a new stacking context for proper z-index */
   border-radius: 0 16px 16px 0; /* MD3 rounded corners */
   overflow: hidden;
   @media (max-width: 768px) {
@@ -463,7 +464,7 @@ onMounted(() => {
 /* Interaction styles for when drawer is open */
 .m3-navigation-rail.is-collapsed {
   box-shadow: none;
-  z-index: 20;
+  z-index: 40; /* Increase z-index when navigation needs to be above drawer */
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
 }
@@ -527,6 +528,7 @@ onMounted(() => {
   width: 100%;
   padding: 4px 0;
   gap: 12px; /* MD3 standard spacing */
+  z-index: 10; /* Ensure these are on top of drawer content */
 }
 
 /* Remove alignment changes for expanded state */
@@ -550,6 +552,7 @@ onMounted(() => {
   position: relative;
   border-radius: 16px; /* Add border radius for active state */
   transition: background-color 0.2s var(--md-sys-motion-easing-standard);
+  z-index: 1; /* Ensure items are above other elements in the rail */
 }
 
 /* Keep rail items same size and layout when expanded */
@@ -650,6 +653,7 @@ onMounted(() => {
 
 /* Label styling per MD3 */
 .m3-rail-label {
+  display: block;
   margin-top: 4px;
   font-size: var(--md-sys-typescale-label-medium-size, 12px);
   line-height: var(--md-sys-typescale-label-medium-line-height, 16px);

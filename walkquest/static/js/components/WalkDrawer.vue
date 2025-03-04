@@ -194,7 +194,7 @@ function initializeDrawer() {
   if (drawerRef.value) {
     // Only apply desktop-specific styles if not in mobile mode
     if (!props.isMobile) {
-      // No need to set left position here - CSS will handle this with --md-sys-sidebar-collapsed
+      // Set box-shadow and transition for smooth effect
       drawerRef.value.style.transition = "transform 0.3s ease, box-shadow 0.3s ease";
       
       // Handle connector animation
@@ -341,21 +341,23 @@ onMounted(() => {
 .walk-drawer {
   position: fixed;
   top: 0;
-  left: var(--md-sys-sidebar-collapsed, 80px); /* Use CSS variable for sidebar width */
+  left: var(--md-sys-sidebar-collapsed, 80px); /* Position at edge of nav rail using CSS variable */
   width: 420px;
   max-width: 90vw;
   height: 100vh;
   display: flex;
   flex-direction: column;
   background-color: rgb(var(--md-sys-color-surface));
-  z-index: 40; /* Higher than nav rail (30) but still allows modals and other overlays */
-  box-shadow: var(--md-elevation-level2);
+  z-index: 20; /* Lower z-index so it appears to slide from behind the rail */
+  box-shadow: var(--md-sys-elevation-2);
   will-change: transform;
   transform-origin: left center;
   overflow: hidden;
   border-radius: 0 28px 28px 0;
-  /* Add visual overlap appearance */
-  margin-left: -2px; /* Create overlap with rail to hide rounded corners */
+  /* Remove previous negative margin - we want a clean edge */
+  margin-left: 0; 
+  /* Create layering effect with nav rail */
+  pointer-events: auto;
 }
 
 .rail-connector {
@@ -365,9 +367,9 @@ onMounted(() => {
   width: 28px;
   height: 56px;
   background-color: rgb(var(--md-sys-color-surface-container-high));
-  box-shadow: var(--md-elevation-level1);
+  box-shadow: var(--md-sys-elevation-1);
   opacity: 0;
-  z-index: 5; /* Ensure proper stacking */
+  z-index: 25; /* Higher than drawer but lower than nav rail items */
   transform: translateY(-50%); /* Center vertically */
   border-radius: 0 28px 28px 0;
 }
@@ -421,6 +423,7 @@ onMounted(() => {
     max-width: 100%;
     left: 0;
     border-radius: 0;
+    z-index: 40; /* Higher z-index for mobile to overlay all content */
   }
 }
 </style>

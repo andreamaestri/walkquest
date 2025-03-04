@@ -63,7 +63,7 @@ export function useDrawerAnimations() {
   const initialAnimationCompleted = ref(false);
 
   /**
-   * Animate drawer entrance
+   * Animate drawer entrance with improved layering effect
    */
   async function onEnter(el, onComplete) {
     if (!el) {
@@ -73,9 +73,10 @@ export function useDrawerAnimations() {
 
     console.log("Starting entrance animation");
 
-    // Set initial state
-    el.style.opacity = "0";
-    el.style.transform = "translateX(-100%) scale(0.98)";
+    // Set initial state - position drawer fully off-screen to the left
+    el.style.opacity = "1"; // Keep opacity at 1 for cleaner effect
+    el.style.transform = "translateX(-100%)";
+    el.style.boxShadow = "none";
 
     // Force browser to apply initial styles first
     await new Promise((resolve) =>
@@ -85,16 +86,19 @@ export function useDrawerAnimations() {
     );
 
     try {
-      // Create our animation
+      // Create our animation with refined Material Design motion
       const animation = animate(
         el,
         {
-          transform: ["translateX(-100%) scale(0.98)", "translateX(0) scale(1)"],
-          opacity: [0, 1],
+          transform: ["translateX(-100%)", "translateX(0%)"],
+          boxShadow: [
+            "0px 0px 0px rgba(0,0,0,0)", 
+            "var(--md-sys-elevation-2)"
+          ]
         },
         {
-          duration: 0.5,
-          easing: [0.2, 0.0, 0.0, 1.0], // Material Design standard curve
+          duration: 0.4,
+          easing: [0.05, 0.7, 0.1, 1.0], // MD3 emphasized decelerate curve
         }
       );
 
@@ -109,7 +113,10 @@ export function useDrawerAnimations() {
             animate(
               accentLine,
               { scaleY: [0, 1], opacity: [0, 0.8] },
-              { duration: 0.6 }
+              { 
+                duration: 0.5,
+                easing: [0.2, 0, 0.2, 1]  
+              }
             );
           }
         })
@@ -119,14 +126,13 @@ export function useDrawerAnimations() {
         });
     } catch (error) {
       console.error("Animation setup error:", error);
-      el.style.opacity = "1";
-      el.style.transform = "translateX(0) scale(1)";
+      el.style.transform = "translateX(0)";
       onComplete();
     }
   }
 
   /**
-   * Animate drawer exit
+   * Animate drawer exit with improved layering effect
    */
   async function onLeave(el, onComplete) {
     if (!el) {
@@ -143,7 +149,10 @@ export function useDrawerAnimations() {
         animate(
           accentLine,
           { scaleY: [1, 0], opacity: [0.8, 0] },
-          { duration: 0.2 }
+          { 
+            duration: 0.2,
+            easing: [0.4, 0.0, 1.0, 1.0]
+          }
         );
       }
 
@@ -151,12 +160,15 @@ export function useDrawerAnimations() {
       const animation = animate(
         el,
         {
-          transform: ["translateX(0) scale(1)", "translateX(-100%) scale(0.98)"],
-          opacity: [1, 0],
+          transform: ["translateX(0%)", "translateX(-100%)"],
+          boxShadow: [
+            "var(--md-sys-elevation-2)", 
+            "0px 0px 0px rgba(0,0,0,0)"
+          ]
         },
         {
-          duration: 0.4,
-          easing: [0.4, 0.0, 1.0, 1.0], // Material Design exit curve
+          duration: 0.35,
+          easing: [0.3, 0.0, 0.8, 0.15], // MD3 emphasized accelerate curve
         }
       );
 
