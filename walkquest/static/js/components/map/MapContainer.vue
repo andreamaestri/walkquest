@@ -152,11 +152,11 @@ const maxZoom = computed(() =>
 const mapContainerStyle = computed(() => ({
   position: "absolute",
   inset: "0",
-  width: "100vw",
+  width: "100dvw",
   height: "calc(100vh + env(safe-area-inset-top, 0px))",
   marginLeft: "var(--md-sys-sidebar-collapsed)", // Always keep margin for sidebar
   paddingRight: "0", // No padding needed on right side
-  marginTop: "0", // Remove top margin to allow extending into notch
+  marginTop: "-env(safe-area-inset-top, 0px)", // Negative margin to extend into notch area
   paddingTop: uiStore.isMobile ? "0" : "64px", // Only add header padding on desktop
 }));
 
@@ -1050,7 +1050,8 @@ defineExpose({
 /* Proper notch handling */
 .m3-content-container.has-notch {
   padding-top: env(safe-area-inset-top, 0px);
-  height: calc(100vh + env(safe-area-inset-top, 0px)) !important;
+  height: 100dvh !important;
+  margin-top: -env(safe-area-inset-top, 0px) !important;
 }
 
 /* Adjust controls positioning to respect safe areas */
