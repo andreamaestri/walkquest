@@ -1,40 +1,66 @@
 <!DOCTYPE html>
 {% load static django_vite %}
 <html lang="en" class="h-full">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-        <meta name="csrf-token" content="{{ csrf_token }}">
-        <!-- Add Mapbox configuration -->
-        <script id="config-data" type="application/json">
-            {{ api_config|safe }}
-        </script>
-        <title>{% block title %}WalkQuest{% endblock %}</title>
-        
-        <!-- Update favicon paths -->
-        <link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/favicons/apple-touch-icon.png' %}">
-        <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/favicons/favicon-32x32.png' %}">
-        <link rel="icon" type="image/png" sizes="16x16" href="{% static 'images/favicons/favicon-16x16.png' %}">
-        <link rel="manifest" href="{% static 'images/favicons/site.webmanifest' %}">
-        <link rel="shortcut icon" href="{% static 'images/favicons/favicon.ico' %}">
-        
-        <!-- Mapbox CSS -->
-        <link href="https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.css" rel="stylesheet">
-        
-        {% if debug %}
-            {% vite_hmr_client %}
-        {% endif %}
-        {% vite_asset 'walkquest/static/js/main.js' %}
-        {% block extra_head %}{% endblock %}
-    </head>
-    <body class="h-full overflow-hidden">
-        <div id="app" class="h-full flex flex-col">
-            <!-- Vue will mount the navigation here -->
-            <div id="nav"></div>
-            
-            <main class="flex-1 relative">
-                {% block content %}{% endblock %}
-            </main>
-        </div>
-    </body>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+
+    <meta name="csrf-token" content="{{ csrf_token }}" />
+    <!-- Add Mapbox configuration -->
+    <script id="config-data" type="application/json">
+      {{ api_config|safe }}
+    </script>
+    <title>{% block title %}WalkQuest{% endblock %}</title>
+
+    <!-- Update favicon paths -->
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="{% static 'images/favicons/apple-touch-icon.png' %}"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="{% static 'images/favicons/favicon-32x32.png' %}"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="{% static 'images/favicons/favicon-16x16.png' %}"
+    />
+    <link rel="manifest" href="{% static 'images/favicons/site.webmanifest' %}">
+    <link
+      rel="shortcut icon"
+      href="{% static 'images/favicons/favicon.ico' %}"
+    />
+
+    <!-- Mapbox CSS -->
+    <link
+      href="https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.css"
+      rel="stylesheet"
+    />
+
+    {% if debug %} {% vite_hmr_client %} {% endif %} {% vite_asset
+    'walkquest/static/js/main.js' %} {% block extra_head %}{% endblock %}
+  </head>
+  <body
+    class="h-full overflow-hidden"
+    style="
+      min-height: calc(100% + env(safe-area-inset-top));
+      padding: env(safe-area-inset-top) env(safe-area-inset-right)
+        env(safe-area-inset-bottom) env(safe-area-inset-left);
+    "
+  >
+    <div id="app" class="h-full flex flex-col">
+      <!-- Vue will mount the navigation here -->
+      <div id="nav"></div>
+
+      <main class="flex-1 relative">{% block content %}{% endblock %}</main>
+    </div>
+  </body>
 </html>
