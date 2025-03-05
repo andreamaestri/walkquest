@@ -8,7 +8,6 @@
       <!-- Category Selection UI -->
       <div v-if="searchMode === 'categories'" class="category-selection">
         <div class="category-header">
-          <h3 class="category-title">Explore walk categories</h3>
           <span v-if="selectedCategory" class="result-count">
             {{ resultCountText }}
           </span>
@@ -971,6 +970,9 @@ watch(selectedCategory, (newCategory) => {
   box-shadow: var(--md-sys-elevation-1);
   will-change: transform, box-shadow;
   border: 1px solid transparent;
+  background: linear-gradient(to bottom right, 
+    rgb(var(--md-sys-color-surface-container-high)),
+    rgb(var(--md-sys-color-surface-container)));
 }
 
 .category-card:hover {
@@ -1026,6 +1028,8 @@ watch(selectedCategory, (newCategory) => {
   margin-bottom: 12px;
   font-size: 28px;
   box-shadow: var(--md-sys-elevation-1);
+  background: rgb(var(--md-sys-color-primary-container));
+  color: rgb(var(--md-sys-color-on-primary-container));
 }
 /* Icon backgrounds with very saturated hex colors */
 .category-card.water-category .category-card-icon {
@@ -1116,6 +1120,7 @@ watch(selectedCategory, (newCategory) => {
   text-align: center;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   max-width: 100%;

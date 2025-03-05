@@ -35,7 +35,7 @@
             
           <!-- Navigation control -->
           <MapboxNavigationControl 
-            :position="uiStore.isMobile ? 'bottom-right' : 'top-right'" 
+            :position="uiStore.isMobile ? 'top-left' : 'top-right'" 
             :show-compass="true" 
             :show-zoom="true" 
             :visualize-pitch="true"
@@ -43,7 +43,7 @@
             
           <!-- Geolocation control -->
           <MapboxGeolocateControl
-            :position="uiStore.isMobile ? 'bottom-right' : 'top-right'"
+            :position="uiStore.isMobile ? 'top-left' : 'top-right'"
             :positionOptions="{
               enableHighAccuracy: true,
               timeout: 6000
@@ -1144,5 +1144,92 @@ defineExpose({
 :deep(.mapboxgl-ctrl-top-right) {
   top: calc(10px + env(safe-area-inset-top, 0px)) !important;
   right: calc(10px + env(safe-area-inset-right, 0px)) !important;
+}
+
+/* MD3 styled map controls */
+:deep(.mapboxgl-ctrl-group) {
+  background: #fff;
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.12);
+  overflow: hidden;
+}
+
+:deep(.mapboxgl-ctrl-group > button) {
+  width: 40px;
+  height: 40px;
+  background-color: transparent;
+  border: none;
+  color: #1d1b20;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+:deep(.mapboxgl-ctrl-group > button:hover) {
+  background-color: rgba(73, 69, 79, 0.08);
+}
+
+:deep(.mapboxgl-ctrl-group > button:active) {
+  background-color: rgba(73, 69, 79, 0.12);
+}
+
+:deep(.mapboxgl-ctrl-group > button + button) {
+  border-top: 1px solid rgba(200, 197, 205, 0.08);
+}
+
+/* Style map control icons */
+:deep(.mapboxgl-ctrl-zoom-in .mapboxgl-ctrl-icon) {
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%23000' d='M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z'/%3E%3C/svg%3E")!important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}
+
+:deep(.mapboxgl-ctrl-zoom-out .mapboxgl-ctrl-icon) {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%23000' d='M19 13H5v-2h14z'/%3E%3C/svg%3E")!important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}
+
+:deep(.mapboxgl-ctrl-compass .mapboxgl-ctrl-icon) {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='%23000' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m16 21l-4-8l-4 8l4-2zM10 9V3l4 6V3'/%3E%3C/svg%3E")!important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}
+
+:deep(.mapboxgl-ctrl-geolocate .mapboxgl-ctrl-icon) {
+ background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%23000' d='M3.05 13H1v-2h2.05C3.5 6.83 6.83 3.5 11 3.05V1h2v2.05c4.17.45 7.5 3.78 7.95 7.95H23v2h-2.05c-.45 4.17-3.78 7.5-7.95 7.95V23h-2v-2.05C6.83 20.5 3.5 17.17 3.05 13M12 5a7 7 0 0 0-7 7a7 7 0 0 0 7 7a7 7 0 0 0 7-7a7 7 0 0 0-7-7'/%3E%3C/svg%3E") !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}
+
+:deep(.mapboxgl-ctrl-geolocate.mapboxgl-ctrl-geolocate-active .mapboxgl-ctrl-icon) {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%236750A4' d='M12 8a4 4 0 0 1 4 4a4 4 0 0 1-4 4a4 4 0 0 1-4-4a4 4 0 0 1 4-4m-8.95 5H1v-2h2.05C3.5 6.83 6.83 3.5 11 3.05V1h2v2.05c4.17.45 7.5 3.78 7.95 7.95H23v2h-2.05c-.45 4.17-3.78 7.5-7.95 7.95V23h-2v-2.05C6.83 20.5 3.5 17.17 3.05 13M12 5a7 7 0 0 0-7 7a7 7 0 0 0 7 7a7 7 0 0 0 7-7a7 7 0 0 0-7-7'/%3E%3C/svg%3E") !important;
+  fill: #6750A4 !important;
+}
+
+:deep(.mapboxgl-ctrl-geolocate.mapboxgl-ctrl-geolocate-background .mapboxgl-ctrl-icon) {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%23000' d='M3.05 13H1v-2h2.05C3.5 6.83 6.83 3.5 11 3.05V1h2v2.05c4.17.45 7.5 3.78 7.95 7.95H23v2h-2.05c-.45 4.17-3.78 7.5-7.95 7.95V23h-2v-2.05C6.83 20.5 3.5 17.17 3.05 13M12 5a7 7 0 0 0-7 7a7 7 0 0 0 7 7a7 7 0 0 0 7-7a7 7 0 0 0-7-7'/%3E%3C/svg%3E") !important;
+}
+
+/* Adjust control positioning */
+:deep(.mapboxgl-control-container) {
+  pointer-events: none; /* Allow clicking through the container to the map */
+}
+
+:deep(.mapboxgl-ctrl-top-right),
+:deep(.mapboxgl-ctrl-bottom-right) {
+  pointer-events: auto; /* Re-enable pointer events for the actual controls */
+}
+
+:deep(.mapboxgl-ctrl-top-right .mapboxgl-ctrl) {
+  margin: 12px 12px 0 0;
+}
+
+:deep(.mapboxgl-ctrl-bottom-right .mapboxgl-ctrl) {
+  margin: 0 12px 12px 0;
+}
+
+/* Separate navigation and geolocate controls */
+.navigation-control {
+  margin-bottom: 8px;
 }
 </style>

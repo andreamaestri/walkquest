@@ -26,7 +26,7 @@
       </div>
     </Transition>
   </div>
-  </template>
+</template>
 
 <script setup>
 import { ref } from 'vue';
@@ -65,6 +65,9 @@ function handleAction(actionId) {
 <style scoped>
 .speed-dial {
   z-index: 1000;
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
   padding-bottom: var(--safe-area-bottom, env(safe-area-inset-bottom, 0px));
 }
 
@@ -88,6 +91,7 @@ function handleAction(actionId) {
   transition: box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1),
               transform 0.2s cubic-bezier(0.0, 0.0, 0.2, 1); /* MD3 standard curves */
   overflow: hidden;
+  margin-bottom: var(--safe-area-bottom, env(safe-area-inset-bottom, 0px));
 }
 
 /* State hover */
@@ -116,12 +120,13 @@ function handleAction(actionId) {
 
 .speed-dial-menu {
   position: absolute;
-  bottom: 76px;
+  bottom: calc(100% + 16px); /* Position above the main FAB with spacing */
   right: 0;
   display: flex;
   flex-direction: column-reverse;
   gap: 16px; /* MD3 recommended spacing between FABs */
   pointer-events: none;
+  padding-bottom: var(--safe-area-bottom, env(safe-area-inset-bottom, 0px));
 }
 
 .speed-dial-item {
