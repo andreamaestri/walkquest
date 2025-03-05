@@ -1,1 +1,1 @@
-web: python manage.py collectstatic --noinput && python manage.py collect_vite_static || echo "Skipping collect_vite_static - command not found" && gunicorn config.wsgi:application
+web: gunicorn config.wsgi:application
