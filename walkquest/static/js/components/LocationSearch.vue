@@ -4,22 +4,6 @@
       <MapboxGeocoder v-bind="geocoderProps" class="geocoder-container" @mb-created="handleGeocodeCreated"
         @mb-result="handleGeocodeResult" @mb-error="handleGeocodeError" @mb-clear="handleGeocodeClear" />
     </div>
-
-    <!-- Display error only when needed -->
-    <div v-if="searchError" class="search-error" role="alert">
-      <div class="search-error-content">
-        <Icon icon="material-symbols:error-outline-rounded" class="error-icon" />
-        <div class="search-error-message">
-          {{ searchError }}
-          <div v-if="searchError.includes('Invalid')" class="search-error-help">
-            Please try a different search term or location
-          </div>
-        </div>
-      </div>
-      <button @click="clearSearchError" class="search-error-dismiss" aria-label="Dismiss error">
-        <Icon icon="material-symbols:close" />
-      </button>
-    </div>
   </div>
 </template>
 
@@ -106,7 +90,7 @@ const geocoderProps = computed(() => ({
   flyTo: false, // Disable default flyTo since we handle it ourselves
   showResultMarkers: false,
   mapInstance: props.mapInstance,
-  bbox: [-5.5, 50.0, -4.5, 50.5],
+  bbox: [-6.08651, 49.89515, -4.14723, 50.88527],
   render: item => {
     const title = item.text || ''
     const address = item.place_name ? item.place_name.replace(`${item.text}, `, '') : ''
@@ -402,11 +386,6 @@ const handleGeocodeClear = () => {
   emit('location-selected', null) // Notify parent that location was cleared
 }
 
-// Add new method in the script section
-const clearSearchError = () => {
-  searchStore.setError(null)
-}
-
 // Lifecycle hooks with proper cleanup
 onMounted(async () => {
   if (props.mapInstance && props.mapboxToken) {
@@ -669,7 +648,8 @@ watch(() => searchError.value, async (error) => {
 
 /* Ensure dropdown is shown above other elements */
 .mapboxgl-ctrl-geocoder--powered-by {
-  display: none !important; /* Hide powered by if it's causing issues */
+  padding: 6px;
+  opacity: 0.4;
 }
 
 /* Fix for suggestion display */

@@ -518,12 +518,14 @@ defineExpose({
   flex-direction: column;
 }
 
-.mapboxgl-ctrl-geocoder .suggestions {
-  display: block;
-  width: 150%;
-  right: 0px;
-  left: -60px !important;
-  z-index: 10001;
+@media screen and (max-width: 768px) {
+  .mapboxgl-ctrl-geocoder .suggestions {
+    display: block;
+    width: 150%;
+    right: 0px;
+    left: -60px !important;
+    z-index: 10001;
+  }
 }
 .md3-search-container {
   width: 100%;
