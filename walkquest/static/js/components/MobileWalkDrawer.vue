@@ -284,4 +284,8 @@ function handleCategorySelected(category) {
   opacity: 0.4;
   z-index: 1000;
 }
+
+.is-loading::before {
+  display: none!important;
+}
 </style>
