@@ -40,7 +40,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, nextTick } from 'vue';
+import { ref, computed, watch, onMounted, nextTick, onBeforeUnmount } from 'vue';
 import BottomSheet from '@douxcode/vue-spring-bottom-sheet'
 import WalkDrawerHeader from './shared/WalkDrawerHeader.vue';
 import WalkDrawerContent from './shared/WalkDrawerContent.vue';
@@ -62,9 +62,18 @@ const bottomSheetRef = ref(null);
 const isOpen = ref(props.modelValue);
 const maxHeight = ref(window.innerHeight);
 
+// Function to calculate available height accounting for safe area
+function calculateAvailableHeight() {
+  // Get the safe area inset from the top of the screen
+  const safeAreaTop = window.visualViewport ? 
+    parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sab')) || 0 : 0;
+  
+  return window.innerHeight - safeAreaTop;
+}
+
 // Compute snap points based on max height
 const snapPoints = computed(() => {
-  const height = maxHeight.value
+  const height = calculateAvailableHeight()
   return [
     Math.max(300, height / 3),      // Small view
     Math.max(450, height / 2),      // Half view
@@ -90,6 +99,24 @@ watch(() => isOpen.value, (newVal) => {
 // Lifecycle hooks
 onMounted(() => {
   console.log("MobileWalkDrawer mounted, bottomSheetRef:", bottomSheetRef.value);
+  
+  // Update max height initially
+  maxHeight.value = calculateAvailableHeight();
+  
+  // Add resize listener
+  const handleResize = () => {
+    maxHeight.value = calculateAvailableHeight();
+  };
+  
+  window.addEventListener('resize', handleResize);
+  window.addEventListener('orientationchange', handleResize);
+  
+  // Cleanup
+  onBeforeUnmount(() => {
+    window.removeEventListener('resize', handleResize);
+    window.removeEventListener('orientationchange', handleResize);
+  });
+  
   // Handle initial open state
   if (props.modelValue) {
     nextTick(() => open());
@@ -193,7 +220,7 @@ function handleCategorySelected(category) {
   --vsbs-border-radius: 28px 28px 0 0;
   --vsbs-max-width: 100%;
   --vsbs-border-color: rgba(var(--md-sys-color-outline), 0.12);
-  --vsbs-padding-x: 16px;
+  --vsbs-padding-x: 0;
   --vsbs-handle-background: rgba(var(--md-sys-color-on-surface), 0.28);
 }
 
@@ -208,11 +235,10 @@ function handleCategorySelected(category) {
 }
 
 .walk-drawer-header {
-  padding-top: 24px !important;
+  padding-top: 0!important;
   flex-shrink: 0;
-  height: 72px;
-  padding: 16px;
   border-bottom: 1px solid rgba(var(--md-sys-color-outline), 0.12);
+  margin-top: 20px;
 }
 
 .walk-drawer-content {
@@ -220,12 +246,15 @@ function handleCategorySelected(category) {
   overflow-y: auto;
   height: 100%;
   min-height: 228px;
+  padding: 0 16px;
 }
 
 /* Ensure bottom sheet accounts for mobile navigation */
 .mobile-walk-drawer-sheet :deep([data-vsbs-sheet]) {
   min-height: 300px !important;
   height: auto !important;
+  max-height: calc(100vh - var(--sab, 0px)) !important; /* Account for safe area top */
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 .mobile-walk-drawer-sheet :deep([data-vsbs-content]) {
@@ -234,6 +263,9 @@ function handleCategorySelected(category) {
   display: flex;
   flex-direction: column;
   padding: 0 !important;
+  /* Ensure content respects safe areas */
+  padding-top: env(safe-area-inset-top, 0px);
+  box-sizing: border-box;
 }
 
 /* Add missing content-wrapper styles */
@@ -277,29 +309,20 @@ function handleCategorySelected(category) {
 .header-container.mobile {
   border-top-left-radius: 16px!important;
   border-top-right-radius: 16px!important;
+  background-color: #EADDFF!important;
 }
 
 [data-vsbs-header] {
   padding: 0!important;
+  border-top-left-radius: 16px!important;
+  border-top-right-radius: 16px!important;
+  background-color: #EADDFF!important;
 }
 
 /* Drag handle styling */
 .header-with-handle {
   position: relative;
   width: 100%;
-}
-
-.drag-handle {
-  position: absolute;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 32px;
-  height: 4px;
-  border-radius: 2px;
-  background-color: #49454F;
-  opacity: 0.4;
-  z-index: 1000;
 }
 
 .is-loading::before {

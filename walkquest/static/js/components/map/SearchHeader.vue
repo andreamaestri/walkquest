@@ -334,7 +334,6 @@ const handleWalkSelection = (walk) => {
   right: 0;
   z-index: 10;
   pointer-events: none;
-  padding-top: var(--safe-area-top, 0px);
 }
 
 .search-header-wrapper > header {
@@ -396,9 +395,10 @@ const handleWalkSelection = (walk) => {
 
 .search-container-modal-mobile {
   width: 100%;
-  height: 100%;
+  height: calc(100% - env(safe-area-inset-top, 0px)); /* Adjust height for safe area */
   margin: 0;
   background-color: rgb(var(--md-sys-color-surface));
+  padding-top: env(safe-area-inset-top, 0px); /* Add padding for safe area */
 }
 
 /* Active search mode styles */
@@ -534,6 +534,23 @@ const handleWalkSelection = (walk) => {
   --vsbs-handle-background: rgba(var(--md-sys-color-on-surface-variant), 0.28);
   --vsbs-handle-width: 40px; /* Wider handle for better touch target */
   --vsbs-safe-area-bottom: env(safe-area-inset-bottom, 0px); /* Respect safe area for bottom sheet */
+}
+
+/* Ensure bottom sheet accounts for safe areas */
+.mobile-search-results-sheet :deep([data-vsbs-sheet]) {
+  min-height: 200px !important;
+  height: auto !important;
+  max-height: calc(100vh - env(safe-area-inset-top, 0px) - var(--sab, 0px)) !important; /* Account for top safe area */
+  padding-top: 0; /* Remove padding-top since it's handled by the container */
+}
+
+.mobile-search-results-sheet :deep([data-vsbs-content]) {
+  min-height: 200px;
+  height: 100% !important;
+  display: flex;
+  flex-direction: column;
+  padding: 0 !important;
+  box-sizing: border-box;
 }
 
 .sheet-header {

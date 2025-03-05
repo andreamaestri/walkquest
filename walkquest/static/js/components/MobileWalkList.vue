@@ -459,6 +459,24 @@ defineExpose({
   --vsbs-handle-background: rgba(var(--md-sys-color-on-surface), 0.28);
 }
 
+/* Ensure bottom sheet accounts for safe areas */
+.mobile-walk-list-sheet :deep([data-vsbs-sheet]) {
+  min-height: 300px !important;
+  height: auto !important;
+  max-height: calc(100vh - var(--sab, 0px)) !important;
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.mobile-walk-list-sheet :deep([data-vsbs-content]) {
+  min-height: 300px;
+  height: 100% !important;
+  display: flex;
+  flex-direction: column;
+  padding: 0 !important;
+  padding-top: env(safe-area-inset-top, 0px);
+  box-sizing: border-box;
+}
+
 .walk-list-bottom-sheet {
   position: fixed;
   left: 0;

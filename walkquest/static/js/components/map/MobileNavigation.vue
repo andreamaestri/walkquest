@@ -388,4 +388,33 @@ async function animateInterfaceElement(el, options = {}, onComplete) {
 .m3-icon-button:active {
   background-color: rgba(var(--md-sys-color-on-surface), 0.12);
 }
+
+.m3-navigation-sheet {
+  --vsbs-backdrop-bg: rgba(0, 0, 0, 0.4);
+  --vsbs-shadow-color: rgba(0, 0, 0, 0.2);
+  --vsbs-background: rgb(var(--md-sys-color-surface));
+  --vsbs-border-radius: 28px 28px 0 0;
+  --vsbs-max-width: 100%;
+  --vsbs-border-color: rgba(var(--md-sys-color-outline), 0.12);
+  --vsbs-padding-x: 0px;
+  --vsbs-handle-background: rgba(var(--md-sys-color-on-surface), 0.28);
+}
+
+/* Ensure bottom sheet accounts for safe areas */
+.m3-navigation-sheet :deep([data-vsbs-sheet]) {
+  min-height: 200px !important;
+  height: auto !important;
+  max-height: calc(100vh - var(--sab, 0px)) !important;
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.m3-navigation-sheet :deep([data-vsbs-content]) {
+  min-height: 200px;
+  height: 100% !important;
+  display: flex;
+  flex-direction: column;
+  padding: 0 !important;
+  padding-top: env(safe-area-inset-top, 0px);
+  box-sizing: border-box;
+}
 </style>
