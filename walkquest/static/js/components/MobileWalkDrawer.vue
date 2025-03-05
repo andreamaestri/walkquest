@@ -1,37 +1,47 @@
 <template>
-  <BottomSheet 
-    ref="bottomSheet"
-    :blocking="false"
-    :can-swipe-close="false"
-    :default-snap-point="0"
-    :snap-points="[maxHeight / 4, maxHeight / 1.5, maxHeight]"
-    @max-height="(n) => (maxHeight = n)"
-    @closed="onClosed"
-    @opened="onOpened"
-  >
-    <template #header>
-      <WalkDrawerHeader 
-        :walk="walk" 
-        :isMobile="true"
-        @close="close"
-      />
-    </template>
-    
-    <WalkDrawerContent 
-      :walk="walk"
-      :isMobile="true"
-      @start-walk="handleStartWalk"
-      @save-walk="handleSaveWalk"
-      @share="handleShare"
-      @directions="() => {}"
-      @category-selected="handleCategorySelected"
-      @recenter="$emit('recenter')"
-    />
-  </BottomSheet>
+  <div class="mobile-walk-drawer-sheet">
+    <BottomSheet 
+      ref="bottomSheetRef"
+      :blocking="false"
+      :can-swipe-close="false"
+      :default-snap-point="300"
+      :snap-points="snapPoints"
+      :duration="320"
+      :expand-on-content-drag="false"
+      @max-height="(n) => (maxHeight = n)"
+      @closed="onClosed"
+      @opened="onOpened"
+    >
+      <template #header>
+        <div class="header-with-handle">
+          <div class="drag-handle"></div>
+          <WalkDrawerHeader 
+            :walk="walk" 
+            :isMobile="true"
+            @close="close"
+            class="walk-drawer-header"
+          />
+        </div>
+      </template>
+      
+      <div class="walk-drawer-content">
+        <WalkDrawerContent 
+          :walk="walk"
+          :isMobile="true"
+          @start-walk="handleStartWalk"
+          @save-walk="handleSaveWalk"
+          @share="handleShare"
+          @directions="() => {}"
+          @category-selected="handleCategorySelected"
+          @recenter="$emit('recenter')"
+        />
+      </div>
+    </BottomSheet>
+  </div>
 </template>
 
 <script setup>
-import { ref, watch, onMounted, nextTick } from 'vue';
+import { ref, computed, watch, onMounted, nextTick } from 'vue';
 import BottomSheet from '@douxcode/vue-spring-bottom-sheet'
 import WalkDrawerHeader from './shared/WalkDrawerHeader.vue';
 import WalkDrawerContent from './shared/WalkDrawerContent.vue';
@@ -49,13 +59,28 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'close', 'start-walk', 'save-walk', 'directions', 'category-selected', 'recenter']);
 
-const bottomSheet = ref(null);
+const bottomSheetRef = ref(null);
 const isOpen = ref(props.modelValue);
 const maxHeight = ref(window.innerHeight);
 
+// Compute snap points based on max height
+const snapPoints = computed(() => {
+  const height = maxHeight.value
+  return [
+    Math.max(300, height / 3),      // Small view
+    Math.max(450, height / 2),      // Half view
+    Math.max(600, height / 1.5),    // Large view
+    height                          // Full height
+  ].sort((a, b) => a - b)
+})
+
 // Watch for changes to modelValue prop
 watch(() => props.modelValue, (newVal) => {
-  isOpen.value = newVal;
+  if (newVal) {
+    nextTick(() => open());
+  } else {
+    close();
+  }
 });
 
 // Watch for changes to isOpen and emit update
@@ -65,6 +90,7 @@ watch(() => isOpen.value, (newVal) => {
 
 // Lifecycle hooks
 onMounted(() => {
+  console.log("MobileWalkDrawer mounted, bottomSheetRef:", bottomSheetRef.value);
   // Handle initial open state
   if (props.modelValue) {
     nextTick(() => open());
@@ -73,34 +99,31 @@ onMounted(() => {
 
 // Methods to control the bottom sheet
 function open() {
-  if (bottomSheet.value) {
+  console.log("Opening walk drawer");
+  if (bottomSheetRef.value) {
     isOpen.value = true;
-    bottomSheet.value.open();
+    bottomSheetRef.value.open();
   }
 }
 
 function close() {
-  if (bottomSheet.value) {
-    bottomSheet.value.close();
+  console.log("Closing walk drawer");
+  if (bottomSheetRef.value) {
+    bottomSheetRef.value.close();
   }
 }
 
 function onOpened() {
+  console.log("Walk drawer opened");
   isOpen.value = true;
   emit('update:modelValue', true);
 }
 
 function onClosed() {
+  console.log("Walk drawer closed");
   isOpen.value = false;
   emit('update:modelValue', false);
   emit('close');
-  
-  // Reset to default snap point for next opening
-  nextTick(() => {
-    if (bottomSheet.value) {
-      bottomSheet.value.snapToPoint(1);
-    }
-  });
 }
 
 // Share handler
@@ -146,31 +169,70 @@ function handleCategorySelected(category) {
 </script>
 
 <style>
-.mobile-walk-drawer {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  max-width: 100vw;
-  overflow-x: hidden;
+.mobile-walk-drawer-sheet {
+  --vsbs-backdrop-bg: rgba(0, 0, 0, 0.5);
+  --vsbs-shadow-color: rgba(89, 89, 89, 0.2);
+  --vsbs-background: rgb(var(--md-sys-color-surface));
+  --vsbs-border-radius: 28px 28px 0 0;
+  --vsbs-max-width: 100%;
+  --vsbs-border-color: rgba(var(--md-sys-color-outline), 0.12);
+  --vsbs-padding-x: 16px;
+  --vsbs-handle-background: rgba(var(--md-sys-color-on-surface), 0.28);
 }
 
-.mobile-walk-content {
+.walk-drawer-bottom-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100;
+  min-height: 300px !important;
+  height: 100%; 
+}
+
+.walk-drawer-header {
+  padding-top: 24px !important;
+  flex-shrink: 0;
+  height: 72px;
+  padding: 16px;
+  border-bottom: 1px solid rgba(var(--md-sys-color-outline), 0.12);
+}
+
+.walk-drawer-content {
   flex: 1;
   overflow-y: auto;
-  overflow-x: hidden;
-  padding: 0 16px 24px;
+  height: 100%;
+  min-height: 228px;
 }
 
 /* Ensure bottom sheet accounts for mobile navigation */
-.mobile-walk-drawer-sheet :deep(.bottom-sheet__content) {
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+.mobile-walk-drawer-sheet :deep([data-vsbs-sheet]) {
+  min-height: 300px !important;
+  height: auto !important;
+}
+
+.mobile-walk-drawer-sheet :deep([data-vsbs-content]) {
+  min-height: 300px;
+  height: 100% !important; /* Made important to ensure it takes effect */
+  display: flex;
+  flex-direction: column;
+  padding: 0 !important;
+}
+
+/* Add missing content-wrapper styles */
+.mobile-walk-drawer-sheet :deep([data-vsbs-content-wrapper]) {
+  height: 100%; /* Critical height definition */
+  overflow: hidden;
 }
 
 /* Smooth transition overrides */
 .mobile-walk-drawer-sheet :deep(.bottom-sheet__container) {
   transition: transform var(--md-sys-motion-duration-medium2, 320ms) 
               var(--md-sys-motion-easing-emphasized-decelerate, cubic-bezier(0.05, 0.7, 0.1, 1.0));
+  background: rgb(var(--md-sys-color-surface));
+  pointer-events: auto !important;
+  min-height: 300px;
+  height: auto; /* Allow container to size properly */
 }
 
 /* Shadow adjustments for MD3 elevation */  
@@ -180,12 +242,6 @@ function handleCategorySelected(category) {
 }
 
 /* Make sure the bottom sheet container itself receives pointer events */
-.mobile-walk-drawer-sheet :deep(.bottom-sheet__container) {
-  pointer-events: auto !important;
-  background: rgb(var(--md-sys-color-surface));
-}
-
-/* Ensure header and content are clickable too */
 .mobile-walk-drawer-sheet :deep(.bottom-sheet__header),
 .mobile-walk-drawer-sheet :deep(.bottom-sheet__content) {
   pointer-events: auto;
@@ -195,8 +251,37 @@ function handleCategorySelected(category) {
 .mobile-walk-drawer-sheet :deep(.bottom-sheet__backdrop) {
   pointer-events: auto;
 }
+
 /* Improve dragging experience */
 .mobile-walk-drawer-sheet :deep([data-expandable="true"]) {
   touch-action: pan-y;
+}
+
+.header-container.mobile {
+  border-top-left-radius: 16px!important;
+  border-top-right-radius: 16px!important;
+}
+
+[data-vsbs-header] {
+  padding: 0!important;
+}
+
+/* Drag handle styling */
+.header-with-handle {
+  position: relative;
+  width: 100%;
+}
+
+.drag-handle {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 32px;
+  height: 4px;
+  border-radius: 2px;
+  background-color: #49454F;
+  opacity: 0.4;
+  z-index: 1000;
 }
 </style>
