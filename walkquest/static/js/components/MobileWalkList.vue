@@ -10,12 +10,21 @@
       @max-height="(n) => (maxHeight = n)"
       @opened="handleOpened"
       @closed="handleClosed"
-      class="walk-list-bottom-sheet"
     >
       <template #header>
         <div class="mobile-walk-list-header">
           <h2 class="header-title">{{ headerTitle }}</h2>
           <div class="header-actions">
+            <!-- Show clear button when location search results are shown -->
+            <button 
+              v-if="shouldShowClearButton" 
+              class="header-button clear-results-button" 
+              @click="clearLocationResults" 
+              aria-label="Clear search results"
+            >
+              <Icon icon="mdi:close" />
+              <span class="button-text">Clear</span>
+            </button>
             <button class="header-button" @click="openSearch" aria-label="Search walks">
               <Icon icon="mdi:magnify" />
             </button>
@@ -26,7 +35,27 @@
         </div>
       </template>
       
+      <!-- Enhanced empty state for nearby walks search -->
+      <div v-if="showLocationEmptyState" class="empty-state-container">
+        <div class="empty-state">
+          <div class="empty-state-illustration">
+            <Icon icon="mdi:map-search" class="empty-state-icon" />
+            <div class="empty-state-pulse"></div>
+          </div>
+          <h3 class="empty-state-title">Find Walks Near You</h3>
+          <p class="empty-state-description">
+            Discover walking routes and trails in your area by searching for a location
+          </p>
+          <button @click="openSearch" class="empty-state-button">
+            <Icon icon="mdi:map-marker" />
+            <span>Search Locations</span>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Regular walk list when we have content to show -->
       <WalkList
+        v-else
         :walks="walks"
         :selected-walk-id="selectedWalkId"
         :is-compact="true"
@@ -137,6 +166,28 @@ const router = useRouter()
 // Get current search mode from store
 const { searchMode } = storeToRefs(searchStore)
 
+// Track whether we have location search results
+const hasLocationResults = computed(() => {
+  return locationStore.hasActiveLocationSearch;
+})
+
+// More direct check for whether to show the clear button
+const shouldShowClearButton = computed(() => {
+  return searchMode.value === 'locations' && 
+         locationStore.nearbyWalks?.length > 0 && 
+         locationStore.userLocation !== null;
+})
+
+// Check if we should show the location empty state
+const showLocationEmptyState = computed(() => {
+  // Show the empty state when:
+  // 1. User is in locations search mode but has no results yet, OR
+  // 2. User hasn't yet performed a location search (initial state)
+  return searchMode.value === 'locations' && 
+         (locationStore.nearbyWalks?.length === 0 || 
+          (!locationStore.hasSearched && !locationStore.userLocation));
+})
+
 // Contextual header title based on search mode
 const headerTitle = computed(() => {
   switch (searchMode.value) {
@@ -195,7 +246,14 @@ function handleWalkSelected(walk) {
 
 // Search functions
 function openSearch() {
-  isSearchOpen.value = true
+  // If we're showing the empty state and the user clicks search,
+  // make sure we're in location search mode
+  if (showLocationEmptyState.value) {
+    searchStore.setSearchMode('locations');
+  }
+  
+  isSearchOpen.value = true;
+  
   // Focus the right input based on search mode
   setTimeout(() => {
     if (searchMode.value === 'locations' && locationSearchRef.value) {
@@ -214,6 +272,19 @@ function clearSearch() {
   searchQuery.value = ''
   if (searchInputRef.value) {
     searchInputRef.value.focus()
+  }
+}
+
+// Clear location search results
+function clearLocationResults() {
+  console.log("Clearing location results");
+  // Reset the location search and update the UI
+  locationStore.clearLocationSearch();
+  searchStore.setSearchMode('default');
+  
+  // Reset the header title
+  if (bottomSheetRef.value) {
+    bottomSheetRef.value.open();
   }
 }
 
@@ -392,8 +463,28 @@ defineExpose({
   cursor: pointer;
 }
 
+/* Style for the clear results button */
+.clear-results-button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: auto;
+  padding: 0 12px;
+  background-color: rgba(var(--md-sys-color-on-surface-variant), 0.08);
+  border-radius: 16px;
+}
+
+.clear-results-button .button-text {
+  font-size: 14px;
+  font-weight: 500;
+}
+
 .header-button:hover {
   background-color: rgba(var(--md-sys-color-on-surface-variant), 0.08);
+}
+
+.clear-results-button:hover {
+  background-color: rgba(var(--md-sys-color-on-surface-variant), 0.12);
 }
 
 .header-button:active {
@@ -427,6 +518,13 @@ defineExpose({
   flex-direction: column;
 }
 
+.mapboxgl-ctrl-geocoder .suggestions {
+  display: block;
+  width: 150%;
+  right: 0px;
+  left: -60px !important;
+  z-index: 10001;
+}
 .md3-search-container {
   width: 100%;
   height: 100%;
@@ -509,5 +607,68 @@ defineExpose({
 .md3-modal-enter-from,
 .md3-modal-leave-to {
   opacity: 0;
+}
+
+/* Empty state styles */
+.empty-state-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 24px;
+}
+
+.empty-state {
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.empty-state-icon {
+  font-size: 64px;
+  color: rgba(var(--md-sys-color-on-surface-variant), 0.7);
+  margin-bottom: 16px;
+}
+
+.empty-state-title {
+  font-size: 20px;
+  font-weight: 500;
+  color: rgb(var(--md-sys-color-on-surface));
+  margin-bottom: 8px;
+}
+
+.empty-state-description {
+  font-size: 16px;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+  margin-bottom: 24px;
+}
+
+.empty-state-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 20px;
+  background-color: #F7F2FA;
+  color: rgb(var(--md-sys-color-on-primary));
+  font-size: 16px;
+  font-weight: 600; /* Increased font weight for better contrast */
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.empty-state-button:hover {
+  background-color: rgb(var(--md-sys-color-primary-dark, var(--md-sys-color-primary)));
+  color: rgb(var(--md-sys-color-on-primary));
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.18);
+}
+
+.empty-state-button:focus-visible {
+  outline: 2px solid rgb(var(--md-sys-color-outline));
+  outline-offset: 2px;
 }
 </style>

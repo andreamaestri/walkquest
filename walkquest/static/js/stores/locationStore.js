@@ -37,6 +37,9 @@ export const useLocationStore = defineStore('location', () => {
   // Computed
   const formattedSearchRadius = computed(() => formatDistance(searchRadius.value))
   const hasLocation = computed(() => !!userLocation.value)
+  
+  // Determine if location search is active (for UI elements)
+  const hasActiveLocationSearch = computed(() => hasSearched.value && !!userLocation.value && nearbyWalks.value.length > 0)
 
   // Save state helper
   const saveState = () => {
@@ -158,6 +161,13 @@ export const useLocationStore = defineStore('location', () => {
     localStorage.removeItem('userLocation')
     hasSearched.value = false
   }
+  
+  // Clear location search results without removing saved location
+  function clearLocationSearch() {
+    // Reset nearby walks list but keep the user location for future searches
+    nearbyWalks.value = []
+    hasSearched.value = false
+  }
 
   function setSearchRadius(radius) {
     if (typeof radius !== 'number' || radius <= 0) return
@@ -180,6 +190,7 @@ export const useLocationStore = defineStore('location', () => {
     nearbyWalks,
     hasLocation,
     hasSearched,
+    hasActiveLocationSearch,
 
     // Computed
     formattedSearchRadius,
@@ -187,6 +198,7 @@ export const useLocationStore = defineStore('location', () => {
     // Actions
     setUserLocation,
     clearLocation,
+    clearLocationSearch,
     setSearchRadius,
     findNearbyWalks,
     getFormattedDistance

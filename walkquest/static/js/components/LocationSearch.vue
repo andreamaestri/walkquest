@@ -3,12 +3,6 @@
     <div class="search-field-container" :class="{ 'is-loading': isLoading }">
       <MapboxGeocoder v-bind="geocoderProps" class="geocoder-container" @mb-created="handleGeocodeCreated"
         @mb-result="handleGeocodeResult" @mb-error="handleGeocodeError" @mb-clear="handleGeocodeClear" />
-      <button v-if="isActive"
-              class="location-search-back-button"
-              @click.stop="closeSearch"
-              aria-label="Close search">
-        <Icon icon="material-symbols:arrow-back" />
-      </button>
     </div>
 
     <!-- Display error only when needed -->
@@ -25,12 +19,6 @@
       <button @click="clearSearchError" class="search-error-dismiss" aria-label="Dismiss error">
         <Icon icon="material-symbols:close" />
       </button>
-    </div>
-
-    <!-- Only show loading indicator, actual walk results are now handled by parent component -->
-    <div v-if="walkLoading && userLocation && hasSearched" class="loading-container" role="status" aria-label="Loading walks">
-      <div class="loading-spinner"></div>
-      <div class="loading-text">Searching for walks...</div>
     </div>
   </div>
 </template>
@@ -741,14 +729,13 @@ watch(() => searchError.value, async (error) => {
 @media (max-width: 599px) {
   /* Make search icons and buttons larger for better touch targets */
   .mapboxgl-ctrl-geocoder .mapboxgl-ctrl-geocoder--icon {
-    width: 22px;
-    height: 22px;
+    display: none;
   }
   
   .mapboxgl-ctrl-geocoder .mapboxgl-ctrl-geocoder--icon-close,
   .location-search-back-button {
-    width: 36px;
-    height: 36px;
+    width: 24px;
+    height: 24px;
   }
   
   /* Increase hit area for suggestions */
@@ -763,12 +750,17 @@ watch(() => searchError.value, async (error) => {
   .mapboxgl-ctrl-geocoder .suggestions > li > a:active {
     transform: scale(0.96);
     transition: transform 0.1s cubic-bezier(0.2, 0, 0, 1);
+    position: relative;
+    margin-left: -50px;
+    width: max-content!important;
+    left: -50px !important;
+    right: auto!important;
   }
   
   /* Add visual hint for scrollable suggestions */
   .mapboxgl-ctrl-geocoder .suggestions {
     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-    max-height: 60vh;
+    max-height: 80vh;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
@@ -826,7 +818,6 @@ watch(() => searchError.value, async (error) => {
   padding: 20px;
   text-align: center;
   color: rgb(var(--md-sys-color-on-surface-variant));
-  background-color: rgb(var(--md-sys-color-surface-container-low));
   border-radius: 16px;
 }
 
