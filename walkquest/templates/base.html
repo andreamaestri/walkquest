@@ -86,7 +86,7 @@
   }
   
   html, body {
-    min-height: 100vh;
+    min-height: calc(100% + env(safe-area-inset-top))!important;
     height: 100%;
     width: 100%;
     overscroll-behavior: none;
