@@ -86,7 +86,7 @@
   }
   
   html, body {
-    min-height: calc(100% + env(safe-area-inset-top))!important;
+    min-height: calc(100% + env(safe-area-inset-top) + env(safe-area-inset-bottom))!important;
     height: 100%;
     width: 100%;
     overscroll-behavior: none;
@@ -106,7 +106,7 @@
   
   #app {
     padding-bottom: var(--safe-area-bottom);
-    min-height: calc(100% + env(safe-area-inset-top))!important;
+    min-height: calc(100% + env(safe-area-inset-top) + env(safe-area-inset-bottom))!important;
     max-width: 100vw;
     background-color: transparent;
     display: flex;

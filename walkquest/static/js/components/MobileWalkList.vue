@@ -14,7 +14,7 @@
     >
       <template #header>
         <div class="mobile-walk-list-header">
-          <h2 class="header-title">All Walks</h2>
+          <h2 class="header-title">{{ headerTitle }}</h2>
           <div class="header-actions">
             <button class="header-button" @click="openSearch" aria-label="Search walks">
               <Icon icon="mdi:magnify" />
@@ -35,10 +35,46 @@
       />
     </BottomSheet>
 
-    <!-- Search Modal (Hidden for now but added to prevent errors) -->
+    <!-- Search Modal -->
     <Transition name="md3-modal">
       <div v-if="isSearchOpen" class="md3-search-modal" @click.self="closeSearch">
-        <!-- Search content here -->
+        <div class="md3-search-container">
+          <div class="md3-search-header">
+            <button class="md3-search-back" @click="closeSearch">
+              <Icon icon="mdi:arrow-left" />
+            </button>
+            <div class="md3-search-input-container">
+              <!-- Use LocationSearch component for nearby search mode -->
+              <LocationSearch
+                v-if="searchMode === 'locations'"
+                :mapbox-token="mapboxToken"
+                :map-instance="mapInstance"
+                :is-active="true"
+                ref="locationSearchRef"
+                @location-selected="handleLocationSelected"
+                @close="closeSearch"
+              />
+              <!-- Regular search input for other modes -->
+              <template v-else>
+                <input 
+                  type="text" 
+                  class="md3-search-input" 
+                  :placeholder="searchPlaceholder"
+                  v-model="searchQuery"
+                  @keyup.enter="performSearch"
+                  ref="searchInputRef"
+                  autocomplete="off"
+                />
+                <button v-if="searchQuery" class="md3-search-clear" @click="clearSearch">
+                  <Icon icon="mdi:close-circle" />
+                </button>
+              </template>
+            </div>
+          </div>
+          <div class="md3-search-content">
+            <!-- Search results will go here -->
+          </div>
+        </div>
       </div>
     </Transition>
   </div>
@@ -51,10 +87,12 @@ import { storeToRefs } from 'pinia'
 import { useWalksStore } from '../stores/walks'
 import { useUiStore } from '../stores/ui'
 import { useSearchStore } from '../stores/searchStore'
+import { useLocationStore } from '../stores/locationStore'
 import { useRouter } from 'vue-router'
 import BottomSheet from '@douxcode/vue-spring-bottom-sheet'
 import '@douxcode/vue-spring-bottom-sheet/dist/style.css'
 import WalkList from './WalkList.vue'
+import LocationSearch from './LocationSearch.vue'
 
 const props = defineProps({
   walks: {
@@ -64,25 +102,64 @@ const props = defineProps({
   selectedWalkId: {
     type: [String, Number],
     default: null
+  },
+  mapboxToken: {
+    type: String,
+    required: true
+  },
+  mapInstance: {
+    type: Object,
+    default: null
   }
 })
 
-const emit = defineEmits(['walk-selected'])
+const emit = defineEmits(['walk-selected', 'location-selected'])
 
 // Component refs
 const bottomSheetRef = ref(null)
+const searchInputRef = ref(null)
+const locationSearchRef = ref(null)
 
 // State management
 const isOpen = ref(true)  
 const isSearchOpen = ref(false)
 const maxHeight = ref(window.innerHeight)
 const showFilters = ref(false)
-const searchStore = useSearchStore()
+const searchQuery = ref('')
 
 // Store initialization
 const walksStore = useWalksStore()
 const uiStore = useUiStore()
+const searchStore = useSearchStore()
+const locationStore = useLocationStore()
 const router = useRouter()
+
+// Get current search mode from store
+const { searchMode } = storeToRefs(searchStore)
+
+// Contextual header title based on search mode
+const headerTitle = computed(() => {
+  switch (searchMode.value) {
+    case 'locations':
+      return 'Nearby Walks'
+    case 'categories':
+      return 'Browse Categories'
+    default:
+      return 'Explore Walks'
+  }
+})
+
+// Contextual search placeholder
+const searchPlaceholder = computed(() => {
+  switch (searchMode.value) {
+    case 'locations':
+      return 'Search for a location...'
+    case 'categories':
+      return 'Search for a category...'
+    default:
+      return 'Search for walks...'
+  }
+})
 
 // Compute snap points based on max height
 const snapPoints = computed(() => {
@@ -119,10 +196,52 @@ function handleWalkSelected(walk) {
 // Search functions
 function openSearch() {
   isSearchOpen.value = true
+  // Focus the right input based on search mode
+  setTimeout(() => {
+    if (searchMode.value === 'locations' && locationSearchRef.value) {
+      // LocationSearch component has its own focus handling
+    } else if (searchInputRef.value) {
+      searchInputRef.value.focus()
+    }
+  }, 300)
 }
 
 function closeSearch() {
   isSearchOpen.value = false
+}
+
+function clearSearch() {
+  searchQuery.value = ''
+  if (searchInputRef.value) {
+    searchInputRef.value.focus()
+  }
+}
+
+// Handle location selection from the LocationSearch component
+function handleLocationSelected(location) {
+  if (!location) return
+  
+  // Close search modal after location selection
+  closeSearch()
+  
+  // Forward location selection to parent
+  emit('location-selected', location)
+}
+
+function performSearch() {
+  if (!searchQuery.value.trim()) return
+  
+  // Handle different search types based on mode
+  if (searchMode.value === 'categories') {
+    // Search for categories
+    searchStore.setSelectedCategory(searchQuery.value)
+  } else {
+    // Default walk search
+    searchStore.performSearch(searchQuery.value)
+  }
+  
+  // Close search modal after search
+  closeSearch()
 }
 
 // Filter toggle
@@ -279,5 +398,116 @@ defineExpose({
 
 .header-button:active {
   background-color: rgba(var(--md-sys-color-on-surface-variant), 0.12);
+}
+
+/* Search modal styles */
+.md3-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.md3-search-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgb(var(--md-sys-color-surface));
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+}
+
+.md3-search-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.md3-search-header {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  border-bottom: 1px solid rgba(var(--md-sys-color-outline), 0.12);
+  height: 64px;
+}
+
+.md3-search-back {
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: rgb(var(--md-sys-color-on-surface));
+  margin-right: 8px;
+}
+
+.md3-search-input-container {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* Style for non-location search input */
+.md3-search-input {
+  width: 100%;
+  height: 48px;
+  border-radius: 24px;
+  padding: 0 16px;
+  background-color: rgb(var(--md-sys-color-surface-container-high));
+  border: 1px solid rgba(var(--md-sys-color-outline), 0.12);
+  color: rgb(var(--md-sys-color-on-surface));
+  font-size: 16px;
+  outline: none;
+}
+
+/* Ensure LocationSearch component fits in the search container */
+.md3-search-input-container .location-search {
+  width: 100%;
+}
+
+.md3-search-clear {
+  position: absolute;
+  right: 8px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+}
+
+.md3-search-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+/* Transition animations */
+.md3-modal-enter-active,
+.md3-modal-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.md3-modal-enter-from,
+.md3-modal-leave-to {
+  opacity: 0;
 }
 </style>

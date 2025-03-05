@@ -20,7 +20,7 @@
         },
         paint: {
           'line-color': '#ffffff',
-          'line-width': 6,
+          'line-width': 3,
           'line-opacity': 1,
           'line-emissive-strength': 1,
         },
