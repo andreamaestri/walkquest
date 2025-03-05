@@ -11,7 +11,7 @@ export default defineConfig({
   },
   build: {
     manifest: "manifest.json",
-    outDir: resolve('./walkquest/static/dist/.vite'),
+    outDir: resolve('./walkquest/static/dist'),
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'walkquest/static/js/main.js') // Corrected path to main.js

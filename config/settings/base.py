@@ -180,7 +180,7 @@ STATICFILES_DIRS = [
 DJANGO_VITE = {
     "default": {
         "dev_mode": DEBUG,
-        "manifest_path": str(APPS_DIR / "static" / "dist" / ".vite" / "manifest.json"),
+        "manifest_path": str(APPS_DIR / "static" / "dist" / "manifest.json"),
         "static_url_prefix": "dist/",
     },
 }
