@@ -43,11 +43,11 @@
 ### 🟡 In Progress - HIGHEST PRIORITY
 
 #### Virtual List Implementation
-- Debug DynamicScroller/DynamicScrollerItem
-- Verify data flow to virtual scroller
-- Check container sizing
-- Test recycling behavior
-- Verify cleanup processes
+- Debugging DynamicScroller/DynamicScrollerItem
+- Verifying data flow to virtual scroller
+- Checking container sizing
+- Testing recycling behavior
+- Verifying cleanup processes
 
 #### Testing Implementation
 - Virtual list rendering tests

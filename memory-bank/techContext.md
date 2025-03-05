@@ -150,12 +150,26 @@
 ## Debug Requirements 🔴
 
 ### Vue Virtual Scroller
-- Verify DynamicScroller setup
-- Debug item rendering
-- Check DOM recycling
-- Test size calculations
-- Validate scoped slots
-- Monitor memory usage
+- Verify DynamicScroller setup:
+  - Component registration
+  - CSS import verification
+  - Proper props configuration
+- Debug item rendering:
+  - Check item template structure
+  - Verify data flow to WalkCard
+  - Inspect scoped slot implementation
+- Check DOM recycling:
+  - Verify item reuse
+  - Inspect element positioning
+- Test size calculations:
+  - Validate min-item-size prop
+  - Check container sizing
+- Validate scoped slots:
+  - Verify item context
+  - Check active state handling
+- Monitor memory usage:
+  - Track item creation/destruction
+  - Profile scroll performance
 
 ### Component Integration
 - Test data passing

@@ -2,19 +2,23 @@
   <div class="mobile-walk-list-sheet">
     <BottomSheet 
       ref="bottomSheetRef"
-      :snap-points="adjustedSnapPoints" 
-      :default-snap-point="1"
-      @max-height="handleMaxHeight" 
+      :snap-points="snapPoints"
+      :default-snap-point="200"
       :blocking="false"
-      :can-swipe-close="false" 
-      :duration="320"
+      :can-swipe-close="true"
+      :expand-on-content-drag="false"
+      @max-height="(n) => (maxHeight = n)"
       @opened="handleOpened"
       @closed="handleClosed"
+      class="walk-list-bottom-sheet"
     >
       <template #header>
         <div class="mobile-walk-list-header">
           <h2 class="header-title">All Walks</h2>
           <div class="header-actions">
+            <button class="header-button" @click="openSearch" aria-label="Search walks">
+              <Icon icon="mdi:magnify" />
+            </button>
             <button class="header-button" @click="toggleFilters" aria-label="Filter walks">
               <Icon icon="mdi:filter-variant" />
             </button>
@@ -22,23 +26,31 @@
         </div>
       </template>
       
-      <!-- Walk list takes up the whole bottom sheet area -->
       <WalkList
         :walks="walks"
         :selected-walk-id="selectedWalkId"
         :is-compact="true"
         @walk-selected="handleWalkSelected"
+        class="walk-list-content"
       />
     </BottomSheet>
+
+    <!-- Search Modal (Hidden for now but added to prevent errors) -->
+    <Transition name="md3-modal">
+      <div v-if="isSearchOpen" class="md3-search-modal" @click.self="closeSearch">
+        <!-- Search content here -->
+      </div>
+    </Transition>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { Icon } from '@iconify/vue'
 import { storeToRefs } from 'pinia'
 import { useWalksStore } from '../stores/walks'
 import { useUiStore } from '../stores/ui'
+import { useSearchStore } from '../stores/searchStore'
 import { useRouter } from 'vue-router'
 import BottomSheet from '@douxcode/vue-spring-bottom-sheet'
 import '@douxcode/vue-spring-bottom-sheet/dist/style.css'
@@ -61,52 +73,56 @@ const emit = defineEmits(['walk-selected'])
 const bottomSheetRef = ref(null)
 
 // State management
-const isOpen = ref(true)  // Ensure the walk list stays open as default state
+const isOpen = ref(true)  
+const isSearchOpen = ref(false)
 const maxHeight = ref(window.innerHeight)
-const navHeight = 80  // Updated to match the bottom nav height
 const showFilters = ref(false)
+const searchStore = useSearchStore()
 
 // Store initialization
 const walksStore = useWalksStore()
 const uiStore = useUiStore()
 const router = useRouter()
 
-// Material Design 3 scrim color with 0.32 opacity
-const scrimColor = computed(() => 'rgba(0, 0, 0, 0.32)')
-
-// Adjusted snap points for better usability
-const adjustedSnapPoints = computed(() => {
-  const height = maxHeight.value - navHeight
+// Compute snap points based on max height
+const snapPoints = computed(() => {
+  const height = maxHeight.value
   return [
-    Math.min(300, height / 2),     // Half expanded
-    height - 20                    // Full height minus small margin
-  ].sort((a, b) => a - b)
+    Math.max(200, height / 4),      // Minimal view
+    Math.max(300, height / 3),      // Small view
+    Math.max(450, height / 2),      // Half view
+    Math.max(600, height / 1.5),    // Large view
+    Math.max(800, height / 1.2),    // Nearly full view
+    height                          // Full height
+  ]
 })
-
-// Update max height when window resizes
-function updateMaxHeight() {
-  maxHeight.value = window.innerHeight
-}
-
-function handleMaxHeight(height) {
-  maxHeight.value = height
-}
 
 // Event handlers for bottom sheet
 function handleOpened() {
+  console.log('Bottom sheet opened')
   isOpen.value = true
 }
 
 function handleClosed() {
+  console.log('Bottom sheet closed')
   isOpen.value = false
 }
 
-// Walk selection handler - now immediately emits event and doesn't keep sheet open
+// Walk selection handler
 function handleWalkSelected(walk) {
   emit('walk-selected', walk)
-  
-  // When a walk is selected, ensure the sheet is closed
-  // The parent component will remove it from the DOM
+  if (bottomSheetRef.value) {
+    bottomSheetRef.value.close()
+  }
+}
+
+// Search functions
+function openSearch() {
+  isSearchOpen.value = true
+}
+
+function closeSearch() {
+  isSearchOpen.value = false
 }
 
 // Filter toggle
@@ -114,67 +130,129 @@ function toggleFilters() {
   showFilters.value = !showFilters.value
 }
 
-// Setup and teardown
+// Setup
 onMounted(() => {
-  window.addEventListener('resize', updateMaxHeight)
+  console.log("MobileWalkList mounted, bottomSheetRef:", bottomSheetRef.value)
+  
+  // Force open the bottom sheet after it's mounted
+  setTimeout(() => {
+    if (bottomSheetRef.value) {
+      console.log("Attempting to open bottom sheet")
+      bottomSheetRef.value.open()
+    }
+  }, 100)
 })
 
-onBeforeUnmount(() => {
-  window.removeEventListener('resize', updateMaxHeight)
-})
-
-// Watch for route changes to properly handle sheet visibility
+// Watch for route changes
 watch(() => router.currentRoute.value.name, (routeName) => {
-  // When route changes to home, ensure the sheet is open again
+  console.log("Route changed to:", routeName)
   if (routeName === 'home' && !props.selectedWalkId && bottomSheetRef.value) {
+    console.log("Opening sheet due to home route")
     bottomSheetRef.value.open();
   }
 })
 
 // Watch for selected walk changes
 watch(() => props.selectedWalkId, (newId) => {
-  // Ensure sheet is closed if a walk is selected
+  console.log("Selected walk ID changed:", newId)
   if (newId) {
     if (bottomSheetRef.value && isOpen.value) {
+      console.log("Closing sheet due to walk selection")
       bottomSheetRef.value.close();
     }
   } else {
-    // If no walk is selected and we're on home route, open the sheet
     if (router.currentRoute.value.name === 'home' && bottomSheetRef.value) {
+      console.log("Opening sheet due to no walk selected")
       bottomSheetRef.value.open();
     }
   }
 })
 
-// Export method to open sheet for parent component
+// Expose sheet control methods
 defineExpose({
   openSheet() {
+    console.log("openSheet called")
     if (bottomSheetRef.value) {
       bottomSheetRef.value.open()
+    } else {
+      console.warn("bottomSheetRef is not available")
     }
   },
   closeSheet() {
+    console.log("closeSheet called")
     if (bottomSheetRef.value) {
       bottomSheetRef.value.close()
+    } else {
+      console.warn("bottomSheetRef is not available")
     }
   }
 })
 </script>
 
-<style scoped>
-.mobile-walk-list-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 16px 16px;
+<style>
+.mobile-walk-list-sheet {
+  --vsbs-backdrop-bg: rgba(0, 0, 0, 0.5);
+  --vsbs-shadow-color: rgba(89, 89, 89, 0.2);
+  --vsbs-background: rgb(var(--md-sys-color-surface));
+  --vsbs-border-radius: 28px 28px 0 0;
+  --vsbs-max-width: 100%;
+  --vsbs-border-color: rgba(var(--md-sys-color-outline), 0.12);
+  --vsbs-padding-x: 0px;
+  --vsbs-handle-background: rgba(var(--md-sys-color-on-surface), 0.28);
 }
 
+.walk-list-bottom-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100;
+  height: 100%;
+}
+
+.mobile-walk-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid rgba(var(--md-sys-color-outline), 0.12);
+  height: 72px;
+  flex-shrink: 0;
+}
+
+/* Fix the height calculation for content area */
+[data-vsbs-content] {
+  height: 100%!important;
+  padding: 0!important;
+  flex-direction: column;
+}
+
+/* Fix the WalkList container to take full height */
+.walk-list-content {
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Ensure the scroller component takes remaining height */
+.walk-list-container .vue-recycle-scroller {
+  flex-grow: 1;
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+/* Additional fix for vsbs container */
+[data-vsbs-content-wrapper] {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Keep the rest of your styles */
 .header-title {
-  font-size: 1.25rem;
+  font-size: 20px;
   font-weight: 500;
-  margin: 0;
   color: rgb(var(--md-sys-color-on-surface));
-  letter-spacing: 0.0125em;
 }
 
 .header-actions {
@@ -191,86 +269,15 @@ defineExpose({
   justify-content: center;
   background: transparent;
   border: none;
-  cursor: pointer;
   color: rgb(var(--md-sys-color-on-surface-variant));
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-}
-
-.header-button::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: currentColor;
-  border-radius: inherit;
-  opacity: 0;
-  transform: scale(0);
-  transition: transform 0.3s ease, opacity 0.3s ease;
+  cursor: pointer;
 }
 
 .header-button:hover {
-  background-color: rgba(var(--md-sys-color-on-surface), 0.08);
-  color: rgb(var(--md-sys-color-on-surface));
-}
-
-.header-button:hover::before {
-  opacity: 0.08;
-  transform: scale(1);
+  background-color: rgba(var(--md-sys-color-on-surface-variant), 0.08);
 }
 
 .header-button:active {
-  transform: scale(0.92);
-}
-
-/* Bottom Sheet Styling */
-.mobile-walk-list-sheet :deep(.bottom-sheet__container) {
-  transition: transform var(--md-sys-motion-duration-medium2, 320ms) 
-              var(--md-sys-motion-easing-emphasized-decelerate, cubic-bezier(0.05, 0.7, 0.1, 1.0));
-  border-radius: 28px 28px 0 0; /* Rounded top corners */
-}
-
-.mobile-walk-list-sheet :deep(.bottom-sheet__container--elevation-3) {
-  box-shadow: var(--md-sys-elevation-3);
-}
-
-:deep(.bottom-sheet__content) {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-:deep(.walk-list-container) {
-  flex: 1;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  background: rgb(var(--md-sys-color-surface));
-}
-
-.mobile-walk-list-sheet {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 1000;
-  pointer-events: auto !important;
-}
-
-:deep(.bottom-sheet__container) {
-  pointer-events: auto !important;
-  background: rgb(var(--md-sys-color-surface));
-}
-
-.mobile-walk-list-header {
-  padding: 16px 16px 8px;
-  background: rgb(var(--md-sys-color-surface));
-  border-bottom: 1px solid rgb(var(--md-sys-color-outline-variant));
-  position: sticky;
-  top: 0;
-  z-index: 1;
+  background-color: rgba(var(--md-sys-color-on-surface-variant), 0.12);
 }
 </style>

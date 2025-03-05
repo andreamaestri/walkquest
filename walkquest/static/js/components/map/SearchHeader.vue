@@ -93,7 +93,6 @@ import { useSearchStore } from "../../stores/searchStore";
 import SearchView from "../SearchView.vue";
 import { Icon } from '@iconify/vue';
 import BottomSheet from '@douxcode/vue-spring-bottom-sheet';
-import '@douxcode/vue-spring-bottom-sheet/dist/style.css';
 
 /**
  * Props definition with proper validation

@@ -33,7 +33,6 @@
 <script setup>
 import { ref, watch, onMounted, nextTick } from 'vue';
 import BottomSheet from '@douxcode/vue-spring-bottom-sheet'
-import '@douxcode/vue-spring-bottom-sheet/dist/style.css'
 import WalkDrawerHeader from './shared/WalkDrawerHeader.vue';
 import WalkDrawerContent from './shared/WalkDrawerContent.vue';
 

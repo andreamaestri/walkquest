@@ -72,7 +72,6 @@
 ### Current Tasks
 
 1. **Virtual List Debug - HIGHEST PRIORITY**
-   - Determine whether to fix vue-virtual-scroller or migrate to @tanstack/vue-virtual
    - If fixing vue-virtual-scroller:
      ```html
      <template>
@@ -95,10 +94,6 @@
        </DynamicScroller>
      </template>
      ```
-   - If migrating to @tanstack/vue-virtual:
-     - Install package
-     - Implement according to .clinerules specifications
-     - Set base item height to 200px with expanded padding of 150px
 
 2. **Testing Implementation**
    - Test virtual list rendering
@@ -117,7 +112,6 @@
 ## Next Steps
 
 1. **Fix Virtual List Implementation**
-   - Decide on implementation approach (vue-virtual-scroller vs @tanstack/vue-virtual)
    - Ensure CSS is properly imported (already done in main.js)
    - Configure item sizes correctly
    - Implement proper scoped slot

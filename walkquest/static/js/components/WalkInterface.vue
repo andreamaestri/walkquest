@@ -112,7 +112,6 @@ import WalkDrawer from "./WalkDrawer.vue";
 import MobileWalkDrawer from "./MobileWalkDrawer.vue"; // Add MobileWalkDrawer import
 import MobileWalkList from './MobileWalkList.vue'; 
 import BottomSheet from '@douxcode/vue-spring-bottom-sheet';
-import '@douxcode/vue-spring-bottom-sheet/dist/style.css';
 import WalkList from './WalkList.vue';
 import SpeedDial from './SpeedDial.vue';
 import { Icon } from '@iconify/vue';
@@ -226,8 +225,12 @@ const handleFabAction = (action) => {
       showWalksBottomSheet.value = true;
       // Ensure the bottom sheet is opened after it's mounted
       nextTick(() => {
+        console.log("Next tick after explore action, ref:", mobileWalkListRef.value)
         if (mobileWalkListRef.value) {
+          console.log("Attempting to open sheet from explore action")
           mobileWalkListRef.value.openSheet();
+        } else {
+          console.warn("MobileWalkList ref is not available!")
         }
       });
       break;
@@ -236,6 +239,7 @@ const handleFabAction = (action) => {
       searchStore.setSearchMode('locations');
       showWalksBottomSheet.value = true;
       nextTick(() => {
+        console.log("Next tick after nearby action")
         if (mobileWalkListRef.value) {
           mobileWalkListRef.value.openSheet();
         }
@@ -246,6 +250,7 @@ const handleFabAction = (action) => {
       searchStore.setSearchMode('categories');
       showWalksBottomSheet.value = true;
       nextTick(() => {
+        console.log("Next tick after categories action")
         if (mobileWalkListRef.value) {
           mobileWalkListRef.value.openSheet();
         }

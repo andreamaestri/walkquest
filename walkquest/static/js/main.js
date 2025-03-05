@@ -14,7 +14,6 @@ import { StoreLocator, MapboxMarker, MapboxNavigationControl, MapboxCluster, Map
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 import '/walkquest/static/css/project.css'
 import 'mapbox-gl/dist/mapbox-gl.css'
-import '@douxcode/vue-spring-bottom-sheet/dist/style.css'
 
 // Create Pinia instance first
 const pinia = createPinia()

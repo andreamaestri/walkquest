@@ -109,7 +109,6 @@ import { useUiStore } from "../../stores/ui";
 import { useSearchStore } from "../../stores/searchStore";
 import WalkList from "../WalkList.vue";
 import BottomSheet from '@douxcode/vue-spring-bottom-sheet';
-import '@douxcode/vue-spring-bottom-sheet/dist/style.css';
 import SearchView from "../SearchView.vue";
 
 /**
