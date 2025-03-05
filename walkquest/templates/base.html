@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no"
     />
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -86,20 +86,34 @@
   }
   
   html, body {
-    min-height: calc(100% + var(--safe-area-top))!important;
+    min-height: 100vh;
     height: 100%;
+    width: 100%;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
   }
   
   body {
-    padding: 0!important;
-    margin: 0;
-    background-color: transparent!important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background-color: transparent !important;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
   }
   
   #app {
-    padding: var(--safe-area-top) var(--safe-area-right) var(--safe-area-bottom) var(--safe-area-left)!important;
-    min-height: 100%!important;
+    padding-top: var(--safe-area-top);
+    padding-bottom: var(--safe-area-bottom);
+    padding-left: var(--safe-area-left);
+    padding-right: var(--safe-area-right);
+    min-height: 100% !important;
+    max-width: 100vw;
     background-color: transparent;
+    display: flex;
+    flex-direction: column;
   }
   
   /* This ensures the status bar area is transparent on iOS */

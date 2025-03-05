@@ -3,7 +3,8 @@
     <header 
       ref="searchHeader"
       class="w-full transition-all duration-300 ease-md3 py-2"
-      :class="isSearchActive && uiStore.isMobile ? 'fixed inset-0 z-50 py-0' : 'bg-surface-variant'"
+      :class="isSearchActive && uiStore.isMobile ? 'fixed inset-x-0 top-0 z-50 py-0' : 'bg-surface-variant'"
+      :style="{ top: uiStore.isMobile ? 'var(--safe-area-top, 0px)' : '0' }"
     >
       <!-- Fixed logo header without search button -->
       <div v-if="uiStore.isMobile && !isSearchActive" class="mobile-header">
@@ -57,6 +58,7 @@
       :expand-on-content-drag="true"
       :snap-points="[200, '50%', maxHeight]"
       :default-snap-point="'50%'"
+      :safe-area-inset-bottom="true"
       @max-height="(height) => maxHeight.value = height"
       @opened="handleBottomSheetOpened"
       @closed="handleBottomSheetClosed"
@@ -122,7 +124,7 @@ const mobileBottomSheet = ref(null);
 const searchViewRef = ref(null);
 const windowWidth = ref(window.innerWidth);
 const isSearchActive = ref(false);
-const maxHeight = ref(window.innerHeight - 120); // Default max height with some space for the header
+const maxHeight = ref(window.innerHeight - 60); // Reduced top offset to maximize available space
 const bottomSheetHeight = ref(0); // Track the current height of the bottom sheet
 const bottomSheetOpen = ref(false); // Control the bottom sheet open state
 
@@ -140,7 +142,7 @@ onMounted(() => {
   document.addEventListener('keydown', handleKeyDown);
   
   // Initialize the maximum height on mount
-  maxHeight.value = window.innerHeight - 120;
+  maxHeight.value = window.innerHeight - 60;
   
   // The maxHeight event will be handled via props in Vue 3
 });
@@ -152,7 +154,7 @@ onUnmounted(() => {
 
 const handleResize = () => {
   windowWidth.value = window.innerWidth;
-  maxHeight.value = window.innerHeight - 120; // Update maxHeight on resize
+  maxHeight.value = window.innerHeight - 60; // Update maxHeight on resize with smaller offset
 };
 
 const handleKeyDown = (event) => {
@@ -340,7 +342,7 @@ const handleWalkSelection = (walk) => {
   right: 0;
   z-index: 10;
   pointer-events: none;
-  padding-top: var(--safe-area-top, 0px);
+  /* Remove padding-top and let the app container handle the safe area insets */
 }
 
 .search-header-wrapper > * {
@@ -542,6 +544,7 @@ const handleWalkSelection = (walk) => {
   --vsbs-padding-x: 0px; /* Remove horizontal padding to allow content to go edge-to-edge */
   --vsbs-handle-background: rgba(var(--md-sys-color-on-surface-variant), 0.28);
   --vsbs-handle-width: 40px; /* Wider handle for better touch target */
+  --vsbs-safe-area-bottom: env(safe-area-inset-bottom, 0px); /* Respect safe area for bottom sheet */
 }
 
 .sheet-header {
