@@ -233,6 +233,7 @@ const handleFabClick = async () => {
  */
 const handleWalkSelection = (walk) => {
   if (walk?.id) {
+    // Always collapse sidebar when a walk is selected
     isExpanded.value = false;
     localStorage.setItem("sidebarExpanded", "false");
     emit('walk-selected', walk);
@@ -359,6 +360,19 @@ watch(
         scroller.__vueParentComponent.ctx.updateSize();
       }
     });
+  }
+);
+
+// Watch for changes in selectedWalkId to ensure UI is consistent
+watch(
+  () => props.selectedWalkId,
+  (newSelectedWalkId) => {
+    if (newSelectedWalkId) {
+      // When a walk is selected (from any source including search),
+      // ensure the rail is collapsed
+      isExpanded.value = false;
+      localStorage.setItem("sidebarExpanded", "false");
+    }
   }
 );
 

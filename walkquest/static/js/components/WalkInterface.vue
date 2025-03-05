@@ -380,6 +380,7 @@ const handleWalkListSelection = (walk) => {
 const handleWalkSelection = async (walk) => {
   if (walk?.id) {
     isExpanded.value = false; // Collapse sidebar
+    localStorage.setItem("sidebarExpanded", "false"); // Persist collapsed state
     
     // Hide sidebar and show drawer
     uiStore.handleWalkSelected();
@@ -402,10 +403,15 @@ const handleWalkSelection = async (walk) => {
       drawerMounted.value = true;
     }
   } else {
-    isExpanded.value = true; // Expand sidebar
-    uiStore.handleWalkClosed(); // Show sidebar
-    showWalkDetailSheet.value = false; // Hide mobile walk detail
-    router.push({ name: 'home' });
+    // If no walk provided, clear selection and expand sidebar
+    uiStore.handleWalkClosed();
+    isExpanded.value = true;
+    localStorage.setItem("sidebarExpanded", "true");
+    
+    // Hide drawer if it was visible
+    if (drawerMounted.value) {
+      drawerMounted.value = false;
+    }
   }
 };
 

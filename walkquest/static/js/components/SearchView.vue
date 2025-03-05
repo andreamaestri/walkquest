@@ -604,6 +604,10 @@ const handleWalkSelected = (walk) => {
     showSuggestions.value = false
     selectedIndex.value = -1
     
+    // Set the UI to collapsed state when a walk is selected via search
+    // This ensures the navigation rail collapses properly
+    localStorage.setItem("sidebarExpanded", "false")
+    
     // Emit selection event
     emit('walk-selected', walk)
   } catch (error) {
