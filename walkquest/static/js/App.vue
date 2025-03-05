@@ -1,11 +1,9 @@
 <template>
-  <div class="app-container">
+  <div class="app-root">
     <main>
-      <div id="app" class="app-root">
-        <Loading ref="loadingComponent" />
-        <RouterView :mapbox-token="mapboxToken" />
-      </div>
+      <RouterView :mapbox-token="mapboxToken" />
     </main>
+    <Loading ref="loadingComponent" />
   </div>
 </template>
 
@@ -15,6 +13,7 @@ import { useRoute } from 'vue-router'
 import { useUiStore } from './stores/ui'
 import { useSearchStore } from './stores/searchStore'
 import Loading from './components/shared/Loading.vue'
+import { RouterView } from 'vue-router'
 
 const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN
 const uiStore = useUiStore()

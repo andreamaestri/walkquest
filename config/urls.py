@@ -7,7 +7,7 @@ from django.views import defaults as default_views
 from django.views.generic import TemplateView
 from walkquest.walks.views import HomePageView 
 from walkquest.walks.api import api as api
-
+from walkquest.views import index, legacy_walk_view
 
 urlpatterns = [
     path("", HomePageView.as_view(), name="home"),
@@ -23,6 +23,10 @@ urlpatterns = [
     path("accounts/", include("allauth.urls")),
     # Your stuff: custom urls includes go here
     path("walks/", include(('walkquest.walks.urls', 'walks'), namespace='walks')),
+    # Direct walk slugs at root URL level
+    path("<slug:walk_id>/", index, name="walk-detail-by-slug"),
+    # Legacy UUID walk pages with redirect
+    path("walk/<uuid:id>/", legacy_walk_view, name="walk-detail-legacy"),
     # Media files
     *static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT),
     path("api/", api.urls),

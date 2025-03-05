@@ -390,7 +390,7 @@ const handleWalkSelection = async (walk) => {
       showWalkDetailSheet.value = true;
     }
 
-    // Navigate using slug if available, fallback to ID
+    // Navigate using walk_id for slug if available
     if (walk.walk_id) {
       await router.push({ name: 'walk', params: { walk_slug: walk.walk_id } });
     } else {
@@ -400,17 +400,7 @@ const handleWalkSelection = async (walk) => {
     // Wait for next tick to ensure drawer is mounted
     await nextTick();
     if (walkDrawerRef.value && walkDrawerRef.value.$el) {
-      drawerMounted.value = true;
-    }
-  } else {
-    // If no walk provided, clear selection and expand sidebar
-    uiStore.handleWalkClosed();
-    isExpanded.value = true;
-    localStorage.setItem("sidebarExpanded", "true");
-    
-    // Hide drawer if it was visible
-    if (drawerMounted.value) {
-      drawerMounted.value = false;
+      emit('drawer-mounted', walkDrawerRef.value.$el);
     }
   }
 };
@@ -572,6 +562,23 @@ const initializeInterface = () => {
     walksStore.loadWalks().catch((err) => {
       console.error("Failed to load walks:", err);
       uiStore.setError("Failed to load walks. Please try again later.");
+    }).then(() => {
+      // After walks are loaded, handle deep linking if walk is in URL
+      if (route.params.walk_slug || route.params.walk_id) {
+        const walkId = route.params.walk_slug || route.params.walk_id;
+        const walk = walkId.includes('-') 
+          ? walksStore.walks.find(w => w.walk_id === walkId) // Find by slug
+          : walksStore.getWalkById(walkId); // Find by ID
+
+        if (walk) {
+          handleWalkSelection(walk).catch((err) => {
+            console.error("Failed to select walk:", err);
+            uiStore.setError("Failed to load walk details.");
+          });
+        } else {
+          uiStore.setError("Walk not found.");
+        }
+      }
     });
     
     if (walksStore.walks.length && !uiStore.isMobile) {
@@ -642,6 +649,12 @@ onMounted(() => {
   window.addEventListener("popstate", preventRouteChange)
   
   try {
+    // If we have a walk in the URL, show the drawer
+    if (route.params.walk_slug || route.params.walk_id) {
+      uiStore.handleWalkSelected();
+      uiStore.showDrawer = true;
+    }
+
     // Set CSS variables for mobile nav height
     if (uiStore.isMobile) {
       document.documentElement.style.setProperty('--bottom-nav-height', '80px');

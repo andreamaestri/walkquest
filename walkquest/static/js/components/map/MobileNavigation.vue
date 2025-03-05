@@ -176,11 +176,11 @@ const handleWalkSelection = (walk) => {
   closeMobileMenu();
   emit('walk-selected', walk);
 
-  // Use path parameter instead of query parameter
-  if (walk?.slug) {
-    router.push({ name: 'walk-by-slug', params: { walk_slug: walk.slug } });
+  // Use consistent route names with the rest of the app
+  if (walk?.walk_id) {
+    router.push({ name: 'walk', params: { walk_slug: walk.walk_id } });
   } else {
-    router.push({ name: 'walk', params: { walk_id: walk.id } });
+    router.push({ name: 'walk-by-id', params: { walk_id: walk.id } });
   }
 };
 

@@ -238,7 +238,7 @@ const handleWalkSelection = (walk) => {
     localStorage.setItem("sidebarExpanded", "false");
     emit('walk-selected', walk);
 
-    // Always use slug-based routing when available
+    // Use walk.walk_id for the slug-based route if available
     if (walk.walk_id) {
       router.push({ name: 'walk', params: { walk_slug: walk.walk_id } });
     } else {

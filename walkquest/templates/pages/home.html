@@ -2,19 +2,26 @@
 {% load static %}
 {% load i18n %}
 {% load slippers %}
+{% load walkquest_filters %}
 
-{% block title %}{% translate "Walks" %} - {{ block.super }}{% endblock %}
+{% block title %}
+    {% if walk_id %}
+        {{ walk_id|slugify_title }} - 
+    {% endif %}
+    {% translate "Walks" %} - {{ block.super }}
+{% endblock %}
 
 {% block content %}
-    <!-- Embed initial walks data safely -->
+    <!-- Embed initial data safely -->
     <script id="walks-data" type="application/json">
-        {
-            "walks": {{ initial_walks|safe }}
-        }
+    {
+        "walks": [],
+        "currentWalk": {{ initial_walk|default:"null"|safe }}
+    }
     </script>
     
     <!-- Main Vue app container -->
-    <div id="app" class="h-full">
+    <div class="h-full">
         <!-- Vue will mount the WalkInterface component here -->
     </div>
 {% endblock %}

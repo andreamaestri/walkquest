@@ -28,7 +28,7 @@ const router = createRouter({
   routes
 })
 
-// Global navigation guard for loading state and query param handling
+// Global navigation guard for loading state
 router.beforeEach((to, from) => {
   if (to.name !== from.name) {
     const walksStore = useWalksStore()
@@ -36,29 +36,9 @@ router.beforeEach((to, from) => {
       walksStore.setLoading(true)
     }
   }
-
-  // Handle query parameter redirect for backward compatibility
-  if (to.query.walkId) {
-    const walksStore = useWalksStore()
-    const walk = walksStore.getWalkById(to.query.walkId)
-    if (walk?.walk_id) {
-      // If we have a walk_id (slug), use that
-      return {
-        name: 'walk',
-        params: { walk_slug: walk.walk_id },
-        replace: true
-      }
-    }
-    // Fallback to ID-based route
-    return {
-      name: 'walk-by-id',
-      params: { walk_id: to.query.walkId },
-      replace: true
-    }
-  }
 })
 
-router.afterEach(() => {
+router.afterEach((to, from) => {
   const walksStore = useWalksStore()
   if (walksStore.setLoading) {
     walksStore.setLoading(false)

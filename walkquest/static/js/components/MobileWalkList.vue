@@ -110,7 +110,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, nextTick, onBeforeUnmount } from 'vue'
 import { Icon } from '@iconify/vue'
 import { storeToRefs } from 'pinia'
 import { useWalksStore } from '../stores/walks'
@@ -225,10 +225,48 @@ const snapPoints = computed(() => {
   ]
 })
 
+// Window resize handler
+const windowResizeHandler = debounce(() => {
+  maxHeight.value = window.innerHeight;
+  
+  // Force recalculation of walk list items
+  if (bottomSheetRef.value) {
+    nextTick(() => {
+      // Force a reflow of the whole sheet
+      const sheetElement = bottomSheetRef.value.$el;
+      if (sheetElement) {
+        const height = sheetElement.offsetHeight;
+        sheetElement.style.height = `${height - 0.1}px`;
+        setTimeout(() => {
+          sheetElement.style.height = '';
+        }, 10);
+      }
+    });
+  }
+}, 100);
+
+// Add debounce helper
+function debounce(fn, delay) {
+  let timer;
+  return function (...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+
 // Event handlers for bottom sheet
 function handleOpened() {
   console.log('Bottom sheet opened')
   isOpen.value = true
+
+  // Force refresh of the scroller when bottom sheet is fully opened
+  nextTick(() => {
+    const walkListElement = document.querySelector('.walk-list-content');
+    if (walkListElement) {
+      const event = new CustomEvent('force-update-scroller');
+      walkListElement.dispatchEvent(event);
+    }
+  });
 }
 
 function handleClosed() {
@@ -324,14 +362,31 @@ function toggleFilters() {
 onMounted(() => {
   console.log("MobileWalkList mounted, bottomSheetRef:", bottomSheetRef.value)
   
+  // Add window resize listener
+  window.addEventListener('resize', windowResizeHandler);
+  
   // Force open the bottom sheet after it's mounted
   setTimeout(() => {
     if (bottomSheetRef.value) {
       console.log("Attempting to open bottom sheet")
-      bottomSheetRef.value.open()
+      bottomSheetRef.value.open();
+      
+      // After sheet is opened, force update scroller
+      setTimeout(() => {
+        const walkListElement = document.querySelector('.walk-list-content');
+        if (walkListElement) {
+          const event = new CustomEvent('force-update-scroller');
+          walkListElement.dispatchEvent(event);
+        }
+      }, 500);
     }
-  }, 100)
-})
+  }, 100);
+});
+
+// Clean up events on unmount
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', windowResizeHandler);
+});
 
 // Watch for route changes
 watch(() => router.currentRoute.value.name, (routeName) => {
@@ -371,7 +426,20 @@ defineExpose({
   closeSheet() {
     console.log("closeSheet called")
     if (bottomSheetRef.value) {
-      bottomSheetRef.value.close()
+      // Set the state first
+      isOpen.value = false;
+      
+      // Use nextTick to ensure state changes are applied before attempting to close
+      nextTick(() => {
+        try {
+          // Add additional null check to prevent error if ref becomes null
+          if (bottomSheetRef.value) {
+            bottomSheetRef.value.close()
+          }
+        } catch (err) {
+          console.error("Error closing bottom sheet:", err);
+        }
+      })
     } else {
       console.warn("bottomSheetRef is not available")
     }
@@ -415,6 +483,7 @@ defineExpose({
   height: 100%!important;
   padding: 0!important;
   flex-direction: column;
+  overflow: hidden; /* Add overflow hidden to prevent breaking layout */
 }
 
 /* Fix the WalkList container to take full height */
@@ -423,6 +492,7 @@ defineExpose({
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  position: relative; /* Add position relative */
 }
 
 /* Ensure the scroller component takes remaining height */
@@ -430,6 +500,26 @@ defineExpose({
   flex-grow: 1;
   height: auto !important;
   min-height: 0 !important;
+  position: relative; /* Ensure position context */
+}
+
+/* Fix for vue-recycle-scroller item positioning */
+.vue-recycle-scroller__item-wrapper {
+  width: 100%; /* Ensure full width */
+  position: relative !important; /* Force position relative */
+}
+
+.vue-recycle-scroller__item-view {
+  position: absolute;
+  width: 100%; /* Ensure full width */
+  left: 0 !important; /* Force left alignment */
+}
+
+/* Ensure walk cards are properly contained */
+.walk-card-wrapper {
+  width: 100%;
+  position: relative;
+  overflow: visible; /* Allow content to be visible */
 }
 
 /* Additional fix for vsbs container */
@@ -672,5 +762,64 @@ defineExpose({
 .empty-state-button:focus-visible {
   outline: 2px solid rgb(var(--md-sys-color-outline));
   outline-offset: 2px;
+}
+
+/* Improved virtual scroller styles */
+.walk-list-container {
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+.vue-recycle-scroller {
+  flex: 1 !important;
+  height: auto !important;
+  min-height: 0 !important;
+  position: relative !important;
+  will-change: transform;
+}
+
+.vue-recycle-scroller__item-wrapper {
+  width: 100% !important; 
+  transform: translateZ(0);
+}
+
+.vue-recycle-scroller__item-view {
+  width: 100% !important;
+  left: 0 !important;
+  contain: layout;
+}
+
+/* Fix general layout issues */
+[data-vsbs-content] {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  overflow: hidden !important;
+}
+
+.walk-list-content {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  min-height: 0 !important;
+}
+
+/* Force GPU acceleration for smoother scrolling */
+.walk-list-container .scroller {
+  -webkit-overflow-scrolling: touch;
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Ensure dynamic scroller items properly handle their position */
+.dynamic-scroller-item {
+  position: absolute !important;
+  box-sizing: border-box;
+  width: 100% !important;
+  contain: content;
+  will-change: transform;
 }
 </style>

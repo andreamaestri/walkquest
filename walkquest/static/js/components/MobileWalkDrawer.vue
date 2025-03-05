@@ -32,7 +32,6 @@
           @save-walk="handleSaveWalk"
           @share="handleShare"
           @directions="() => {}"
-          @category-selected="handleCategorySelected"
           @recenter="$emit('recenter')"
         />
       </div>
@@ -102,14 +101,32 @@ function open() {
   console.log("Opening walk drawer");
   if (bottomSheetRef.value) {
     isOpen.value = true;
-    bottomSheetRef.value.open();
+    nextTick(() => {
+      if (bottomSheetRef.value) {
+        bottomSheetRef.value.open();
+      }
+    });
   }
 }
 
 function close() {
   console.log("Closing walk drawer");
   if (bottomSheetRef.value) {
-    bottomSheetRef.value.close();
+    // Ensure we set the state first before closing
+    isOpen.value = false;
+    emit('update:modelValue', false);
+    
+    // Use nextTick to ensure the state has been updated before attempting to close
+    nextTick(() => {
+      try {
+        // Add additional check to prevent null reference error
+        if (bottomSheetRef.value) {
+          bottomSheetRef.value.close();
+        }
+      } catch (err) {
+        console.error("Error closing bottom sheet:", err);
+      }
+    });
   }
 }
 

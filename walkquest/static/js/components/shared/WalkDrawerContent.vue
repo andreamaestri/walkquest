@@ -103,8 +103,7 @@
               <div v-for="category in walk.related_categories" :key="category.name" class="category-chip-wrapper"
                 @mouseenter="handleCategoryMouseEnter(category)" @mouseleave="handleCategoryMouseLeave">
                 <div class="category-chip"
-                  :class="[getCategoryClass(category.name), { 'is-hovered': isCategoryHovered(category) }]"
-                  @click="handleCategoryClick(category)">
+                  :class="[getCategoryClass(category.name), { 'is-hovered': isCategoryHovered(category) }]">
                   <Icon :icon="getCategoryIcon(category.name)" class="category-icon" />
                   <span class="category-name">{{ category.name }}</span>
                 </div>

@@ -13,15 +13,14 @@ urlpatterns = [
     path("api/walks/", include("walkquest.walks.urls", namespace="walks")),
     path("api/users/", include("walkquest.users.urls", namespace="users")),
 
-    # Frontend routes - prefer slug routes
-    path("<slug:walk_id>/", views.index, name="walk-detail-by-slug"),  # Primary route using slug
-    path("walk/<uuid:id>/", views.legacy_walk_view, name="walk-detail-legacy"),  # Legacy UUID route with redirect
+    # Primary route using slug
+    path("<slug:walk_id>/", views.index, name="walk-detail-by-slug"),
+    
+    # Legacy UUID route with redirect
+    path("walk/<uuid:id>/", views.legacy_walk_view, name="walk-detail-legacy"),
     
     # Default route - handled by Vue router
     path("", views.index, name="home"),
-    
-    # Catch-all route for client-side routing
-    path("<path:path>", views.index, name="catch-all"),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 if settings.DEBUG:

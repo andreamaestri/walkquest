@@ -96,6 +96,7 @@ THIRD_PARTY_APPS = [
 ]
 
 LOCAL_APPS = [
+    "walkquest",  # Add base app for template tags
     "walkquest.users",
     "walkquest.walks",
     "walkquest.adventures",
