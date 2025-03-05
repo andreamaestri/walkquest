@@ -10,11 +10,11 @@ export default defineConfig({
     __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: true
   },
   build: {
-    manifest: true,
-    outDir: resolve('./walkquest/static/dist'),
+    manifest: "manifest.json",
+    outDir: resolve('./walkquest/static/dist/.vite'),
     rollupOptions: {
       input: {
-        main: resolve(__dirname, 'walkquest/main.js') // Adjusted the path to your main.js
+        main: resolve(__dirname, 'walkquest/static/js/main.js') // Corrected path to main.js
       }
     },
     assetsDir: '',

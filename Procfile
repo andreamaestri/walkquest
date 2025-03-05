@@ -1,1 +1,1 @@
-web: npm install --production=false && npm run build && gunicorn config.wsgi:application
+web: gunicorn config.wsgi:application
