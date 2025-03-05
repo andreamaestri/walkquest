@@ -6,13 +6,6 @@
       :class="isSearchActive && uiStore.isMobile ? 'fixed inset-x-0 top-0 z-50 py-0' : 'bg-surface-variant'"
       :style="{ top: uiStore.isMobile ? 'var(--safe-area-top, 0px)' : '0' }"
     >
-      <!-- Fixed logo header without search button -->
-      <div v-if="uiStore.isMobile && !isSearchActive" class="mobile-header">
-        <div class="logo-container">
-          <Icon icon="mdi:hiking" class="logo-icon" />
-          <span class="logo-text">WalkQuest</span>
-        </div>
-      </div>
 
       <!-- Search bar for desktop and active mobile search -->
       <div
@@ -344,7 +337,12 @@ const handleWalkSelection = (walk) => {
   padding-top: var(--safe-area-top, 0px);
 }
 
-.search-header-wrapper > * {
+.search-header-wrapper > header {
+  pointer-events: none;
+}
+
+.search-header-wrapper > header .search-wrapper,
+.search-header-wrapper > header .search-fab {
   pointer-events: auto;
 }
 
@@ -414,6 +412,15 @@ const handleWalkSelection = (walk) => {
   z-index: 10;
 }
 
+.search-wrapper:not(.search-active) {
+  pointer-events: none;
+}
+
+.search-wrapper:not(.search-active) .search-container,
+.search-wrapper:not(.search-active) .search-fab {
+  pointer-events: auto;
+}
+
 .search-backdrop {
   background-color: rgb(var(--md-sys-color-scrim) / 0.4);
   backdrop-filter: blur(8px);
@@ -467,23 +474,6 @@ const handleWalkSelection = (walk) => {
   justify-content: space-between;
   padding: 8px 16px;
   width: 100%;
-}
-
-.logo-container {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.logo-icon {
-  font-size: 24px;
-  color: rgb(var(--md-sys-color-primary));
-}
-
-.logo-text {
-  font-size: 18px;
-  font-weight: 600;
-  color: rgb(var(--md-sys-color-on-surface));
 }
 
 .search-fab {

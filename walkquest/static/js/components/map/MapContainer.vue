@@ -32,6 +32,14 @@
           <!-- Walk markers -->
           <WalkMarkers :walks="visibleWalks" :selected-walk-id="selectedWalkId" @marker-click="handleMarkerClick"
             @marker-mounted="handleMarkerMounted" @popup-open-walk="handlePopupOpenWalk" />
+            
+          <!-- Navigation control -->
+          <MapboxNavigationControl 
+            :position="uiStore.isMobile ? 'bottom-right' : 'top-right'" 
+            :show-compass="true" 
+            :show-zoom="true" 
+            :visualize-pitch="true"
+            class="navigation-control" />
         </template>
       </MapboxMap>
     </div>
@@ -43,6 +51,7 @@ import { ref, computed, watch, onMounted, onBeforeUnmount, shallowRef, nextTick,
 import { useElementVisibility } from "@vueuse/core";
 import {
   MapboxMap,
+  MapboxNavigationControl
 } from "@studiometa/vue-mapbox-gl";
 import mapboxgl from 'mapbox-gl';
 import { useMap } from "../../composables/useMap";
@@ -995,6 +1004,10 @@ defineExpose({
 :deep(.m3-button:active) {
   background-color: rgb(var(--md-sys-color-primary) / 0.85);
   transform: scale(0.98);
+}
+
+:deep(.mapboxgl-ctrl .mapboxgl-ctrl-group) {
+  pointer-events: auto;
 }
 
 /* Hide the popup tip */
