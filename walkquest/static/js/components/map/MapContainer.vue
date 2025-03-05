@@ -251,27 +251,69 @@ const handleMapCreated = (map) => {
   mapInstance.value = map;
   setMapInstance(map);
 
-  // Setup Mapbox logo positioning
-  watchEffect(() => {
+  // Setup Mapbox logo positioning with improved mobile support
+  const positionMapboxLogo = () => {
     const logoElement = document.querySelector('.mapboxgl-ctrl-logo');
     if (logoElement) {
-      const sidebarWidth = 80; // --md-sys-sidebar
-      const drawerWidth = props.isDrawerOpen ? 320 : 0;
+      const sidebarWidth = uiStore.isMobile ? 0 : 80; // No sidebar on mobile
+      const drawerWidth = props.isDrawerOpen && !uiStore.isMobile ? 320 : 0; // No drawer consideration on mobile
       const totalWidth = sidebarWidth + drawerWidth;
-
+      
+      // Apply responsive positioning
       logoElement.style.position = 'fixed';
-      logoElement.style.bottom = '10px';
-      logoElement.style.left = `${totalWidth + 10}px`;
-      logoElement.style.right = 'auto';
+      
+      if (uiStore.isMobile) {
+        // Mobile positioning - ensure logo stays within viewport
+        logoElement.style.bottom = `calc(env(safe-area-inset-bottom, 16px) + 12px)`;
+        logoElement.style.left = '12px'; // Fixed left position to ensure visibility
+        logoElement.style.right = 'auto';
+        logoElement.style.transform = 'scale(1.25)';
+        logoElement.style.transformOrigin = 'bottom left';
+      } else {
+        // Desktop positioning - account for sidebar and drawer
+        logoElement.style.bottom = '16px';
+        logoElement.style.left = `${totalWidth + 16}px`;
+        logoElement.style.right = 'auto';
+        logoElement.style.transform = 'scale(1)';
+      }
+      
+      // Common styles
       logoElement.style.zIndex = '45';
       logoElement.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+      logoElement.style.opacity = mapLoaded.value ? '0.8' : '0'; // Fade in when map is loaded
     }
+  };
+
+  // Create a mutation observer to detect when the logo is added to the DOM
+  const observer = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      if (mutation.addedNodes.length) {
+        if (document.querySelector('.mapboxgl-ctrl-logo')) {
+          positionMapboxLogo();
+          break;
+        }
+      }
+    }
+  });
+
+  // Start observing the map container for the logo to appear
+  observer.observe(mapContainerRef.value, { childList: true, subtree: true });
+
+  // Set up reactive positioning that updates when relevant values change
+  watchEffect(positionMapboxLogo);
+
+  // Clean up observer when component is unmounted
+  onBeforeUnmount(() => {
+    observer.disconnect();
   });
 
   // Wait for style to load before enabling interactions
   map.once("style.load", () => {
     mapLoaded.value = true;
     mapReady.value = true;
+    
+    // Update logo visibility once map is loaded
+    positionMapboxLogo();
   });
 
   // Listen to continuous map movement to update mapBounds
@@ -1045,6 +1087,12 @@ defineExpose({
 :deep(.walk-popup) {
   position: relative;
   overflow: hidden;
+}
+
+:deep(.mapboxgl-ctrl-attrib.mapboxgl-compact) {
+  right: 76px!important;
+  bottom: 10px!important;
+  max-width: calc(100% - 150px)!important;
 }
 
 /* Proper notch handling */
