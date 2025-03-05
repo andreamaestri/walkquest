@@ -5,23 +5,26 @@
       class="w-full transition-all duration-300 ease-md3 py-2"
       :class="isSearchActive && uiStore.isMobile ? 'fixed inset-0 z-50 py-0' : 'bg-surface-variant'"
     >
-      <!-- New: Always show logo on mobile -->
-      <div v-if="uiStore.isMobile" class="logo-container" style="padding: 4px 16px;">
-        <Icon icon="mdi:hiking" class="logo-icon" />
-        <span class="logo-text">WalkQuest</span>
+      <!-- Fixed logo header without search button -->
+      <div v-if="uiStore.isMobile && !isSearchActive" class="mobile-header">
+        <div class="logo-container">
+          <Icon icon="mdi:hiking" class="logo-icon" />
+          <span class="logo-text">WalkQuest</span>
+        </div>
       </div>
 
-      <!-- Search bar for desktop and mobile -->
+      <!-- Search bar for desktop and active mobile search -->
       <div
+        v-if="!uiStore.isMobile || isSearchActive"
         class="search-wrapper transition-all duration-300 ease-md3 mx-auto flex items-center"
         :class="[
           searchContainerClass,
           isSearchActive ? 'search-active' : '',
           isSearchActive && uiStore.isMobile ? 'h-full' : ''
         ]"
-        @click="activateSearch"
       >
         <SearchView
+          ref="searchViewRef"
           v-model="searchQuery"
           :search-mode="searchMode"
           :mapbox-token="mapboxToken"
@@ -31,6 +34,7 @@
           @blur="deactivateSearch"
           @close="deactivateSearch"
           class="md3-search-bar"
+          :class="{ 'search-view-active': isSearchActive }"
         />
       </div>
       
@@ -41,6 +45,42 @@
         @click="deactivateSearch"
       ></div>
     </header>
+    
+    <!-- Mobile Bottom Sheet for search results 
+         Using dynamic snap points for better UX: peek (200px), half (50% of screen), and fullscreen -->
+    <BottomSheet 
+      v-if="uiStore.isMobile && isSearchActive" 
+      ref="mobileBottomSheet"
+      :blocking="true"
+      :can-swipe-close="true"
+      :can-overlay-close="false"
+      :expand-on-content-drag="true"
+      :snap-points="[200, '50%', maxHeight]"
+      :default-snap-point="'50%'"
+      @max-height="(height) => maxHeight.value = height"
+      @opened="handleBottomSheetOpened"
+      @closed="handleBottomSheetClosed"
+      class="mobile-search-results-sheet"
+    >
+      <template #header>
+        <div class="sheet-header">
+          <div class="sheet-handle"></div>
+          <h3 class="sheet-title">Search Results</h3>
+        </div>
+      </template>
+      
+      <!-- Map preview in the bottom sheet header when in peek state -->
+      <div class="map-preview-container" v-if="bottomSheetHeight < 250">
+        <div class="map-preview-placeholder">
+          <div class="map-preview-gradient"></div>
+        </div>
+      </div>
+      
+      <!-- Pass the search view's mobile-results-container into the bottom sheet -->
+      <div v-if="searchViewRef" class="sheet-content-wrapper">
+        <slot name="results"></slot>
+      </div>
+    </BottomSheet>
   </div>
 </template>
 
@@ -50,6 +90,8 @@ import { useUiStore } from "../../stores/ui";
 import { useSearchStore } from "../../stores/searchStore";
 import SearchView from "../SearchView.vue";
 import { Icon } from '@iconify/vue';
+import BottomSheet from '@douxcode/vue-spring-bottom-sheet';
+import '@douxcode/vue-spring-bottom-sheet/dist/style.css';
 
 /**
  * Props definition with proper validation
@@ -76,8 +118,13 @@ const searchStore = useSearchStore();
 
 // References for component state
 const searchHeader = ref(null);
+const mobileBottomSheet = ref(null);
+const searchViewRef = ref(null);
 const windowWidth = ref(window.innerWidth);
 const isSearchActive = ref(false);
+const maxHeight = ref(window.innerHeight - 120); // Default max height with some space for the header
+const bottomSheetHeight = ref(0); // Track the current height of the bottom sheet
+const bottomSheetOpen = ref(false); // Control the bottom sheet open state
 
 // Breakpoints following MD3 guidelines
 const BREAKPOINTS = {
@@ -91,6 +138,11 @@ const BREAKPOINTS = {
 onMounted(() => {
   window.addEventListener('resize', handleResize);
   document.addEventListener('keydown', handleKeyDown);
+  
+  // Initialize the maximum height on mount
+  maxHeight.value = window.innerHeight - 120;
+  
+  // The maxHeight event will be handled via props in Vue 3
 });
 
 onUnmounted(() => {
@@ -100,18 +152,41 @@ onUnmounted(() => {
 
 const handleResize = () => {
   windowWidth.value = window.innerWidth;
+  maxHeight.value = window.innerHeight - 120; // Update maxHeight on resize
 };
 
 const handleKeyDown = (event) => {
   if (event.key === 'Escape' && isSearchActive.value) {
-    deactivateSearch();
+    // If bottom sheet is at max height, snap to peek position first
+    if (mobileBottomSheet.value && uiStore.isMobile) {
+      // Check if current height is near max height
+      if (bottomSheetHeight.value > maxHeight.value * 0.8) {
+        mobileBottomSheet.value.snapToPoint('50%'); // Step down to half-screen first
+      } else if (bottomSheetHeight.value > maxHeight.value * 0.4) {
+        mobileBottomSheet.value.snapToPoint(200); // Step down to peek view
+      } else {
+        deactivateSearch(); // Already at lowest snap point, close the search
+      }
+    } else {
+      deactivateSearch();
+    }
   }
+};
+
+// Add event handlers for bottom sheet
+const handleBottomSheetOpened = () => {
+  bottomSheetOpen.value = true;
+};
+
+const handleBottomSheetClosed = () => {
+  bottomSheetOpen.value = false;
 };
 
 // Methods to handle search activation state
 const activateSearch = () => {
   if (!isSearchActive.value) {
     isSearchActive.value = true;
+    
     // Add a class to the body to prevent scrolling
     if (uiStore.isMobile) {
       document.body.classList.add('overflow-hidden');
@@ -121,6 +196,19 @@ const activateSearch = () => {
       if (searchContainer) {
         searchContainer.style.animation = 'md3-slide-up 320ms var(--md-sys-motion-easing-emphasized, cubic-bezier(0.05, 0.7, 0.1, 1.0)) forwards';
       }
+      
+      // Open the bottom sheet after a slight delay to allow search view to open first
+      setTimeout(() => {
+        if (mobileBottomSheet.value) {
+          mobileBottomSheet.value.open();
+          mobileBottomSheet.value.snapToPoint('50%'); // Default to half-screen for better content visibility
+          
+          // Set up event listener to track sheet position changes
+          mobileBottomSheet.value.$el.addEventListener('sheet-position-change', (event) => {
+            bottomSheetHeight.value = event.detail.currentHeight;
+          });
+        }
+      }, 200);
     }
   }
 };
@@ -129,6 +217,17 @@ const deactivateSearch = () => {
   if (isSearchActive.value) {
     // For mobile, add exit animation before actually closing
     if (uiStore.isMobile) {
+      // Close the bottom sheet first
+      if (mobileBottomSheet.value) {
+        // Remove any event listeners to prevent memory leaks
+        if (mobileBottomSheet.value.$el) {
+          mobileBottomSheet.value.$el.removeEventListener('sheet-position-change', () => {});
+        }
+        mobileBottomSheet.value.close();
+        // Reset bottom sheet height
+        bottomSheetHeight.value = 0;
+      }
+      
       const searchContainer = document.querySelector('.search-wrapper');
       if (searchContainer) {
         searchContainer.style.animation = 'md3-slide-down 280ms var(--md-sys-motion-easing-emphasized-accelerate, cubic-bezier(0.3, 0.0, 0.8, 0.15)) forwards';
@@ -241,6 +340,7 @@ const handleWalkSelection = (walk) => {
   right: 0;
   z-index: 10;
   pointer-events: none;
+  padding-top: var(--safe-area-top, 0px);
 }
 
 .search-header-wrapper > * {
@@ -258,7 +358,7 @@ const handleWalkSelection = (walk) => {
   margin: 0 auto;
 }
 
-/* Responsive width classes following MD3 container guidelines */
+/* Responsive width classes following MD3 guidelines */
 .search-container-small {
   width: calc(100% - 32px);
   margin: 0 auto;
@@ -364,7 +464,7 @@ const handleWalkSelection = (walk) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 16px;
+  padding: 8px 16px;
   width: 100%;
 }
 
@@ -430,5 +530,77 @@ const handleWalkSelection = (walk) => {
     opacity: 0;
     transform: translateY(24px);
   }
+}
+/* Bottom Sheet Styles */
+.mobile-search-results-sheet {
+  --vsbs-backdrop-bg: rgba(0, 0, 0, 0.4);
+  --vsbs-shadow-color: rgba(0, 0, 0, 0.2);
+  --vsbs-background: rgb(var(--md-sys-color-surface));
+  --vsbs-border-radius: 28px 28px 0 0; /* More pronounced rounded corners */
+  --vsbs-max-width: 100%;
+  --vsbs-border-color: rgba(var(--md-sys-color-outline-variant), 0.08);
+  --vsbs-padding-x: 0px; /* Remove horizontal padding to allow content to go edge-to-edge */
+  --vsbs-handle-background: rgba(var(--md-sys-color-on-surface-variant), 0.28);
+  --vsbs-handle-width: 40px; /* Wider handle for better touch target */
+}
+
+.sheet-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 16px;
+  position: relative;
+  border-bottom: 1px solid rgba(var(--md-sys-color-outline-variant), 0.08);
+}
+
+.sheet-handle {
+  width: 40px;
+  height: 4px;
+  background: var(--vsbs-handle-background);
+  border-radius: 2px;
+  margin-bottom: 12px;
+}
+
+.sheet-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: rgb(var(--md-sys-color-on-surface));
+  margin: 0;
+}
+
+.sheet-content-wrapper {
+  padding: 0 0 24px 0;
+  width: 100%;
+  min-height: 200px;
+}
+
+/* Map preview container styles */
+.map-preview-container {
+  width: 100%;
+  height: 120px;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.map-preview-placeholder {
+  width: 100%;
+  height: 100%;
+  background-color: rgb(var(--md-sys-color-surface-container-low));
+  position: relative;
+  border-bottom: 1px solid rgba(var(--md-sys-color-outline-variant), 0.08);
+}
+
+.map-preview-gradient {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  background: linear-gradient(
+    to bottom,
+    rgba(var(--md-sys-color-surface) / 0) 0%,
+    rgba(var(--md-sys-color-surface) / 1) 100%
+  );
 }
 </style>

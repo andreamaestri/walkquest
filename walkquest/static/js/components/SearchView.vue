@@ -61,18 +61,32 @@
           </div>
         </div>
       </template>
-      <!-- Location results with proper transition -->
+      <!-- Location results with proper transition and skeleton loading -->
       <Transition
         enter-active-class="m3-animate-in"
         leave-active-class="m3-animate-out"
         @after-leave="onTransitionComplete"
       >
-        <div v-if="props.searchMode === 'locations' && showLocationResults && hasLocationSearched" class="m3-location-results">
+        <div v-if="props.searchMode === 'locations' && showLocationResults && hasLocationSearched" 
+             class="m3-location-results"
+             :class="{ 'mobile-results': isOnMobileBottomSheet }">
           <div v-if="nearbyWalks && nearbyWalks.length > 0" class="m3-results-count">
             {{ resultCountText }}
           </div>
+          <!-- Show skeleton loading state first -->
+          <div v-if="isLoading && !nearbyWalks?.length" class="skeleton-loading-container">
+            <div v-for="i in 3" :key="`skeleton-${i}`" class="skeleton-item">
+              <div class="skeleton-image"></div>
+              <div class="skeleton-content">
+                <div class="skeleton-title"></div>
+                <div class="skeleton-subtitle"></div>
+                <div class="skeleton-details"></div>
+              </div>
+            </div>
+          </div>
+          <!-- Show actual walks when loaded -->
           <WalkList 
-            v-if="nearbyWalks && nearbyWalks.length > 0"
+            v-else-if="nearbyWalks && nearbyWalks.length > 0"
             :key="`location-results-${nearbyWalks?.length}`"
             :walks="nearbyWalks"
             :is-compact="true"
@@ -91,7 +105,8 @@
         @after-leave="onTransitionComplete"
       >
         <div v-if="showSuggestions && (isFocused || isActive) && props.searchMode === 'walks'" 
-             class="m3-suggestions-menu">
+             class="m3-suggestions-menu"
+             :class="{ 'mobile-suggestions': isOnMobileBottomSheet }">
           <template v-if="suggestions?.length > 0">
             <button
               v-for="(suggestion, index) in suggestions"
@@ -114,6 +129,151 @@
           </div>
         </div>
       </Transition>
+      
+      <!-- Mobile Results for Bottom Sheet with better categorization and progressive loading -->
+      <div v-if="isOnMobileBottomSheet && props.isActive" class="mobile-results-container">
+        <!-- Location results in bottom sheet -->
+        <div v-if="props.searchMode === 'locations' && hasLocationSearched" class="sheet-results">
+          <!-- Results count with quick filter options -->
+          <div v-if="nearbyWalks && nearbyWalks.length > 0" class="sheet-results-count">
+            <div class="sheet-results-title">{{ resultCountText }}</div>
+            <div class="sheet-filter-chips">
+              <button class="sheet-filter-chip active">All</button>
+              <button class="sheet-filter-chip">Short (< 5km)</button>
+              <button class="sheet-filter-chip">Medium</button>
+              <button class="sheet-filter-chip">Long (> 10km)</button>
+            </div>
+          </div>
+
+          <!-- Skeleton loading state -->
+          <div v-if="isLoading && !nearbyWalks?.length" class="sheet-skeleton-container">
+            <div v-for="i in 5" :key="`sheet-skeleton-${i}`" class="sheet-skeleton-item">
+              <div class="sheet-skeleton-image"></div>
+              <div class="sheet-skeleton-content">
+                <div class="sheet-skeleton-title"></div>
+                <div class="sheet-skeleton-subtitle"></div>
+                <div class="sheet-skeleton-details"></div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Actual walk results with category headers -->
+          <template v-else-if="nearbyWalks && nearbyWalks.length > 0">
+            <!-- Nearby section -->
+            <div class="sheet-section">
+              <h4 class="sheet-section-header">Nearby (< 5km)</h4>
+              <WalkList 
+                :walks="nearbyWalks.filter(w => w.distance < 5)"
+                :key="`nearby-walks`"
+                :is-compact="false"
+                @walk-selected="handleWalkSelected"
+              />
+            </div>
+            
+            <!-- Within 10km section -->
+            <div class="sheet-section" v-if="nearbyWalks.some(w => w.distance >= 5 && w.distance < 10)">
+              <h4 class="sheet-section-header">Within 10km</h4>
+              <WalkList 
+                :walks="nearbyWalks.filter(w => w.distance >= 5 && w.distance < 10)"
+                :key="`medium-walks`"
+                :is-compact="false"
+                @walk-selected="handleWalkSelected"
+              />
+            </div>
+            
+            <!-- Further away section -->
+            <div class="sheet-section" v-if="nearbyWalks.some(w => w.distance >= 10)">
+              <h4 class="sheet-section-header">Further Away</h4>
+              <WalkList 
+                :walks="nearbyWalks.filter(w => w.distance >= 10)"
+                :key="`far-walks`"
+                :is-compact="false"
+                @walk-selected="handleWalkSelected"
+              />
+            </div>
+          </template>
+          
+          <!-- Empty state -->
+          <div v-else-if="!isLoading && hasLocationSearched" class="sheet-empty-state">
+            <Icon icon="material-symbols:location-off" class="sheet-empty-icon" />
+            <span class="sheet-empty-title">No walks found nearby</span>
+            <p class="sheet-empty-text">Try searching for a different location</p>
+          </div>
+        </div>
+        
+        <!-- Walk search results in bottom sheet -->
+        <div v-if="props.searchMode === 'walks' && (isFocused || props.isActive)" class="sheet-results">
+          <!-- Results count with quick filter options -->
+          <template v-if="suggestions?.length > 0">
+            <div class="sheet-results-count">
+              <div class="sheet-results-title">{{ suggestions.length }} {{ suggestions.length === 1 ? 'walk' : 'walks' }} found</div>
+              <div class="sheet-filter-chips">
+                <button class="sheet-filter-chip active">All</button>
+                <button class="sheet-filter-chip">Loop</button>
+                <button class="sheet-filter-chip">Linear</button>
+                <button class="sheet-filter-chip">Easy</button>
+              </div>
+            </div>
+            
+            <!-- Grouped walks by type -->
+            <div class="sheet-section">
+              <h4 class="sheet-section-header">Best Matches</h4>
+              <div class="sheet-suggestion-list">
+                <button
+                  v-for="(suggestion, index) in suggestions.slice(0, 3)"
+                  :key="suggestion.id || index"
+                  class="sheet-suggestion-item"
+                  :class="{ 'is-selected': index === selectedIndex }"
+                  @click="selectSuggestion(suggestion)"
+                >
+                  <Icon icon="material-symbols:location-on" class="sheet-suggestion-icon" />
+                  <div class="sheet-suggestion-content">
+                    <span class="sheet-suggestion-text">{{ getSuggestionText(suggestion) }}</span>
+                    <span v-if="suggestion.distance" class="sheet-suggestion-detail">{{ suggestion.distance }}km</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+            
+            <!-- All other results -->
+            <div class="sheet-section" v-if="suggestions.length > 3">
+              <h4 class="sheet-section-header">All Results</h4>
+              <div class="sheet-suggestion-list">
+                <button
+                  v-for="(suggestion, index) in suggestions.slice(3)"
+                  :key="suggestion.id || index"
+                  class="sheet-suggestion-item"
+                  :class="{ 'is-selected': index + 3 === selectedIndex }"
+                  @click="selectSuggestion(suggestion)"
+                >
+                  <Icon icon="material-symbols:location-on" class="sheet-suggestion-icon" />
+                  <div class="sheet-suggestion-content">
+                    <span class="sheet-suggestion-text">{{ getSuggestionText(suggestion) }}</span>
+                    <span v-if="suggestion.distance" class="sheet-suggestion-detail">{{ suggestion.distance }}km</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </template>
+          
+          <!-- Loading state for search results -->
+          <div v-else-if="isLoading" class="sheet-skeleton-container">
+            <div v-for="i in 3" :key="`search-skeleton-${i}`" class="sheet-skeleton-item">
+              <div class="sheet-skeleton-content">
+                <div class="sheet-skeleton-title"></div>
+                <div class="sheet-skeleton-details"></div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Empty state for search results -->
+          <div v-else-if="searchQuery && !isLoading" class="sheet-empty-state">
+            <Icon icon="material-symbols:search-off" class="sheet-empty-icon" />
+            <span class="sheet-empty-title">No walks found</span>
+            <p class="sheet-empty-text">Try a different search term</p>
+          </div>
+        </div>
+      </div>
     </div>
 
     <slot name="meta"></slot>
@@ -175,6 +335,11 @@ const locationStore = useLocationStore()
 const walkStore = useWalkStore() // Add walkStore initialization
 const mapTools = useMap()
 const { mapInstance } = mapTools
+
+// Check if we're in a mobile environment to use bottom sheet
+const isOnMobileBottomSheet = computed(() => {
+  return window.innerWidth < 768 // Match mobile breakpoint
+})
 
 // Extract reactive state from stores
 const { 
@@ -626,7 +791,7 @@ const closeSearch = () => {
 
 /* Material Design 3 Search Field */
 .m3-search-field {
-  height: 44px; /* More compact height */
+  height: 40px; /* Adjusted to match container height */
   border-radius: 24px;
   background: rgb(var(--md-sys-color-surface-container-low));
   transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
@@ -935,5 +1100,245 @@ const closeSearch = () => {
     background-color: rgb(var(--md-sys-color-surface-container-highest));
     transform: scale(0.98);
   }
+}
+
+/* Mobile Bottom Sheet Styles with improved UX */
+.mobile-results-container {
+  padding: 0;
+  width: 100%;
+}
+
+.mobile-suggestions,
+.mobile-results {
+  display: none; /* Hide regular results when using bottom sheet */
+}
+
+.sheet-results {
+  padding: 16px 0;
+}
+
+.sheet-results-count {
+  padding: 0 16px 12px;
+  color: rgb(var(--md-sys-color-on-surface));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sheet-results-title {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+/* Filter chips for quick filtering */
+.sheet-filter-chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+}
+
+.sheet-filter-chips::-webkit-scrollbar {
+  display: none; /* Safari and Chrome */
+}
+
+.sheet-filter-chip {
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(var(--md-sys-color-outline-variant), 0.5);
+  background: rgb(var(--md-sys-color-surface-container-low));
+  color: rgb(var(--md-sys-color-on-surface-variant));
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.sheet-filter-chip.active {
+  background: rgb(var(--md-sys-color-primary-container));
+  color: rgb(var(--md-sys-color-on-primary-container));
+  border-color: transparent;
+}
+
+.sheet-filter-chip:active {
+  transform: scale(0.96);
+}
+
+/* Section headers for categorization */
+.sheet-section {
+  margin-bottom: 16px;
+}
+
+.sheet-section-header {
+  padding: 0 16px;
+  margin: 12px 0 8px 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+}
+
+.sheet-suggestion-list {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.sheet-suggestion-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 56px;
+  padding: 8px 16px;
+  gap: 16px;
+  border: none;
+  background: transparent;
+  color: rgb(var(--md-sys-color-on-surface));
+  font-family: var(--md-sys-typescale-body-large-font);
+  text-align: left;
+  cursor: pointer;
+  transition: background 200ms cubic-bezier(0.2, 0, 0, 1);
+  position: relative;
+}
+
+.sheet-suggestion-item:hover,
+.sheet-suggestion-item.is-selected {
+  background: rgb(var(--md-sys-color-surface-container-highest));
+}
+
+.sheet-suggestion-item:active {
+  background: rgb(var(--md-sys-color-surface-container-high));
+  transform: scale(0.98);
+}
+
+.sheet-suggestion-icon {
+  color: rgb(var(--md-sys-color-primary));
+  font-size: 24px;
+  opacity: 0.85;
+}
+
+.sheet-suggestion-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sheet-suggestion-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--md-sys-typescale-body-large-size);
+  font-weight: 500;
+}
+
+.sheet-suggestion-detail {
+  font-size: 13px;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+}
+
+/* Skeleton loading animation */
+.skeleton-loading-container,
+.sheet-skeleton-container {
+  padding: 8px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.skeleton-item,
+.sheet-skeleton-item {
+  display: flex;
+  gap: 16px;
+  height: 72px;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-image,
+.sheet-skeleton-image {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  background: rgb(var(--md-sys-color-surface-container-highest));
+}
+
+.skeleton-content,
+.sheet-skeleton-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: center;
+}
+
+.skeleton-title,
+.sheet-skeleton-title {
+  height: 16px;
+  width: 70%;
+  border-radius: 4px;
+  background: rgb(var(--md-sys-color-surface-container-highest));
+}
+
+.skeleton-subtitle,
+.sheet-skeleton-subtitle {
+  height: 14px;
+  width: 40%;
+  border-radius: 4px;
+  background: rgb(var(--md-sys-color-surface-container-highest));
+}
+
+.skeleton-details,
+.sheet-skeleton-details {
+  height: 12px;
+  width: 60%;
+  border-radius: 4px;
+  background: rgb(var(--md-sys-color-surface-container-highest));
+}
+
+@keyframes skeleton-pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 0.4; }
+  100% { opacity: 0.6; }
+}
+
+/* Improved empty state */
+.sheet-empty-state {
+  padding: 32px 16px;
+  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+  text-align: center;
+  background: rgb(var(--md-sys-color-surface-container-low));
+  margin: 8px 16px;
+  border-radius: 16px;
+}
+
+.sheet-empty-icon {
+  font-size: 48px;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+  opacity: 0.5;
+}
+
+.sheet-empty-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: rgb(var(--md-sys-color-on-surface));
+}
+
+.sheet-empty-text {
+  font-size: 14px;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+  margin: 0;
 }
 </style>

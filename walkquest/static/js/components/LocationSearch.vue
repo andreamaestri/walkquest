@@ -68,7 +68,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:value', 'location-selected', 'blur'])
+const emit = defineEmits(['update:value', 'location-selected', 'blur', 'close'])
 
 // Stores with storeToRefs for better reactivity
 const searchStore = useSearchStore()
@@ -88,6 +88,7 @@ let debounceTimers = {}
 // Close search method for back button
 const closeSearch = () => {
   emit('blur')
+  emit('close')
 }
 
 // Computed properties with storeToRefs
@@ -538,7 +539,7 @@ watch(() => searchError.value, async (error) => {
   border: 0;
   background-color: transparent;
   margin: 0;
-  height: 44px; /* Increase height for better touch targets */
+  height: 40px; /* Adjusted from 44px to 40px to match search field standard */
   color: rgb(var(--md-sys-color-on-surface));
   padding: 6px 40px 6px 36px !important;
   text-overflow: ellipsis;
@@ -734,6 +735,43 @@ watch(() => searchError.value, async (error) => {
   font-size: 20px;
   flex-shrink: 0;
   margin-top: 2px;
+}
+
+/* Mobile mode with improved touch interaction */
+@media (max-width: 599px) {
+  /* Make search icons and buttons larger for better touch targets */
+  .mapboxgl-ctrl-geocoder .mapboxgl-ctrl-geocoder--icon {
+    width: 22px;
+    height: 22px;
+  }
+  
+  .mapboxgl-ctrl-geocoder .mapboxgl-ctrl-geocoder--icon-close,
+  .location-search-back-button {
+    width: 36px;
+    height: 36px;
+  }
+  
+  /* Increase hit area for suggestions */
+  .mapboxgl-ctrl-geocoder .suggestions > li > a {
+    padding: 12px 16px;
+    min-height: 44px;
+  }
+  
+  /* Improve feedback for active states */
+  .location-search-back-button:active,
+  .mapboxgl-ctrl-geocoder .mapboxgl-ctrl-geocoder--icon-close:active,
+  .mapboxgl-ctrl-geocoder .suggestions > li > a:active {
+    transform: scale(0.96);
+    transition: transform 0.1s cubic-bezier(0.2, 0, 0, 1);
+  }
+  
+  /* Add visual hint for scrollable suggestions */
+  .mapboxgl-ctrl-geocoder .suggestions {
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    max-height: 60vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 .search-error-dismiss {

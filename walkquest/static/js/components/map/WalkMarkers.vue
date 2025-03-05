@@ -99,6 +99,7 @@
 <script setup>
 import { ref } from "vue";
 import { MapboxMarker } from "@studiometa/vue-mapbox-gl";
+import { Icon } from '@iconify/vue';
 
 /**
  * Props definition with proper validation

@@ -713,17 +713,11 @@ watch(selectedCategory, (newCategory) => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  gap: 16px;
   position: relative;
   text-align: center;
   min-height: 0;
   /* Important for flex-child scrolling */
   color: rgb(var(--md-sys-color-on-surface-variant));
-}
-
-.walks-section.location-mode,
-.walks-section.categories-mode {
-  /* No specific styles for these modes, inheriting from .walks-section */
 }
 
 /* Empty Icon Style */
@@ -1593,10 +1587,6 @@ watch(selectedCategory, (newCategory) => {
     padding: 12px;
     margin: 6px;
     font-size: 0.8125rem;
-  }
-
-  .walks-section {
-    gap: 12px;
   }
 
   .category-selection {

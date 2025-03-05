@@ -63,8 +63,16 @@ onMounted(() => {
   width: 100vw;
   overflow: hidden;
   position: relative;
-  background: rgb(var(--md-sys-color-background));
+  background-color: rgb(var(--md-sys-color-background));
   color: rgb(var(--md-sys-color-on-background));
+}
+
+/* When in PWA mode, set background to be transparent */
+@media all and (display-mode: fullscreen),
+       all and (display-mode: standalone) {
+  .app-root {
+    background-color: transparent;
+  }
 }
 
 /* Keep other styles but remove sidebar-related ones */

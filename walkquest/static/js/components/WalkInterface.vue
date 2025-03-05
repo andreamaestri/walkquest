@@ -20,13 +20,21 @@
       @walk-selected="handleWalkSelection"
     />
 
-    <!-- Mobile Walk List - Notice v-if instead of v-show to properly unmount when not needed -->
+    <!-- Mobile Walk List - Only shown when explicitly toggled by FAB action -->
     <MobileWalkList
-      v-if="uiStore.isMobile && !selectedWalk"
+      v-if="uiStore.isMobile && showWalksBottomSheet"
+      ref="mobileWalkListRef"
       :walks="filteredWalks"
       :selected-walk-id="selectedWalkId"
       :key="activeTab"
       @walk-selected="handleWalkSelection"
+    />
+    
+    <!-- Mobile FAB with child menu -->
+    <SpeedDial 
+      v-if="uiStore.isMobile && !selectedWalkId" 
+      class="mobile-fab" 
+      @action="handleFabAction" 
     />
 
     <!-- Map Container -->
@@ -103,8 +111,10 @@ import MapContainer from "./map/MapContainer.vue";
 import WalkDrawer from "./WalkDrawer.vue";
 import MobileWalkDrawer from "./MobileWalkDrawer.vue"; // Add MobileWalkDrawer import
 import MobileWalkList from './MobileWalkList.vue'; 
-import BottomSheet from './BottomSheet.vue';
+import BottomSheet from '@douxcode/vue-spring-bottom-sheet';
+import '@douxcode/vue-spring-bottom-sheet/dist/style.css';
 import WalkList from './WalkList.vue';
+import SpeedDial from './SpeedDial.vue';
 import { Icon } from '@iconify/vue';
 
 /**
@@ -144,6 +154,7 @@ const { animateInterfaceElement, animationConfigs } = useAnimations();
 const mapContainer = shallowRef(null);
 const walkDrawerRef = ref(null);
 const drawerMounted = ref(false);
+const mobileWalkListRef = ref(null);
 
 // State refs
 const isExpanded = ref(localStorage.getItem("sidebarExpanded") === "true");
@@ -201,6 +212,45 @@ function handleTabChange(tab) {
       searchStore.setSearchMode('categories')
       showWalksBottomSheet.value = true
       break
+  }
+}
+
+/**
+ * Handle FAB actions from SpeedDial component
+ */
+const handleFabAction = (action) => {
+  switch (action) {
+    case 'explore':
+      activeTab.value = 'explore';
+      searchStore.setSearchMode('walks');
+      showWalksBottomSheet.value = true;
+      // Ensure the bottom sheet is opened after it's mounted
+      nextTick(() => {
+        if (mobileWalkListRef.value) {
+          mobileWalkListRef.value.openSheet();
+        }
+      });
+      break;
+    case 'nearby':
+      activeTab.value = 'nearby';
+      searchStore.setSearchMode('locations');
+      showWalksBottomSheet.value = true;
+      nextTick(() => {
+        if (mobileWalkListRef.value) {
+          mobileWalkListRef.value.openSheet();
+        }
+      });
+      break;
+    case 'categories':
+      activeTab.value = 'categories';
+      searchStore.setSearchMode('categories');
+      showWalksBottomSheet.value = true;
+      nextTick(() => {
+        if (mobileWalkListRef.value) {
+          mobileWalkListRef.value.openSheet();
+        }
+      });
+      break;
   }
 }
 
@@ -503,6 +553,11 @@ const initializeInterface = () => {
   try {
     const cleanup = uiStore.initializeResponsiveState();
     
+    // Debug output for mobile detection
+    console.log("Mobile device detected:", uiStore.isMobile);
+    console.log("Window innerWidth:", window.innerWidth);
+    console.log("Selected walk ID:", selectedWalkId.value);
+    
     // Load walks with proper error handling
     walksStore.loadWalks().catch((err) => {
       console.error("Failed to load walks:", err);
@@ -546,6 +601,9 @@ watch(selectedWalk, (newWalk) => {
     // Ensure walks bottom sheet is closed when a walk is selected
     if (newWalk) {
       showWalksBottomSheet.value = false;
+      if (mobileWalkListRef.value) {
+        mobileWalkListRef.value.closeSheet();
+      }
     }
   }
 });
@@ -587,6 +645,11 @@ onMounted(() => {
       }
     }
     
+    // Extra debug logs for FAB visibility conditions
+    console.log("On Mount - Mobile detection:", uiStore.isMobile);
+    console.log("On Mount - Selected walk ID:", selectedWalkId.value);
+    console.log("On Mount - FAB condition met:", uiStore.isMobile && !selectedWalkId.value);
+    
     // Initialize interface
     const cleanup = initializeInterface();
     
@@ -617,6 +680,14 @@ onMounted(() => {
   min-height: -webkit-fill-available;
   min-height: calc(100vh + env(safe-area-inset-top)); /* Add this line */
   padding-top: env(safe-area-inset-top); /* Optional: Add padding to content */
+}
+
+/* Mobile FAB styling */
+.mobile-fab {
+  position: fixed;
+  right: 16px; /* MD3 standard spacing */
+  bottom: calc(16px + env(safe-area-inset-bottom)); /* MD3 standard spacing + safe area */
+  z-index: 100;
 }
 
 /* Search field styling */

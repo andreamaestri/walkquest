@@ -46,7 +46,7 @@
 import { computed } from 'vue'
 import { useWalksStore } from '../stores/walks'
 import { getBadgeInfo } from '../utils/helpers'
-
+import { Icon } from '@iconify/vue' 
 const props = defineProps({
   walk: {
     type: Object,

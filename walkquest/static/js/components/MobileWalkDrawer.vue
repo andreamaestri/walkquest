@@ -1,20 +1,13 @@
 <template>
   <BottomSheet 
     ref="bottomSheet"
-    v-model="isOpen"
-    elevation="3"
-    :blocking="true"
+    :blocking="false"
     :can-swipe-close="false"
-    :can-overlay-close="true"
-    :default-snap-point="defaultSnapPoint"
-    :snap-points="snapPoints"
-    :expand-on-content-drag="true"
-    :duration="320" 
-    @max-height="handleMaxHeight"
-    @opened="onOpened"
+    :default-snap-point="0"
+    :snap-points="[maxHeight / 4, maxHeight / 1.5, maxHeight]"
+    @max-height="(n) => (maxHeight = n)"
     @closed="onClosed"
-    @snap-point-changed="handleSnapPointChange"
-    class="mobile-walk-drawer-sheet"
+    @opened="onOpened"
   >
     <template #header>
       <WalkDrawerHeader 
@@ -38,9 +31,9 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, computed, nextTick, onBeforeUnmount } from 'vue';
-import { Icon } from '@iconify/vue';
-import BottomSheet from './BottomSheet.vue';
+import { ref, watch, onMounted, nextTick } from 'vue';
+import BottomSheet from '@douxcode/vue-spring-bottom-sheet'
+import '@douxcode/vue-spring-bottom-sheet/dist/style.css'
 import WalkDrawerHeader from './shared/WalkDrawerHeader.vue';
 import WalkDrawerContent from './shared/WalkDrawerContent.vue';
 
@@ -55,41 +48,11 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['update:modelValue', 'close', 'start-walk', 'save-walk', 'directions', 'category-selected', 'snap-point-changed', 'recenter']);
+const emit = defineEmits(['update:modelValue', 'close', 'start-walk', 'save-walk', 'directions', 'category-selected', 'recenter']);
 
 const bottomSheet = ref(null);
 const isOpen = ref(props.modelValue);
-
-// Material Design 3 scrim color with 0.32 opacity
-const scrimColor = computed(() => 'rgba(0, 0, 0, 0.32)');
-
-// Sheet height management with bottom nav adjustment
 const maxHeight = ref(window.innerHeight);
-const navHeight = 80; // Height of the mobile navigation bar
-const safeAreaInset = typeof window !== 'undefined' ? 
-  parseInt(getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || '0') : 0;
-  
-// Set default snap point to half-height for better initial view
-const defaultSnapPoint = computed(() => 1); // Index of the second snap point (half height)
-
-// Calculate snap points based on max height with adjustment for bottom nav
-const snapPoints = computed(() => {
-  const adjustedHeight = maxHeight.value - navHeight - safeAreaInset; // Adjusted height for partial views
-  return [
-    Math.min(320, adjustedHeight * 0.4),   // Peeking state (~40% of available height)
-    Math.min(550, adjustedHeight * 0.65),  // Half expanded (~65% of available height)
-    maxHeight.value                        // Full height - uses entire maxHeight without adjustments
-  ].sort((a, b) => a - b); // Ensure points are in ascending order
-});
-
-function handleMaxHeight(height) {
-  maxHeight.value = height;
-}
-
-// Handle snap point changes
-function handleSnapPointChange(index) {
-  emit('snap-point-changed', index);
-}
 
 // Watch for changes to modelValue prop
 watch(() => props.modelValue, (newVal) => {
@@ -103,25 +66,10 @@ watch(() => isOpen.value, (newVal) => {
 
 // Lifecycle hooks
 onMounted(() => {
-  // Initialize maxHeight with window height
-  maxHeight.value = window.innerHeight;
-  
   // Handle initial open state
   if (props.modelValue) {
-    // Only open if modelValue is true initially
     nextTick(() => open());
   }
-  
-  // Update dimensions on resize
-  const updateMaxHeight = () => {
-    maxHeight.value = window.innerHeight;
-  };
-  
-  window.addEventListener('resize', updateMaxHeight);
-  
-  onBeforeUnmount(() => {
-    window.removeEventListener('resize', updateMaxHeight);
-  });
 });
 
 // Methods to control the bottom sheet
@@ -139,21 +87,19 @@ function close() {
 }
 
 function onOpened() {
-  // Snap to default point on open
-  if (bottomSheet.value) {
-    nextTick(() => {
-      bottomSheet.value.snapToPoint(defaultSnapPoint.value);
-    });
-  }
+  isOpen.value = true;
+  emit('update:modelValue', true);
 }
 
 function onClosed() {
+  isOpen.value = false;
+  emit('update:modelValue', false);
   emit('close');
   
   // Reset to default snap point for next opening
   nextTick(() => {
     if (bottomSheet.value) {
-      bottomSheet.value.snapToPoint(defaultSnapPoint.value);
+      bottomSheet.value.snapToPoint(1);
     }
   });
 }
@@ -198,7 +144,6 @@ function handleSaveWalk() {
 function handleCategorySelected(category) {
   emit('category-selected', category);
 }
-
 </script>
 
 <style>
@@ -221,7 +166,6 @@ function handleCategorySelected(category) {
 .mobile-walk-drawer-sheet :deep(.bottom-sheet__content) {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding-bottom: calc(env(safe-area-inset-bottom) + 16px);
 }
 
 /* Smooth transition overrides */
@@ -251,5 +195,9 @@ function handleCategorySelected(category) {
 /* Allow passive interaction with map behind the drawer with backdrop */
 .mobile-walk-drawer-sheet :deep(.bottom-sheet__backdrop) {
   pointer-events: auto;
+}
+/* Improve dragging experience */
+.mobile-walk-drawer-sheet :deep([data-expandable="true"]) {
+  touch-action: pan-y;
 }
 </style>

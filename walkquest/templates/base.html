@@ -10,6 +10,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="transparent">
     <meta name="csrf-token" content="{{ csrf_token }}" />
     <!-- Add Mapbox configuration -->
     <script id="config-data" type="application/json">
@@ -77,8 +78,42 @@
   </body>
 </html>
 <style>
+  :root {
+    --safe-area-top: env(safe-area-inset-top, 0px);
+    --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-area-left: env(safe-area-inset-left, 0px);
+    --safe-area-right: env(safe-area-inset-right, 0px);
+  }
+  
+  html, body {
+    min-height: calc(100% + var(--safe-area-top))!important;
+    height: 100%;
+  }
+  
   body {
-    min-height: calc(100% + env(safe-area-inset-top))!important;
-    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)!important;
+    padding: 0!important;
+    margin: 0;
+    background-color: transparent!important;
+  }
+  
+  #app {
+    padding: var(--safe-area-top) var(--safe-area-right) var(--safe-area-bottom) var(--safe-area-left)!important;
+    min-height: 100%!important;
+    background-color: transparent;
+  }
+  
+  /* This ensures the status bar area is transparent on iOS */
+  @supports (-webkit-touch-callout: none) {
+    #app:before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: var(--safe-area-top);
+      background-color: transparent;
+      z-index: 9999;
+      pointer-events: none;
+    }
   }
   </style>
