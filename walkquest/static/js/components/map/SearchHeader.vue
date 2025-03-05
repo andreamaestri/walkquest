@@ -342,7 +342,7 @@ const handleWalkSelection = (walk) => {
   right: 0;
   z-index: 10;
   pointer-events: none;
-  /* Remove padding-top and let the app container handle the safe area insets */
+  padding-top: var(--safe-area-top, 0px);
 }
 
 .search-header-wrapper > * {

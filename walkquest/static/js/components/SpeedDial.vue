@@ -65,6 +65,7 @@ function handleAction(actionId) {
 <style scoped>
 .speed-dial {
   z-index: 1000;
+  padding-bottom: var(--safe-area-bottom, env(safe-area-inset-bottom, 0px));
 }
 
 .speed-dial-fab {
