@@ -40,6 +40,22 @@
             :show-zoom="true" 
             :visualize-pitch="true"
             class="navigation-control" />
+            
+          <!-- Geolocation control -->
+          <MapboxGeolocateControl
+            :position="uiStore.isMobile ? 'bottom-right' : 'top-right'"
+            :positionOptions="{
+              enableHighAccuracy: true,
+              timeout: 6000
+            }"
+            :trackUserLocation="true"
+            :showAccuracyCircle="true"
+            :showUserLocation="true"
+            :fitBoundsOptions="{
+              maxZoom: 15
+            }"
+            class="geolocate-control"
+          />
         </template>
       </MapboxMap>
     </div>
@@ -51,7 +67,8 @@ import { ref, computed, watch, onMounted, onBeforeUnmount, shallowRef, nextTick,
 import { useElementVisibility } from "@vueuse/core";
 import {
   MapboxMap,
-  MapboxNavigationControl
+  MapboxNavigationControl,
+  MapboxGeolocateControl
 } from "@studiometa/vue-mapbox-gl";
 import mapboxgl from 'mapbox-gl';
 import { useMap } from "../../composables/useMap";
