@@ -1,11 +1,8 @@
 import uuid
-
 from django.contrib.auth import get_user_model
 from django.contrib.gis.db import models
 from django.utils.translation import gettext_lazy as _
-from tagulous.models import TagField
-from tagulous.models import TagModel
-
+from tagulous.models import TagField, TagModel
 
 class WalkCategoryTag(TagModel):
     class TagMeta:
@@ -61,13 +58,45 @@ class WalkFeatureTag(TagModel):
             'slug': self.slug
         }
 
+class Companion(models.Model):
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+        db_index=True,
+    )
+    user = models.ForeignKey(
+        get_user_model(),
+        on_delete=models.CASCADE,
+        related_name='companions',
+    )
+    name = models.CharField(
+        _("Name"),
+        max_length=100,
+        help_text=_("Name of your walking companion")
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
+        verbose_name = _('companion')
+        verbose_name_plural = _('companions')
+        indexes = [
+            models.Index(fields=['user']),
+            models.Index(fields=['created_at']),
+        ]
+
+    def __str__(self):
+        return self.name
+
 class Adventure(models.Model):
     DIFFICULTY_CHOICES = [
-        ("NOVICE WANDERER", "Novice Wanderer"),
-        ("GREY'S PATHFINDER", "Grey's Pathfinder"),
-        ("TRAIL RANGER", "Trail Ranger"),
-        ("WARDEN'S ASCENT", "Warden's Ascent"),
-        ("MASTER WAYFARER", "Master Wayfarer"),
+        ("NOVICE WANDERER", _("Novice Wanderer - Beginner")),
+        ("GREY'S PATHFINDER", _("Grey's Pathfinder - Beginner to Moderate")),
+        ("TRAIL RANGER", _("Trail Ranger - Moderate")),
+        ("WARDEN'S ASCENT", _("Warden's Ascent - Moderate to Challenging")),
+        ("MASTER WAYFARER", _("Master Wayfarer - Challenging")),
     ]
 
     id = models.UUIDField(
@@ -77,20 +106,46 @@ class Adventure(models.Model):
         db_index=True,
     )
     title = models.CharField(
-        _("Title"), max_length=255, help_text=_("Name of your epic quest"),
+        _("Title"), 
+        max_length=255, 
+        help_text=_("Name of your epic quest"),
     )
     description = models.TextField(
         _("Description"),
         help_text=_("Chronicle your adventure's tale"),
     )
-    start_date = models.DateField(_("Start Date"), help_text=_("When the walk begins"))
-    end_date = models.DateField(_("End Date"), help_text=_("When the walk concludes"))
+    start_date = models.DateField(
+        _("Start Date"), 
+        help_text=_("When the walk begins")
+    )
+    end_date = models.DateField(
+        _("End Date"), 
+        help_text=_("When the walk concludes")
+    )
+    start_time = models.TimeField(
+        _("Start Time"),
+        help_text=_("When the walk begins"),
+        null=True,
+        blank=True,
+    )
+    end_time = models.TimeField(
+        _("End Time"),
+        help_text=_("When the walk concludes"),
+        null=True,
+        blank=True,
+    )
     difficulty_level = models.CharField(
         _("Difficulty"),
         max_length=20,
         choices=DIFFICULTY_CHOICES,
         help_text=_("Choose your challenge level"),
         db_index=True,
+    )
+    companions = models.ManyToManyField(
+        'Companion',
+        related_name='adventures',
+        blank=True,
+        help_text=_("Companions that joined this adventure")
     )
     related_categories = TagField(
         to=WalkCategoryTag,
@@ -106,8 +161,8 @@ class Adventure(models.Model):
         verbose_name_plural = _("adventures")
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["difficulty_level"], name="walks_adv_diff_lvl_idx"),  # Shortened name
-            models.Index(fields=["start_date", "end_date"], name="walks_adv_start_end_idx"),  # Shortened name
+            models.Index(fields=["difficulty_level"], name="walks_adv_diff_lvl_idx"),
+            models.Index(fields=["start_date", "end_date"], name="walks_adv_start_end_idx"),
         ]
         permissions = [
             ("can_create_featured_adventure", "Can create featured adventure"),
@@ -116,6 +171,15 @@ class Adventure(models.Model):
     def __str__(self):
         return self.title
 
+    @property
+    def duration(self):
+        if self.start_time and self.end_time:
+            from datetime import datetime, timedelta
+            today = datetime.today()
+            start = datetime.combine(today, self.start_time)
+            end = datetime.combine(today, self.end_time)
+            return end - start
+        return None
 
 class Walk(models.Model):
     FOOTWEAR_CHOICES = [
@@ -125,11 +189,11 @@ class Walk(models.Model):
     ]
 
     DIFFICULTY_CHOICES = [
-        ("NOVICE WANDERER", "Novice Wanderer"),
-        ("GREY'S PATHFINDER", "Grey's Pathfinder"),
-        ("TRAIL RANGER", "Trail Ranger"),
-        ("WARDEN'S ASCENT", "Warden's Ascent"),
-        ("MASTER WAYFARER", "Master Wayfarer"),
+        ("NOVICE WANDERER", _("Novice Wanderer - Beginner")),
+        ("GREY'S PATHFINDER", _("Grey's Pathfinder - Beginner to Moderate")),
+        ("TRAIL RANGER", _("Trail Ranger - Moderate")),
+        ("WARDEN'S ASCENT", _("Warden's Ascent - Moderate to Challenging")),
+        ("MASTER WAYFARER", _("Master Wayfarer - Challenging")),
     ]
 
     WALK_CATEGORIES = [
@@ -174,8 +238,6 @@ class Walk(models.Model):
         db_index=True,
         default="Unnamed Walk",
     )
-    # title = models.CharField(...)
-    # description = models.TextField(...)
     latitude = models.FloatField(
         _("Latitude"),
         help_text=_("Latitude coordinate of the walk location"),
@@ -231,11 +293,7 @@ class Walk(models.Model):
         blank=True,
     )
     has_pub = models.BooleanField(default=False)
-    pubs_list = models.JSONField(
-        default=list,
-        blank=True,
-        help_text="List of pubs along the walk. Each pub should have a name and optional description."
-    )
+    pubs_list = models.JSONField(default=list, blank=True)
     trail_considerations = models.TextField(
         default="No trail considerations provided.",
         help_text="Considerations for the trail.",
@@ -306,12 +364,6 @@ class Walk(models.Model):
         if self.related_categories:
             self.has_pub = "pub" in self.related_categories.get_tag_list()
             self.has_cafe = "cafe" in self.related_categories.get_tag_list()
-        # Ensure pubs_list items are dictionaries
-        if isinstance(self.pubs_list, list):
-            self.pubs_list = [
-                {'name': pub} if isinstance(pub, str) else pub 
-                for pub in self.pubs_list
-            ]
         if not self.title:
             self.title = self.walk_name
         if not self.description:
@@ -338,7 +390,6 @@ class Walk(models.Model):
     def get_categories(self):
         return [category.to_dict() for category in self.categories.all()]
 
-# Optional: Only add this if you need to store additional favorite-related data
 class WalkFavorite(models.Model):
     user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
     walk = models.ForeignKey(Walk, on_delete=models.CASCADE)

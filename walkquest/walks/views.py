@@ -24,14 +24,14 @@ Last Updated: After a satisfying lunch break
 import json
 import logging
 from typing import Any
-
 from django.conf import settings
 from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.core.serializers.json import DjangoJSONEncoder
+from django.contrib.gis.geos import GEOSGeometry
 from django.db.models import Count
 from django.db.models import QuerySet
-from django.http import HttpResponse
+from django.http import HttpResponse, Http404
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
@@ -479,6 +479,14 @@ def walk_features_autocomplete(request):
     )
 
 
+class GeoJSONEncoder(DjangoJSONEncoder):
+    """Custom JSON encoder for GeoDjango geometry objects."""
+    def default(self, obj):
+        if isinstance(obj, GEOSGeometry):
+            return json.loads(obj.geojson)
+        return super().default(obj)
+
+
 class WalkGeometryView(View):
     """API endpoint for fetching walk geometry data."""
 
@@ -492,49 +500,41 @@ class WalkGeometryView(View):
             return Walk.objects.get(slug=kwargs['slug'])
         raise Http404("Walk not found")
 
-    @method_decorator(csrf_protect)
     def get(self, request, **kwargs):
         """Handle GET request for walk geometry."""
         cache_key = f"walk_geometry_{kwargs.get('id') or kwargs.get('slug')}"
-
         try:
             # Try to get cached geometry
             geometry_data = cache.get(cache_key)
-
             if not geometry_data:
                 walk = self.get_walk(**kwargs)
-
                 if not walk.route_geometry:
                     return HttpResponse(
                         '{"error": "No geometry data available"}',
                         content_type=self.CONTENT_TYPE,
                         status=404,
                     )
-
                 geometry_data = {
                     "type": "Feature",
-                    "geometry": walk.route_geometry,
+                    "geometry": json.loads(walk.route_geometry.geojson),
                     "properties": {
                         "walk_id": str(walk.id),
                         "walk_name": walk.walk_name,
                     },
                 }
-
                 cache.set(cache_key, geometry_data, self.CACHE_TIMEOUT)
-
             return HttpResponse(
-                json.dumps(geometry_data),
+                json.dumps(geometry_data, cls=GeoJSONEncoder),
                 content_type=self.CONTENT_TYPE,
             )
-
         except Walk.DoesNotExist:
             return HttpResponse(
                 '{"error": "Walk not found"}',
                 content_type=self.CONTENT_TYPE,
                 status=404,
             )
-        except Exception:
-            logger.exception("Error fetching geometry for walk %s", kwargs.get('id') or kwargs.get('slug'))
+        except Exception as e:
+            logger.exception("Error fetching geometry for walk %s: %s", kwargs.get('id') or kwargs.get('slug'), str(e))
             return HttpResponse(
                 '{"error": "Internal server error"}',
                 content_type=self.CONTENT_TYPE,

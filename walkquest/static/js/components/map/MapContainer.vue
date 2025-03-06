@@ -623,7 +623,6 @@ async function loadRouteData(walkId) {
                 zoom: 13,
                 pitch: 65,
                 bearing: 30,
-                duration: 2500,
                 essential: true,
                 padding: {
                   top: 50,
@@ -642,7 +641,6 @@ async function loadRouteData(walkId) {
                 zoom: 13,
                 pitch: 65,
                 bearing: 30,
-                duration: 2500,
                 essential: true,
                 padding: {
                   top: 50,
@@ -795,7 +793,6 @@ const handleRecenterToWalk = () => {
       zoom: 13,
       pitch: 0, // Flat 2D view
       bearing: 0, // No rotation
-      duration: 1000,
       essential: true
     });
   } catch (error) {
@@ -1248,19 +1245,9 @@ defineExpose({
   bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
 }
 
-/* Add proper spacing between controls */
-:deep(.navigation-control) {
-  margin-bottom: 12px !important;
-}
-
-:deep(.geolocate-control) {
-  margin-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px) !important;
-}
-
-/* When drawer is open, adjust control positions */
-.drawer-open :deep(.mapboxgl-ctrl-top-right),
-.drawer-open :deep(.mapboxgl-ctrl-bottom-right) {
-  right: calc(320px + 10px + env(safe-area-inset-right, 0px)) !important;
+/* Make sure controls have pointer events */
+:deep(.mapboxgl-ctrl) {
+  pointer-events: auto;
 }
 
 /* Mobile-specific adjustments */

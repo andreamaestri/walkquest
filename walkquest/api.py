@@ -1,8 +1,14 @@
-from ninja import Router
+from typing import List
+from typing import Optional
+
 from django.http import HttpRequest
-from typing import List, Optional
-from .schemas import WalkOut, TagOut, ConfigOut
-from walks.models import Walk  # Added import for Walk model
+from ninja import Router
+
+from walkquest.walks.models import Walk  # Fixed import path
+
+from .schemas import ConfigOut
+from .schemas import TagOut
+from .schemas import WalkOut
 
 router = Router()
 

@@ -18,9 +18,11 @@
 - Place controls outside map container
 
 # Animation System
-- Use motion.dev/vue for all animations
-- Implement proper cleanup for animations
-- Use transition components with JS hooks
+- Use motion's animate function for JavaScript animations
+- Always stop animations in onUnmounted/cleanup hooks
+- Combine with Vue transitions for enter/leave states
+- Use M3 emphasized easing: [0.2, 0, 0, 1]
+- Use M3 emphasized-accelerate for exits: [0.3, 0, 0.8, 0.15]
 
 # Development Flow
 - Format with both Prettier (frontend) and Ruff (backend)

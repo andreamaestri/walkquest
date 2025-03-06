@@ -56,8 +56,11 @@ defineEmits(['close']);
 .header-content {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 16px;
+  margin-top: 7px;
   min-height: 56px;
+  margin-left: 10px;
 }
 
 .m3-icon-button {
@@ -115,7 +118,6 @@ defineEmits(['close']);
   letter-spacing: 0;
   overflow: hidden;
   padding-right: 16px;
-  padding-top: 5px;
   flex: 1;
 }
 

@@ -4,6 +4,14 @@
       <RouterView :mapbox-token="mapboxToken" />
     </main>
     <Loading ref="loadingComponent" />
+    <!-- Portals container for modals and overlays -->
+    <Teleport to="#portal-root" :disabled="!portalRoot()">
+      <AdventureLogDialog
+        v-if="adventureDialogStore.currentWalk"
+        :walk="adventureDialogStore.currentWalk"
+        @submit="handleAdventureSubmit"
+      />
+    </Teleport>
   </div>
 </template>
 
@@ -12,10 +20,34 @@ import { onMounted, onBeforeUnmount, watch, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useUiStore } from './stores/ui'
 import { useSearchStore } from './stores/searchStore'
+import { useAdventureDialogStore } from './stores/adventureDialog'
+import { useAdventureStore } from './stores/adventure'
+import { usePortal } from './composables/usePortal'
 import Loading from './components/shared/Loading.vue'
+import AdventureLogDialog from './components/shared/AdventureLogDialog.vue'
 import { RouterView } from 'vue-router'
 
+const { portalRoot } = usePortal()
+const adventureStore = useAdventureStore()
+
+const adventureDialogStore = useAdventureDialogStore()
+
 const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN
+
+// Register beforeunload handler to clear dialog state
+window.addEventListener('beforeunload', () => {
+  adventureDialogStore.closeDialog()
+})
+
+// Handle adventure submission
+const handleAdventureSubmit = async (data) => {
+  try {
+    await adventureStore.createAdventure(data)
+    adventureDialogStore.closeDialog()
+  } catch (error) {
+    console.error('Failed to create adventure:', error)
+  }
+}
 const uiStore = useUiStore()
 const searchStore = useSearchStore()
 const route = useRoute()

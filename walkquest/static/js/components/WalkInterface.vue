@@ -110,7 +110,6 @@ import { useAnimations } from "../composables/useAnimations";
 // Import components
 import NavigationRail from "./map/NavigationRail.vue";
 import SearchHeader from "./map/SearchHeader.vue";
-
 import MapContainer from "./map/MapContainer.vue";
 import WalkDrawer from "./WalkDrawer.vue";
 import MobileWalkDrawer from "./MobileWalkDrawer.vue"; // Add MobileWalkDrawer import
@@ -119,6 +118,9 @@ import BottomSheet from '@douxcode/vue-spring-bottom-sheet';
 import WalkList from './WalkList.vue';
 import SpeedDial from './SpeedDial.vue';
 import { Icon } from '@iconify/vue';
+
+// Define emits
+const emit = defineEmits(['route-loaded', 'drawer-mounted']);
 
 /**
  * Props definition with proper validation

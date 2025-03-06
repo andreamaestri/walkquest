@@ -1,24 +1,20 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from . import api
+from .views import WalkGeometryView
 
-from .views import (
-    HomePageView,
-    WalkListView,
-    WalkSearchView,
-    WalkFilterView,
-    WalkGeometryView,
-    WalkDetailView,
-)
+router = DefaultRouter()
+router.register('walks', api.WalkViewSet, basename='walk')
+router.register('adventures', api.AdventureViewSet, basename='adventure')
+router.register('companions', api.CompanionViewSet, basename='companion')
+router.register('categories', api.WalkCategoryTagViewSet, basename='category')
+router.register('features', api.WalkFeatureTagViewSet, basename='feature')
 
-app_name = "walks"
+app_name = 'walks'
 
 urlpatterns = [
-    path("", HomePageView.as_view(), name="home"),
-    path("", WalkListView.as_view(), name="list"),
-    path("search/", WalkSearchView.as_view(), name="search"),
-    path("<uuid:id>/", WalkDetailView.as_view(), name="detail"),
-    path("<uuid:id>/geometry/", WalkGeometryView.as_view(), name="geometry"),
-    path("filters/", WalkFilterView.as_view(), name="filter"),
-    # Add slug-based route
-    path("<slug:slug>/", WalkDetailView.as_view(), name="detail-by-slug"),
-    path("<slug:slug>/geometry/", WalkGeometryView.as_view(), name="geometry-by-slug"),
+    # Handle /api/walks/<uuid>/geometry/
+    path('walks/<uuid:id>/geometry/', WalkGeometryView.as_view(), name='walk-geometry'),
+    # Include router URLs after the specific URL patterns
+    path('', include(router.urls)),
 ]

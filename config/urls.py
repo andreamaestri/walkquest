@@ -6,7 +6,7 @@ from django.urls import include, path
 from django.views import defaults as default_views
 from django.views.generic import TemplateView
 from walkquest.walks.views import HomePageView 
-from walkquest.walks.api import api as api
+from walkquest.walks.api import api_instance
 from walkquest.views import index, legacy_walk_view
 
 urlpatterns = [
@@ -21,18 +21,18 @@ urlpatterns = [
     # User management
     path("users/", include("walkquest.users.urls", namespace="users")),
     path("accounts/", include("allauth.urls")),
-    # Your stuff: custom urls includes go here
-    path("walks/", include(('walkquest.walks.urls', 'walks'), namespace='walks')),
-    # Direct walk slugs at root URL level
+    # API routes
+    path("api/", include(('walkquest.walks.urls', 'walks'), namespace='walks')),
+    # Non-API routes
     path("<slug:walk_id>/", index, name="walk-detail-by-slug"),
-    # Legacy UUID walk pages with redirect
     path("walk/<uuid:id>/", legacy_walk_view, name="walk-detail-legacy"),
+    
     # Media files
     *static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT),
-    path("api/", api.urls),
+    # Django Ninja API
+    path("api/", api_instance.urls),
     path("__reload__/", include("django_browser_reload.urls")),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
-
 
 if settings.DEBUG:
     # This allows the error pages to be debugged during development, just visit
