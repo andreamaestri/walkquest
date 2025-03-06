@@ -39,7 +39,8 @@ export default function useResponsiveLayout() {
     // Only update if there's a change to avoid unnecessary rerenders
     if (isMobile.value !== newIsMobile) {
       isMobile.value = newIsMobile
-      uiStore.setIsMobile(newIsMobile)
+      // The UI store doesn't have setIsMobile, it directly uses the isMobile ref
+      uiStore.isMobile = newIsMobile
     }
   }
   

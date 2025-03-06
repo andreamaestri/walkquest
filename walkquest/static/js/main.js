@@ -4,6 +4,7 @@ import router from './router'
 import App from './App.vue'
 import '../css/material3.css'
 import { Icon } from '@iconify/vue'
+import './fixes/portalFix.js' // Import portal fix for mobile
 
 // Create Vue app instance
 const app = createApp(App)

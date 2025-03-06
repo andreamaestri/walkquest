@@ -28,18 +28,11 @@
         <WalkDrawerContent 
           :walk="walk"
           :isMobile="true"
-          @start-walk="handleStartWalk"
           @save-walk="handleSaveWalk"
           @share="handleShare"
-          @directions="() => {}"
+          @directions="handleDirections"
           @recenter="$emit('recenter')"
         />
-        <div class="action-buttons">
-          <button class="m3-button m3-filled-button" @click="handleStartWalk">
-            <Icon icon="mdi:play-circle" class="button-icon" />
-            <span>Log an Adventure</span>
-          </button>
-        </div>
       </div>
     </BottomSheet>
   </div>
@@ -50,6 +43,7 @@ import { ref, computed, watch, onMounted, nextTick, onBeforeUnmount } from 'vue'
 import BottomSheet from '@douxcode/vue-spring-bottom-sheet'
 import WalkDrawerHeader from './shared/WalkDrawerHeader.vue';
 import WalkDrawerContent from './shared/WalkDrawerContent.vue';
+import { useAdventureDialogStore } from '../stores/adventureDialog';
 
 const props = defineProps({
   walk: {
@@ -67,6 +61,7 @@ const emit = defineEmits(['update:modelValue', 'close', 'start-walk', 'save-walk
 const bottomSheetRef = ref(null);
 const isOpen = ref(props.modelValue);
 const maxHeight = ref(window.innerHeight);
+const adventureDialogStore = useAdventureDialogStore();
 
 // Function to calculate available height accounting for safe area
 function calculateAvailableHeight() {
@@ -153,7 +148,7 @@ function close() {
           bottomSheetRef.value.close();
         }
       } catch (err) {
-        console.error("Error closing bottom sheet:", err);
+        // Handle error silently
       }
     });
   }
@@ -198,7 +193,7 @@ function handleShare() {
 
 // Handler methods to forward events
 function handleStartWalk() {
-  emit('start-walk');
+  adventureDialogStore.openDialog(props.walk);
 }
 
 function handleSaveWalk() {
@@ -207,6 +202,24 @@ function handleSaveWalk() {
 
 function handleCategorySelected(category) {
   emit('category-selected', category);
+}
+
+function handleDirections() {
+  if (!props.walk || !props.walk.latitude || !props.walk.longitude) return;
+  
+  const destination = `${props.walk.latitude},${props.walk.longitude}`;
+  const title = props.walk.title || props.walk.walk_name || 'Walk';
+  
+  // Try to use platform-specific map apps if available
+  if (navigator.platform.indexOf('iPhone') !== -1 || 
+      navigator.platform.indexOf('iPad') !== -1 ||
+      navigator.platform.indexOf('iPod') !== -1) {
+    window.open(`maps://maps.apple.com/maps?daddr=${destination}&q=${encodeURIComponent(title)}`);
+  } else {
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${destination}&destination_place_id=${encodeURIComponent(title)}`);
+  }
+  
+  emit('directions');
 }
 </script>
 
@@ -307,14 +320,14 @@ function handleCategorySelected(category) {
 .header-container.mobile {
   border-top-left-radius: 16px!important;
   border-top-right-radius: 16px!important;
-  background-color: #EADDFF!important;
+  background-color: rgb(var(--md-sys-color-primary-container))!important;
 }
 
 [data-vsbs-header] {
   padding: 0!important;
   border-top-left-radius: 16px!important;
   border-top-right-radius: 16px!important;
-  background-color: #EADDFF!important;
+  background-color: rgb(var(--md-sys-color-primary-container))!important;
 }
 
 /* Drag handle styling */

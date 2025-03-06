@@ -4,7 +4,6 @@
       <RouterView :mapbox-token="mapboxToken" />
     </main>
     <Loading ref="loadingComponent" />
-    <div id="portal-root"></div>
     <Teleport to="#portal-root" :disabled="!portalRoot()">
       <AdventureLogDialog
         v-if="adventureDialogStore.currentWalk"
@@ -38,7 +37,7 @@ const handleAdventureSubmit = async (data) => {
     await adventureStore.createAdventure(data)
     adventureDialogStore.closeDialog()
   } catch (error) {
-    console.error('Failed to create adventure:', error)
+    uiStore.setError('Failed to create adventure. Please try again.')
   }
 }
 const uiStore = useUiStore()
@@ -58,6 +57,26 @@ onMounted(() => {
     adventureDialogStore.closeDialog()
   }
   window.addEventListener('beforeunload', beforeUnloadHandler)
+
+  // Fix for portal click issue
+  // Try to make the portal-root element transparent to clicks
+  const portalRoot = document.getElementById('portal-root')
+  if (portalRoot) {
+    portalRoot.style.pointerEvents = 'none'
+    
+    // Ensure direct children have pointer events
+    const styleFixInterval = setInterval(() => {
+      const children = portalRoot.children
+      for (let i = 0; i < children.length; i++) {
+        children[i].style.pointerEvents = 'auto'
+      }
+    }, 500)
+    
+    // Clean up interval on unmount
+    onBeforeUnmount(() => {
+      clearInterval(styleFixInterval)
+    })
+  }
   
   // Watch loading states to show/hide loading component
   watch(() => uiStore.isAnyLoading, (isLoading) => {

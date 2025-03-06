@@ -51,7 +51,7 @@
 
     <!-- Action Buttons -->
     <div ref="buttonsContainerRef" class="buttons-container">
-      <button class="m3-button m3-filled-button" @click="$emit('start-walk', walk)">
+      <button class="m3-button m3-filled-button" @click="handleStartWalk">
         <Icon icon="mdi:play-circle" class="button-icon" />
         <span>Log an Adventure</span>
       </button>
@@ -313,6 +313,7 @@ import { ref, computed, onMounted } from "vue";
 import { Icon } from "@iconify/vue";
 import { useWalkData } from "../../composables/useWalkData";
 import { useDrawerAnimations } from "../../composables/useDrawerAnimations";
+import { useAdventureDialogStore } from "../../stores/adventureDialog";
 
 const props = defineProps({
   walk: {
@@ -344,6 +345,9 @@ const footwearDetailsRef = ref(null);
 // UI State
 const detailsOpen = ref(false);
 const hoveredCategory = ref(null);
+
+// Get the adventure dialog store
+const adventureDialogStore = useAdventureDialogStore();
 
 // Helper function to set section refs
 function setSectionRef(index, el) {
@@ -404,6 +408,11 @@ function isCategoryHovered(category) {
 async function handleCategoryClick(category) {
   await animateCategoryClick(category);
   emit('category-selected', category);
+}
+
+// Function to handle the "Log an Adventure" button click
+function handleStartWalk() {
+  adventureDialogStore.openDialog(props.walk);
 }
 
 onMounted(() => {

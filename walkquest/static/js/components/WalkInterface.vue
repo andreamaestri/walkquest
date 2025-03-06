@@ -78,6 +78,7 @@
       @save-walk="handleSaveWalk"
       @category-selected="handleCategorySelected"
       @recenter="handleRecenter"
+      @directions="handleDirections"
     />
   </div>
 </template>
@@ -259,7 +260,7 @@ const handleFabAction = (action) => {
       });
       break;
     default:
-      console.warn(`Unknown fab action: ${action}`);
+      uiStore.setError(`Unknown action: ${action}`);
   }
 }
 
@@ -289,8 +290,14 @@ function handleSearchFocus() {
  * Handle saving a walk for later
  */
 function handleSaveWalk(walk) {
-  // TODO: Implement save functionality
-  console.log("Saving walk for later:", walk);
+  // Save walk to user favorites
+  uiStore.setLoadingState("saving", true);
+  try {
+    walksStore.saveWalk(walk);
+    uiStore.showSnackbar("Walk saved to favorites");
+  } finally {
+    uiStore.setLoadingState("saving", false);
+  }
 }
 
 /**
@@ -373,10 +380,10 @@ const isDrawerOpen = computed(
 /**
  * Handle walk selection from WalkList in bottom sheet
  */
-const handleWalkListSelection = (walk) => {
+function handleWalkListSelection(walk) {
   showWalksBottomSheet.value = false;
   handleWalkSelection(walk);
-};
+}
 
 /**
  * Handle walk selection
@@ -416,7 +423,6 @@ const handleWalkSelection = async (walk) => {
  */
 const handleDrawerClose = async () => {
   // Close drawer
-  console.log("Closing drawer");
   await router.push({ name: 'home' });
   isExpanded.value = true;
   uiStore.handleWalkClosed();
@@ -437,8 +443,6 @@ const handleStartWalk = (walk) => {
  * Could filter walks by category or navigate to category view
  */
 const handleCategorySelected = (category) => {
-  console.log("Category selected:", category);
-  
   // Close the mobile sheet if on mobile
   if (uiStore.isMobile) {
     showWalkDetailSheet.value = false;
@@ -513,7 +517,6 @@ const handleLocationSelected = async (location) => {
     
     searchStore.setError(null);
   } catch (error) {
-    console.error("Error handling location selection:", error);
     searchStore.setError("Unable to process location");
   } finally {
     uiStore.setLoadingState("location", false);
@@ -545,15 +548,31 @@ const handleRecenter = () => {
 };
 
 /**
+ * Handle directions request from drawer
+ */
+const handleDirections = () => {
+  if (!selectedWalk.value || !selectedWalk.value.latitude || !selectedWalk.value.longitude) return;
+  
+  const destination = `${selectedWalk.value.latitude},${selectedWalk.value.longitude}`;
+  const title = selectedWalk.value.title || selectedWalk.value.walk_name || 'Walk';
+  
+  // Try to use platform-specific map apps if available
+  if (navigator.platform.indexOf('iPhone') !== -1 || 
+      navigator.platform.indexOf('iPad') !== -1 ||
+      navigator.platform.indexOf('iPod') !== -1) {
+    window.open(`maps://maps.apple.com/maps?daddr=${destination}&q=${encodeURIComponent(title)}`);
+  } else {
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${destination}&destination_place_id=${encodeURIComponent(title)}`);
+  }
+};
+
+/**
  * Handle account icon click
  * Opens account-related functionality
  */
 const handleAccountClick = (event) => {
-  console.log("Account icon clicked");
-  // TODO: Implement account functionality
-  // This could show a user menu, profile information, or navigate to account settings
-  // For now, show an alert to demonstrate the functionality
-  alert("Account functionality will be implemented here!");
+  // Open account menu or navigate to account page
+  router.push({ name: 'account' });
 };
 
 /**
@@ -564,14 +583,10 @@ const initializeInterface = () => {
   try {
     const cleanup = uiStore.initializeResponsiveState();
     
-    // Debug output for mobile detection
-    console.log("Mobile device detected:", uiStore.isMobile);
-    console.log("Window innerWidth:", window.innerWidth);
-    console.log("Selected walk ID:", selectedWalkId.value);
+    // Initialize UI based on device type
     
     // Load walks with proper error handling
     walksStore.loadWalks().catch((err) => {
-      console.error("Failed to load walks:", err);
       uiStore.setError("Failed to load walks. Please try again later.");
     }).then(() => {
       // After walks are loaded, handle deep linking if walk is in URL
@@ -582,8 +597,7 @@ const initializeInterface = () => {
           : walksStore.getWalkById(walkId); // Find by ID
 
         if (walk) {
-          handleWalkSelection(walk).catch((err) => {
-            console.error("Failed to select walk:", err);
+          handleWalkSelection(walk).catch(() => {
             uiStore.setError("Failed to load walk details.");
           });
         } else {
@@ -599,15 +613,14 @@ const initializeInterface = () => {
     if (props.walkId) {
       const walk = walksStore.getWalkById(props.walkId);
       if (walk) {
-        handleWalkSelection(walk).catch((err) => {
-          console.error("Failed to select walk:", err);
+        handleWalkSelection(walk).catch(() => {
+          uiStore.setError("Failed to load walk details.");
         });
       }
     }
     
     return cleanup;
   } catch (error) {
-    console.error("Error initializing interface:", error);
     uiStore.setError(
       "Failed to initialize application. Please refresh the page."
     );
@@ -679,10 +692,7 @@ onMounted(() => {
       }
     }
     
-    // Extra debug logs for FAB visibility conditions
-    console.log("On Mount - Mobile detection:", uiStore.isMobile);
-    console.log("On Mount - Selected walk ID:", selectedWalkId.value);
-    console.log("On Mount - FAB condition met:", uiStore.isMobile && !selectedWalkId.value);
+    // Set up mobile-specific UI elements
     
     // Initialize interface
     const cleanup = initializeInterface();
@@ -693,11 +703,11 @@ onMounted(() => {
         cleanup();
         window.removeEventListener("popstate", preventRouteChange);
       } catch (error) {
-        console.error("Error during cleanup:", error);
+        uiStore.setError("Error during cleanup. Please refresh the page.");
       }
     });
   } catch (error) {
-    console.error("Error in component mount:", error);
+    uiStore.setError("Failed to mount component. Please refresh the page.");
   }
 });
 </script>

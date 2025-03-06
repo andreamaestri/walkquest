@@ -35,7 +35,8 @@ export function usePortal() {
         observer.observe(document.body, { childList: true, subtree: true })
       }
     } catch (error) {
-      console.error('Error setting up portal observer:', error)
+      // Silently handle observer setup failures
+      portalRootExists.value = false
     }
   })
 

@@ -33,16 +33,20 @@
           <WalkMarkers :walks="visibleWalks" :selected-walk-id="selectedWalkId" @marker-click="handleMarkerClick"
             @marker-mounted="handleMarkerMounted" @popup-open-walk="handlePopupOpenWalk" />
             
-          <!-- Navigation control -->
+          <!-- Navigation control with key to force re-creation when layout changes -->
           <MapboxNavigationControl 
+            v-if="mapInstance"
+            :key="`nav-control-${uiStore.isMobile ? 'mobile' : 'desktop'}`"
             :position="uiStore.isMobile ? 'top-left' : 'top-right'" 
             :show-compass="true" 
             :show-zoom="true" 
             :visualize-pitch="true"
             class="navigation-control" />
             
-          <!-- Geolocation control -->
+          <!-- Geolocation control with key to force re-creation when layout changes -->
           <MapboxGeolocateControl
+            v-if="mapInstance"
+            :key="`geo-control-${uiStore.isMobile ? 'mobile' : 'desktop'}`"
             :position="uiStore.isMobile ? 'top-left' : 'top-right'"
             :positionOptions="{
               enableHighAccuracy: true,

@@ -1,4 +1,4 @@
-import { animate } from 'motion';
+import { animate, spring } from 'motion';
 
 /**
  * Composable for managing animations
@@ -204,6 +204,114 @@ export function useAnimations() {
     }
   };
 
+  /**
+   * Animate a form element selection
+   * @param {HTMLElement} element - Element to animate
+   * @param {Boolean} wasSelected - Whether the element was previously selected
+   * @returns {Object} - Animation instance
+   */
+  const animateSelection = (element, wasSelected) => {
+    if (!element) return null;
+    
+    if (wasSelected) {
+      // Deselected animation
+      return animate(element, { 
+        scale: [1, 0.95, 1],
+        backgroundColor: [
+          'rgb(var(--md-sys-color-secondary-container))',
+          'rgb(var(--md-sys-color-surface-container))'
+        ]
+      }, {
+        duration: 0.3,
+        easing: [0.2, 0, 0.2, 1]
+      });
+    } else {
+      // Selected animation
+      return animate(element, { 
+        scale: [1, 1.1, 1],
+        backgroundColor: [
+          'rgb(var(--md-sys-color-surface-container))',
+          'rgb(var(--md-sys-color-secondary-container))'
+        ]
+      }, {
+        duration: 0.3,
+        easing: spring({ stiffness: 300, damping: 30 })
+      });
+    }
+  };
+
+  /**
+   * Animate modal dialog entry
+   * @param {HTMLElement} element - Element to animate
+   * @returns {Object} - Animation instance
+   */
+  const animateModalEntry = (element) => {
+    if (!element) return null;
+    
+    return animate(element, {
+      opacity: [0, 1],
+      y: ['100%', '0%']
+    }, {
+      duration: 0.3,
+      easing: [0.2, 0, 0.2, 1]
+    });
+  };
+
+  /**
+   * Animate modal dialog exit
+   * @param {HTMLElement} element - Element to animate
+   * @param {Function} onComplete - Callback when animation completes
+   * @returns {Object} - Animation instance
+   */
+  const animateModalExit = (element, onComplete) => {
+    if (!element) return null;
+    
+    return animate(element, {
+      opacity: [1, 0],
+      y: ['0%', '100%']
+    }, {
+      duration: 0.2,
+      easing: [0.4, 0, 1, 1],
+      onComplete
+    });
+  };
+
+  /**
+   * Animate calendar month change
+   * @param {HTMLElement} element - Calendar element
+   * @param {String} direction - 'prev' or 'next'
+   * @returns {Object} - Animation instance
+   */
+  const animateCalendarChange = (element, direction) => {
+    if (!element) return null;
+    
+    return animate(element, {
+      x: [direction === 'prev' ? '-20px' : '20px', '0px'],
+      opacity: [0.8, 1]
+    }, {
+      duration: 0.2,
+      easing: [0.2, 0, 0.2, 1]
+    });
+  };
+
+  /**
+   * Animate time unit change in time picker
+   * @param {HTMLElement} element - Time unit element
+   * @param {String} direction - 'up' or 'down'
+   * @returns {Object} - Animation instance
+   */
+  const animateTimeUnitChange = (element, direction) => {
+    if (!element) return null;
+    
+    return animate(element, {
+      y: [direction === 'up' ? '10px' : '-10px', '0px'],
+      opacity: [0.5, 1]
+    }, {
+      duration: 0.2,
+      easing: [0.2, 0, 0.2, 1]
+    });
+  };
+
   return {
     animationConfigs,
     animateInterfaceElement,
@@ -211,6 +319,11 @@ export function useAnimations() {
     runAnimationSequence,
     animateTypography,
     animateContentTransition,
-    animateDetailsToggle
+    animateDetailsToggle,
+    animateSelection,
+    animateModalEntry,
+    animateModalExit,
+    animateCalendarChange,
+    animateTimeUnitChange
   };
 }
