@@ -1232,4 +1232,91 @@ defineExpose({
 .navigation-control {
   margin-bottom: 8px;
 }
+
+/* Position map controls with safe area insets */
+:deep(.mapboxgl-ctrl-top-left) {
+  left: calc(10px + env(safe-area-inset-left, 0px)) !important;
+  top: calc(10px + env(safe-area-inset-top, 0px)) !important;
+}
+
+:deep(.mapboxgl-ctrl-top-right) {
+  right: calc(10px + env(safe-area-inset-right, 0px)) !important;
+  top: calc(10px + env(safe-area-inset-top, 0px)) !important;
+}
+
+:deep(.mapboxgl-ctrl-bottom-left) {
+  left: calc(10px + env(safe-area-inset-left, 0px)) !important;
+  bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+:deep(.mapboxgl-ctrl-bottom-right) {
+  right: calc(10px + env(safe-area-inset-right, 0px)) !important;
+  bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+/* Add proper spacing between controls */
+:deep(.navigation-control) {
+  margin-bottom: 12px !important;
+}
+
+:deep(.geolocate-control) {
+  margin-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px) !important;
+}
+
+/* When drawer is open, adjust control positions */
+.drawer-open :deep(.mapboxgl-ctrl-top-right),
+.drawer-open :deep(.mapboxgl-ctrl-bottom-right) {
+  right: calc(320px + 10px + env(safe-area-inset-right, 0px)) !important;
+}
+
+/* Mobile-specific adjustments */
+@media (max-width: 768px) {
+  :deep(.mapboxgl-ctrl-top-left),
+  :deep(.mapboxgl-ctrl-top-right) {
+    top: calc(env(safe-area-inset-top, 0px) + 12px) !important;
+  }
+  
+  :deep(.mapboxgl-ctrl-bottom-left),
+  :deep(.mapboxgl-ctrl-bottom-right) {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 12px) !important;
+  }
+
+  .has-mobile-nav :deep(.mapboxgl-ctrl-bottom-left),
+  .has-mobile-nav :deep(.mapboxgl-ctrl-bottom-right) {
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 12px) !important;
+  }
+}
+
+/* Ensure controls have proper z-index and pointer events */
+:deep(.mapboxgl-control-container) {
+  pointer-events: none;
+  z-index: 2;
+}
+
+:deep(.mapboxgl-ctrl) {
+  pointer-events: auto;
+  clear: both;
+}
+
+/* Update existing control styles with better touch targets */
+:deep(.mapboxgl-ctrl-group) {
+  margin: 0 !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1), 0 4px 8px rgba(0,0,0,0.05);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+:deep(.mapboxgl-ctrl-group > button) {
+  width: 44px; /* Slightly larger touch targets */
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Update the loading indicator position for safe areas */
+.loading-indicator {
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  left: calc(16px + env(safe-area-inset-left, 0px));
+}
 </style>
