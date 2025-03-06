@@ -18,6 +18,7 @@
       :is-expanded="isExpanded"
       @location-selected="handleLocationSelected"
       @walk-selected="handleWalkSelection"
+      @account-click="handleAccountClick"
     />
 
     <!-- Mobile Walk List - Only shown when explicitly toggled by FAB action -->
@@ -543,6 +544,18 @@ const handleMapLoad = () => {
 const handleRecenter = () => {
   if (!mapContainer.value || !selectedWalk.value) return;
   mapContainer.value.handleRecenterToWalk();
+};
+
+/**
+ * Handle account icon click
+ * Opens account-related functionality
+ */
+const handleAccountClick = (event) => {
+  console.log("Account icon clicked");
+  // TODO: Implement account functionality
+  // This could show a user menu, profile information, or navigate to account settings
+  // For now, show an alert to demonstrate the functionality
+  alert("Account functionality will be implemented here!");
 };
 
 /**

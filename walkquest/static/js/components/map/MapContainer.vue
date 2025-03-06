@@ -290,8 +290,8 @@ const handleMapCreated = (map) => {
       
       if (uiStore.isMobile) {
         // Mobile positioning - ensure logo stays within viewport
-        logoElement.style.bottom = `calc(env(safe-area-inset-bottom, 16px) + 12px)`;
-        logoElement.style.left = '12px'; // Fixed left position to ensure visibility
+        logoElement.style.bottom = `-52px!important`;
+        logoElement.style.left = '0'; // Fixed left position to ensure visibility
         logoElement.style.right = 'auto';
         logoElement.style.transform = 'scale(1.25)';
         logoElement.style.transformOrigin = 'bottom left';
@@ -1117,12 +1117,6 @@ defineExpose({
 :deep(.walk-popup) {
   position: relative;
   overflow: hidden;
-}
-
-:deep(.mapboxgl-ctrl-attrib.mapboxgl-compact) {
-  right: 76px!important;
-  bottom: 10px!important;
-  max-width: calc(100% - 150px)!important;
 }
 
 /* Proper notch handling */

@@ -795,9 +795,9 @@ const closeSearch = () => {
 
 /* Material Design 3 Search Field */
 .m3-search-field {
-  height: 40px; /* Adjusted to match container height */
-  border-radius: 24px;
-  background: rgb(var(--md-sys-color-surface-container-low));
+  height: 56px; /* Adjusted to match container height */
+  border-radius: 52px;
+  background: rgb(var(--md-sys-color-surface-container-high));
   transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
 }
 
@@ -825,7 +825,7 @@ const closeSearch = () => {
 .m3-search-field-content {
   display: flex;
   align-items: center;
-  padding: 0 4px 0 12px; /* Reduced left padding */
+  padding: 16px;
   background: none;
   gap: 6px; /* Reduced gap */
   height: 100%;
@@ -833,7 +833,7 @@ const closeSearch = () => {
 
 .m3-search-field-icon {
   color: rgb(var(--md-sys-color-on-surface));
-  font-size: 18px; /* Slightly smaller icon */
+  font-size: 24px; /* Slightly smaller icon */
   flex-shrink: 0;
   opacity: 0.65;
 }
@@ -842,7 +842,7 @@ const closeSearch = () => {
   flex: 1;
   min-width: 0;
   height: 100%;
-  padding: 0 8px 0 0; /* Adjusted padding */
+  padding: 0 16px; /* Adjusted padding */
   background: transparent;
   border: none;
   color: rgb(var(--md-sys-color-on-surface));

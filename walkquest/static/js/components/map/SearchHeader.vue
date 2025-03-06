@@ -30,6 +30,14 @@
           class="md3-search-bar"
           :class="{ 'search-view-active': isSearchActive }"
         />
+        
+        <!-- Account Circle as trailing icon in search bar for desktop layout -->
+        <AccountCircle
+          v-if="!uiStore.isMobile && !isSearchActive"
+          :is-active="accountActive"
+          @click="handleAccountClick"
+          class="desktop-avatar"
+        />
       </div>
       
       <!-- Fullscreen backdrop when search is active -->
@@ -76,6 +84,13 @@
         <slot name="results"></slot>
       </div>
     </BottomSheet>
+    
+    <!-- Account Circle as standalone icon for mobile layout -->
+    <AccountCircle
+      v-if="uiStore.isMobile"
+      :is-active="accountActive"
+      @click="handleAccountClick"
+    />
   </div>
 </template>
 
@@ -84,6 +99,7 @@ import { computed, onMounted, ref, onUnmounted } from "vue";
 import { useUiStore } from "../../stores/ui";
 import { useSearchStore } from "../../stores/searchStore";
 import SearchView from "../SearchView.vue";
+import AccountCircle from "../shared/AccountCircle.vue";
 import { Icon } from '@iconify/vue';
 import BottomSheet from '@douxcode/vue-spring-bottom-sheet';
 
@@ -104,7 +120,7 @@ const props = defineProps({
 /**
  * Emits for component communication
  */
-const emit = defineEmits(['location-selected', 'walk-selected']);
+const emit = defineEmits(['location-selected', 'walk-selected', 'account-click']);
 
 // Initialize stores
 const uiStore = useUiStore();
@@ -116,6 +132,7 @@ const mobileBottomSheet = ref(null);
 const searchViewRef = ref(null);
 const windowWidth = ref(window.innerWidth);
 const isSearchActive = ref(false);
+const accountActive = ref(false);
 const maxHeight = ref(window.innerHeight - 60); // Reduced top offset to maximize available space
 const bottomSheetHeight = ref(0); // Track the current height of the bottom sheet
 const bottomSheetOpen = ref(false); // Control the bottom sheet open state
@@ -165,6 +182,15 @@ const handleKeyDown = (event) => {
       deactivateSearch();
     }
   }
+};
+
+// Handle account icon click
+const handleAccountClick = (event) => {
+  // Toggle account active state
+  accountActive.value = !accountActive.value;
+  
+  // Emit event for parent component to handle account actions
+  emit('account-click', event);
 };
 
 // Add event handlers for bottom sheet
@@ -324,6 +350,11 @@ const handleWalkSelection = (walk) => {
   emit('walk-selected', walk);
   deactivateSearch();
 };
+
+// Explicitly expose activation method to parent components
+defineExpose({
+  activateSearch
+});
 </script>
 
 <style scoped>
@@ -345,43 +376,14 @@ const handleWalkSelection = (walk) => {
   pointer-events: auto;
 }
 
-/* Base container styles */
-.search-container-expanded {
-  width: min(680px, 65%);
-  margin: 0 auto;
-}
-
-.search-container-collapsed {
-  width: min(600px, 45%);
-  margin: 0 auto;
-}
-
-/* Responsive width classes following MD3 guidelines */
-.search-container-small {
-  width: calc(100% - 32px);
-  margin: 0 auto;
-}
-
-.search-container-medium {
-  width: min(600px, 65%);
-  margin: 0 auto;
-}
-
-.search-container-large {
-  width: min(680px, 55%);
-  margin: 0 auto;
-}
-
-.search-container-xlarge {
-  width: min(720px, 45%);
-  margin: 0 auto;
-}
-
-.search-container-mobile {
-  width: calc(100% - 16px);
-  margin: 0 8px;
-  max-width: 100%;
-}
+/* Base and responsive container styles */
+.search-container-expanded { width: clamp(360px, 55%, 720px); margin: 0 auto; }
+.search-container-collapsed { width: clamp(360px, 35%, 720px); margin: 0 auto; }
+.search-container-small { width: clamp(360px, calc(100% - 48px), 720px); margin: 0 auto; }
+.search-container-medium { width: clamp(360px, 55%, 720px); margin: 0 auto; }
+.search-container-large { width: clamp(360px, 45%, 720px); margin: 0 auto; }
+.search-container-xlarge { width: clamp(360px, 35%, 720px); margin: 0 auto; }
+.search-container-mobile { width: calc(100% - 24px); margin: 0 12px; max-width: 720px; min-width: 360px; }
 
 /* Modal styles when search is active */
 .search-container-modal {
@@ -405,7 +407,9 @@ const handleWalkSelection = (walk) => {
 .search-wrapper {
   position: relative;
   z-index: 1;
-  min-height: 48px;
+  min-height: 56px; /* MD3 spec: 56dp height */
+  display: flex;
+  align-items: center;
 }
 
 .search-wrapper.search-active {
@@ -416,8 +420,8 @@ const handleWalkSelection = (walk) => {
   pointer-events: none;
 }
 
-.search-wrapper:not(.search-active) .search-container,
-.search-wrapper:not(.search-active) .search-fab {
+.search-wrapper:not(.search-active) .md3-search-bar,
+.search-wrapper:not(.search-active) .desktop-avatar {
   pointer-events: auto;
 }
 
@@ -432,19 +436,18 @@ const handleWalkSelection = (walk) => {
   background-color: rgb(var(--md-sys-color-surface-variant));
 }
 
-.md3-search-bar {
-  width: 100%;
-  border-radius: 16px;
-  height: 40px;
-  overflow: visible;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  padding: 0 12px;
-  background: rgb(var(--md-sys-color-surface-container-lowest));
-  box-shadow: var(--md-sys-elevation-1);
+
+/* Position avatar as trailing icon in desktop search bar */
+.desktop-avatar {
+  position: absolute;
+  top: 50%;
+  right: 16px; /* Proper right padding according to MD3 spec */
+  transform: translateY(-50%);
+  z-index: 2;
 }
 
 .search-view-active {
-  border-radius: 24px 24px 0 0;
+  border-radius: 28px 28px 0 0;
   box-shadow: none;
 }
 
@@ -522,6 +525,7 @@ const handleWalkSelection = (walk) => {
     transform: translateY(24px);
   }
 }
+
 /* Bottom Sheet Styles */
 .mobile-search-results-sheet {
   --vsbs-backdrop-bg: rgba(0, 0, 0, 0.4);
