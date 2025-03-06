@@ -21,6 +21,13 @@
 
           <!-- Dialog Content -->
           <div class="dialog-content">
+            <!-- Toast Notification -->
+            <Transition name="fade">
+              <div v-if="isToastVisible" class="md3-toast">
+                {{ toastMessage }}
+              </div>
+            </Transition>
+            
             <form @submit.prevent="handleSubmit" class="adventure-form">
               <div class="form-scroll-container">
                 <!-- Title Field with floating label -->
@@ -249,7 +256,7 @@
                     <div class="md3-calendar-grid">
                       <div v-for="day in weekDays" :key="day" class="md3-calendar-weekday">{{ day }}</div>
                       <div 
-                        v-for="date in calendarDays" 
+                        v-for="date in memoizedCalendarDays" 
                         :key="date.iso"
                         class="md3-calendar-day"
                         :class="{
@@ -614,6 +621,25 @@ function nextMonth() {
 function selectDate(dateString) {
   tempDateValue.value = dateString
   
+  // When selecting start date, automatically set end date if empty or if end date is before start date
+  if (datePickerType.value === 'start') {
+    // If end date is empty or before the newly selected start date, update it
+    if (!adventureForm.value.endDate || dateString > adventureForm.value.endDate) {
+      // Set temp end date value so it's ready when confirming
+      adventureForm.value.endDate = dateString
+    }
+  } else if (datePickerType.value === 'end') {
+    // When selecting end date, ensure it's not before start date
+    if (adventureForm.value.startDate && dateString < adventureForm.value.startDate) {
+      // Show validation message
+      errors.value.endDate = 'End date cannot be before start date'
+      setTimeout(() => {
+        errors.value.endDate = null
+      }, 2000)
+      return
+    }
+  }
+  
   // Animate the day selection
   const selectedDay = document.querySelector(`.md3-calendar-day[data-date="${dateString}"]`)
   if (selectedDay) {
@@ -628,6 +654,42 @@ function selectDate(dateString) {
       easing: spring({ stiffness: 300, damping: 30 })
     })
   }
+  
+  // Highlight date range if both start and end dates are selected
+  highlightDateRange()
+}
+
+// New function to highlight date range between start and end dates
+function highlightDateRange() {
+  // Only highlight if we have both dates and are in end date picker
+  if (datePickerType.value === 'end' && adventureForm.value.startDate && tempDateValue.value) {
+    // Clear previous highlights
+    document.querySelectorAll('.md3-calendar-day.in-range').forEach(el => {
+      el.classList.remove('in-range')
+    })
+    
+    // Get all days between start and end dates
+    const startDate = new Date(adventureForm.value.startDate)
+    const endDate = new Date(tempDateValue.value)
+    
+    // Skip if dates are the same or invalid
+    if (startDate >= endDate) return
+    
+    // Add one day to start date to avoid highlighting the start date itself
+    startDate.setDate(startDate.getDate() + 1)
+    
+    // Highlight all days in range
+    while (startDate < endDate) {
+      const dateStr = startDate.toISOString().split('T')[0]
+      const dayEl = document.querySelector(`.md3-calendar-day[data-date="${dateStr}"]`)
+      
+      if (dayEl) {
+        dayEl.classList.add('in-range')
+      }
+      
+      startDate.setDate(startDate.getDate() + 1)
+    }
+  }
 }
 
 function confirmDateSelection() {
@@ -635,12 +697,20 @@ function confirmDateSelection() {
     if (datePickerType.value === 'start') {
       adventureForm.value.startDate = tempDateValue.value
       
-      // If end date is before start date, update end date
+      // If end date is before start date, update end date to match start date
       if (adventureForm.value.endDate && adventureForm.value.endDate < adventureForm.value.startDate) {
-        adventureForm.value.endDate = adventureForm.value.startDate
+        adventureForm.value.endDate = tempDateValue.value
+        showToast('End date adjusted to match start date')
+      } else if (!adventureForm.value.endDate) {
+        // If no end date set, auto-set it to start date
+        adventureForm.value.endDate = tempDateValue.value
+        showToast('End date set to match start date')
       }
     } else {
       adventureForm.value.endDate = tempDateValue.value
+      
+      // Calculate duration after date selection
+      calculateDuration()
     }
   }
   closeDatePicker()
@@ -735,9 +805,41 @@ function confirmTimeSelection() {
   if (tempTimeValue.value) {
     if (timePickerType.value === 'start') {
       adventureForm.value.startTime = tempTimeValue.value
+      
+      // If we have end time on same day, validate it
+      if (adventureForm.value.endTime && adventureForm.value.startDate === adventureForm.value.endDate) {
+        if (adventureForm.value.endTime <= tempTimeValue.value) {
+          // Auto-adjust end time to be 1 hour after start time
+          const [startHour, startMinute] = tempTimeValue.value.split(':').map(Number)
+          let endHour = startHour + 1
+          let endMinute = startMinute
+          
+          // Handle day overflow
+          if (endHour >= 24) {
+            endHour -= 24
+          }
+          
+          adventureForm.value.endTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`
+          showToast('End time adjusted to be after start time')
+        }
+      }
     } else {
+      // If setting end time, validate against start time
+      if (adventureForm.value.startTime && adventureForm.value.startDate === adventureForm.value.endDate) {
+        if (tempTimeValue.value <= adventureForm.value.startTime) {
+          errors.value.endTime = 'End time must be after start time'
+          setTimeout(() => {
+            errors.value.endTime = null
+          }, 2000)
+          return
+        }
+      }
+      
       adventureForm.value.endTime = tempTimeValue.value
     }
+    
+    // Calculate duration after time selection
+    calculateDuration()
   }
   
   closeTimePicker()
@@ -810,7 +912,157 @@ onUnmounted(() => {
     currentAnimation.stop()
     currentAnimation = null
   }
+  
+  // Clear toast timeout
+  if (toastTimeout) {
+    clearTimeout(toastTimeout)
+    toastTimeout = null
+  }
 })
+
+// Add smart duration calculation feature
+function calculateDuration() {
+  // Only calculate if we have all required values
+  if (adventureForm.value.startDate && adventureForm.value.endDate && 
+      adventureForm.value.startTime && adventureForm.value.endTime) {
+    
+    // Create DateTime objects for start and end
+    const startDateTime = new Date(`${adventureForm.value.startDate}T${adventureForm.value.startTime}`)
+    const endDateTime = new Date(`${adventureForm.value.endDate}T${adventureForm.value.endTime}`)
+    
+    // Skip invalid dates or if end is before start
+    if (isNaN(startDateTime) || isNaN(endDateTime) || endDateTime <= startDateTime) {
+      return
+    }
+    
+    // Calculate the difference in minutes
+    const diffMs = endDateTime - startDateTime
+    const diffMinutes = Math.floor(diffMs / (1000 * 60))
+    
+    // Show calculated duration in a toast
+    showToast(`Duration: ${formatDurationForDisplay(diffMinutes)}`)
+  }
+}
+
+// New function to format duration for display
+function formatDurationForDisplay(minutes) {
+  if (minutes < 60) {
+    return `${minutes} minutes`
+  }
+  
+  const hours = Math.floor(minutes / 60)
+  const remainingMinutes = minutes % 60
+  
+  if (remainingMinutes === 0) {
+    return hours === 1 ? `1 hour` : `${hours} hours`
+  }
+  
+  return `${hours}h ${remainingMinutes}m`
+}
+
+// Add toast notification system
+const toastMessage = ref('')
+const isToastVisible = ref(false)
+let toastTimeout = null
+
+function showToast(message) {
+  toastMessage.value = message
+  isToastVisible.value = true
+  
+  // Clear any existing timeout
+  if (toastTimeout) {
+    clearTimeout(toastTimeout)
+  }
+  
+  // Hide toast after 3 seconds
+  toastTimeout = setTimeout(() => {
+    isToastVisible.value = false
+  }, 3000)
+}
+
+// Enhanced date selection with validation and suggestions
+function confirmDateSelection() {
+  if (tempDateValue.value) {
+    if (datePickerType.value === 'start') {
+      adventureForm.value.startDate = tempDateValue.value
+      
+      // If end date is before start date, update end date to match start date
+      if (adventureForm.value.endDate && adventureForm.value.endDate < adventureForm.value.startDate) {
+        adventureForm.value.endDate = tempDateValue.value
+        showToast('End date adjusted to match start date')
+      } else if (!adventureForm.value.endDate) {
+        // If no end date set, auto-set it to start date
+        adventureForm.value.endDate = tempDateValue.value
+        showToast('End date set to match start date')
+      }
+    } else {
+      adventureForm.value.endDate = tempDateValue.value
+      
+      // Calculate duration after date selection
+      calculateDuration()
+    }
+  }
+  closeDatePicker()
+}
+
+// Enhance time selection with validation
+function confirmTimeSelection() {
+  updateTempTime()
+  
+  if (tempTimeValue.value) {
+    if (timePickerType.value === 'start') {
+      adventureForm.value.startTime = tempTimeValue.value
+      
+      // If we have end time on same day, validate it
+      if (adventureForm.value.endTime && adventureForm.value.startDate === adventureForm.value.endDate) {
+        if (adventureForm.value.endTime <= tempTimeValue.value) {
+          // Auto-adjust end time to be 1 hour after start time
+          const [startHour, startMinute] = tempTimeValue.value.split(':').map(Number)
+          let endHour = startHour + 1
+          let endMinute = startMinute
+          
+          // Handle day overflow
+          if (endHour >= 24) {
+            endHour -= 24
+          }
+          
+          adventureForm.value.endTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`
+          showToast('End time adjusted to be after start time')
+        }
+      }
+    } else {
+      // If setting end time, validate against start time
+      if (adventureForm.value.startTime && adventureForm.value.startDate === adventureForm.value.endDate) {
+        if (tempTimeValue.value <= adventureForm.value.startTime) {
+          errors.value.endTime = 'End time must be after start time'
+          setTimeout(() => {
+            errors.value.endTime = null
+          }, 2000)
+          return
+        }
+      }
+      
+      adventureForm.value.endTime = tempTimeValue.value
+    }
+    
+    // Calculate duration after time selection
+    calculateDuration()
+  }
+  
+  closeTimePicker()
+}
+
+// Use memoization for calendar days to improve performance
+const memoizedCalendarDays = computed(() => {
+  const key = `${currentDate.value.getFullYear()}-${currentDate.value.getMonth()}`
+  if (!calendarDaysCache[key]) {
+    calendarDaysCache[key] = calendarDays.value
+  }
+  return calendarDaysCache[key]
+})
+
+// Calendar days cache
+const calendarDaysCache = ref({})
 </script>
 
 <style scoped>
@@ -1541,6 +1793,32 @@ onUnmounted(() => {
   color: rgb(var(--md-sys-color-on-primary));
 }
 
+.md3-calendar-day.in-range {
+  background-color: rgba(var(--md-sys-color-primary), 0.15);
+  color: rgb(var(--md-sys-color-on-surface));
+  position: relative;
+  border-radius: 0;
+}
+
+.md3-calendar-day.in-range::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to bottom, 
+    rgba(var(--md-sys-color-primary), 0.05),
+    rgba(var(--md-sys-color-primary), 0.2)
+  );
+  z-index: -1;
+}
+
+.md3-calendar-day.in-range:hover {
+  background-color: rgba(var(--md-sys-color-primary), 0.25);
+  color: rgb(var(--md-sys-color-on-surface));
+}
+
 .md3-date-picker-actions,
 .md3-time-picker-actions {
   display: flex;
@@ -1697,5 +1975,96 @@ onUnmounted(() => {
     align-items: flex-end;
     padding: 0;
   }
+}
+
+/* Accessibility improvements */
+.md3-date-button,
+.md3-time-button,
+.md3-difficulty-card,
+.md3-category-chip,
+.md3-calendar-day,
+.md3-time-unit-button,
+.md3-month-nav-button,
+.close-button,
+.md3-close-button,
+.md3-period-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.md3-date-button:focus-visible,
+.md3-time-button:focus-visible,
+.md3-difficulty-card:focus-visible,
+.md3-category-chip:focus-visible,
+.md3-calendar-day:focus-visible,
+.md3-time-unit-button:focus-visible,
+.md3-month-nav-button:focus-visible,
+.close-button:focus-visible,
+.md3-close-button:focus-visible,
+.md3-period-button:focus-visible,
+.md3-button:focus-visible {
+  outline: 2px solid rgb(var(--md-sys-color-primary));
+  outline-offset: 2px;
+}
+
+.md3-date-button::after,
+.md3-time-button::after,
+.md3-difficulty-card::after,
+.md3-category-chip::after,
+.md3-calendar-day::after,
+.md3-time-unit-button::after,
+.md3-month-nav-button::after,
+.close-button::after,
+.md3-close-button::after,
+.md3-period-button::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  background-color: currentColor;
+  border-radius: inherit;
+  transform: translate(-50%, -50%) scale(0);
+  opacity: 0;
+  transition: transform 0.3s, opacity 0.3s;
+}
+
+.md3-date-button:active::after,
+.md3-time-button:active::after,
+.md3-difficulty-card:active::after,
+.md3-category-chip:active::after,
+.md3-calendar-day:active::after,
+.md3-time-unit-button:active::after,
+.md3-month-nav-button:active::after,
+.close-button:active::after,
+.md3-close-button:active::after,
+.md3-period-button:active::after,
+.md3-button:active::after {
+  transform: translate(-50%, -50%) scale(2);
+  opacity: 0.1;
+}
+
+/* Toast notification for feedback */
+.md3-toast {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgb(var(--md-sys-color-inverse-surface));
+  color: rgb(var(--md-sys-color-inverse-on-surface));
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  box-shadow: var(--md-sys-elevation-2);
+  z-index: 2500;
+  opacity: 0;
+  transition: opacity 0.3s, transform 0.3s;
+  pointer-events: none;
+}
+
+.md3-toast.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-8px);
 }
 </style>
