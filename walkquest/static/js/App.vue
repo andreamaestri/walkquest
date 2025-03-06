@@ -4,7 +4,7 @@
       <RouterView :mapbox-token="mapboxToken" />
     </main>
     <Loading ref="loadingComponent" />
-    <!-- Portals container for modals and overlays -->
+    <div id="portal-root"></div>
     <Teleport to="#portal-root" :disabled="!portalRoot()">
       <AdventureLogDialog
         v-if="adventureDialogStore.currentWalk"
@@ -29,15 +29,8 @@ import { RouterView } from 'vue-router'
 
 const { portalRoot } = usePortal()
 const adventureStore = useAdventureStore()
-
 const adventureDialogStore = useAdventureDialogStore()
-
 const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN
-
-// Register beforeunload handler to clear dialog state
-window.addEventListener('beforeunload', () => {
-  adventureDialogStore.closeDialog()
-})
 
 // Handle adventure submission
 const handleAdventureSubmit = async (data) => {
@@ -53,20 +46,29 @@ const searchStore = useSearchStore()
 const route = useRoute()
 const loadingComponent = ref(null)
 
+// Setup beforeunload handler to clear dialog state
+let beforeUnloadHandler;
+
 onMounted(() => {
   // Initialize UI responsive state
   const cleanup = uiStore.initializeResponsiveState()
   
+  // Setup beforeunload handler
+  beforeUnloadHandler = () => {
+    adventureDialogStore.closeDialog()
+  }
+  window.addEventListener('beforeunload', beforeUnloadHandler)
+  
   // Watch loading states to show/hide loading component
   watch(() => uiStore.isAnyLoading, (isLoading) => {
     if (isLoading) {
-      let message = 'Loading...'
-      if (uiStore.loadingStates.walks) message = 'Loading walks...'
-      else if (uiStore.loadingStates.location) message = 'Finding nearby walks...'
-      else if (uiStore.loadingStates.map) message = 'Loading map...'
-      else if (uiStore.loadingStates.search) message = 'Searching...'
+      const loadingMessage = uiStore.loadingStates.walks ? 'Loading walks...' :
+                            uiStore.loadingStates.location ? 'Finding nearby walks...' :
+                            uiStore.loadingStates.map ? 'Loading map...' :
+                            uiStore.loadingStates.search ? 'Searching...' :
+                            'Loading...'
       
-      loadingComponent.value?.show(message)
+      loadingComponent.value?.show(loadingMessage)
     } else {
       loadingComponent.value?.hide()
     }
@@ -82,9 +84,19 @@ onMounted(() => {
   watch(() => searchStore.searchMode, (mode) => {
     localStorage.setItem('searchMode', mode)
   })
+})
+
+// Cleanup handlers when component is unmounted
+onBeforeUnmount(() => {
+  // Remove beforeunload handler
+  if (beforeUnloadHandler) {
+    window.removeEventListener('beforeunload', beforeUnloadHandler)
+  }
   
-  // Cleanup on unmount
-  onBeforeUnmount(cleanup)
+  // Clean up UI responsive state
+  if (uiStore.cleanupResponsiveState) {
+    uiStore.cleanupResponsiveState()
+  }
 })
 </script>
 

@@ -101,6 +101,7 @@ import { useUiStore } from "../stores/ui";
 import { useWalksStore } from "../stores/walks";
 import { useLocationStore } from "../stores/locationStore";
 import { useSearchStore } from "../stores/searchStore";
+import { useAdventureDialogStore } from "../stores/adventureDialog";
 
 // Import composables and utilities
 import { useMap } from "../composables/useMap";
@@ -149,6 +150,7 @@ const walksStore = useWalksStore();
 const uiStore = useUiStore();
 const locationStore = useLocationStore();
 const searchStore = useSearchStore();
+const adventureDialogStore = useAdventureDialogStore();
 
 // Initialize composables
 const { setMapInstance, flyToLocation } = useMap();
@@ -423,17 +425,11 @@ const handleDrawerClose = async () => {
 
 /**
  * Handle start walk action
- * Closes drawer and could navigate to walk route view
+ * Opens the adventure log dialog
  */
 const handleStartWalk = (walk) => {
-  // Close the drawer
-  handleDrawerClose();
-
-  // Add functionality to start the walk (e.g., navigate to walk route view)
-  console.log("Starting walk:", walk);
-
-  // Example: Navigate to a walk route page
-  // router.push({ name: 'walk-route', params: { id: walk.id } });
+  // Open the adventure log dialog instead of closing
+  adventureDialogStore.openDialog(walk);
 };
 
 /**

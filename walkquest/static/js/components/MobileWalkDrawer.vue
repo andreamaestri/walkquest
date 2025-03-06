@@ -34,6 +34,12 @@
           @directions="() => {}"
           @recenter="$emit('recenter')"
         />
+        <div class="action-buttons">
+          <button class="m3-button m3-filled-button" @click="handleStartWalk">
+            <Icon icon="mdi:play-circle" class="button-icon" />
+            <span>Log an Adventure</span>
+          </button>
+        </div>
       </div>
     </BottomSheet>
   </div>
@@ -96,26 +102,19 @@ watch(() => isOpen.value, (newVal) => {
   emit('update:modelValue', newVal);
 });
 
+// Define resize handler outside of lifecycle hook
+const handleResize = () => {
+  maxHeight.value = calculateAvailableHeight();
+};
+
 // Lifecycle hooks
 onMounted(() => {
-  console.log("MobileWalkDrawer mounted, bottomSheetRef:", bottomSheetRef.value);
-  
   // Update max height initially
   maxHeight.value = calculateAvailableHeight();
   
   // Add resize listener
-  const handleResize = () => {
-    maxHeight.value = calculateAvailableHeight();
-  };
-  
   window.addEventListener('resize', handleResize);
   window.addEventListener('orientationchange', handleResize);
-  
-  // Cleanup
-  onBeforeUnmount(() => {
-    window.removeEventListener('resize', handleResize);
-    window.removeEventListener('orientationchange', handleResize);
-  });
   
   // Handle initial open state
   if (props.modelValue) {
@@ -123,9 +122,14 @@ onMounted(() => {
   }
 });
 
+// Cleanup event listeners
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize);
+  window.removeEventListener('orientationchange', handleResize);
+});
+
 // Methods to control the bottom sheet
 function open() {
-  console.log("Opening walk drawer");
   if (bottomSheetRef.value) {
     isOpen.value = true;
     nextTick(() => {
@@ -137,11 +141,9 @@ function open() {
 }
 
 function close() {
-  console.log("Closing walk drawer");
   if (bottomSheetRef.value) {
-    // Ensure we set the state first before closing
+    // Set state once
     isOpen.value = false;
-    emit('update:modelValue', false);
     
     // Use nextTick to ensure the state has been updated before attempting to close
     nextTick(() => {
@@ -158,15 +160,11 @@ function close() {
 }
 
 function onOpened() {
-  console.log("Walk drawer opened");
   isOpen.value = true;
-  emit('update:modelValue', true);
 }
 
 function onClosed() {
-  console.log("Walk drawer closed");
   isOpen.value = false;
-  emit('update:modelValue', false);
   emit('close');
 }
 

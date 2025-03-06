@@ -1,7 +1,7 @@
 [Previous template content remains the same until the script section]
 
 <script setup>
-import { ref, computed, onUnmounted, watch } from 'vue'
+import { ref, computed, onUnmounted, watch, nextTick } from 'vue'
 import { Icon } from '@iconify/vue'
 import { animate } from 'motion'
 import { useAdventureStore } from '../../stores/adventure'
@@ -27,11 +27,17 @@ const dialogRef = ref(null)
 let currentAnimation
 
 watch(() => adventureDialogStore.isOpen, async (isOpen) => {
+  // Stop any existing animation before starting a new one
   if (currentAnimation) {
     currentAnimation.stop()
+    currentAnimation = null
   }
 
+  await nextTick() // Wait for DOM update
+  if (!dialogRef.value) return
+
   if (isOpen) {
+    // Entry animation
     currentAnimation = animate(
       dialogRef.value,
       { 
@@ -40,10 +46,11 @@ watch(() => adventureDialogStore.isOpen, async (isOpen) => {
       },
       { 
         duration: 0.3,
-        easing: [0.2, 0, 0, 1]  // M3 emphasized easing
+        easing: [0.2, 0, 0, 1] // M3 emphasized easing
       }
     )
   } else {
+    // Exit animation
     currentAnimation = animate(
       dialogRef.value,
       { 
@@ -52,15 +59,21 @@ watch(() => adventureDialogStore.isOpen, async (isOpen) => {
       },
       { 
         duration: 0.2,
-        easing: [0.3, 0, 0.8, 0.15]  // M3 emphasized-accelerate
+        easing: [0.3, 0, 0.8, 0.15], // M3 emphasized-accelerate
+        onComplete: () => {
+          // Clear the animation reference once complete
+          currentAnimation = null
+        }
       }
     )
   }
 })
 
+// Ensure animations are stopped when component unmounts
 onUnmounted(() => {
   if (currentAnimation) {
     currentAnimation.stop()
+    currentAnimation = null
   }
 })
 
@@ -161,6 +174,8 @@ const handleSubmit = async () => {
   if (!validateForm()) return
 
   isSubmitting.value = true
+  errors.value = {} // Clear previous errors
+  
   try {
     const { companions, ...formData } = form.value
     const adventureData = await adventureStore.createAdventure({
@@ -172,7 +187,18 @@ const handleSubmit = async () => {
     handleClose()
   } catch (error) {
     console.error('Failed to create adventure:', error)
-    errors.value.submit = 'Failed to create adventure. Please try again.'
+    
+    // Set specific error messages based on error type if possible
+    if (error.response && error.response.data) {
+      // Handle API error responses
+      const apiErrors = error.response.data
+      Object.entries(apiErrors).forEach(([key, message]) => {
+        errors.value[key] = Array.isArray(message) ? message[0] : message
+      })
+    } else {
+      // Generic error fallback
+      errors.value.submit = 'Failed to create adventure. Please try again.'
+    }
   } finally {
     isSubmitting.value = false
   }

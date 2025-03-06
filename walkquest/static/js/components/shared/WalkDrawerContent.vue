@@ -53,7 +53,7 @@
     <div ref="buttonsContainerRef" class="buttons-container">
       <button class="m3-button m3-filled-button" @click="$emit('start-walk', walk)">
         <Icon icon="mdi:play-circle" class="button-icon" />
-        <span>Start Walk</span>
+        <span>Log an Adventure</span>
       </button>
 
       <div class="secondary-buttons">
