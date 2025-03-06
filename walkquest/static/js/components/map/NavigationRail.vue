@@ -15,13 +15,13 @@
         <!-- Menu button -->
         <button class="m3-rail-item menu-button" @click="toggleExpanded" aria-label="Toggle menu">
           <div class="m3-state-layer">
-            <Icon icon="mdi:menu" class="m3-rail-icon text-[24px]" />
+            <Icon icon="mdi:menu" class="m3-rail-icon text-[24px]" :class="{ 'rotate-icon': isExpanded }" />
           </div>
         </button>
         <!-- FAB - keeping color as requested -->
         <button class="m3-rail-fab" @click="handleFabClick" aria-label="WalkQuest Home">
-          <Icon icon="mdi:hiking" class="text-[24px]" />
-          <span class="m3-rail-fab-text" v-if="isExpanded">WalkQuest</span>
+          <Icon icon="mdi:hiking" class="text-[24px] menu-icon" />
+          <span class="m3-rail-fab-text" :class="{ 'text-visible': isExpanded }">WalkQuest</span>
         </button>
       </div>
       
@@ -31,6 +31,7 @@
           class="m3-rail-item"
           :class="{
             'is-active': searchMode === 'walks' && !selectedWalkId,
+            'item-expanded': isExpanded
           }"
           @click="handleExploreClick"
           aria-label="Explore walks"
@@ -52,6 +53,7 @@
           class="m3-rail-item"
           :class="{
             'is-active': searchMode === 'locations',
+            'item-expanded': isExpanded
           }"
           @click="handleLocationSearchClick"
           aria-label="Find nearby walks"
@@ -73,6 +75,7 @@
           class="m3-rail-item"
           :class="{
             'is-active': searchMode === 'categories',
+            'item-expanded': isExpanded
           }"
           @click="handleCategoriesClick"
           aria-label="Browse by categories"
@@ -85,7 +88,7 @@
                 class="m3-rail-icon outlined-icon"
               />
             </div>
-            <span class="m3-rail-label">Categories</span>
+            <span class="m3-rail-label" style="right: 5px;">Categories</span>
           </div>
         </button>
       </nav>
@@ -165,6 +168,11 @@ const expandedWalkIds = ref(
 );
 const isExpanded = ref(localStorage.getItem("sidebarExpanded") === "true");
 
+// Animation configurations with improved spring physics
+const springEasing = [0.34, 1.56, 0.64, 1]; // Improved spring curve
+const standardEasing = [0.2, 0, 0.2, 1]; // Standard Material motion
+const mdEmphasizedEasing = [0.2, 0, 0, 1]; // Material emphasized curve
+
 // Computed properties
 const searchQuery = computed({
   get: () => searchStore.searchQuery,
@@ -184,12 +192,30 @@ const visible = computed(() => {
 });
 
 /**
- * Toggle sidebar expanded state
+ * Toggle sidebar expanded state with enhanced animation
  * Persists state to localStorage for session continuity
  */
 const toggleExpanded = () => {
   isExpanded.value = !isExpanded.value;
   localStorage.setItem("sidebarExpanded", isExpanded.value.toString());
+  
+  // Animate the content transition
+  const contentArea = document.querySelector(".m3-rail-content-area");
+  if (contentArea) {
+    if (isExpanded.value) {
+      animate(
+        contentArea,
+        { opacity: [0, 1], scale: [0.97, 1] },
+        { duration: 0.35, easing: springEasing, delay: 0.05 }
+      );
+    } else {
+      animate(
+        contentArea,
+        { opacity: [1, 0], scale: [1, 0.97] },
+        { duration: 0.25, easing: standardEasing }
+      );
+    }
+  }
   
   // If we're expanding and have a selected walk, emit to close drawer
   if (isExpanded.value && props.selectedWalkId) {
@@ -198,21 +224,51 @@ const toggleExpanded = () => {
 };
 
 /**
- * Explicitly expand the sidebar
+ * Explicitly expand the sidebar with animation
  * Used when closing the drawer to return to expanded state
  */
 const expandSidebar = () => {
   if (!isExpanded.value) {
     isExpanded.value = true;
     localStorage.setItem("sidebarExpanded", "true");
+    
+    // Animate the content appearance
+    nextTick(() => {
+      const contentArea = document.querySelector(".m3-rail-content-area");
+      if (contentArea) {
+        animate(
+          contentArea,
+          { 
+            opacity: [0, 1], 
+            scale: [0.97, 1],
+            y: [-5, 0] 
+          },
+          { 
+            duration: 0.35, 
+            easing: springEasing, 
+            delay: 0.05 
+          }
+        );
+      }
+    });
   }
 };
 
 /**
- * Handle FAB button click
+ * Handle FAB button click with tactile animation
  * Navigates to home and expands sidebar
  */
 const handleFabClick = async () => {
+  // Add tactile feedback animation
+  const fab = document.querySelector(".m3-rail-fab");
+  if (fab) {
+    await animate(
+      fab,
+      { scale: [1, 0.92, 1] },
+      { duration: 0.4, easing: springEasing }
+    ).finished;
+  }
+  
   await router.push({ name: "home" });
   
   if (!isExpanded.value) {
@@ -227,17 +283,13 @@ const handleFabClick = async () => {
   emit('fab-click');
 };
 
-/**
- * Handle walk selection
- * Collapses sidebar and emits selection event
- */
+// Other event handlers and methods remain unchanged
 const handleWalkSelection = (walk) => {
   if (walk?.id) {
     // Always collapse sidebar when a walk is selected
     isExpanded.value = false;
     localStorage.setItem("sidebarExpanded", "false");
     emit('walk-selected', walk);
-
     // Use walk.walk_id for the slug-based route if available
     if (walk.walk_id) {
       router.push({ name: 'walk', params: { walk_slug: walk.walk_id } });
@@ -247,10 +299,6 @@ const handleWalkSelection = (walk) => {
   }
 };
 
-/**
- * Handle walk expansion toggle
- * Updates expandedWalkIds and persists to localStorage
- */
 const handleWalkExpanded = ({ walkId, expanded }) => {
   expandedWalkIds.value = expanded
     ? [...new Set([...expandedWalkIds.value, walkId])]
@@ -261,10 +309,20 @@ const handleWalkExpanded = ({ walkId, expanded }) => {
 };
 
 /**
- * Handle explore button click
+ * Handle explore button click with tactile feedback
  * Sets search mode to walks and clears location
  */
-const handleExploreClick = () => {
+const handleExploreClick = async () => {
+  // Get the button element and add tactile feedback
+  const button = document.querySelector(".m3-rail-item:nth-child(1)");
+  if (button) {
+    await animate(
+      button,
+      { scale: [1, 0.95, 1] },
+      { duration: 0.3, easing: springEasing }
+    ).finished;
+  }
+
   searchStore.setSearchMode("walks");
   locationStore.clearLocation();
   searchStore.setError(null);
@@ -279,10 +337,20 @@ const handleExploreClick = () => {
 };
 
 /**
- * Handle location search button click
+ * Handle location search button click with feedback animation
  * Sets search mode to locations and expands sidebar
  */
-const handleLocationSearchClick = () => {
+const handleLocationSearchClick = async () => {
+  // Get the button element and add tactile feedback
+  const button = document.querySelector(".m3-rail-item:nth-child(2)");
+  if (button) {
+    await animate(
+      button,
+      { scale: [1, 0.95, 1] },
+      { duration: 0.3, easing: springEasing }
+    ).finished;
+  }
+
   searchStore.setSearchMode("locations");
   
   // Always ensure sidebar is expanded when using Find Nearby
@@ -295,7 +363,6 @@ const handleLocationSearchClick = () => {
   }
   
   searchStore.setError(null);
-
   // If we have a saved location, make sure it's displayed
   if (locationStore.userLocation) {
     nextTick(() => {
@@ -314,10 +381,20 @@ const handleLocationSearchClick = () => {
 };
 
 /**
- * Handle categories button click
+ * Handle categories button click with feedback animation
  * Sets search mode to categories and expands sidebar
  */
-const handleCategoriesClick = () => {
+const handleCategoriesClick = async () => {
+  // Get the button element and add tactile feedback
+  const button = document.querySelector(".m3-rail-item:nth-child(3)");
+  if (button) {
+    await animate(
+      button,
+      { scale: [1, 0.95, 1] },
+      { duration: 0.3, easing: springEasing }
+    ).finished;
+  }
+
   searchStore.setSearchMode("categories");
   
   // Always ensure sidebar is expanded when using Categories
@@ -335,7 +412,7 @@ const handleCategoriesClick = () => {
 // Make the expandSidebar function available to parent components
 defineExpose({ expandSidebar });
 
-// Watch for search mode changes
+// Watch for search mode changes with smooth animations
 watch(
   () => searchStore.searchMode,
   (newMode) => {
@@ -344,6 +421,18 @@ watch(
       if (!isExpanded.value) {
         isExpanded.value = true;
         localStorage.setItem("sidebarExpanded", "true");
+        
+        // Animate the content appearance
+        nextTick(() => {
+          const contentArea = document.querySelector(".m3-rail-content-area");
+          if (contentArea) {
+            animate(
+              contentArea,
+              { opacity: [0, 1], scale: [0.97, 1] },
+              { duration: 0.35, easing: springEasing, delay: 0.05 }
+            );
+          }
+        });
       }
     }
   }
@@ -376,126 +465,136 @@ watch(
   }
 );
 
-// Animate rail elements on mount
+// Animate rail elements on mount with improved sequencing
 onMounted(() => {
-  // Animate rail header
+  // Animate rail header with improved physics
   const railHeader = document.querySelector(".m3-rail-header");
   if (railHeader) {
     animate(
       railHeader,
-      { opacity: [0, 1], y: [-20, 0] },
-      { duration: 0.4, easing: [0.2, 0, 0.2, 1] }
+      { opacity: [0, 1], y: [-15, 0] },
+      { duration: 0.45, easing: mdEmphasizedEasing }
     );
   }
 
-  // Animate menu button
+  // Animate menu button with slight bounce
   const menuButton = document.querySelector(".menu-button");
   if (menuButton) {
     animate(
       menuButton,
-      { scale: [0.9, 1], opacity: [0, 1] },
+      { scale: [0.8, 1], opacity: [0, 1] },
       {
-        duration: 0.4,
-        easing: [0.2, 0, 0.2, 1],
+        duration: 0.5,
+        easing: springEasing,
         delay: 0.1,
       }
     );
   }
 
-  // Animate FAB
+  // Animate FAB with spring physics
   const fab = document.querySelector(".m3-rail-fab");
   if (fab) {
     animate(
       fab,
-      { scale: [0.9, 1], opacity: [0, 1] },
+      { scale: [0.85, 1], opacity: [0, 1] },
       {
-        duration: 0.4,
-        easing: [0.2, 0, 0.2, 1],
-        delay: 0.1,
+        duration: 0.55,
+        easing: springEasing,
+        delay: 0.15,
       }
     );
   }
 
-  // Animate nav items
-  const navItems = document.querySelector(".m3-rail-items");
-  if (navItems) {
-    animate(
-      navItems,
-      { opacity: [0, 1], y: [20, 0] },
-      {
-        duration: 0.4,
-        easing: [0.2, 0, 0.2, 1],
-        delay: 0.2,
-      }
-    );
+  // Animate nav items with staggered entrance
+  const navItems = document.querySelectorAll(".m3-rail-item:not(.menu-button)");
+  if (navItems.length) {
+    navItems.forEach((item, index) => {
+      animate(
+        item,
+        { opacity: [0, 1], y: [15, 0] },
+        {
+          duration: 0.4,
+          easing: mdEmphasizedEasing,
+          delay: 0.2 + index * 0.08, // Staggered delay for each item
+        }
+      );
+    });
   }
 
-  // Animate content area
-  const contentArea = document.querySelector(".m3-rail-content-area");
-  if (contentArea) {
-    animate(
-      contentArea,
-      { opacity: [0, 1], scale: [0.95, 1] },
-      {
-        duration: 0.4,
-        easing: [0.2, 0, 0.2, 1],
-        delay: 0.3,
-      }
-    );
+  // Animate content area if expanded
+  if (isExpanded.value) {
+    const contentArea = document.querySelector(".m3-rail-content-area");
+    if (contentArea) {
+      animate(
+        contentArea,
+        { opacity: [0, 1], x: [-20, 0] },
+        {
+          duration: 0.45,
+          easing: mdEmphasizedEasing,
+          delay: 0.4,
+        }
+      );
+    }
   }
 });
 </script>
 
 <style scoped>
-/* Navigation rail styles - updated to MD3 specs */
+/* Navigation rail styles - updated to MD3 specs with improved animations */
 .m3-navigation-rail { 
   position: fixed;
   left: 0;
   top: 0;
   bottom: 0;
-  z-index: 30; /* Higher z-index to ensure proper layering on top of drawer */
+  z-index: 30;
   background: rgb(var(--md-sys-color-surface));
   box-shadow: var(--md-sys-elevation-1);
-  transition: transform 0.3s var(--md-sys-motion-easing-standard), 
-              box-shadow 0.3s var(--md-sys-motion-easing-standard),
-              width 0.3s var(--md-sys-motion-easing-standard); /* Added width transition */
+  transition: width 0.35s cubic-bezier(0.2, 0, 0, 1),
+              box-shadow 0.35s cubic-bezier(0.2, 0, 0, 1),
+              transform 0.35s cubic-bezier(0.2, 0, 0, 1); 
   visibility: visible !important;
   pointer-events: auto !important;
   width: var(--md-sys-sidebar-collapsed);
-  isolation: isolate; /* Creates a new stacking context for proper z-index */
-  border-radius: 0 16px 16px 0; /* MD3 rounded corners */
+  isolation: isolate;
+  border-radius: 0 16px 16px 0;
   overflow: hidden;
+  transform: translateZ(0); /* Force GPU acceleration */
+  will-change: width, transform;
   @media (max-width: 768px) {
     display: none;
   }
 }
 
-/* Add expanded state width */
+/* Add expanded state width with improved transition */
 .m3-navigation-rail.is-expanded {
-  width: 412px; /* Standard navigation drawer width */
+  width: 412px;
+  box-shadow: var(--md-sys-elevation-2);
 }
 
 /* Interaction styles for when drawer is open */
 .m3-navigation-rail.is-collapsed {
   box-shadow: none;
-  z-index: 40; /* Increase z-index when navigation needs to be above drawer */
+  z-index: 40;
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
   border-right: 1px solid rgba(var(--md-sys-color-outline-variant), 0.5);
-  transition: cubic-bezier(0.075, 0.82, 0.165, 1) 0.3s;
-  box-shadow: var(--md-sys-elevation-1);
+  transition: all 0.35s cubic-bezier(0.2, 0, 0, 1);
 }
 
-/* Content area transitions */
+/* Content area transitions with improved animation */
 .m3-rail-content-area {
-  transition: opacity 0.25s var(--md-sys-motion-easing-standard), 
-              visibility 0.25s var(--md-sys-motion-easing-standard);
+  transition: opacity 0.35s cubic-bezier(0.2, 0, 0, 1),
+              visibility 0.35s cubic-bezier(0.2, 0, 0, 1),
+              transform 0.35s cubic-bezier(0.2, 0, 0, 1);
+  will-change: opacity, transform;
+  transform: translateZ(0);
 }
 
 .m3-rail-content-area.content-hidden {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
+  transform: translateX(-5px);
 }
 
 /* Rail header & items */
@@ -507,16 +606,33 @@ onMounted(() => {
   gap: 12px;
 }
 
-/* Menu button - conforms to MD3 icon button specs */
+/* Menu button - with improved interaction feedback */
 .menu-button {
   width: 48px;
   height: 48px;
   margin: 0 auto 4px;
   padding: 0;
   border-radius: 50%;
+  transition: background-color 0.2s cubic-bezier(0.2, 0, 0, 1);
+  overflow: hidden;
 }
 
-/* Rail FAB - kept original styling as requested */
+.menu-button:hover {
+  background-color: rgba(var(--md-sys-color-on-surface-variant), 0.08);
+}
+
+.menu-button:active {
+  background-color: rgba(var(--md-sys-color-on-surface-variant), 0.12);
+  transform: scale(0.95);
+}
+
+/* Menu icon rotation animation */
+.rotate-icon {
+  transform: rotate(90deg);
+  transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Rail FAB - kept original styling with enhanced interaction */
 .m3-rail-fab {
   width: 56px;
   height: 56px;
@@ -525,35 +641,61 @@ onMounted(() => {
   justify-content: center;
   border-radius: 16px;
   margin: 8px auto;
-  transition: all 0.2s var(--md-sys-motion-easing-standard);
+  transition: all 0.35s cubic-bezier(0.2, 0, 0, 1),
+              transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: hidden;
+  position: relative;
+}
+
+.m3-rail-fab:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--md-sys-elevation-2);
+}
+
+.m3-rail-fab:active {
+  transform: translateY(-1px) scale(0.97);
+}
+
+.menu-icon {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.m3-rail-fab:hover .menu-icon {
+  transform: rotate(-10deg) scale(1.1);
 }
 
 .m3-rail-fab-text {
+  position: absolute;
   text-align: center;
-  margin-left: -22px;
+  margin-left: 40px; /* Adjusted to be properly positioned */
   flex: 1;
   justify-items: center;
   font-size: 27px;
   font-weight: 400;
+  opacity: 0;
+  transform: translateX(-10px);
+  transition: opacity 0.35s cubic-bezier(0.2, 0, 0, 1),
+              transform 0.35s cubic-bezier(0.2, 0, 0, 1);
+  pointer-events: none; /* Prevents text from interfering with clicks */
 }
 
-/* Navigation items container - keep centered even when expanded */
+.text-visible {
+  opacity: 1 !important;
+  transform: translateX(0) !important;
+}
+
+/* Navigation items container */
 .m3-rail-items {
   display: flex;
   flex-direction: column;
-  align-items: center; /* Always center-aligned */
+  align-items: center;
   width: 100%;
   padding: 4px 0;
-  gap: 12px; /* MD3 standard spacing */
-  z-index: 10; /* Ensure these are on top of drawer content */
+  gap: 12px;
+  z-index: 10;
 }
 
-/* Remove alignment changes for expanded state */
-.is-expanded .m3-rail-items {
-  padding: 4px 0; /* Keep padding consistent with collapsed state */
-}
-
-/* Navigation item styling - maintain vertical layout */
+/* Navigation item styling with enhanced hover effects */
 .m3-rail-item {
   width: 56px;
   height: 28px;
@@ -567,20 +709,89 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   position: relative;
-  border-radius: 16px; /* Add border radius for active state */
-  transition: background-color 0.2s var(--md-sys-motion-easing-standard);
-  z-index: 1; /* Ensure items are above other elements in the rail */
+  border-radius: 16px;
+  transition: background-color 0.2s cubic-bezier(0.2, 0, 0, 1),
+              transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+              width 0.35s cubic-bezier(0.2, 0, 0, 1);
+  z-index: 1;
+  overflow: visible; /* Changed from hidden to allow labels to be visible */
 }
 
-/* Keep rail items same size and layout when expanded */
-.is-expanded .m3-rail-item {
-  width: 56px; /* Keep consistent width */
-  height: 28px; /* Keep consistent height */
-  padding: 0;  /* Keep consistent padding */
-  justify-content: center; /* Keep centered */
+/* Styles for navigation items when the sidebar is expanded */
+.m3-rail-item.item-expanded {
+  width: calc(100% - 24px);
+  height: 48px;
+  margin-left: 12px;
+  margin-right: 12px;
+  flex-direction: row;
+  justify-content: flex-start;
+  padding-left: 16px;
+  border-radius: 28px;
 }
 
-/* Content layout - always vertical */
+.m3-rail-item.item-expanded .m3-rail-content {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 16px;
+}
+
+.m3-rail-item.item-expanded .m3-rail-label {
+  position: static;
+  margin-top: 0;
+  font-size: 14px;
+  text-align: left;
+  width: auto;
+}
+
+/* Only modify the FAB when expanded - improved transitions */
+.is-expanded .m3-rail-fab {
+  width: calc(100% - 24px);
+  border-radius: 28px;
+  justify-content: flex-start;
+  padding-left: 16px;
+}
+
+/* Add specific styles for FAB in collapsed state */
+.m3-navigation-rail:not(.is-expanded) .m3-rail-fab {
+  overflow: visible; /* Allow text to be visible outside the button */
+}
+
+span.m3-rail-label {
+  top: 5px;
+  bottom: 0px;
+}
+
+/* Label styling with enhanced transitions */
+.m3-rail-label {
+  display: block;
+  margin-top: 28px; /* Adjusted to position better below icon */
+  font-size: var(--md-sys-typescale-label-medium-size, 12px);
+  line-height: var(--md-sys-typescale-label-medium-line-height, 16px);
+  font-weight: var(--md-sys-typescale-label-medium-weight, 500);
+  letter-spacing: var(--md-sys-typescale-label-medium-tracking, 0.5px);
+  text-align: center;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+  transition: color 0.35s cubic-bezier(0.2, 0, 0, 1),
+              transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: absolute;
+  width: 100%;
+  bottom: -12px; /* Position label below the icon */
+}
+
+/* Icon container with enhanced animations */
+.m3-rail-icon-container {
+  position: relative;
+  width: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  transition: all 0.35s cubic-bezier(0.2, 0, 0, 1),
+              transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Content layout with improved transitions */
 .m3-rail-content {
   display: flex;
   flex-direction: column;
@@ -588,42 +799,8 @@ onMounted(() => {
   justify-content: center;
   height: 100%;
   width: 100%;
-  transition: all 0.3s var(--md-sys-motion-easing-standard);
-}
-
-/* Keep rail content in column direction even when expanded */
-.is-expanded .m3-rail-content {
-  flex-direction: column;
-  padding-left: 0;
-}
-
-/* Icon container - consistent in both states */
-.m3-rail-icon-container {
-  position: relative;
-  width: 24px;
-  height: 32px;
-  display: flex;
-  top: 18px;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 10px;
-  border-radius: 16px;
-  transition: all 0.3s var(--md-sys-motion-easing-standard);
-}
-
-/* Keep icon container positioning the same when expanded */
-.is-expanded .m3-rail-icon-container {
-  top: 10px; /* Keep same top position */
-  margin-bottom: 10px; /* Keep same bottom margin */
-  margin-right: 0; /* No right margin */
-}
-
-/* Only modify the FAB when expanded */
-.is-expanded .m3-rail-fab {
-  width: calc(100% - 24px);
-  border-radius: 28px;
-  justify-content: flex-start;
-  padding-left: 16px;
+  position: relative; /* Added to help with absolute positioning of label */
+  transition: all 0.35s cubic-bezier(0.2, 0, 0, 1);
 }
 
 /* Improved icon animations */
@@ -633,81 +810,82 @@ onMounted(() => {
   top: 0;
   width: 24px;
   height: 24px;
-  transition: opacity 0.3s var(--md-sys-motion-easing-emphasized);
+  transition: opacity 0.35s cubic-bezier(0.2, 0, 0, 1),
+              transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
   font-size: 24px;
+  will-change: opacity, transform;
 }
 
-/* Icon state transitions */
+/* Icon state transitions with enhanced animations */
 .filled-icon {
   opacity: 0;
+  transform: translateY(5px) scale(0.8);
 }
 
 .outlined-icon {
   opacity: 1;
 }
 
-/* Hover and active states for icons */
+/* Hover and active states for icons with improved animations */
 .m3-rail-item:hover .filled-icon,
 .m3-rail-item.is-active .filled-icon {
   opacity: 1;
+  transform: translateY(0) scale(1);
 }
 
 .m3-rail-item:hover .outlined-icon,
 .m3-rail-item.is-active .outlined-icon {
   opacity: 0;
+  transform: translateY(-5px) scale(1.2);
 }
 
-/* Explicitly set the expanded state icon behavior to match collapsed state */
-.is-expanded .m3-rail-item:hover .filled-icon,
-.is-expanded .m3-rail-item.is-active .filled-icon {
-  opacity: 1;
+.m3-rail-item:hover .m3-rail-label {
+  transform: translateY(-1px);
 }
 
-.is-expanded .m3-rail-item:hover .outlined-icon,
-.is-expanded .m3-rail-item.is-active .outlined-icon {
-  opacity: 0;
+/* Special hover for expanded items to prevent label movement */
+.m3-rail-item.item-expanded:hover .m3-rail-label {
+  transform: none;
 }
 
-/* Label styling per MD3 */
-.m3-rail-label {
-  display: block;
-  margin-top: 4px;
-  font-size: var(--md-sys-typescale-label-medium-size, 12px);
-  line-height: var(--md-sys-typescale-label-medium-line-height, 16px);
-  font-weight: var(--md-sys-typescale-label-medium-weight, 500);
-  letter-spacing: var(--md-sys-typescale-label-medium-tracking, 0.5px);
-  text-align: center;
-  color: rgb(var(--md-sys-color-on-surface-variant));
-  transition: color 0.2s var(--md-sys-motion-easing-standard),
-              margin-top 0.3s var(--md-sys-motion-easing-standard);
-}
-
-/* Adjust label position and style in expanded mode */
-.is-expanded .m3-rail-label {
-  margin-top: 4px; /* Keep consistent with collapsed state */
-  text-align: center; /* Keep text centered */
-  font-size: var(--md-sys-typescale-label-medium-size, 12px); /* Keep consistent font size */
-}
-
-/* Apply active background to rail item instead */
+/* Apply active background to rail item with subtle animation */
 .m3-rail-item.is-active {
   background-color: rgb(var(--md-sys-color-secondary-container));
 }
 
-/* Ensure this still applies in expanded state */
-.is-expanded .m3-rail-item.is-active {
-  background-color: rgb(var(--md-sys-color-secondary-container));
-}
-
-/* Active state for labels */
 .m3-rail-item.is-active .m3-rail-label {
   color: rgb(var(--md-sys-color-on-secondary-container));
   font-weight: var(--md-sys-typescale-label-medium-weight-prominent, 600);
 }
 
-/* Ensure active state for labels still applies in expanded state */
-.is-expanded .m3-rail-item.is-active .m3-rail-label {
-  color: rgb(var(--md-sys-color-on-secondary-container));
-  font-weight: var(--md-sys-typescale-label-medium-weight-prominent, 600);
+/* Different styles for expanded active items */
+.m3-rail-item.item-expanded.is-active {
+  background-color: rgb(var(--md-sys-color-secondary-container));
+  /* Can add additional styles specific to expanded active items */
+}
+
+/* Active state ripple effect */
+.m3-rail-item.is-active::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at center, rgba(var(--md-sys-color-on-secondary-container), 0.1) 0%, transparent 70%);
+  border-radius: inherit;
+  opacity: 0;
+  animation: ripple 0.6s cubic-bezier(0.2, 0, 0, 1) forwards;
+}
+
+@keyframes ripple {
+  0% {
+    opacity: 1;
+    transform: scale(0.5);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
 }
 </style>
