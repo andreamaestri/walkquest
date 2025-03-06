@@ -495,7 +495,7 @@ watch(() => searchError.value, async (error) => {
   width: 100%;
   min-width: 240px;
   z-index: 10; /* Increased z-index */
-  border-radius: 24px;
+  border-radius: 58px;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: var(--md-sys-elevation-0);
 }
@@ -506,7 +506,7 @@ watch(() => searchError.value, async (error) => {
   border: 0;
   background-color: transparent;
   margin: 0;
-  height: 40px; /* Adjusted from 44px to 40px to match search field standard */
+  height: 56px;
   color: rgb(var(--md-sys-color-on-surface));
   padding: 6px 40px 6px 36px !important;
   text-overflow: ellipsis;

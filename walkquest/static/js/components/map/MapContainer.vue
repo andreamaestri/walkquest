@@ -1281,7 +1281,6 @@ defineExpose({
 
 /* Update existing control styles with better touch targets */
 :deep(.mapboxgl-ctrl-group) {
-  margin: 0 !important;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1), 0 4px 8px rgba(0,0,0,0.05);
   border-radius: 12px;
   overflow: hidden;

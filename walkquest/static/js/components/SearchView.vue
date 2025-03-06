@@ -889,6 +889,7 @@ const closeSearch = () => {
   justify-content: center;
   width: 32px; /* Slightly smaller buttons */
   height: 32px;
+  margin-right: 12px;
   padding: 0;
   border: none;
   border-radius: 16px;
