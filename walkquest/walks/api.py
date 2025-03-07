@@ -1,42 +1,36 @@
 import math
-from typing import List
-from typing import Optional
+import logging
 from uuid import UUID
 
 import orjson
 from django.conf import settings
-from django.db.models import Count
-from django.db.models import Exists
-from django.db.models import OuterRef
-from django.db.models import Q
-from django.db.models import Value
-from django.http import HttpRequest
-from django.http import JsonResponse
+from django.db.models import Count, Exists, OuterRef, Value
+from django.http import HttpRequest, JsonResponse
 from django.shortcuts import get_object_or_404
-from ninja import NinjaAPI
-from ninja import Path
-from ninja import Query
-from ninja import Router
-from ninja import Schema
+from ninja import NinjaAPI, Router, Schema, Query
 from ninja.parser import Parser
 from ninja.renderers import BaseRenderer
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 
-from .models import Adventure
-from .models import Companion
-from .models import Walk
-from .models import WalkCategoryTag
-from .models import WalkFeatureTag
-from .schemas import ConfigSchema
-from .schemas import TagResponseSchema
-from .schemas import WalkOutSchema
-from .serializers import AdventureSerializer
-from .serializers import CompanionSerializer
-from .serializers import WalkCategoryTagSerializer
-from .serializers import WalkFeatureTagSerializer
-from .serializers import WalkSerializer
+from .models import Adventure, Companion, Walk, WalkCategoryTag, WalkFeatureTag
+from .schemas import ConfigSchema, TagResponseSchema, WalkOutSchema
+from .serializers import (
+    AdventureSerializer,
+    CompanionSerializer,
+    WalkCategoryTagSerializer,
+    WalkFeatureTagSerializer,
+    WalkSerializer,
+)
 
+# Define latitude/longitude constants
+MIN_LATITUDE = -90
+MAX_LATITUDE = 90
+MIN_LONGITUDE = -180
+MAX_LONGITUDE = 180
+EARTH_RADIUS_METERS = 6371000  # Radius of Earth in meters
+
+logger = logging.getLogger(__name__)
 
 # Define custom ORJSONParser
 class ORJSONParser(Parser):
@@ -123,15 +117,15 @@ def api_root(request):
     }
 
 
-@api.get("/walks", response=List[WalkOutSchema])
+@api.get("/walks", response=list[WalkOutSchema])
 def list_walks(
     request: HttpRequest,
-    search: Optional[str] = None,
-    categories: Optional[str] = None,
-    features: Optional[str] = None,
-    difficulty: Optional[str] = None,
-    has_bus_access: Optional[bool] = None,  # renamed parameter
-    has_stiles: Optional[bool] = None,
+    search: str | None = None,
+    categories: str | None = None,
+    features: str | None = None,
+    difficulty: str | None = None,
+    has_bus_access: bool | None = None,  # renamed parameter
+    has_stiles: bool | None = None,
 ):
     """List walks with optional filtering"""
     try:
@@ -206,11 +200,11 @@ def list_walks(
             )
         return walk_list
     except Exception as e:
-        print(f"Error in list_walks: {e}")
+        logger.error(f"Error in list_walks: {e}")
         return []
 
 
-@api.get("/walks/nearby", response=List[WalkOutSchema])
+@api.get("/walks/nearby", response=list[WalkOutSchema])
 def find_nearby_walks(
     request,
     latitude: float = Query(..., description="Latitude of the center point"),
@@ -221,7 +215,7 @@ def find_nearby_walks(
     """Find walks near a specific location using efficient spatial queries"""
     try:
         # Validate coordinates
-        if not (-90 <= latitude <= 90) or not (-180 <= longitude <= 180):
+        if not (MIN_LATITUDE <= latitude <= MAX_LATITUDE) or not (MIN_LONGITUDE <= longitude <= MAX_LONGITUDE):
             return []
 
         # Calculate bounding box for initial filtering
@@ -303,7 +297,7 @@ def find_nearby_walks(
                     )
                     results.append(walk_out)
             except (ValueError, TypeError) as e:
-                print(f"Error processing walk {walk.id}: {e}")
+                logger.error(f"Error processing walk {walk.id}: {e}")
                 continue
 
         # Sort by distance and limit results
@@ -311,7 +305,7 @@ def find_nearby_walks(
         return results[:limit]
 
     except Exception as e:
-        print(f"Error finding nearby walks: {e}")
+        logger.error(f"Error finding nearby walks: {e}")
         return []
 
 
@@ -381,20 +375,20 @@ def get_walk(request: HttpRequest, identifier: str):
             status=404
         )
     except Exception as e:
-        print(f"Error getting walk details: {e}")
+        logger.error(f"Error getting walk details: {e}")
         return JsonResponse(
             {"error": "Internal server error"}, 
             status=500
         )
 
 
-@api.post("/walks/{id}/favorite")
-def toggle_favorite(request: HttpRequest, id: UUID):
+@api.post("/walks/{walk_id}/favorite")
+def toggle_favorite(request: HttpRequest, walk_id: UUID):
     """Toggle favorite status for a walk"""
     if not request.user.is_authenticated:
         return {"status": "error", "message": "Authentication required"}
 
-    walk = get_object_or_404(Walk, id=id)
+    walk = get_object_or_404(Walk, id=walk_id)
     if walk.favorites.filter(id=request.user.id).exists():
         walk.favorites.remove(request.user)
         is_favorite = False
@@ -402,26 +396,17 @@ def toggle_favorite(request: HttpRequest, id: UUID):
         walk.favorites.add(request.user)
         is_favorite = True
 
-    return {"status": "success", "walk_id": str(id), "is_favorite": is_favorite}
+    return {"status": "success", "walk_id": str(walk_id), "is_favorite": is_favorite}
 
 
-class TagResponseSchema(Schema):
-    name: str
-    slug: str
-    usage_count: int
-    type: str
-
-
-# Add MarkerSchema definition
 class MarkerSchema(Schema):
     id: int
     latitude: float
     longitude: float
 
 
-# List tags
-@api.get("/tags", response=List[TagResponseSchema])
-def list_tags(request):
+@api.get("/tags", response=list[TagResponseSchema])
+def list_tags(_request):
     """Get all walk tags with usage counts"""
     tags = []
 
@@ -429,7 +414,7 @@ def list_tags(request):
     category_tags = (
         WalkCategoryTag.objects.annotate(
             usage_count=Count("categorized_walks", distinct=True)
-            + Count("related_walks", distinct=True)
+            + Count("related_walks", distinct=True),
         )
         .filter(usage_count__gt=0)
         .values("name", "slug", "usage_count")
@@ -529,13 +514,13 @@ def get_walk_geometry(request: HttpRequest, id: UUID):
             return feature
 
     except Exception as e:
-        print(f"Error fetching geometry for walk {id}: {e}")
+        logger.error(f"Error fetching geometry for walk {id}: {e}")
         return JsonResponse({"error": "Failed to fetch route geometry"}, status=404)
 
 
 def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Calculate distance in meters using Haversine formula"""
-    R = 6371000  # Radius of Earth in meters
+    R = EARTH_RADIUS_METERS
     
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
     dphi = math.radians(lat2 - lat1)
