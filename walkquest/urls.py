@@ -4,14 +4,20 @@ from django.views.generic import TemplateView
 from django.conf.urls.static import static
 from django.shortcuts import redirect
 from . import views
+from .api import UserAPI, api_instance
 
 app_name = "walkquest"
 
+# The walks router is already added to api_instance in walks/api.py
+# so we don't need to add it again here
+
 urlpatterns = [
-    # API routes
-    path("api/", include("walkquest.api.urls")),
-    path("api/walks/", include("walkquest.walks.urls", namespace="walks")),
+    # Main API at /api/ - already includes walks endpoints from its initialization
+    path("api/", api_instance.urls),
+    
+    # API routes - user-specific endpoints
     path("api/users/", include("walkquest.users.urls", namespace="users")),
+    path('api/user/', UserAPI.as_view(), name='user_api'),
 
     # Primary route using slug
     path("<slug:walk_id>/", views.index, name="walk-detail-by-slug"),

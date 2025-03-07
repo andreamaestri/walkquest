@@ -14,14 +14,52 @@ WalkQuest follows a Model-View-Template (MVT) architecture on the backend with D
 ### Frontend Architecture
 - **Vue.js 3:** Selected for its Composition API and reactive system
 - **Pinia:** Implements centralized state management
+- **Material Design 3:** Provides consistent UI styling and components
+- **Preferences System:** Manages user preferences with local and server storage
 - **Virtual List Implementation:** Using vue-virtual-scroller (DynamicScroller/DynamicScrollerItem)
 - **Tailwind CSS:** Enables rapid UI development with utility classes
 
 ## Design Patterns
 
-### Frontend Patterns - NEEDS REVISION 🔴
+### Frontend Patterns - CRITICAL ISSUES 🔴
 
-1. **Virtual List Pattern - CRITICAL ISSUES**
+1. **Component Lifecycle Pattern - ERRORS DETECTED**
+   - Unhandled errors during component update and setup function execution
+   - Affected components: AccountCircle, AuthModal, SearchHeader, WalkInterface, RouterView
+   - Errors propagating through component tree
+   - Runtime compiler configuration problems
+   - Improper inject() usage outside of setup() context
+   - Required fixes:
+     - Move inject() calls to setup() context
+     - Implement proper error boundaries
+     - Fix component lifecycle management
+     - Resolve runtime compiler configuration
+     - Implement proper error handling patterns
+
+2. **Dependency Injection Pattern - ERRORS DETECTED**
+   - Improper inject() usage outside of setup() context
+   - Potential circular dependencies
+   - Missing error handling for injected values
+   - Missing fallback values
+   - Required fixes:
+     - Move inject() calls to setup() context
+     - Add fallback values for injected dependencies
+     - Implement proper error handling
+     - Check for circular dependencies
+     - Document dependency injection patterns
+
+3. **Store Integration Pattern - PERFORMANCE ISSUES**
+   - Pinia auth store installation problems
+   - searchStore initialization metrics: 0.239013671875 ms
+   - Potential optimization opportunities
+   - Required improvements:
+     - Review store initialization order
+     - Optimize store registration
+     - Implement proper error handling
+     - Add performance monitoring
+     - Document store integration patterns
+
+4. **Virtual List Pattern - CRITICAL ISSUES**
    - DynamicScroller not rendering cards properly
    - CSS is properly imported in main.js
    - Props appear to be correctly configured
@@ -32,25 +70,30 @@ WalkQuest follows a Model-View-Template (MVT) architecture on the backend with D
      - Verifying key field setup
      - Updating cleanup handling
 
-2. **Component Composition**
+### Frontend Patterns - CURRENT FOCUS 🟢
+
+1. **User Profile Pattern**
+   - ProfileSettings.vue implements Material Design 3 UI
+   - Form validation for password change
+   - Confirmation for account deletion
+   - Responsive design with mobile optimizations
+   - Error handling and user feedback
+   - Clean component composition
+
+2. **Preferences Management Pattern**
+   - usePreferences composable for centralized management
+   - Local storage fallback for guest users
+   - API integration for authenticated users
+   - Theme, language, notifications, map style, and units preferences
+   - Synchronization between local and server storage
+   - Reactive state management
+
+3. **Component Composition**
    - Hierarchical component structure
    - Clean parent-child communication
    - Proper prop/event handling
-   - Needs review:
-     - DynamicScroller integration
-     - Item template structure
-     - Store integration
-     - Rendering lifecycle
-
-3. **Store Pattern**
-   - Centralized state in Pinia
-   - Action-based mutations
-   - Computed property caching
-   - Needs investigation:
-     - Data flow to DynamicScroller
-     - Item recycling
-     - State updates
-     - View recycling
+   - Material Design 3 styling patterns
+   - Responsive design implementation
 
 4. **Map Integration Pattern**
    - Using @studiometa/vue-mapbox-gl
@@ -58,6 +101,7 @@ WalkQuest follows a Model-View-Template (MVT) architecture on the backend with D
    - External control placement
    - Proper event handling
    - Clean resource management
+   - Mapbox token implementation issues need resolution
 
 ### Backend Patterns
 1. **API Gateway**
@@ -80,19 +124,72 @@ WalkQuest follows a Model-View-Template (MVT) architecture on the backend with D
 
 ## Component Relationships
 
-### Frontend Components
+### Frontend Components - CRITICAL ISSUES 🔴
 
-1. **WalkInterface.vue**
-   - Main container component
-   - Manages layout and routing
-   - Coordinates child components
-   - Handles global events
-   - Review needed:
-     - Data passing to WalkList
-     - Event handling
-     - Store integration
+1. **AccountCircle.vue - ERRORS DETECTED**
+   - Experiencing unhandled errors during component update
+   - Potential issues with setup function execution
+   - Errors propagating through component tree
+   - Improper inject() usage outside of setup() context
+   - Needs immediate investigation and debugging
 
-2. **WalkList.vue - CRITICAL ISSUES 🔴**
+2. **AuthModal.vue - ERRORS DETECTED**
+   - Experiencing unhandled errors during component update
+   - Potential issues with setup function execution
+   - Errors propagating through component tree
+   - Improper inject() usage outside of setup() context
+   - Needs immediate investigation and debugging
+
+3. **SearchHeader.vue - ERRORS DETECTED**
+   - Experiencing unhandled errors during component update
+   - Potential issues with setup function execution
+   - Errors propagating through component tree
+   - Improper inject() usage outside of setup() context
+   - Needs immediate investigation and debugging
+
+4. **WalkInterface.vue - ERRORS DETECTED**
+   - Experiencing unhandled errors during component update
+   - Potential issues with setup function execution
+   - Errors propagating through component tree
+   - Improper inject() usage outside of setup() context
+   - Needs immediate investigation and debugging
+
+5. **RouterView - ERRORS DETECTED**
+   - Experiencing unhandled errors during component update
+   - Potential issues with setup function execution
+   - Errors propagating through component tree
+   - Improper inject() usage outside of setup() context
+   - Needs immediate investigation and debugging
+
+### Frontend Components - ACTIVE DEVELOPMENT 🟢
+
+1. **ProfileSettings.vue - ACTIVE DEVELOPMENT**
+   - Implements user profile settings UI
+   - Password change functionality
+   - Account deletion with confirmation
+   - Material Design 3 styled components
+   - Responsive design for mobile and desktop
+   - Form validation and error handling
+   - Integration with auth store
+
+2. **AccountCircle.vue & AccountMenu.vue - ACTIVE DEVELOPMENT**
+   - User account UI components
+   - Authentication state visualization
+   - Navigation to profile settings
+   - Logout functionality
+   - Integration with auth store
+
+3. **usePreferences.js - ACTIVE DEVELOPMENT**
+   - Composable for managing user preferences
+   - Local storage fallback for guest users
+   - API integration for authenticated users
+   - Theme, language, notifications, map style, and units preferences
+   - Reactive state management
+   - Clean API for preference access and updates
+
+### Frontend Components - NEEDS FIXING 🔴
+
+1. **WalkList.vue - CRITICAL ISSUES**
    - DynamicScroller implementation
    - Item wrapper not rendering properly
    - No card elements rendered
@@ -103,23 +200,47 @@ WalkQuest follows a Model-View-Template (MVT) architecture on the backend with D
      - Component recycling
      - View management
 
-3. **WalkCard.vue**
+2. **WalkCard.vue**
    - Component is properly implemented
    - Displays walk information
    - Handles user interactions
    - Manages local state
    - Emits relevant events
 
-4. **MapView.vue**
+3. **MapView.vue**
    - Manages map display using @studiometa/vue-mapbox-gl
    - Handles map interactions
    - Controls map state
    - Manages markers
    - Resource cleanup
+   - Mapbox token implementation issues need resolution
 
 ### Store Structure
 
-1. **walks.js - NEEDS REVIEW 🔴**
+1. **auth.js - CRITICAL ISSUES 🔴**
+   - Pinia auth store installation problems
+   - Potential issues with state management
+   - Needs investigation for proper initialization
+   - Used by components experiencing errors
+   - Integration with Django authentication
+
+2. **search.js - PERFORMANCE METRICS**
+   - searchStore initialization: 0.239013671875 ms
+   - Potential optimization opportunities
+   - May be related to component errors
+   - Used by SearchHeader component
+
+3. **ui.js - ACTIVE DEVELOPMENT 🟢**
+   - Loading states
+   - Error handling
+   - UI preferences
+   - Mobile responsiveness
+   - Theme management
+   - Performance optimizations
+   - Toast notifications
+   - Used by profile components
+
+4. **walks.js - NEEDS REVIEW 🔴**
    - Review required:
      - Data flow to DynamicScroller
      - Item management
@@ -127,13 +248,6 @@ WalkQuest follows a Model-View-Template (MVT) architecture on the backend with D
      - Store subscriptions
      - View recycling
      - Memory management
-
-2. **ui.js**
-   - Controls UI state
-   - Manages preferences
-   - Handles responsive layout
-   - Controls theme
-   - Performance optimization
 
 ### Service Layer
 
@@ -149,23 +263,60 @@ WalkQuest follows a Model-View-Template (MVT) architecture on the backend with D
    - Handles map events
    - Manages markers
    - Resource cleanup
+   - Mapbox token implementation issues need resolution
 
 ## Data Flow
 
-### Frontend Flow - NEEDS REVIEW 🔴
-1. **Virtual List Flow**
+### Frontend Flow - CRITICAL ISSUES 🔴
+
+1. **Component Lifecycle Flow**
+   - Unhandled errors during component update
+   - Issues with setup function execution
+   - Improper inject() usage outside of setup() context
+   - Errors propagating through component tree
+   - Required fixes:
+     - Move inject() calls to setup() context
+     - Implement proper error boundaries
+     - Fix component lifecycle management
+     - Resolve runtime compiler configuration
+     - Implement proper error handling patterns
+
+2. **Store Initialization Flow**
+   - Pinia auth store installation problems
+   - searchStore initialization metrics: 0.239013671875 ms
+   - Potential optimization opportunities
+   - Required improvements:
+     - Review store initialization order
+     - Optimize store registration
+     - Implement proper error handling
+     - Add performance monitoring
+     - Document store integration patterns
+
+3. **Virtual List Flow**
    - DynamicScroller setup
    - Item template rendering
    - View recycling
    - DOM element reuse
    - Cleanup processes
 
-2. **Data Management**
-   - Store mutations
-   - Computed updates
-   - Component recycling
-   - Cleanup handling
-   - Memory optimization
+### Frontend Flow - CURRENT FOCUS 🟢
+
+1. **User Profile Flow**
+   - Authentication state management
+   - Form data validation
+   - API requests for password change
+   - Confirmation for destructive actions
+   - Error handling and user feedback
+   - Responsive UI adaptation
+
+2. **Preferences Flow**
+   - Local storage for guest users
+   - API integration for authenticated users
+   - Reactive state updates
+   - Theme application
+   - Language selection
+   - Map style configuration
+   - Units preference application
 
 ### Backend Flow
 1. **Request Handling**
@@ -198,7 +349,7 @@ WalkQuest follows a Model-View-Template (MVT) architecture on the backend with D
 ### External Services
 1. **Mapbox**
    - Using @studiometa/vue-mapbox-gl
-   - Token management
+   - Token management - ISSUES DETECTED
    - Map initialization
    - Event handling
    - Resource cleanup
@@ -209,6 +360,36 @@ WalkQuest follows a Model-View-Template (MVT) architecture on the backend with D
    - Cache control
    - Resource optimization
 
+## Error Handling Patterns - NEEDS IMPLEMENTATION 🔴
+
+1. **Component Error Boundaries**
+   - Implement Vue 3 error handling
+   - Catch and report component errors
+   - Provide fallback UI
+   - Log errors for debugging
+   - Prevent error propagation
+
+2. **Dependency Injection Error Handling**
+   - Provide fallback values
+   - Validate injected dependencies
+   - Handle missing dependencies gracefully
+   - Document dependency requirements
+   - Implement proper error messages
+
+3. **Store Error Handling**
+   - Handle initialization failures
+   - Provide fallback state
+   - Implement retry mechanisms
+   - Log store errors
+   - Recover from store failures
+
+4. **API Error Handling**
+   - Handle network failures
+   - Process error responses
+   - Implement retry logic
+   - Show user-friendly messages
+   - Log API errors for debugging
+
 ## Animation System
 1. **Motion Integration**
    - Using motion.dev/vue
@@ -217,4 +398,4 @@ WalkQuest follows a Model-View-Template (MVT) architecture on the backend with D
    - Scroll-linked animations
    - Viewport detection
 
-This system patterns documentation reflects the critical issues with the vue-virtual-scroller implementation that require immediate attention and debugging.
+This system patterns documentation reflects the critical Vue.js component errors that need immediate investigation, along with the ongoing work on user profile and preferences functionality and the virtual list implementation issues.

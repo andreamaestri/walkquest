@@ -143,7 +143,7 @@ authors = ["Andrea Maestri <16215183+andreamaestri@users.noreply.github.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.13"
+python = ">=3.11,<4.0"
 python-slugify = "8.0.4"
 pillow = "11.0.0"
 rcssmin = "1.1.2"
@@ -153,10 +153,10 @@ redis = "5.2.0"
 hiredis = "3.0.0"
 celery = "5.4.0"
 django-celery-beat = "2.7.0"
-django = "5.1.3"
+django = ">=4.2.16"
 django-environ = "0.11.2"
 django-model-utils = "5.0.0"
-django-allauth = {version = "65.2.0", extras = ["mfa"]}
+django-allauth = {version = "^65.4.1", extras = ["mfa"]}
 django-crispy-forms = "2.3"
 crispy-bootstrap5 = "2024.10"
 django-compressor = "4.5.1"

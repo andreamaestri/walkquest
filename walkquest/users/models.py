@@ -5,6 +5,8 @@ from django.db.models import DateTimeField
 from django.db.models import PositiveIntegerField
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
+from django.core.serializers.json import DjangoJSONEncoder
+from django.db.models import JSONField
 
 
 class User(AbstractUser):
@@ -23,6 +25,12 @@ class User(AbstractUser):
     )
     quests_completed = PositiveIntegerField(_("Completed Quests"), default=0)
     last_active = DateTimeField(_("Last Active"), auto_now=True)
+    preferences = JSONField(
+        default=dict,
+        encoder=DjangoJSONEncoder,
+        blank=True,
+        help_text="User preferences stored as JSON"
+    )
 
     class Meta:
         verbose_name = _("user")

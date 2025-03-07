@@ -13,17 +13,15 @@ from django.db.models import Value
 from django.http import HttpRequest
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
-from ninja import NinjaAPI
 from ninja import Path
 from ninja import Query
 from ninja import Router
 from ninja import Schema
 from ninja.parser import Parser
 from ninja.renderers import BaseRenderer
-from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticated
 
 from walkquest.adventures.api import router as adventures_router
+
 from .models import Adventure
 from .models import Companion
 from .models import Walk
@@ -32,11 +30,6 @@ from .models import WalkFeatureTag
 from .schemas import ConfigSchema
 from .schemas import TagResponseSchema
 from .schemas import WalkOutSchema
-from .serializers import AdventureSerializer
-from .serializers import CompanionSerializer
-from .serializers import WalkCategoryTagSerializer
-from .serializers import WalkFeatureTagSerializer
-from .serializers import WalkSerializer
 
 
 # Define custom ORJSONParser
@@ -53,61 +46,8 @@ class ORJSONRenderer(BaseRenderer):
         return orjson.dumps(data)
 
 
-# Update API initialization to use ORJSONParser
-api_instance = NinjaAPI(
-    title="WalkQuest API",
-    version="1.0.0",
-    csrf=True,
-    parser=ORJSONParser(),
-    renderer=ORJSONRenderer(),  # Using custom ORJSONRenderer
-)
-
-# Create a Router
+# Create a Router for walks API endpoints
 api = Router()
-
-# Add the router to the API instance
-api_instance.add_router("", api)
-
-# Add the adventure router - companions at root level to match frontend expectations
-api_instance.add_router("", adventures_router, tags=["adventures"])
-
-
-class CompanionViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint that allows companions to be viewed or edited.
-    """
-    permission_classes = [IsAuthenticated]
-    serializer_class = CompanionSerializer
-
-    def get_queryset(self):
-        """
-        This view should return a list of all companions
-        for the currently authenticated user.
-        """
-        return Companion.objects.filter(user=self.request.user)
-
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
-
-
-class WalkViewSet(viewsets.ModelViewSet):
-    queryset = Walk.objects.all()
-    serializer_class = WalkSerializer
-
-
-class AdventureViewSet(viewsets.ModelViewSet):
-    queryset = Adventure.objects.all()
-    serializer_class = AdventureSerializer
-
-
-class WalkCategoryTagViewSet(viewsets.ModelViewSet):
-    queryset = WalkCategoryTag.objects.all()
-    serializer_class = WalkCategoryTagSerializer
-
-
-class WalkFeatureTagViewSet(viewsets.ModelViewSet):
-    queryset = WalkFeatureTag.objects.all()
-    serializer_class = WalkFeatureTagSerializer
 
 
 @api.get("/", response=dict)
@@ -288,7 +228,7 @@ def find_nearby_walks(
                             for rc in walk.related_categories.all()
                         ],
                         highlights=walk.highlights,
-                        points_of_interest=walk.points_of_interest,
+                        points_of_interest=[poi.strip() for poi in walk.points_of_interest.split(';')] if walk.points_of_interest else [],
                         os_explorer_reference=walk.os_explorer_reference,
                         steepness_level=walk.steepness_level,
                         footwear_category=walk.footwear_category,

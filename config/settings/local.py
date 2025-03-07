@@ -95,7 +95,18 @@ CORS_ALLOW_METHODS = [
     "POST",
     "PUT",
 ]
-CORS_ALLOW_HEADERS = ["*"]
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+    "x-session-token",  # Add this for django-allauth headless auth
+]
 
 # Ensure CORS middleware is included and in correct order
 if "corsheaders.middleware.CorsMiddleware" not in MIDDLEWARE:

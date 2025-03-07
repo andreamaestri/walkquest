@@ -85,6 +85,7 @@ THIRD_PARTY_APPS = [
     "allauth_ui",
     "allauth",
     "allauth.account",
+    "allauth.headless",  # Add headless support
     "allauth.mfa",
     "allauth.socialaccount",
     "django_celery_beat",
@@ -167,6 +168,23 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "allauth.account.middleware.AccountMiddleware",
 ]
+
+# CORS settings
+# ------------------------------------------------------------------------------
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+    "x-session-token",  # Required for allauth headless
+]
+
 # STATIC
 # ------------------------------------------------------------------------------
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
@@ -355,6 +373,18 @@ ACCOUNT_FORMS = {"signup": "walkquest.users.forms.UserSignupForm"}
 SOCIALACCOUNT_ADAPTER = "walkquest.users.adapters.SocialAccountAdapter"
 # https://docs.allauth.org/en/latest/socialaccount/configuration.html
 SOCIALACCOUNT_FORMS = {"signup": "walkquest.users.forms.UserSocialSignupForm"}
+
+# Allauth Headless Configuration
+HEADLESS_FRONTEND_URLS = {
+    "account_confirm_email": "/account/verify-email/{key}",
+    "account_reset_password_from_key": "/account/password/reset/key/{key}",
+    "account_signup": "/account/signup",
+}
+
+# Allauth Headless Configuration
+HEADLESS_ONLY = False  # Set to True if you want to disable traditional views completely
+HEADLESS_API_PREFIX = "_allauth/"  # This matches our URL configuration
+
 # django-compressor
 # ------------------------------------------------------------------------------
 # https://django-compressor.readthedocs.io/en/latest/quickstart/#installation

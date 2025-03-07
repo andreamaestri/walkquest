@@ -1,5 +1,5 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import { useWalksStore } from '../stores/walks'
+import { createRouter, createWebHistory } from 'vue-router';
+import { requireAuth } from './guards';
 
 const routes = [
   {
@@ -7,42 +7,44 @@ const routes = [
     name: 'home',
     component: () => import('../components/WalkInterface.vue')
   },
-  // Primary route - by slug
   {
-    path: '/:walk_slug',
+    path: '/profile',
+    name: 'profile',
+    component: () => import('../components/profile/ProfileSettings.vue'),
+    beforeEnter: requireAuth
+  },
+  {
+    path: '/walk/:walk_slug',
     name: 'walk',
     component: () => import('../components/WalkInterface.vue'),
     props: true
   },
-  // Legacy/fallback route for UUIDs
   {
-    path: '/walk/:walk_id',
+    path: '/walk/id/:walk_id',
     name: 'walk-by-id',
     component: () => import('../components/WalkInterface.vue'),
     props: true
   }
-]
+];
 
 const router = createRouter({
   history: createWebHistory(),
   routes
-})
+});
+
+// Import the store factory but don't use it directly
+import { storeToRefs } from 'pinia';
 
 // Global navigation guard for loading state
-router.beforeEach((to, from) => {
-  if (to.name !== from.name) {
-    const walksStore = useWalksStore()
-    if (walksStore.setLoading) {
-      walksStore.setLoading(true)
-    }
-  }
-})
+router.beforeEach((to, from, next) => {
+  // We'll set up the loading state in the component itself
+  // This avoids using the store outside of setup()
+  next();
+});
 
 router.afterEach((to, from) => {
-  const walksStore = useWalksStore()
-  if (walksStore.setLoading) {
-    walksStore.setLoading(false)
-  }
-})
+  // We'll handle loading state in the component itself
+  // This avoids using the store outside of setup()
+});
 
-export default router
+export default router;
