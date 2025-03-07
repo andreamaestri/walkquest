@@ -1215,14 +1215,6 @@ defineExpose({
   pointer-events: auto; /* Re-enable pointer events for the actual controls */
 }
 
-:deep(.mapboxgl-ctrl-top-right .mapboxgl-ctrl) {
-  margin: 12px 12px 0 0;
-}
-
-:deep(.mapboxgl-ctrl-bottom-right .mapboxgl-ctrl) {
-  margin: 0 12px 12px 0;
-}
-
 /* Separate navigation and geolocate controls */
 .navigation-control {
   margin-bottom: 8px;
@@ -1240,13 +1232,16 @@ defineExpose({
 }
 
 :deep(.mapboxgl-ctrl-bottom-left) {
-  left: calc(10px + env(safe-area-inset-left, 0px)) !important;
-  bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+  left: calc(env(safe-area-inset-left, 0px)) !important;
+  bottom: calc(env(safe-area-inset-bottom, 0px)) !important;
 }
 
-:deep(.mapboxgl-ctrl-bottom-right) {
-  right: calc(10px + env(safe-area-inset-right, 0px)) !important;
-  bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+/* Mobile-specific adjustments with safe area insets */
+@media (max-width: 768px) {
+  :deep(.mapboxgl-ctrl-bottom-right) {
+    right: calc(env(safe-area-inset-right, 0px)) !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px)) !important;
+  }
 }
 
 /* Make sure controls have pointer events */
