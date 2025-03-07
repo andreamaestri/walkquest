@@ -692,6 +692,7 @@ function highlightDateRange() {
   }
 }
 
+// Enhance date selection with validation and suggestions - keeping this enhanced version
 function confirmDateSelection() {
   if (tempDateValue.value) {
     if (datePickerType.value === 'start') {
@@ -978,78 +979,6 @@ function showToast(message) {
   toastTimeout = setTimeout(() => {
     isToastVisible.value = false
   }, 3000)
-}
-
-// Enhanced date selection with validation and suggestions
-function confirmDateSelection() {
-  if (tempDateValue.value) {
-    if (datePickerType.value === 'start') {
-      adventureForm.value.startDate = tempDateValue.value
-      
-      // If end date is before start date, update end date to match start date
-      if (adventureForm.value.endDate && adventureForm.value.endDate < adventureForm.value.startDate) {
-        adventureForm.value.endDate = tempDateValue.value
-        showToast('End date adjusted to match start date')
-      } else if (!adventureForm.value.endDate) {
-        // If no end date set, auto-set it to start date
-        adventureForm.value.endDate = tempDateValue.value
-        showToast('End date set to match start date')
-      }
-    } else {
-      adventureForm.value.endDate = tempDateValue.value
-      
-      // Calculate duration after date selection
-      calculateDuration()
-    }
-  }
-  closeDatePicker()
-}
-
-// Enhance time selection with validation
-function confirmTimeSelection() {
-  updateTempTime()
-  
-  if (tempTimeValue.value) {
-    if (timePickerType.value === 'start') {
-      adventureForm.value.startTime = tempTimeValue.value
-      
-      // If we have end time on same day, validate it
-      if (adventureForm.value.endTime && adventureForm.value.startDate === adventureForm.value.endDate) {
-        if (adventureForm.value.endTime <= tempTimeValue.value) {
-          // Auto-adjust end time to be 1 hour after start time
-          const [startHour, startMinute] = tempTimeValue.value.split(':').map(Number)
-          let endHour = startHour + 1
-          let endMinute = startMinute
-          
-          // Handle day overflow
-          if (endHour >= 24) {
-            endHour -= 24
-          }
-          
-          adventureForm.value.endTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`
-          showToast('End time adjusted to be after start time')
-        }
-      }
-    } else {
-      // If setting end time, validate against start time
-      if (adventureForm.value.startTime && adventureForm.value.startDate === adventureForm.value.endDate) {
-        if (tempTimeValue.value <= adventureForm.value.startTime) {
-          errors.value.endTime = 'End time must be after start time'
-          setTimeout(() => {
-            errors.value.endTime = null
-          }, 2000)
-          return
-        }
-      }
-      
-      adventureForm.value.endTime = tempTimeValue.value
-    }
-    
-    // Calculate duration after time selection
-    calculateDuration()
-  }
-  
-  closeTimePicker()
 }
 
 // Use memoization for calendar days to improve performance
