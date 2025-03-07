@@ -1,7 +1,12 @@
-from typing import List, Optional, Dict
 from datetime import datetime
-from ninja import Schema, Field
+from typing import Dict
+from typing import List
+from typing import Optional
 from uuid import UUID
+
+from ninja import Field
+from ninja import Schema
+
 
 class TagSchema(Schema):
     name: str
@@ -67,7 +72,7 @@ class AdventureSchema(Schema):
     end_time: str | None = None
     difficulty_level: str | None = None
     related_categories: list[WalkCategoryTagSchema] | None = None
-    companions: list[CompanionSchema] | None = None
+    companions: list[CompanionOutSchema] | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
