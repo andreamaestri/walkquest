@@ -23,6 +23,7 @@ from ninja.renderers import BaseRenderer
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 
+from walkquest.adventures.api import router as adventures_router
 from .models import Adventure
 from .models import Companion
 from .models import Walk
@@ -66,6 +67,9 @@ api = Router()
 
 # Add the router to the API instance
 api_instance.add_router("", api)
+
+# Add the adventure router - companions at root level to match frontend expectations
+api_instance.add_router("", adventures_router, tags=["adventures"])
 
 
 class CompanionViewSet(viewsets.ModelViewSet):
@@ -161,7 +165,7 @@ def list_walks(
 
         walk_list = []
         for walk in walks:
-            # pubs_list handling removed (no longer used)
+            # Format points_of_interest as a list by splitting on semicolons and stripping whitespace
             formatted_pubs = []
             # ...existing code for walk conversion...
             walk_list.append(
@@ -186,7 +190,7 @@ def list_walks(
                         for rc in walk.related_categories.all()
                     ],
                     highlights=walk.highlights,
-                    points_of_interest=walk.points_of_interest,
+                    points_of_interest=[poi.strip() for poi in walk.points_of_interest.split(';')] if walk.points_of_interest else [],
                     os_explorer_reference=walk.os_explorer_reference,
                     steepness_level=walk.steepness_level,
                     footwear_category=walk.footwear_category,
@@ -360,7 +364,7 @@ def get_walk(request: HttpRequest, identifier: str):
                 for rc in walk.related_categories.all()
             ],
             highlights=walk.highlights,
-            points_of_interest=walk.points_of_interest,
+            points_of_interest=[poi.strip() for poi in walk.points_of_interest.split(';')] if walk.points_of_interest else [],
             os_explorer_reference=walk.os_explorer_reference,
             steepness_level=walk.steepness_level,
             footwear_category=walk.footwear_category,
