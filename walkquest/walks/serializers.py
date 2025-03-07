@@ -1,14 +1,37 @@
-"""
-This module is deprecated. Use schemas.py instead for Django Ninja schemas.
+from ninja import ModelSchema
+from ninja.orm.fields import TYPES
+from rest_framework import serializers
 
-This file is kept for backward compatibility but should not be used in new code.
-"""
+from .models import Adventure
+from .models import Companion
+from .models import Walk
+from .models import WalkCategoryTag
+from .models import WalkFeatureTag
 
-# Import warning module to log deprecation warnings
-import warnings
+TYPES["GeometryField"] = str
 
-warnings.warn(
-    "The serializers.py module is deprecated. Use schemas.py instead for Django Ninja schemas.",
-    DeprecationWarning,
-    stacklevel=2,
-)
+class CompanionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Companion
+        fields = ["id", "name", "created_at"]
+
+class WalkCategoryTagSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WalkCategoryTag
+
+# Add the missing serializer
+class WalkFeatureTagSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WalkFeatureTag
+
+class AdventureSerializer(serializers.ModelSerializer):
+    related_categories = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Adventure
+        fields = "__all__"
+
+class WalkSerializer(ModelSchema):
+    class Meta:
+        model = Walk
+        fields = "__all__"

@@ -108,7 +108,7 @@ class WalkAdmin(GISModelAdmin, TagModelAdmin):
     # Break the long line
     list_display = (
         "walk_name",
-        "distance", 
+        "distance",
         "steepness_level",
         "amenities_summary",
     )

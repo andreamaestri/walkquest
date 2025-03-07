@@ -1,5 +1,6 @@
-import logging
 import math
+from typing import List
+from typing import Optional
 from uuid import UUID
 
 import orjson
@@ -7,67 +8,34 @@ from django.conf import settings
 from django.db.models import Count
 from django.db.models import Exists
 from django.db.models import OuterRef
+from django.db.models import Q
 from django.db.models import Value
 from django.http import HttpRequest
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from ninja import NinjaAPI
+from ninja import Path
 from ninja import Query
 from ninja import Router
+from ninja import Schema
 from ninja.parser import Parser
 from ninja.renderers import BaseRenderer
-from ninja.security import HttpBearer
-from ninja.security import django_auth
+from rest_framework import viewsets
+from rest_framework.permissions import IsAuthenticated
 
 from .models import Adventure
 from .models import Companion
 from .models import Walk
 from .models import WalkCategoryTag
 from .models import WalkFeatureTag
-from .schemas import AdventureSchema
-from .schemas import CompanionInSchema
-from .schemas import CompanionOutSchema
 from .schemas import ConfigSchema
-from .schemas import FavoriteResponseSchema
-from .schemas import FiltersResponseSchema
-from .schemas import GeometrySchema
 from .schemas import TagResponseSchema
-from .schemas import WalkCategoryTagSchema
-from .schemas import WalkFeatureTagSchema
 from .schemas import WalkOutSchema
-from .schemas import WalkSchema
-
-# Define latitude/longitude constants
-MIN_LATITUDE = -90
-MAX_LATITUDE = 90
-MIN_LONGITUDE = -180
-MAX_LONGITUDE = 180
-EARTH_RADIUS_METERS = 6371000  # Radius of Earth in meters
-
-logger = logging.getLogger(__name__)
-
-
-# Authentication classes
-class AuthenticationRequiredError(Exception):
-    pass
-
-
-class BearerAuth(HttpBearer):
-    def authenticate(self, request, token):
-        # In a real application, you'd validate the token
-        # For now, we just check if the user is authenticated via Django sessions
-        if request.user.is_authenticated:
-            return request.user
-        return None
-
-
-# Exception handler for authentication errors
-@api_instance.exception_handler(AuthenticationRequiredError)
-def handle_authentication_required(request, exc):
-    return JsonResponse(
-        {"status": "error", "message": "Authentication required"},
-        status=401,
-    )
+from .serializers import AdventureSerializer
+from .serializers import CompanionSerializer
+from .serializers import WalkCategoryTagSerializer
+from .serializers import WalkFeatureTagSerializer
+from .serializers import WalkSerializer
 
 
 # Define custom ORJSONParser
@@ -80,7 +48,7 @@ class ORJSONParser(Parser):
 class ORJSONRenderer(BaseRenderer):
     media_type = "application/json"
 
-    def render(self, _request, data, *, _response_status):
+    def render(self, request, data, *, response_status):
         return orjson.dumps(data)
 
 
@@ -90,93 +58,56 @@ api_instance = NinjaAPI(
     version="1.0.0",
     csrf=True,
     parser=ORJSONParser(),
-    renderer=ORJSONRenderer(),
+    renderer=ORJSONRenderer(),  # Using custom ORJSONRenderer
 )
 
-# Create Routers
+# Create a Router
 api = Router()
-companion_router = Router(auth=django_auth)
-walk_router = Router()
-adventure_router = Router()
-category_router = Router()
-feature_router = Router()
 
-# Add routers to API instance
+# Add the router to the API instance
 api_instance.add_router("", api)
-api_instance.add_router("companions", companion_router)
-api_instance.add_router("walks", walk_router)
-api_instance.add_router("adventures", adventure_router)
-api_instance.add_router("categories", category_router)
-api_instance.add_router("features", feature_router)
 
 
-# Companion endpoints
-@companion_router.get("/", response=list[CompanionOutSchema])
-def list_companions(request: HttpRequest):
-    """List companions for the authenticated user."""
-    companions = Companion.objects.filter(user=request.user)
-    return companions
+class CompanionViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows companions to be viewed or edited.
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = CompanionSerializer
+
+    def get_queryset(self):
+        """
+        This view should return a list of all companions
+        for the currently authenticated user.
+        """
+        return Companion.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
 
-@companion_router.get("/{companion_id}", response=CompanionOutSchema)
-def get_companion(request: HttpRequest, companion_id: UUID):
-    """Get a specific companion for the authenticated user."""
-    companion = get_object_or_404(Companion, id=companion_id, user=request.user)
-    return companion
+class WalkViewSet(viewsets.ModelViewSet):
+    queryset = Walk.objects.all()
+    serializer_class = WalkSerializer
 
 
-@companion_router.post("/", response=CompanionOutSchema)
-def create_companion(request: HttpRequest, data: CompanionInSchema):
-    """Create a new companion for the authenticated user."""
-    companion = Companion.objects.create(
-        user=request.user,
-        name=data.name,
-    )
-    return companion
+class AdventureViewSet(viewsets.ModelViewSet):
+    queryset = Adventure.objects.all()
+    serializer_class = AdventureSerializer
 
 
-# Walk endpoints
-@walk_router.get("/", response=list[WalkSchema])
-def list_walks_admin(request: HttpRequest):
-    """List all walks (admin endpoint)."""
-    return Walk.objects.all()
+class WalkCategoryTagViewSet(viewsets.ModelViewSet):
+    queryset = WalkCategoryTag.objects.all()
+    serializer_class = WalkCategoryTagSerializer
 
 
-@walk_router.get("/{walk_id}", response=WalkSchema)
-def get_walk_admin(request: HttpRequest, walk_id: UUID):
-    """Get a specific walk (admin endpoint)."""
-    return get_object_or_404(Walk, id=walk_id)
-
-
-# Adventure endpoints
-@adventure_router.get("/", response=list[AdventureSchema])
-def list_adventures(request: HttpRequest):
-    """List adventures."""
-    return Adventure.objects.all()
-
-
-@adventure_router.get("/{adventure_id}", response=AdventureSchema)
-def get_adventure(request: HttpRequest, adventure_id: UUID):
-    """Get a specific adventure."""
-    return get_object_or_404(Adventure, id=adventure_id)
-
-
-# Category tag endpoints
-@category_router.get("/", response=list[WalkCategoryTagSchema])
-def list_categories(request: HttpRequest):
-    """List all category tags."""
-    return WalkCategoryTag.objects.all()
-
-
-# Feature tag endpoints
-@feature_router.get("/", response=list[WalkFeatureTagSchema])
-def list_features(request: HttpRequest):
-    """List all feature tags."""
-    return WalkFeatureTag.objects.all()
+class WalkFeatureTagViewSet(viewsets.ModelViewSet):
+    queryset = WalkFeatureTag.objects.all()
+    serializer_class = WalkFeatureTagSerializer
 
 
 @api.get("/", response=dict)
-def api_root(_request):
+def api_root(request):
     """API root endpoint that returns available endpoints"""
     return {
         "version": "1.0.0",
@@ -192,15 +123,15 @@ def api_root(_request):
     }
 
 
-@api.get("/walks", response=list[WalkOutSchema])
+@api.get("/walks", response=List[WalkOutSchema])
 def list_walks(
     request: HttpRequest,
-    search: str | None = None,
-    categories: str | None = None,
-    features: str | None = None,
-    difficulty: str | None = None,
-    has_bus_access: bool | None = None,
-    has_stiles: bool | None = None,
+    search: Optional[str] = None,
+    categories: Optional[str] = None,
+    features: Optional[str] = None,
+    difficulty: Optional[str] = None,
+    has_bus_access: Optional[bool] = None,  # renamed parameter
+    has_stiles: Optional[bool] = None,
 ):
     """List walks with optional filtering"""
     try:
@@ -213,7 +144,7 @@ def list_walks(
                 )
             )
             if request.user.is_authenticated
-            else Value(False, output_field=bool)
+            else Value(False)
         )
         if search:
             walks = walks.filter(walk_name__icontains=search)
@@ -225,11 +156,14 @@ def list_walks(
             walks = walks.filter(steepness_level=difficulty)
         if has_stiles is not None:
             walks = walks.filter(has_stiles=has_stiles)
-        if has_bus_access is not None:
+        if has_bus_access is not None:  # updated filtering
             walks = walks.filter(has_bus_access=has_bus_access)
 
         walk_list = []
         for walk in walks:
+            # pubs_list handling removed (no longer used)
+            formatted_pubs = []
+            # ...existing code for walk conversion...
             walk_list.append(
                 WalkOutSchema(
                     id=walk.id,
@@ -272,11 +206,11 @@ def list_walks(
             )
         return walk_list
     except Exception as e:
-        logger.error(f"Error in list_walks: {e}")
+        print(f"Error in list_walks: {e}")
         return []
 
 
-@api.get("/walks/nearby", response=list[WalkOutSchema])
+@api.get("/walks/nearby", response=List[WalkOutSchema])
 def find_nearby_walks(
     request,
     latitude: float = Query(..., description="Latitude of the center point"),
@@ -287,7 +221,7 @@ def find_nearby_walks(
     """Find walks near a specific location using efficient spatial queries"""
     try:
         # Validate coordinates
-        if not (MIN_LATITUDE <= latitude <= MAX_LATITUDE) or not (MIN_LONGITUDE <= longitude <= MAX_LONGITUDE):
+        if not (-90 <= latitude <= 90) or not (-180 <= longitude <= 180):
             return []
 
         # Calculate bounding box for initial filtering
@@ -369,7 +303,7 @@ def find_nearby_walks(
                     )
                     results.append(walk_out)
             except (ValueError, TypeError) as e:
-                logger.error(f"Error processing walk {walk.id}: {e}")
+                print(f"Error processing walk {walk.id}: {e}")
                 continue
 
         # Sort by distance and limit results
@@ -377,7 +311,7 @@ def find_nearby_walks(
         return results[:limit]
 
     except Exception as e:
-        logger.error(f"Error finding nearby walks: {e}")
+        print(f"Error finding nearby walks: {e}")
         return []
 
 
@@ -447,20 +381,20 @@ def get_walk(request: HttpRequest, identifier: str):
             status=404
         )
     except Exception as e:
-        logger.error(f"Error getting walk details: {e}")
+        print(f"Error getting walk details: {e}")
         return JsonResponse(
             {"error": "Internal server error"}, 
             status=500
         )
 
 
-@api.post("/walks/{walk_id}/favorite", response=FavoriteResponseSchema, auth=django_auth)
-def toggle_favorite(request: HttpRequest, walk_id: UUID):
+@api.post("/walks/{id}/favorite")
+def toggle_favorite(request: HttpRequest, id: UUID):
     """Toggle favorite status for a walk"""
     if not request.user.is_authenticated:
-        raise AuthenticationRequiredError()
+        return {"status": "error", "message": "Authentication required"}
 
-    walk = get_object_or_404(Walk, id=walk_id)
+    walk = get_object_or_404(Walk, id=id)
     if walk.favorites.filter(id=request.user.id).exists():
         walk.favorites.remove(request.user)
         is_favorite = False
@@ -468,11 +402,26 @@ def toggle_favorite(request: HttpRequest, walk_id: UUID):
         walk.favorites.add(request.user)
         is_favorite = True
 
-    return {"status": "success", "walk_id": str(walk_id), "is_favorite": is_favorite}
+    return {"status": "success", "walk_id": str(id), "is_favorite": is_favorite}
 
 
-@api.get("/tags", response=list[TagResponseSchema])
-def list_tags(_request):
+class TagResponseSchema(Schema):
+    name: str
+    slug: str
+    usage_count: int
+    type: str
+
+
+# Add MarkerSchema definition
+class MarkerSchema(Schema):
+    id: int
+    latitude: float
+    longitude: float
+
+
+# List tags
+@api.get("/tags", response=List[TagResponseSchema])
+def list_tags(request):
     """Get all walk tags with usage counts"""
     tags = []
 
@@ -480,7 +429,7 @@ def list_tags(_request):
     category_tags = (
         WalkCategoryTag.objects.annotate(
             usage_count=Count("categorized_walks", distinct=True)
-            + Count("related_walks", distinct=True),
+            + Count("related_walks", distinct=True)
         )
         .filter(usage_count__gt=0)
         .values("name", "slug", "usage_count")
@@ -519,7 +468,7 @@ def list_tags(_request):
 
 
 @api.get("/config", response=ConfigSchema)
-def get_config(_request):
+def get_config(request):
     """Get application configuration"""
     return {
         "mapboxToken": settings.MAPBOX_TOKEN,
@@ -537,8 +486,8 @@ def get_config(_request):
     }
 
 
-@api.get("/filters", response=FiltersResponseSchema)
-def get_filters(_request):
+@api.get("/filters")
+def get_filters(request):
     """Get available filter options"""
     return {
         "difficulties": [choice[0] for choice in Walk.DIFFICULTY_CHOICES],
@@ -548,13 +497,18 @@ def get_filters(_request):
     }
 
 
-@api.get("/walks/{walk_id}/geometry", response=GeometrySchema)
-def get_walk_geometry(_request: HttpRequest, walk_id: UUID):
+class GeometrySchema(Schema):
+    type: str = "Feature"
+    geometry: dict
+    properties: dict
+
+
+@api.get("/walks/{id}/geometry", response=GeometrySchema)
+def get_walk_geometry(request: HttpRequest, id: UUID):
     """Get GeoJSON geometry for a walk route"""
     try:
         walk = get_object_or_404(
-            Walk.objects.only("id", "walk_name", "distance", "route_geometry"),
-            id=walk_id,
+            Walk.objects.only("id", "walk_name", "distance", "route_geometry"), id=id
         )
 
         # Convert the geometry to GeoJSON
@@ -562,7 +516,7 @@ def get_walk_geometry(_request: HttpRequest, walk_id: UUID):
             geojson = orjson.loads(walk.route_geometry.geojson)
 
             # Create a GeoJSON Feature
-            return {
+            feature = {
                 "type": "Feature",
                 "geometry": geojson,
                 "properties": {
@@ -572,14 +526,16 @@ def get_walk_geometry(_request: HttpRequest, walk_id: UUID):
                 },
             }
 
+            return feature
+
     except Exception as e:
-        logger.error(f"Error fetching geometry for walk {walk_id}: {e}")
+        print(f"Error fetching geometry for walk {id}: {e}")
         return JsonResponse({"error": "Failed to fetch route geometry"}, status=404)
 
 
 def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Calculate distance in meters using Haversine formula"""
-    R = EARTH_RADIUS_METERS
+    R = 6371000  # Radius of Earth in meters
     
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
     dphi = math.radians(lat2 - lat1)

@@ -1,13 +1,16 @@
 from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from . import api
-from .views import WalkGeometryView
+
+router = DefaultRouter()
+router.register(r'walks', api.WalkViewSet, basename='walk')
+router.register(r'adventures', api.AdventureViewSet, basename='adventure')
+router.register(r'companions', api.CompanionViewSet, basename='companion')
+router.register(r'categories', api.WalkCategoryTagViewSet, basename='category')
+router.register(r'features', api.WalkFeatureTagViewSet, basename='feature')
 
 app_name = 'walks'
 
 urlpatterns = [
-    # Handle /api/walks/<uuid>/geometry/ (legacy view)
-    path('walks/<uuid:id>/geometry/', WalkGeometryView.as_view(), name='walk-geometry'),
-    
-    # Django Ninja API URLs
-    path('', api.api_instance.urls),
+    path('api/', include(router.urls)),
 ]
