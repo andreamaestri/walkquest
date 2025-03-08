@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { useRouter } from 'vue-router';
+import { login, logout, signUp, getAuth } from '../lib/allauth';
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -13,7 +13,8 @@ export const useAuthStore = defineStore('auth', {
     loginError: null,
     signupError: null,
     initialized: false,
-    userDataLoaded: false
+    userDataLoaded: false,
+    authChangeListener: null
   }),
   
   getters: {
@@ -49,165 +50,198 @@ export const useAuthStore = defineStore('auth', {
   },
   
   actions: {
-    getCsrfToken() {
-      const metaToken = document.querySelector('meta[name="csrf-token"]');
-      if (metaToken) {
-        return metaToken.getAttribute('content');
-      }
-      
-      const name = 'csrftoken=';
-      const decodedCookie = decodeURIComponent(document.cookie);
-      const cookieArray = decodedCookie.split(';');
-      
-      for (let cookie of cookieArray) {
-        while (cookie.charAt(0) === ' ') {
-          cookie = cookie.substring(1);
-        }
-        if (cookie.indexOf(name) === 0) {
-          return cookie.substring(name.length, cookie.length);
-        }
-      }
-      
-      const inputToken = document.querySelector('input[name="csrfmiddlewaretoken"]');
-      return inputToken ? inputToken.value : null;
-    },
-    
     setRedirectPath(path) {
       this.redirectPath = path;
+      // Also store in sessionStorage for persistence across page loads
+      sessionStorage.setItem('auth_redirect', path);
     },
     
     getRedirectPath() {
-      const path = this.redirectPath || '/';
+      // Try to get from state first, then sessionStorage
+      const path = this.redirectPath || sessionStorage.getItem('auth_redirect') || '/';
       this.redirectPath = null;
+      sessionStorage.removeItem('auth_redirect');
       return path;
     },
     
-    async login(email, password) {
-      this.isLoading = true;
-      this.loginError = null;
-      
+    async login(email, password, remember = false) {
       try {
+        this.isLoading = true;
+        // Get the CSRF token from cookie or other source
+        const csrfToken = this.getCSRFToken();
+        if (!csrfToken) {
+          throw new Error("CSRF token not found");
+        }
+        
+        // Create FormData instead of JSON
+        const formData = new FormData();
+        formData.append('login', email);
+        formData.append('password', password);
+        if (remember) {
+          formData.append('remember', 'on');
+        }
+        
         const response = await fetch('/accounts/login/', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'X-CSRFToken': this.getCsrfToken(),
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
           },
-          body: JSON.stringify({ 
-            login: email, 
-            password: password,
-          }),
-          credentials: 'same-origin'
+          credentials: 'same-origin',
+          body: formData
         });
         
-        const data = await response.json();
+        // Handle different response types
+        const contentType = response.headers.get("content-type");
         
         if (!response.ok) {
-          const errors = data.errors || {};
-          throw {
-            message: data.message || 'Login failed',
-            errors: {
-              email: errors.login || errors.email || null,
-              password: errors.password || null
-            }
-          };
+          if (contentType && contentType.includes("application/json")) {
+            const errorData = await response.json();
+            throw { errors: errorData };
+          } else {
+            throw new Error('Login failed with status: ' + response.status);
+          }
         }
         
-        // Update auth state
-        await this.checkAuth();
+        // Check if JSON response
+        if (contentType && contentType.includes("application/json")) {
+          const data = await response.json();
+          // Update user data if available in response
+          if (data.user) {
+            this.user = data.user;
+            this.isAuthenticated = true;
+            this.userDataLoaded = true;
+          } else {
+            // If no user data, fetch it
+            await this.checkAuth();
+          }
+        } else {
+          // HTML response typically means success - fetch user data
+          await this.checkAuth();
+        }
         
-        // Redirect after successful login
-        const router = useRouter();
-        const redirectTo = this.getRedirectPath();
-        router.push(redirectTo);
-        
-        return { success: true };
+        // Return success regardless of response type
+        return true;
       } catch (error) {
-        this.loginError = error.message;
+        console.error("Login error:", error);
         throw error;
       } finally {
         this.isLoading = false;
       }
     },
-    
+
     async signup(email, password1, password2) {
       this.isLoading = true;
       this.signupError = null;
       
       try {
+        // Get the CSRF token from the cookie
+        const csrfToken = this.getCSRFToken();
+        
         const response = await fetch('/accounts/signup/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-            'X-CSRFToken': this.getCsrfToken(),
+            'X-CSRFToken': csrfToken
           },
-          body: JSON.stringify({ 
+          credentials: 'same-origin',
+          body: JSON.stringify({
             email,
             password1,
             password2
-          }),
-          credentials: 'same-origin'
+          })
         });
+
+        // Handle response...
         
-        const data = await response.json();
-        
-        if (!response.ok) {
-          const errors = data.errors || {};
-          throw {
-            message: data.message || 'Registration failed',
-            errors: {
-              email: errors.email || null,
-              password1: errors.password1 || null,
-              password2: errors.password2 || null
-            }
-          };
-        }
-        
-        // Update auth state
-        await this.checkAuth();
-        
-        // Redirect after successful signup
-        const router = useRouter();
-        const redirectTo = this.getRedirectPath();
-        router.push(redirectTo);
-        
-        return { success: true };
       } catch (error) {
-        this.signupError = error.message;
+        console.error('Signup error:', error);
         throw error;
       } finally {
         this.isLoading = false;
       }
+    },
+    
+    // Consistent method to get CSRF token
+    getCSRFToken() {
+      // First try the cookie (Django's default approach)
+      let csrfToken = this.getCSRFCookie();
+      
+      // If not found in cookie, try meta tag
+      if (!csrfToken) {
+        const metaToken = document.querySelector('meta[name="csrf-token"]');
+        if (metaToken) {
+          csrfToken = metaToken.getAttribute('content');
+        }
+      }
+      
+      // If still not found, try hidden input field
+      if (!csrfToken) {
+        const inputToken = document.querySelector('input[name="csrfmiddlewaretoken"]');
+        if (inputToken) {
+          csrfToken = inputToken.value;
+        }
+      }
+      
+      return csrfToken;
+    },
+    
+    // Get CSRF token from cookie
+    getCSRFCookie() {
+      function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+          const cookies = document.cookie.split(';');
+          for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+              cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+              break;
+            }
+          }
+        }
+        return cookieValue;
+      }
+      return getCookie('csrftoken'); // Django's CSRF cookie name by default
     },
     
     async checkAuth() {
       this.isLoading = true;
       
       try {
-        const response = await fetch('/users/api/auth-events/', {
-          headers: {
-            'Accept': 'application/json'
-          },
-          credentials: 'same-origin'
-        });
+        const data = await getAuth();
+        console.log('Auth check response:', data); // Add debug logging
         
-        if (response.ok) {
-          const data = await response.json();
-          if (data.is_authenticated && data.user) {
-            this.user = data.user;
-            this.isAuthenticated = true;
-            this.userDataLoaded = true;
-            return true;
+        // Check if data exists and has the expected properties
+        if (data) {
+          // For APIs that return status in the data
+          if (data.status === 200 || (data.is_authenticated !== undefined)) {
+            if (data.is_authenticated && data.user) {
+              this.user = data.user;
+              this.isAuthenticated = true;
+              this.userDataLoaded = true;
+              return true;
+            }
+            
+            // User is not authenticated
+            this.user = null;
+            this.isAuthenticated = false;
+            this.userDataLoaded = false;
+            return false;
           }
           
-          // User is not authenticated
-          this.user = null;
-          this.isAuthenticated = false;
-          this.userDataLoaded = false;
-          return false;
+          // Add explicit return for non-200 status
+          console.warn('Auth check returned unexpected response:', data);
+        } else {
+          console.warn('Auth check returned empty response');
         }
+        
+        // Default to not authenticated for any unexpected response
+        this.user = null;
+        this.isAuthenticated = false;
+        this.userDataLoaded = false;
+        return false;
       } catch (error) {
         console.error('Auth check failed:', error);
         this.user = null;
@@ -223,10 +257,8 @@ export const useAuthStore = defineStore('auth', {
       if (this.pollingInterval) return;
       
       this.pollingInterval = setInterval(() => {
-        this.checkAuthEvents();
-      }, 10000);
-      
-      this.checkAuthEvents();
+        this.checkAuth();
+      }, 30000); // Check every 30 seconds
     },
     
     stopPolling() {
@@ -236,74 +268,17 @@ export const useAuthStore = defineStore('auth', {
       }
     },
     
-    async checkAuthEvents() {
-      try {
-        const response = await fetch('/users/api/auth-events/', {
-          headers: {
-            'Accept': 'application/json'
-          },
-          credentials: 'same-origin'
-        });
-        
-        if (!response.ok) return;
-        
-        const data = await response.json();
-        
-        if (data.is_authenticated !== this.isAuthenticated) {
-          if (data.is_authenticated) {
-            this.user = data.user;
-            this.isAuthenticated = true;
-          } else {
-            this.user = null;
-            this.isAuthenticated = false;
-          }
-        }
-        
-        if (data.events && data.events.length > 0) {
-          for (const event of data.events) {
-            this.handleAuthEvent(event);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to check auth events:', error);
-      }
-    },
-    
     handleAuthEvent(event) {
-      switch (event.event) {
-        case 'logout':
-          this.user = null;
-          this.isAuthenticated = false;
-          this.showSnackbar('You have been logged out');
-          break;
-        
-        case 'login':
-          if (event.user) {
-            this.user = event.user;
-            this.isAuthenticated = true;
-            this.showSnackbar(`Welcome back, ${event.user.username || event.user.email}!`);
-          }
-          break;
-          
-        case 'signup':
-          if (event.user) {
-            this.user = event.user;
-            this.isAuthenticated = true;
-            this.showSnackbar(`Welcome to WalkQuest, ${event.user.username || event.user.email}!`);
-          }
-          break;
-          
-        case 'password_changed':
-        case 'password_reset':
-        case 'email_confirmed':
-        case 'email_added':
-        case 'email_removed':
-        case 'email_changed':
-          this.checkAuth();
-          break;
-          
-        default:
-          console.log('Unhandled auth event:', event.event);
+      if (event.detail?.is_authenticated) {
+        this.user = event.detail.user;
+        this.isAuthenticated = true;
+        this.showSnackbar(`Welcome back, ${event.detail.user.username || event.detail.user.email}!`);
+      } else {
+        this.user = null;
+        this.isAuthenticated = false;
+        if (event.detail?.message) {
+          this.showSnackbar(event.detail.message);
+        }
       }
     },
     
@@ -324,9 +299,28 @@ export const useAuthStore = defineStore('auth', {
       }
     },
     
+    setupAuthChangeListener() {
+      // Remove any existing listener to prevent duplicates
+      this.removeAuthChangeListener();
+      
+      // Create a new listener and store the reference
+      this.authChangeListener = (e) => this.handleAuthEvent(e);
+      document.addEventListener('allauth.auth.change', this.authChangeListener);
+    },
+    
+    removeAuthChangeListener() {
+      if (this.authChangeListener) {
+        document.removeEventListener('allauth.auth.change', this.authChangeListener);
+        this.authChangeListener = null;
+      }
+    },
+    
     async initAuth() {
       const isAuthenticated = await this.checkAuth();
       console.log('Initial auth check completed, authenticated:', isAuthenticated, 'user:', this.user);
+      
+      // Setup auth change listener
+      this.setupAuthChangeListener();
       
       this.processDjangoMessages();
       this.startPolling();
@@ -338,32 +332,28 @@ export const useAuthStore = defineStore('auth', {
       this.error = null;
       
       try {
-        const response = await fetch('/accounts/logout/', {
-          method: 'POST',
-          headers: {
-            'X-CSRFToken': this.getCsrfToken(),
-          },
-          credentials: 'same-origin'
-        });
+        const data = await logout();
         
-        if (!response.ok) {
-          throw new Error('Logout failed');
+        if (data.status === 200) {
+          this.user = null;
+          this.isAuthenticated = false;
+          this.userDataLoaded = false;
+          return { success: true };
         }
         
-        this.user = null;
-        this.isAuthenticated = false;
-        this.userDataLoaded = false;
-        
-        const router = useRouter();
-        router.push('/');
-        
-        return { success: true };
+        throw new Error('Logout failed');
       } catch (error) {
         this.error = error.message;
         throw error;
       } finally {
         this.isLoading = false;
       }
+    },
+    
+    // Cleanup method to be called when app is unmounted
+    cleanup() {
+      this.stopPolling();
+      this.removeAuthChangeListener();
     }
   }
 });

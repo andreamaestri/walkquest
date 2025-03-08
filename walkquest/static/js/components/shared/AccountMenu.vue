@@ -90,7 +90,7 @@ const router = useRouter();
 const isMobileComputed = computed(() => uiStore.isMobile);
 const userInitialsComputed = computed(() => authStore.userInitials);
 const emailComputed = computed(() => authStore.user?.email || '');
-const csrfToken = computed(() => authStore.getCsrfToken());
+const csrfToken = ref('');
 
 // Get authentication URLs from window.djangoAllAuth object
 const authUrls = computed(() => ({
@@ -204,6 +204,47 @@ watch(() => props.isOpen, async (isOpen) => {
     isLoadingUser.value = false;
   }
 });
+
+// Add function to get CSRF token
+function getCSRFToken() {
+  // First try the cookie (Django's default approach)
+  let token = getCsrfCookie();
+  
+  // If not found in cookie, try meta tag
+  if (!token) {
+    const metaToken = document.querySelector('meta[name="csrf-token"]');
+    if (metaToken) {
+      token = metaToken.getAttribute('content');
+    }
+  }
+  
+  // If still not found, try hidden input field
+  if (!token) {
+    const inputToken = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    if (inputToken) {
+      token = inputToken.value;
+    }
+  }
+  
+  return token;
+}
+
+// Helper for getting CSRF cookie
+function getCsrfCookie() {
+  const name = 'csrftoken=';
+  const decodedCookie = decodeURIComponent(document.cookie);
+  const cookieArray = decodedCookie.split(';');
+  
+  for (let cookie of cookieArray) {
+    while (cookie.charAt(0) === ' ') {
+      cookie = cookie.substring(1);
+    }
+    if (cookie.indexOf(name) === 0) {
+      return cookie.substring(name.length, cookie.length);
+    }
+  }
+  return null;
+}
 </script>
 
 <style scoped>

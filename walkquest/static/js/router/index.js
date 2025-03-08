@@ -50,6 +50,19 @@ const routes = [
     name: 'walk-by-id',
     component: () => import('../components/WalkInterface.vue'),
     props: true
+  },
+  // Handle redirects from Django auth
+  {
+    path: '/accounts/login',
+    redirect: '/login'
+  },
+  {
+    path: '/accounts/signup',
+    redirect: '/signup'
+  },
+  {
+    path: '/accounts/logout',
+    redirect: '/'
   }
 ];
 

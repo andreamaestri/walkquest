@@ -42,7 +42,7 @@
       </button>
     </div>
     
-    <!-- Account Menu for authenticated users only -->
+    <!-- Account Menu for authenticated users -->
     <AccountMenu
       v-if="buttonRef && isAuthenticatedComputed"
       :is-open="showMenu"
@@ -51,7 +51,7 @@
       @action="handleMenuAction"
     />
     
-    <!-- Use standard Django auth menu for unauthenticated users -->
+    <!-- Auth menu for unauthenticated users -->
     <Teleport to="#portal-root">
       <Transition name="fade">
         <div v-if="showAuthMenu && !isAuthenticatedComputed" class="auth-menu-container" :class="{ 'mobile': isMobileComputed }">
@@ -66,14 +66,14 @@
             <div class="auth-menu-content">
               <p class="auth-menu-text">Sign in to save your favorite walks, track your adventures and more.</p>
               <div class="auth-links">
-                <a :href="authUrls.loginUrl" class="auth-link auth-link-primary">
+                <RouterLink to="/login" class="auth-link auth-link-primary" @click="showAuthMenu = false">
                   <Icon icon="mdi:login" class="auth-icon" />
                   <span>Sign In</span>
-                </a>
-                <a :href="authUrls.signupUrl" class="auth-link auth-link-secondary">
+                </RouterLink>
+                <RouterLink to="/signup" class="auth-link auth-link-secondary" @click="showAuthMenu = false">
                   <Icon icon="mdi:account-plus" class="auth-icon" />
                   <span>Create Account</span>
-                </a>
+                </RouterLink>
               </div>
             </div>
           </div>
@@ -86,6 +86,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { Icon } from '@iconify/vue';
+import { useRouter } from 'vue-router';
 import { useAuthStore } from '../../stores/auth';
 import { useUiStore } from '../../stores/ui';
 import AccountMenu from './AccountMenu.vue';
@@ -100,6 +101,9 @@ const props = defineProps({
 
 // Emit events
 const emit = defineEmits(['click']);
+
+// Router instance
+const router = useRouter();
 
 // Use the UI store for responsive layout
 const uiStore = useUiStore();
@@ -135,16 +139,6 @@ const avatarBgColor = computed(() => {
   return `oklch(70% 0.14 ${hue}deg)`;
 });
 
-// Get authentication URLs
-const authUrls = computed(() => ({
-  loginUrl: window.djangoAllAuth?.loginUrl || '/accounts/login/',
-  signupUrl: window.djangoAllAuth?.signupUrl || '/accounts/signup/',
-  logoutUrl: window.djangoAllAuth?.logoutUrl || '/accounts/logout/',
-  passwordResetUrl: window.djangoAllAuth?.passwordResetUrl || '/accounts/password/reset/',
-  passwordChangeUrl: window.djangoAllAuth?.passwordChangeUrl || '/accounts/password/change/',
-  emailUrl: window.djangoAllAuth?.emailUrl || '/accounts/email/'
-}));
-
 // Handle click with authentication flow
 const handleClick = (event) => {
   isPressed.value = true;
@@ -169,6 +163,7 @@ const handleMenuAction = async (action) => {
       isPressed.value = true;
       await authStore.logout();
       showMenu.value = false;
+      router.push('/');
     } catch (error) {
       console.error('Logout failed:', error);
     } finally {
@@ -176,6 +171,7 @@ const handleMenuAction = async (action) => {
     }
   } else if (action === 'profile') {
     showMenu.value = false;
+    router.push('/profile');
   }
 };
 

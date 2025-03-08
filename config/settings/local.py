@@ -25,6 +25,13 @@ DATABASES = {
 }
 DATABASES["default"]["ENGINE"] = "django.contrib.gis.db.backends.postgis"
 
+# SECURITY SETTINGS FOR LOCAL DEVELOPMENT
+# ------------------------------------------------------------------------------
+# Override secure settings for local development
+CSRF_COOKIE_SECURE = False  # Allow CSRF cookies to be sent over HTTP
+SESSION_COOKIE_SECURE = False  # Allow session cookies to be sent over HTTP
+CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript to access CSRF token
+
 # CACHES
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#caches
@@ -143,7 +150,5 @@ if DEBUG:
             self.get_response = get_response
 
         def __call__(self, request):
-            response = self.get_response(request)
-            return response
-
+            return self.get_response(request)
     MIDDLEWARE.insert(0, "config.settings.local.ViteFileLoader")

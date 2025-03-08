@@ -8,32 +8,38 @@
       </p>
 
       <!-- Error display -->
-      <div v-if="error" class="md3-error-message">
+      <div v-if="error" class="md3-error-message error-container">
         <Icon icon="mdi:alert-circle" class="md3-error-icon" />
         <span>{{ error }}</span>
       </div>
 
-      <form @submit.prevent="handleSubmit" class="auth-form">
+      <form @submit.prevent="handleSubmit" class="auth-form" method="post">
+        <!-- Add hidden CSRF field -->
+        <input type="hidden" name="csrfmiddlewaretoken" :value="csrfToken" />
+        
         <!-- Email Field -->
         <div class="md3-field-container">
           <div class="md3-text-field" :class="{
-            'focused': activeField === 'email',
-            'filled': form.email,
-            'error': errors.email
+            'focused': activeField === 'login',
+            'filled': login,
+            'error': errors.login || errors.email
           }">
             <input 
-              id="email"
-              v-model="form.email"
+              id="login"
+              v-model="login"
+              name="login"
               type="email"
               class="md3-input"
               required
-              @focus="activeField = 'email'"
+              @focus="activeField = 'login'"
               @blur="activeField = null"
               placeholder=" "
+              autocomplete="username"
             />
-            <label for="email" class="md3-label">Email</label>
+            <label for="login" class="md3-label">Email</label>
             <div class="md3-outline"></div>
           </div>
+          <div v-if="errors.login" class="md3-error-message">{{ errors.login }}</div>
           <div v-if="errors.email" class="md3-error-message">{{ errors.email }}</div>
         </div>
 
@@ -41,18 +47,20 @@
         <div class="md3-field-container">
           <div class="md3-text-field" :class="{
             'focused': activeField === 'password',
-            'filled': form.password,
+            'filled': password,
             'error': errors.password
           }">
             <input 
               id="password"
-              v-model="form.password"
+              v-model="password"
+              name="password"
               :type="showPassword ? 'text' : 'password'"
               class="md3-input"
               required
               @focus="activeField = 'password'"
               @blur="activeField = null"
               placeholder=" "
+              autocomplete="current-password"
             />
             <label for="password" class="md3-label">Password</label>
             <button 
@@ -67,6 +75,18 @@
           <div v-if="errors.password" class="md3-error-message">{{ errors.password }}</div>
         </div>
 
+        <!-- Remember Me Checkbox -->
+        <div class="md3-field-container">
+          <label class="remember-me">
+            <input 
+              type="checkbox" 
+              name="remember" 
+              v-model="remember"
+            >
+            Remember Me
+          </label>
+        </div>
+
         <div class="auth-links">
           <RouterLink to="/password/reset" class="text-link">Forgot your password?</RouterLink>
         </div>
@@ -75,9 +95,9 @@
           <button 
             type="submit" 
             class="md3-button md3-filled-button"
-            :disabled="isLoading"
+            :disabled="response.fetching"
           >
-            <span v-if="isLoading" class="md3-button-spinner">
+            <span v-if="response.fetching" class="md3-button-spinner">
               <Icon icon="mdi:loading" class="spinner-icon" />
             </span>
             <span v-else>Login</span>
@@ -89,7 +109,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { useAuthStore } from '../../stores/auth'
@@ -98,32 +118,78 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 // Form state
-const form = ref({
-  email: '',
-  password: ''
-})
-
+const login = ref('') // Using 'login' instead of 'email' to match Django's field name
+const password = ref('')
+const remember = ref(false)
 const activeField = ref(null)
 const showPassword = ref(false)
 const error = ref(null)
 const errors = ref({})
+const response = reactive({ fetching: false, content: null })
+const csrfToken = ref('')
 
-// Computed state from store
-const isLoading = computed(() => authStore.isLoading)
+// Get CSRF token on component mount
+onMounted(() => {
+  getCsrfToken()
+})
+
+// Get CSRF token from multiple possible sources
+function getCsrfToken() {
+  // Try to get from meta tag
+  const metaToken = document.querySelector('meta[name="csrf-token"]');
+  if (metaToken) {
+    csrfToken.value = metaToken.getAttribute('content');
+    return;
+  }
+  
+  // Try to get from cookie (if it's not httpOnly)
+  const name = 'csrftoken=';
+  const decodedCookie = decodeURIComponent(document.cookie);
+  const cookieArray = decodedCookie.split(';');
+  
+  for (let cookie of cookieArray) {
+    while (cookie.charAt(0) === ' ') {
+      cookie = cookie.substring(1);
+    }
+    if (cookie.indexOf(name) === 0) {
+      csrfToken.value = cookie.substring(name.length, cookie.length);
+      return;
+    }
+  }
+  
+  // Try to get from the hidden input field
+  const xcsrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]');
+  if (xcsrfToken) {
+    csrfToken.value = xcsrfToken.value;
+    return;
+  }
+  
+  // Removed fallback fetch to avoid 404 error
+  console.warn("CSRF token not found from meta, cookie, or hidden input.");
+}
 
 // Handle form submission
 async function handleSubmit() {
   error.value = null
   errors.value = {}
-
+  response.fetching = true
+  
   try {
-    await authStore.login(form.value.email, form.value.password)
+    // Call login and handle success
+    await authStore.login(login.value, password.value, remember.value)
+    
+    // If we get here, login was successful
+    const redirectTo = router.currentRoute.value.query.next || '/'
+    router.push(redirectTo)
   } catch (err) {
     if (err.errors) {
       errors.value = err.errors
+      response.content = { errors: err.errors }
     } else {
       error.value = err.message || 'Login failed. Please try again.'
     }
+  } finally {
+    response.fetching = false
   }
 }
 </script>
@@ -170,6 +236,13 @@ async function handleSubmit() {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.error-container {
+  margin-bottom: 16px;
+  padding: 12px;
+  border-radius: 8px;
+  background-color: rgb(var(--md-sys-color-error-container));
 }
 
 .md3-field-container {
@@ -249,6 +322,15 @@ async function handleSubmit() {
 
 .md3-error-icon {
   font-size: 16px;
+}
+
+.remember-me {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+  cursor: pointer;
 }
 
 .password-toggle {

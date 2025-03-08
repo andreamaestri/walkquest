@@ -18,12 +18,12 @@
         <div class="md3-field-container">
           <div class="md3-text-field" :class="{
             'focused': activeField === 'email',
-            'filled': form.email,
+            'filled': email,
             'error': errors.email
           }">
             <input 
               id="email"
-              v-model="form.email"
+              v-model="email"
               type="email"
               class="md3-input"
               required
@@ -41,12 +41,12 @@
         <div class="md3-field-container">
           <div class="md3-text-field" :class="{
             'focused': activeField === 'password1',
-            'filled': form.password1,
+            'filled': password1,
             'error': errors.password1
           }">
             <input 
               id="password1"
-              v-model="form.password1"
+              v-model="password1"
               :type="showPassword1 ? 'text' : 'password'"
               class="md3-input"
               required
@@ -72,12 +72,12 @@
         <div class="md3-field-container">
           <div class="md3-text-field" :class="{
             'focused': activeField === 'password2',
-            'filled': form.password2,
+            'filled': password2,
             'error': errors.password2
           }">
             <input 
               id="password2"
-              v-model="form.password2"
+              v-model="password2"
               :type="showPassword2 ? 'text' : 'password'"
               class="md3-input"
               required
@@ -103,9 +103,9 @@
           <button 
             type="submit" 
             class="md3-button md3-filled-button"
-            :disabled="isLoading"
+            :disabled="response.fetching"
           >
-            <span v-if="isLoading" class="md3-button-spinner">
+            <span v-if="response.fetching" class="md3-button-spinner">
               <Icon icon="mdi:loading" class="spinner-icon" />
             </span>
             <span v-else>Sign Up</span>
@@ -117,7 +117,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { useAuthStore } from '../../stores/auth'
@@ -126,40 +126,38 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 // Form state
-const form = ref({
-  email: '',
-  password1: '',
-  password2: ''
-})
-
+const email = ref('')
+const password1 = ref('')
+const password2 = ref('')
 const activeField = ref(null)
 const showPassword1 = ref(false)
 const showPassword2 = ref(false)
 const error = ref(null)
 const errors = ref({})
-
-// Computed state from store
-const isLoading = computed(() => authStore.isLoading)
+const response = reactive({ fetching: false, content: null })
 
 // Handle form submission
 async function handleSubmit() {
-  error.value = null
-  errors.value = {}
-
-  // Validate passwords match
-  if (form.value.password1 !== form.value.password2) {
-    errors.value.password2 = 'Passwords do not match'
+  if (password2.value !== password1.value) {
+    errors.value.password2 = 'Password does not match.'
     return
   }
-
+  
+  errors.value = {}
+  response.fetching = true
+  
   try {
-    await authStore.signup(form.value.email, form.value.password1, form.value.password2)
+    // Pass both passwords to match Django's expected format
+    await authStore.signup(email.value, password1.value, password2.value, router)
   } catch (err) {
     if (err.errors) {
       errors.value = err.errors
+      response.content = { errors: err.errors }
     } else {
       error.value = err.message || 'Registration failed. Please try again.'
     }
+  } finally {
+    response.fetching = false
   }
 }
 </script>

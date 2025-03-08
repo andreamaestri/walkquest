@@ -93,27 +93,12 @@ const handleAdventureSubmit = async (data) => {
 
 // Setup beforeunload handler to clear dialog state
 let beforeUnloadHandler;
+let styleFixInterval;
 
-onMounted(async () => {
-  // Check authentication status
-  try {
-    uiStore.setLoading(true);
-    const isAuthenticated = await authStore.checkAuth();
-    console.log('Auth check completed, user is', isAuthenticated ? 'authenticated' : 'not authenticated');
-    
-    // Handle redirect if needed
-    const redirectPath = sessionStorage.getItem('auth_redirect');
-    if (isAuthenticated && redirectPath) {
-      sessionStorage.removeItem('auth_redirect');
-      router.push(redirectPath);
-    }
-  } catch (error) {
-    console.error('Auth check failed:', error);
-    uiStore.showToast('Authentication check failed', 'error');
-  } finally {
-    uiStore.setLoading(false);
-  }
-
+onMounted(() => {
+  // Initialize auth store
+  authStore.initAuth();
+  
   // Initialize UI responsive state
   const cleanup = uiStore.initializeResponsiveState();
   
@@ -125,14 +110,14 @@ onMounted(async () => {
 
   // Fix for portal click issue
   // Try to make the portal-root element transparent to clicks
-  const portalRoot = document.getElementById('portal-root');
-  if (portalRoot) {
-    portalRoot.style.pointerEvents = 'none';
+  const portalRootElement = document.getElementById('portal-root');
+  if (portalRootElement) {
+    portalRootElement.style.pointerEvents = 'none';
     
     // Ensure direct children have pointer events
-    const styleFixInterval = setInterval(() => {
+    styleFixInterval = setInterval(() => {
       try {
-        const children = portalRoot.children;
+        const children = portalRootElement.children;
         for (let i = 0; i < children.length; i++) {
           children[i].style.pointerEvents = 'auto';
         }
@@ -140,11 +125,6 @@ onMounted(async () => {
         console.error('Portal fix error:', error);
       }
     }, 500);
-    
-    // Clean up interval on unmount
-    onBeforeUnmount(() => {
-      clearInterval(styleFixInterval);
-    });
   }
   
   // Watch loading states to show/hide loading component
@@ -189,10 +169,18 @@ onBeforeUnmount(() => {
     window.removeEventListener('beforeunload', beforeUnloadHandler);
   }
   
+  // Clear style fix interval
+  if (styleFixInterval) {
+    clearInterval(styleFixInterval);
+  }
+  
   // Clean up UI responsive state
   if (uiStore.cleanupResponsiveState) {
     uiStore.cleanupResponsiveState();
   }
+  
+  // Clean up auth store
+  authStore.cleanup();
 });
 </script>
 
