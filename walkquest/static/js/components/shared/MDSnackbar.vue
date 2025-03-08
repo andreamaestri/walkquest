@@ -103,13 +103,14 @@ onUnmounted(() => {
 }
 
 .snackbar {
-  background-color: rgb(var(--md-sys-color-surface-container-high));
-  color: rgb(var(--md-sys-color-on-surface));
-  padding: 0.75rem 1rem;
-  border-radius: 9999px;
+  background-color: rgb(var(--md-sys-color-inverse-surface));
+  color: rgb(var(--md-sys-color-inverse-on-surface));
+  min-height: 48px; /* Single line height */
+  padding: 0 16px;
+  border-radius: 4px; /* md.sys.shape.corner.extra-small */
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 8px;
   box-shadow: var(--md-sys-elevation-3);
   max-width: 24rem;
   margin: 0 auto;
@@ -117,8 +118,7 @@ onUnmounted(() => {
   opacity: 0;
   transition: transform 0.3s ease-out, opacity 0.3s ease-out;
   pointer-events: auto;
-  border: 1px solid rgba(var(--md-sys-color-outline), 0.1);
-  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(0px + env(safe-area-inset-bottom, 0px));
 }
 
 .snackbar.show {
@@ -127,16 +127,23 @@ onUnmounted(() => {
 }
 
 .snackbar-message {
-  font-size: 0.875rem;
+  font-family: var(--md-sys-typescale-label-large-font);
+  font-size: var(--md-sys-typescale-label-large-size, 0.875rem);
+  font-weight: var(--md-sys-typescale-label-large-weight, 500);
+  line-height: var(--md-sys-typescale-label-large-line-height, 1.25rem);
+  letter-spacing: var(--md-sys-typescale-label-large-tracking, 0.1px);
+  color: rgb(var(--md-sys-color-inverse-primary));
   flex: 1;
 }
 
 .snackbar-close {
-  padding: 0.25rem;
-  border-radius: 9999px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 50%;
   border: none;
   background: transparent;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: rgb(var(--md-sys-color-inverse-on-surface));
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -145,7 +152,12 @@ onUnmounted(() => {
 }
 
 .snackbar-close:hover {
-  background-color: rgba(var(--md-sys-color-on-surface-variant), 0.08);
+  background-color: rgba(var(--md-sys-color-inverse-on-surface), 0.08);
+}
+
+/* When message has multiple lines */
+.snackbar:has(.snackbar-message:not(:empty)) {
+  min-height: 68px;
 }
 
 .fade-enter-active,
