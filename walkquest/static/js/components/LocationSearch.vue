@@ -491,7 +491,7 @@ watch(() => searchError.value, async (error) => {
   line-height: 18px;
   font-family: "Roboto", "Segoe UI", system-ui, -apple-system;
   position: relative;
-  background-color: rgb(var(--md-sys-color-surface));
+  background-color: rgb(var(--md-sys-color-surface-high));
   width: 100%;
   min-width: 240px;
   z-index: 10; /* Increased z-index */

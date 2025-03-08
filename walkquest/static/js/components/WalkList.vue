@@ -700,7 +700,7 @@ watch(selectedCategory, (newCategory) => {
   flex-shrink: 0;
   padding: 8px;
   min-height: 200px;
-  background: rgb(var(--md-sys-color-surface-container-low));
+  background: rgb(var(--md-sys-color-on-surface-variant));
   /* More specific background */
   z-index: 1;
   border-radius: 12px;

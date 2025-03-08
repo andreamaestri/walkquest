@@ -54,27 +54,29 @@
     <!-- Auth menu for unauthenticated users -->
     <Teleport to="#portal-root">
       <Transition name="fade">
-        <div v-if="showAuthMenu && !isAuthenticatedComputed" class="auth-menu-container" :class="{ 'mobile': isMobileComputed }">
-          <div class="auth-menu-backdrop" @click="showAuthMenu = false"></div>
-          <div class="auth-menu">
-            <div class="auth-menu-header">
-              <h3 class="auth-menu-title">Account</h3>
-              <button class="close-button" @click="showAuthMenu = false">
-                <Icon icon="mdi:close" />
-              </button>
-            </div>
-            <div class="auth-menu-content">
-              <p class="auth-menu-text">Sign in to save your favorite walks, track your adventures and more.</p>
-              <div class="auth-links">
-                <RouterLink to="/login" class="auth-link auth-link-primary" @click="showAuthMenu = false">
-                  <Icon icon="mdi:login" class="auth-icon" />
-                  <span>Sign In</span>
-                </RouterLink>
-                <RouterLink to="/signup" class="auth-link auth-link-secondary" @click="showAuthMenu = false">
-                  <Icon icon="mdi:account-plus" class="auth-icon" />
-                  <span>Create Account</span>
-                </RouterLink>
-              </div>
+        <div 
+          v-if="showAuthMenu && !isAuthenticatedComputed" 
+          class="auth-menu" 
+          :class="{ 'mobile': isMobileComputed }"
+          :style="menuPosition"
+        >
+          <div class="auth-menu-header">
+            <h3 class="auth-menu-title">Account</h3>
+            <button class="close-button" @click="showAuthMenu = false">
+              <Icon icon="mdi:close" />
+            </button>
+          </div>
+          <div class="auth-menu-content">
+            <p class="auth-menu-text">Sign in to save your favorite walks, track your adventures and more.</p>
+            <div class="auth-links">
+              <RouterLink to="/login" class="auth-link auth-link-primary" @click="showAuthMenu = false">
+                <Icon icon="mdi:login" class="auth-icon" />
+                <span>Sign In</span>
+              </RouterLink>
+              <RouterLink to="/signup" class="auth-link auth-link-secondary" @click="showAuthMenu = false">
+                <Icon icon="mdi:account-plus" class="auth-icon" />
+                <span>Create Account</span>
+              </RouterLink>
             </div>
           </div>
         </div>
@@ -84,7 +86,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { Icon } from '@iconify/vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../../stores/auth';
@@ -139,6 +141,23 @@ const avatarBgColor = computed(() => {
   return `oklch(70% 0.14 ${hue}deg)`;
 });
 
+// Add menuPosition computed property
+const menuPosition = computed(() => {
+  if (!buttonRef.value || isMobileComputed.value) return {};
+  
+  try {
+    const rect = buttonRef.value.getBoundingClientRect();
+    return {
+      position: 'absolute',
+      top: `${rect.bottom + 15}px`,
+      right: `${window.innerWidth - rect.right}px`
+    };
+  } catch (error) {
+    console.error('Error computing menu position:', error);
+    return {};
+  }
+});
+
 // Handle click with authentication flow
 const handleClick = (event) => {
   isPressed.value = true;
@@ -175,16 +194,32 @@ const handleMenuAction = async (action) => {
   }
 };
 
-// Initialize and clean up
+// Add click outside handler
+const handleClickOutside = (event) => {
+  if (showAuthMenu.value && !isAuthenticatedComputed.value) {
+    const target = event.target;
+    if (buttonRef.value && !buttonRef.value.contains(target)) {
+      showAuthMenu.value = false;
+    }
+  }
+};
+
+// Update lifecycle hooks
 onMounted(async () => {
   if (!buttonRef.value) {
     console.warn('Button reference not initialized on mount');
   }
   
+  document.addEventListener('mousedown', handleClickOutside);
+  
   // Force refresh user data if needed and not already loading
   if (isAuthenticatedComputed.value && !authStore.userDataLoaded && !authStore.isLoading) {
     await authStore.checkAuth();
   }
+});
+
+onUnmounted(() => {
+  document.removeEventListener('mousedown', handleClickOutside);
 });
 </script>
 
@@ -194,12 +229,14 @@ onMounted(async () => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  pointer-events: auto; /* Ensure clicks are registered */
 }
 
 /* Desktop version (inside search bar as trailing icon) */
 .account-circle-container.desktop {
-  height: 30px;
-  width: 30px;
+  height: 40px;
+  width: 40px;
+  margin-left: 8px;
 }
 
 /* Mobile version (standalone) */
@@ -207,7 +244,8 @@ onMounted(async () => {
   position: absolute;
   top: calc(4px + env(safe-area-inset-top, 0px));
   right: calc(4px + env(safe-area-inset-right, 0px));
-  z-index: 20;
+  z-index: 50; /* Increased z-index to ensure visibility */
+  pointer-events: auto; /* Ensure clicks are registered */
 }
 
 .account-circle-button {
@@ -227,8 +265,6 @@ onMounted(async () => {
 
 /* Desktop version styling */
 .account-circle-button.desktop {
-  width: 35px;
-  height: 35px;
   color: rgb(var(--md-sys-color-on-surface-variant));
 }
 
@@ -247,7 +283,7 @@ onMounted(async () => {
 }
 
 .account-icon {
-  font-size: 38px;
+  font-size: 32px; /* Slightly smaller for better proportions */
   transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 1;
 }
@@ -260,14 +296,20 @@ onMounted(async () => {
 .avatar-container {
   position: relative;
   z-index: 1;
-  height: 85%;
-  width: 85%;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0; /* Prevent container from shrinking */
 }
 
 .avatar-circle {
   position: relative;
-  width: 100%;
-  height: 100%;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -276,11 +318,15 @@ onMounted(async () => {
   font-weight: 500;
   font-size: 14px;
   user-select: none;
+  overflow: hidden; /* Prevent content from overflowing */
+  flex-shrink: 0; /* Prevent the circle from shrinking */
 }
 
 .avatar-initials {
   color: white;
   text-transform: uppercase;
+  line-height: 1; /* Ensure consistent vertical alignment */
+  text-align: center; /* Center text horizontally */
 }
 
 .account-circle-button.authenticated {
@@ -314,51 +360,50 @@ onMounted(async () => {
 }
 
 /* Auth Menu for unauthenticated users */
-.auth-menu-container {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 1000;
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-end;
-}
-
-.auth-menu-container.mobile .auth-menu {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  top: auto;
-  margin: 0;
-  border-radius: 28px 28px 0 0;
-  max-width: 100%;
-  width: 100%;
-  padding-bottom: env(safe-area-inset-bottom, 16px);
-}
-
-.auth-menu-backdrop {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(3px);
-  z-index: -1;
-}
-
 .auth-menu {
+  position: absolute;
   background-color: rgb(var(--md-sys-color-surface));
   border-radius: 16px;
+  width: 280px;
   box-shadow: var(--md-sys-elevation-3);
   overflow: hidden;
-  width: 280px;
-  margin: 8px;
-  margin-top: calc(env(safe-area-inset-top, 0px) + 56px);
-  animation: menuAppear 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1000;
+  transform-origin: top right;
+}
+
+.auth-menu.mobile {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin: 0;
+  border-radius: 28px 28px 0 0;
+  width: 100%;
+  max-width: 100%;
+  transform-origin: bottom center;
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+  animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* Transition animations */
+.fade-enter-active,
+.fade-leave-active {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: scale(0.95);
 }
 
 .auth-menu-header {
@@ -366,14 +411,39 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: center;
   padding: 16px;
-  background-color: rgb(var(--md-sys-color-surface-container-high));
-  border-bottom: 1px solid rgba(var(--md-sys-color-outline), 0.1);
+  background-color: rgb(var(--md-sys-color-surface-container-highest));
+  border-bottom: 1px solid rgb(var(--md-sys-color-outline));
 }
 
 .auth-menu-title {
   margin: 0;
   font-size: 18px;
   font-weight: 500;
+  color: rgb(var(--md-sys-color-on-surface));
+}
+
+.close-button {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  background: none;
+  border-radius: 50%;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.close-button:hover {
+  background-color: rgb(var(--md-sys-color-surface-container-high));
+}
+
+.close-button:active {
+  background-color: rgb(var(--md-sys-color-surface-container-highest));
+  transform: scale(0.96);
 }
 
 .auth-menu-content {
@@ -398,9 +468,9 @@ onMounted(async () => {
   gap: 12px;
   padding: 14px 16px;
   border-radius: 12px;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: #FFFFFF;
   text-decoration: none;
-  transition: background-color 0.2s, transform 0.1s;
+  transition: all 0.2s;
   font-weight: 500;
   background-color: rgb(var(--md-sys-color-surface-container));
 }
@@ -416,17 +486,27 @@ onMounted(async () => {
 
 .auth-link-primary {
   background-color: rgb(var(--md-sys-color-primary));
-  color: rgb(var(--md-sys-color-on-primary));
+  color: #FFFFFF;
+}
+
+.auth-link-primary:hover {
+  background-color: #19093bec;
+  box-shadow: var(--md-sys-elevation-1);
 }
 
 .auth-link-secondary {
-  background-color: rgb(var(--md-sys-color-secondary));
-  color: rgb(var(--md-sys-color-on-secondary));
+  background-color: rgb(var(--md-sys-color-secondary-container));
+  color: #4A4458;
+}
+
+.auth-link-secondary:hover {
+  background-color: #8474a8ec;
+  color: #FFFFFF;
+  box-shadow: var(--md-sys-elevation-1);
 }
 
 .auth-icon {
-  font-size: 22px;
-  color: rgb(var(--md-sys-color-primary));
+  font-size: 20px;
 }
 
 /* Ripple animation for pressed state */

@@ -12,7 +12,7 @@
         v-if="!uiStore.isMobile || isSearchActive"
         class="search-wrapper transition-all duration-300 ease-md3 mx-auto flex items-center"
         :class="[
-          searchContainerClass,
+          searchContainerClass + ' search-container',
           isSearchActive ? 'search-active' : '',
           isSearchActive && uiStore.isMobile ? 'h-full' : ''
         ]"
@@ -27,7 +27,7 @@
           @walk-selected="handleWalkSelection"
           @blur="deactivateSearch"
           @close="deactivateSearch"
-          class="md3-search-bar"
+          class="md3-search-bar flex-1"
           :class="{ 'search-view-active': isSearchActive }"
         />
         
@@ -103,9 +103,6 @@ import AccountCircle from "../shared/AccountCircle.vue";
 import { Icon } from '@iconify/vue';
 import BottomSheet from '@douxcode/vue-spring-bottom-sheet';
 
-/**
- * Props definition with proper validation
- */
 const props = defineProps({
   mapboxToken: {
     type: String,
@@ -117,43 +114,32 @@ const props = defineProps({
   }
 });
 
-/**
- * Emits for component communication
- */
 const emit = defineEmits(['location-selected', 'walk-selected', 'account-click']);
 
-// Initialize stores
 const uiStore = useUiStore();
 const searchStore = useSearchStore();
 
-// References for component state
 const searchHeader = ref(null);
 const mobileBottomSheet = ref(null);
 const searchViewRef = ref(null);
 const windowWidth = ref(window.innerWidth);
 const isSearchActive = ref(false);
 const accountActive = ref(false);
-const maxHeight = ref(window.innerHeight - 60); // Reduced top offset to maximize available space
-const bottomSheetHeight = ref(0); // Track the current height of the bottom sheet
-const bottomSheetOpen = ref(false); // Control the bottom sheet open state
+const maxHeight = ref(window.innerHeight - 60);
+const bottomSheetHeight = ref(0);
+const bottomSheetOpen = ref(false);
 
-// Breakpoints following MD3 guidelines
 const BREAKPOINTS = {
-  SMALL: 600,    // 0-599px: Extra small - Full width search bar
-  MEDIUM: 905,   // 600-904px: Small to medium - Wider search bar
-  LARGE: 1240,   // 905-1239px: Medium to large - Balanced width
-  XLARGE: 1440   // 1240px+: Extra-large - Constrained width to maintain readability
+  SMALL: 600,
+  MEDIUM: 905,
+  LARGE: 1240,
+  XLARGE: 1440
 };
 
-// Watch for window resize to update responsive sizing
 onMounted(() => {
   window.addEventListener('resize', handleResize);
   document.addEventListener('keydown', handleKeyDown);
-  
-  // Initialize the maximum height on mount
   maxHeight.value = window.innerHeight - 60;
-  
-  // The maxHeight event will be handled via props in Vue 3
 });
 
 onUnmounted(() => {
@@ -163,20 +149,18 @@ onUnmounted(() => {
 
 const handleResize = () => {
   windowWidth.value = window.innerWidth;
-  maxHeight.value = window.innerHeight - 60; // Update maxHeight on resize with smaller offset
+  maxHeight.value = window.innerHeight - 60;
 };
 
 const handleKeyDown = (event) => {
   if (event.key === 'Escape' && isSearchActive.value) {
-    // If bottom sheet is at max height, snap to peek position first
     if (mobileBottomSheet.value && uiStore.isMobile) {
-      // Check if current height is near max height
       if (bottomSheetHeight.value > maxHeight.value * 0.8) {
-        mobileBottomSheet.value.snapToPoint('50%'); // Step down to half-screen first
+        mobileBottomSheet.value.snapToPoint('50%');
       } else if (bottomSheetHeight.value > maxHeight.value * 0.4) {
-        mobileBottomSheet.value.snapToPoint(200); // Step down to peek view
+        mobileBottomSheet.value.snapToPoint(200);
       } else {
-        deactivateSearch(); // Already at lowest snap point, close the search
+        deactivateSearch();
       }
     } else {
       deactivateSearch();
@@ -184,16 +168,11 @@ const handleKeyDown = (event) => {
   }
 };
 
-// Handle account icon click
 const handleAccountClick = (event) => {
-  // Toggle account active state
   accountActive.value = !accountActive.value;
-  
-  // Emit event for parent component to handle account actions
   emit('account-click', event);
 };
 
-// Add event handlers for bottom sheet
 const handleBottomSheetOpened = () => {
   bottomSheetOpen.value = true;
 };
@@ -202,28 +181,19 @@ const handleBottomSheetClosed = () => {
   bottomSheetOpen.value = false;
 };
 
-// Methods to handle search activation state
 const activateSearch = () => {
   if (!isSearchActive.value) {
     isSearchActive.value = true;
-    
-    // Add a class to the body to prevent scrolling
     if (uiStore.isMobile) {
       document.body.classList.add('overflow-hidden');
-      
-      // Apply Material Design 3 motion transition for entering
       const searchContainer = document.querySelector('.search-wrapper');
       if (searchContainer) {
         searchContainer.style.animation = 'md3-slide-up 320ms var(--md-sys-motion-easing-emphasized, cubic-bezier(0.05, 0.7, 0.1, 1.0)) forwards';
       }
-      
-      // Open the bottom sheet after a slight delay to allow search view to open first
       setTimeout(() => {
         if (mobileBottomSheet.value) {
           mobileBottomSheet.value.open();
-          mobileBottomSheet.value.snapToPoint('50%'); // Default to half-screen for better content visibility
-          
-          // Set up event listener to track sheet position changes
+          mobileBottomSheet.value.snapToPoint('50%');
           mobileBottomSheet.value.$el.addEventListener('sheet-position-change', (event) => {
             bottomSheetHeight.value = event.detail.currentHeight;
           });
@@ -235,24 +205,18 @@ const activateSearch = () => {
 
 const deactivateSearch = () => {
   if (isSearchActive.value) {
-    // For mobile, add exit animation before actually closing
     if (uiStore.isMobile) {
-      // Close the bottom sheet first
       if (mobileBottomSheet.value) {
-        // Remove any event listeners to prevent memory leaks
         if (mobileBottomSheet.value.$el) {
           mobileBottomSheet.value.$el.removeEventListener('sheet-position-change', () => {});
         }
         mobileBottomSheet.value.close();
-        // Reset bottom sheet height
         bottomSheetHeight.value = 0;
       }
       
       const searchContainer = document.querySelector('.search-wrapper');
       if (searchContainer) {
         searchContainer.style.animation = 'md3-slide-down 280ms var(--md-sys-motion-easing-emphasized-accelerate, cubic-bezier(0.3, 0.0, 0.8, 0.15)) forwards';
-        
-        // Delay the actual closing to allow animation to complete
         setTimeout(() => {
           isSearchActive.value = false;
           document.body.classList.remove('overflow-hidden');
@@ -261,7 +225,6 @@ const deactivateSearch = () => {
       }
     }
     
-    // Default behavior for non-mobile or if animation fails
     isSearchActive.value = false;
     if (uiStore.isMobile) {
       document.body.classList.remove('overflow-hidden');
@@ -269,7 +232,6 @@ const deactivateSearch = () => {
   }
 };
 
-// Computed properties
 const searchQuery = computed({
   get: () => searchStore.searchQuery,
   set: (value) => searchStore.setSearchQuery(value)
@@ -277,42 +239,30 @@ const searchQuery = computed({
 
 const searchMode = computed(() => searchStore.searchMode);
 
-/**
- * Computed property to determine if navigation rail should be shown
- * Combines multiple conditions for better readability
- */
 const showNavigationRail = computed(() => {
   return !uiStore.isMobile && 
          uiStore.showSidebar && 
          !uiStore.fullscreen;
 });
 
-/**
- * Computed property for search container class based on layout state
- * Enhanced to respect Material Design 3 guidelines for search components
- */
 const searchContainerClass = computed(() => {
   if (isSearchActive.value) {
-    // When active, use different classes based on device size
     if (uiStore.isMobile || windowWidth.value < BREAKPOINTS.SMALL) {
       return 'search-container-modal-mobile';
     }
     return 'search-container-modal';
   }
 
-  // For inactive state use the regular container classes
   if (uiStore.isMobile || windowWidth.value < BREAKPOINTS.SMALL) {
     return 'search-container-mobile';
   }
   
-  // When nav rail is shown, adjust based on expansion state
   if (showNavigationRail.value) {
     return props.isExpanded 
       ? 'search-container-expanded' 
       : 'search-container-collapsed';
   }
   
-  // When there's no sidebar, use responsive widths based on screen size
   if (windowWidth.value < BREAKPOINTS.MEDIUM) {
     return 'search-container-small';
   } else if (windowWidth.value < BREAKPOINTS.LARGE) {
@@ -324,13 +274,8 @@ const searchContainerClass = computed(() => {
   return 'search-container-xlarge';
 });
 
-/**
- * Handle location selection
- * Emits event to parent component
- */
 const handleLocationSelected = (location) => {
   try {
-    // Ensure location exists before emitting
     if (location === null || location === undefined) {
       console.warn('Location selection event received with no location data');
       return;
@@ -342,16 +287,11 @@ const handleLocationSelected = (location) => {
   }
 };
 
-/**
- * Handle walk selection
- * Emits event to parent component
- */
 const handleWalkSelection = (walk) => {
   emit('walk-selected', walk);
   deactivateSearch();
 };
 
-// Explicitly expose activation method to parent components
 defineExpose({
   activateSearch
 });
@@ -397,19 +337,27 @@ defineExpose({
 
 .search-container-modal-mobile {
   width: 100%;
-  height: calc(100% - env(safe-area-inset-top, 0px)); /* Adjust height for safe area */
+  height: calc(100% - env(safe-area-inset-top, 0px));
   margin: 0;
   background-color: rgb(var(--md-sys-color-surface));
-  padding-top: env(safe-area-inset-top, 0px); /* Add padding for safe area */
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Search container to accommodate account circle */
+.search-container {
+  position: relative;
+  padding-right: 0%;
 }
 
 /* Active search mode styles */
 .search-wrapper {
   position: relative;
   z-index: 1;
-  min-height: 56px; /* MD3 spec: 56dp height */
+  min-height: 56px;
   display: flex;
   align-items: center;
+  border-radius: 28px;
+  background-color: rgb(var(--md-sys-color-surface-container-highest));
 }
 
 .search-wrapper.search-active {
@@ -436,14 +384,16 @@ defineExpose({
   background-color: rgb(var(--md-sys-color-surface-variant));
 }
 
-
 /* Position avatar as trailing icon in desktop search bar */
 .desktop-avatar {
   position: absolute;
+  right: 16px;
+  left: auto;
   top: 50%;
-  right: 16px; /* Proper right padding according to MD3 spec */
   transform: translateY(-50%);
-  z-index: 2;
+  z-index: 3;
+  margin-left: 8px;
+  pointer-events: auto;
 }
 
 .search-view-active {
@@ -451,12 +401,10 @@ defineExpose({
   box-shadow: none;
 }
 
-/* MD3 motion ease */
 .ease-md3 {
   transition-timing-function: var(--md-sys-motion-easing-standard);
 }
 
-/* Mobile mode adjustments */
 @media (max-width: 599px) {
   .search-active {
     height: 100%;
@@ -470,7 +418,6 @@ defineExpose({
   }
 }
 
-/* Mobile header with logo and search button */
 .mobile-header {
   display: flex;
   align-items: center;
@@ -494,7 +441,8 @@ defineExpose({
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.search-fab:hover, .search-fab:focus {
+.search-fab:hover,
+.search-fab:focus {
   background-color: rgb(var(--md-sys-color-surface-container-highest));
   box-shadow: var(--md-sys-elevation-2);
 }
@@ -503,7 +451,6 @@ defineExpose({
   transform: scale(0.95);
 }
 
-/* Material Design 3 motion animations for search transitions */
 @keyframes md3-slide-up {
   from {
     opacity: 0;
@@ -526,26 +473,24 @@ defineExpose({
   }
 }
 
-/* Bottom Sheet Styles */
 .mobile-search-results-sheet {
   --vsbs-backdrop-bg: rgba(0, 0, 0, 0.4);
   --vsbs-shadow-color: rgba(0, 0, 0, 0.2);
   --vsbs-background: rgb(var(--md-sys-color-surface));
-  --vsbs-border-radius: 28px 28px 0 0; /* More pronounced rounded corners */
+  --vsbs-border-radius: 28px 28px 0 0;
   --vsbs-max-width: 100%;
   --vsbs-border-color: rgba(var(--md-sys-color-outline-variant), 0.08);
-  --vsbs-padding-x: 0px; /* Remove horizontal padding to allow content to go edge-to-edge */
+  --vsbs-padding-x: 0px;
   --vsbs-handle-background: rgba(var(--md-sys-color-on-surface-variant), 0.28);
-  --vsbs-handle-width: 40px; /* Wider handle for better touch target */
-  --vsbs-safe-area-bottom: env(safe-area-inset-bottom, 0px); /* Respect safe area for bottom sheet */
+  --vsbs-handle-width: 40px;
+  --vsbs-safe-area-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* Ensure bottom sheet accounts for safe areas */
 .mobile-search-results-sheet :deep([data-vsbs-sheet]) {
   min-height: 200px !important;
   height: auto !important;
-  max-height: calc(100vh - env(safe-area-inset-top, 0px) - var(--sab, 0px)) !important; /* Account for top safe area */
-  padding-top: 0; /* Remove padding-top since it's handled by the container */
+  max-height: calc(100vh - env(safe-area-inset-top, 0px) - var(--sab, 0px)) !important;
+  padding-top: 0;
 }
 
 .mobile-search-results-sheet :deep([data-vsbs-content]) {
@@ -587,7 +532,6 @@ defineExpose({
   min-height: 200px;
 }
 
-/* Map preview container styles */
 .map-preview-container {
   width: 100%;
   height: 120px;

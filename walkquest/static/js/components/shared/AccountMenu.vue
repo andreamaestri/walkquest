@@ -1,50 +1,48 @@
 <template>
   <Teleport to="#portal-root">
     <Transition name="fade">
-      <div v-if="isOpen" class="menu-overlay" @click="handleOverlayClick">
-        <div 
-          ref="menuRef" 
-          class="account-menu"
-          :class="{ 'mobile': isMobileComputed }"
-          :style="menuPosition"
-        >
-          <!-- User Info Section -->
-          <div class="user-info">
-            <div class="avatar" :style="{ backgroundColor: avatarBgColor }">
-              <span class="avatar-text" v-if="!isLoadingUser">{{ userInitialsComputed || defaultInitials }}</span>
-              <Icon v-else icon="mdi:loading" class="loading-icon" />
-            </div>
-            <div class="user-details">
-              <span class="user-email" v-if="!isLoadingUser">{{ emailComputed || defaultEmail }}</span>
-              <span v-else class="user-loading">Loading...</span>
-            </div>
+      <div v-if="isOpen" 
+        ref="menuRef" 
+        class="account-menu"
+        :class="{ 'mobile': isMobileComputed }"
+        :style="menuPosition"
+      >
+        <!-- User Info Section -->
+        <div class="user-info">
+          <div class="avatar" :style="{ backgroundColor: avatarBgColor }">
+            <span class="avatar-text" v-if="!isLoadingUser">{{ userInitialsComputed || defaultInitials }}</span>
+            <Icon v-else icon="mdi:loading" class="loading-icon" />
           </div>
-          <!-- Menu Items -->
-          <div class="menu-items">
-            <button class="menu-item" @click="handleProfileClick">
-              <Icon icon="mdi:account-settings" class="menu-icon" />
-              <span>Profile Settings</span>
+          <div class="user-details">
+            <span class="user-email" v-if="!isLoadingUser">{{ emailComputed || defaultEmail }}</span>
+            <span v-else class="user-loading">Loading...</span>
+          </div>
+        </div>
+        <!-- Menu Items -->
+        <div class="menu-items">
+          <button class="menu-item" @click="handleProfileClick">
+            <Icon icon="mdi:account-settings" class="menu-icon" />
+            <span>Profile Settings</span>
+          </button>
+          
+          <a :href="authUrls.emailUrl" class="menu-item">
+            <Icon icon="mdi:email" class="menu-icon" />
+            <span>Manage Email</span>
+          </a>
+          
+          <a :href="authUrls.passwordChangeUrl" class="menu-item">
+            <Icon icon="mdi:key" class="menu-icon" />
+            <span>Change Password</span>
+          </a>
+          
+          <!-- Use a form for logout to handle CSRF correctly -->
+          <form ref="logoutForm" method="post" :action="authUrls.logoutUrl" style="display: contents;">
+            <input type="hidden" name="csrfmiddlewaretoken" :value="csrfToken">
+            <button type="submit" class="menu-item">
+              <Icon icon="mdi:logout" class="menu-icon" />
+              <span>Sign Out</span>
             </button>
-            
-            <a :href="authUrls.emailUrl" class="menu-item">
-              <Icon icon="mdi:email" class="menu-icon" />
-              <span>Manage Email</span>
-            </a>
-            
-            <a :href="authUrls.passwordChangeUrl" class="menu-item">
-              <Icon icon="mdi:key" class="menu-icon" />
-              <span>Change Password</span>
-            </a>
-            
-            <!-- Use a form for logout to handle CSRF correctly -->
-            <form ref="logoutForm" method="post" :action="authUrls.logoutUrl" style="display: contents;">
-              <input type="hidden" name="csrfmiddlewaretoken" :value="csrfToken">
-              <button type="submit" class="menu-item">
-                <Icon icon="mdi:logout" class="menu-icon" />
-                <span>Sign Out</span>
-              </button>
-            </form>
-          </div>
+          </form>
         </div>
       </div>
     </Transition>
@@ -129,7 +127,7 @@ const menuPosition = computed(() => {
     const rect = element.getBoundingClientRect();
     return {
       position: 'absolute',
-      top: `${rect.bottom + 8}px`,
+      top: `${rect.bottom + 16}px`,
       right: `${window.innerWidth - rect.right}px`
     };
   } catch (error) {
@@ -159,9 +157,21 @@ const handleKeydown = (e) => {
   }
 };
 
+// Add click outside handler
+const handleClickOutside = (event) => {
+  if (props.isOpen && menuRef.value && !menuRef.value.contains(event.target)) {
+    // Check if click was on the anchor element (AccountCircle button)
+    const anchorElement = props.anchorEl?.value || props.anchorEl;
+    if (!anchorElement || !anchorElement.contains(event.target)) {
+      emit('close');
+    }
+  }
+};
+
 // Lifecycle hooks
 onMounted(() => {
   document.addEventListener('keydown', handleKeydown);
+  document.addEventListener('mousedown', handleClickOutside);
   // Set the CSRF token on mount, so the logout form has a valid token.
   csrfToken.value = getCSRFToken();
   
@@ -196,6 +206,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   document.removeEventListener('keydown', handleKeydown);
+  document.removeEventListener('mousedown', handleClickOutside);
 });
 
 // Watch for menu open to refresh user data
@@ -250,24 +261,15 @@ function getCsrfCookie() {
 </script>
 
 <style scoped>
-.menu-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-end;
-  background-color: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(3px);
-}
-
 .account-menu {
+  position: absolute;
   background-color: rgb(var(--md-sys-color-surface));
   border-radius: 16px;
   min-width: 280px;
   box-shadow: var(--md-sys-elevation-3);
   overflow: hidden;
-  margin: 8px;
+  z-index: 1000;
+  transform-origin: top right;
 }
 
 .account-menu.mobile {
@@ -278,6 +280,18 @@ function getCsrfCookie() {
   margin: 0;
   border-radius: 28px 28px 0 0;
   min-width: 100%;
+  transform-origin: bottom center;
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+  animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
 }
 
 .user-info {
@@ -285,8 +299,8 @@ function getCsrfCookie() {
   display: flex;
   align-items: center;
   gap: 12px;
-  background-color: rgb(var(--md-sys-color-surface-container-high));
-  border-bottom: 1px solid rgba(var(--md-sys-color-outline), 0.1);
+  background-color: rgb(var(--md-sys-color-surface-container-highest));
+  border-bottom: 1px solid rgb(var(--md-sys-color-outline));
 }
 
 .avatar {
@@ -340,28 +354,35 @@ function getCsrfCookie() {
   font-size: 14px;
   cursor: pointer;
   border-radius: 8px;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
   text-decoration: none;
 }
 
 .menu-item:hover {
   background-color: rgb(var(--md-sys-color-surface-container-highest));
+  color: rgb(var(--md-sys-color-on-surface));
+}
+
+.menu-item:active {
+  background-color: rgb(var(--md-sys-color-surface-container-highest));
+  transform: scale(0.98);
 }
 
 .menu-icon {
   font-size: 20px;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: rgb(var(--md-sys-color-primary));
 }
 
 /* Transitions */
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+  transform: scale(0.95);
 }
 
 .loading-icon {
