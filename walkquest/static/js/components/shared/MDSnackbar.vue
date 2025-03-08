@@ -64,6 +64,12 @@ const handleSnackbarEvent = (event) => {
   }
 };
 
+// Expose methods for external use
+defineExpose({
+  showMessage,
+  hide
+});
+
 // Listen for snackbar events
 onMounted(() => {
   window.addEventListener('snackbar-show', handleSnackbarEvent);
@@ -103,8 +109,8 @@ onUnmounted(() => {
 }
 
 .snackbar {
-  background-color: rgb(var(--md-sys-color-inverse-surface));
-  color: rgb(var(--md-sys-color-inverse-on-surface));
+  background-color: #322F35;
+  color: #D0BCFF;
   min-height: 48px; /* Single line height */
   padding: 0 16px;
   border-radius: 4px; /* md.sys.shape.corner.extra-small */
@@ -127,12 +133,13 @@ onUnmounted(() => {
 }
 
 .snackbar-message {
-  font-family: var(--md-sys-typescale-label-large-font);
-  font-size: var(--md-sys-typescale-label-large-size, 0.875rem);
-  font-weight: var(--md-sys-typescale-label-large-weight, 500);
-  line-height: var(--md-sys-typescale-label-large-line-height, 1.25rem);
-  letter-spacing: var(--md-sys-typescale-label-large-tracking, 0.1px);
-  color: rgb(var(--md-sys-color-inverse-primary));
+  font-family: 'Inter', system-ui, sans-serif;
+  font-optical-sizing: auto;
+  font-size: 14pt;
+  font-weight: 300;
+  line-height: 1.25rem;
+  letter-spacing: 0.25pt;
+  color: #F5EFF7;
   flex: 1;
 }
 
@@ -143,7 +150,7 @@ onUnmounted(() => {
   border-radius: 50%;
   border: none;
   background: transparent;
-  color: rgb(var(--md-sys-color-inverse-on-surface));
+  color: #D0BCFF;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -157,7 +164,7 @@ onUnmounted(() => {
 
 /* When message has multiple lines */
 .snackbar:has(.snackbar-message:not(:empty)) {
-  min-height: 68px;
+  min-height: 48pt;
 }
 
 .fade-enter-active,

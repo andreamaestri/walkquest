@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
+import { useSnackbar } from '../composables/useSnackbar';
 
 export const useUiStore = defineStore('ui', () => {
   // State
@@ -20,17 +21,13 @@ export const useUiStore = defineStore('ui', () => {
   // Add drawer state
   const showDrawer = ref(false);
 
-  // Add toast state
-  const toast = ref({
-    message: '',
-    visible: false,
-    type: 'info' // 'info', 'success', 'error'
-  });
-
   // Computed
   const isAnyLoading = computed(() => {
     return Object.values(loadingStates.value).some(state => state);
   });
+
+  // Initialize snackbar
+  const snackbar = useSnackbar();
 
   // Actions
   const setError = (message) => {
@@ -102,19 +99,9 @@ export const useUiStore = defineStore('ui', () => {
     return () => window.removeEventListener('resize', checkMobile);
   };
 
-  const showToast = (message, type = 'info') => {
-    toast.value.message = message;
-    toast.value.type = type;
-    toast.value.visible = true;
-
-    setTimeout(() => {
-      hideToast();
-    }, 3000);
-  };
-
-  const hideToast = () => {
-    toast.value.visible = false;
-    toast.value.message = '';
+  // Replace toast with snackbar
+  const showToast = (message) => {
+    snackbar.showMessage(message);
   };
 
   return {
@@ -127,7 +114,6 @@ export const useUiStore = defineStore('ui', () => {
     showSidebar,
     isMobile,
     showDrawer,
-    toast,
 
     // Computed
     isAnyLoading,
@@ -143,7 +129,6 @@ export const useUiStore = defineStore('ui', () => {
     handleWalkClosed,
     toggleSidebar,
     initializeResponsiveState,
-    showToast,
-    hideToast
+    showToast
   };
 });

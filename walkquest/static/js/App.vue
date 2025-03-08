@@ -11,13 +11,7 @@
         @submit="handleAdventureSubmit"
       />
     </Teleport>
-    <Toast
-      :visible="uiStore.toast.visible"
-      :message="uiStore.toast.message"
-      :type="uiStore.toast.type"
-      @close="uiStore.hideToast"
-    />
-    <MDSnackbar />
+    <MDSnackbar ref="snackbarRef" />
     <!-- Error boundary component -->
     <div v-if="hasError" class="error-boundary">
       <div class="error-content">
@@ -38,9 +32,10 @@ import { useAdventureDialogStore } from './stores/adventureDialog';
 import { useAdventureStore } from './stores/adventure';
 import { useAuthStore } from './stores/auth';
 import { usePortal } from './composables/usePortal';
+import { registerSnackbar } from './composables/useSnackbar';
 import Loading from './components/shared/Loading.vue';
 import AdventureLogDialog from './components/shared/AdventureLogDialog.vue';
-import Toast from './components/shared/Toast.vue';
+import MDSnackbar from './components/shared/MDSnackbar.vue';
 import { RouterView } from 'vue-router';
 
 // Error handling state
@@ -77,6 +72,7 @@ const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
 const loadingComponent = ref(null);
+const snackbarRef = ref(null);
 const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
 // Handle adventure submission
@@ -96,6 +92,11 @@ let beforeUnloadHandler;
 let styleFixInterval;
 
 onMounted(() => {
+  // Register snackbar instance
+  if (snackbarRef.value) {
+    registerSnackbar(snackbarRef.value);
+  }
+  
   // Initialize auth store
   authStore.initAuth();
   

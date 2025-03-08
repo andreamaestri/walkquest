@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { login, logout, signUp, getAuth } from '../lib/allauth';
+import { useSnackbar } from '../composables/useSnackbar';
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -283,9 +284,8 @@ export const useAuthStore = defineStore('auth', {
     },
     
     showSnackbar(message) {
-      window.dispatchEvent(new CustomEvent('snackbar-show', {
-        detail: { message }
-      }));
+      const snackbar = useSnackbar();
+      snackbar.show(message);
     },
     
     processDjangoMessages() {
