@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import { requireAuth } from './guards';
+import { useAuthStore } from '../stores/auth';
 
 const routes = [
   {
@@ -8,13 +8,39 @@ const routes = [
     component: () => import('../components/WalkInterface.vue')
   },
   {
+    path: '/login',
+    name: 'login',
+    component: () => import('../components/auth/LoginForm.vue'),
+    beforeEnter: (to, from, next) => {
+      const authStore = useAuthStore();
+      if (authStore.isAuthenticated) {
+        next('/');
+      } else {
+        next();
+      }
+    }
+  },
+  {
+    path: '/signup',
+    name: 'signup',
+    component: () => import('../components/auth/SignupForm.vue'),
+    beforeEnter: (to, from, next) => {
+      const authStore = useAuthStore();
+      if (authStore.isAuthenticated) {
+        next('/');
+      } else {
+        next();
+      }
+    }
+  },
+  {
     path: '/profile',
     name: 'profile',
     component: () => import('../components/profile/ProfileSettings.vue'),
-    beforeEnter: requireAuth
+    meta: { requiresAuth: true }
   },
   {
-    path: '/walk/:walk_slug',
+    path: '/walk/:walk_id',
     name: 'walk',
     component: () => import('../components/WalkInterface.vue'),
     props: true
@@ -32,19 +58,26 @@ const router = createRouter({
   routes
 });
 
-// Import the store factory but don't use it directly
-import { storeToRefs } from 'pinia';
-
-// Global navigation guard for loading state
-router.beforeEach((to, from, next) => {
-  // We'll set up the loading state in the component itself
-  // This avoids using the store outside of setup()
+// Add global navigation guard for auth state
+router.beforeEach(async (to, from, next) => {
+  const authStore = useAuthStore();
+  
+  // Initialize auth state if needed
+  if (!authStore.initialized) {
+    await authStore.initAuth();
+  }
+  
+  // Check if route requires auth
+  if (to.matched.some(record => record.meta.requiresAuth)) {
+    if (!authStore.isAuthenticated) {
+      // Save the intended destination
+      authStore.setRedirectPath(to.fullPath);
+      next('/login');
+      return;
+    }
+  }
+  
   next();
-});
-
-router.afterEach((to, from) => {
-  // We'll handle loading state in the component itself
-  // This avoids using the store outside of setup()
 });
 
 export default router;

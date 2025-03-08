@@ -5,6 +5,7 @@ import App from './App.vue';
 import '../css/material3.css';
 import { Icon } from '@iconify/vue';
 import './fixes/portalFix.js';
+import MDSnackbar from './components/shared/MDSnackbar.vue';
 
 // Create Vue app instance
 const app = createApp(App);
@@ -20,8 +21,6 @@ app.config.errorHandler = (err, vm, info) => {
   if (info === 'render function' || info === 'render') {
     console.warn('Render error detected. Component might need to be fixed:', vm);
   }
-  
-  // You could also send errors to a monitoring service here
 };
 
 // Initialize Pinia store
@@ -36,12 +35,9 @@ app.config.compilerOptions.isCustomElement = (tag) => {
   return false; // Don't treat Icon as a custom element since we're using it as a component
 };
 
-// Register Icon component globally
+// Register components globally
 app.component('Icon', Icon);
+app.component('MDSnackbar', MDSnackbar);
 
 // Mount app
 const vueApp = app.mount('#app');
-
-// Initialize auth state - moved to App.vue setup function
-// This ensures the auth check happens within the component lifecycle
-// and avoids using the store outside of setup()

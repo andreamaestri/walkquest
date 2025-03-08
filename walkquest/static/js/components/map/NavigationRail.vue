@@ -292,7 +292,7 @@ const handleWalkSelection = (walk) => {
     emit('walk-selected', walk);
     // Use walk.walk_id for the slug-based route if available
     if (walk.walk_id) {
-      router.push({ name: 'walk', params: { walk_slug: walk.walk_id } });
+      router.push({ name: 'walk', params: { walk_id: walk.walk_id } });
     } else {
       router.push({ name: 'walk-by-id', params: { walk_id: walk.id } });
     }

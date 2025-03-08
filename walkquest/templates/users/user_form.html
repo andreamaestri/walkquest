@@ -1,31 +1,24 @@
 {% extends "base.html" %}
 
 {% load crispy_forms_tags %}
+{% load account %}
 
 {% block title %}
-
-
-  {{ user.username }}
-
-
+  {% user_display user %}
 {% endblock title %}
 {% block content %}
   <h1>
-  
-  
-    {{ user.username }}
-  
-  
-</h1>
-<form class="form-horizontal"
+    {% user_display user %}
+  </h1>
+  <form class="form-horizontal"
       method="post"
       action="{% url 'users:update' %}">
-  {% csrf_token %}
-  {{ form|crispy }}
-  <div class="control-group">
-    <div class="controls">
-      <button type="submit" class="btn btn-primary">Update</button>
+    {% csrf_token %}
+    {{ form|crispy }}
+    <div class="control-group">
+      <div class="controls">
+        <button type="submit" class="btn btn-primary">Update</button>
+      </div>
     </div>
-  </div>
-</form>
+  </form>
 {% endblock content %}

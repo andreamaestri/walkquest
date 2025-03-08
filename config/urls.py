@@ -17,18 +17,26 @@ urlpatterns = [
     ),
     # Django Admin, use {% url 'admin:index' %}
     path(settings.ADMIN_URL, admin.site.urls),
+    
     # User management
     path("users/", include("walkquest.users.urls", namespace="users")),
+    
+    # Standard Django allauth URLs for authentication
     path("accounts/", include("allauth.urls")),
-    path("_allauth/", include("allauth.headless.urls")),  # Add headless endpoints
+    path("_allauth/", include("allauth.headless.urls")),  # Headless endpoints
     
     # Include walkquest URLs for all API routes
     path("", include("walkquest.urls")),
     
+    # Add a URL pattern for /walk/<slug> format to match Vue router - using walk_id parameter
+    path("walk/<slug:walk_id>/", index, name="walk-detail"),
+    
     # Direct walk slugs at root URL level
     path("<slug:walk_id>/", index, name="walk-detail-by-slug"),
+    
     # Legacy UUID walk pages with redirect
     path("walk/<uuid:id>/", legacy_walk_view, name="walk-detail-legacy"),
+    
     # Media files
     *static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT),
     path("__reload__/", include("django_browser_reload.urls")),

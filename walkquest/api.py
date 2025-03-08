@@ -7,6 +7,7 @@ from allauth.headless.contrib.ninja.security import x_session_token_auth
 
 from walkquest.walks.models import Walk
 from walkquest.walks.api import api as walks_router, ORJSONParser, ORJSONRenderer
+from walkquest.adventures.api import router as adventures_router
 from .schemas import ConfigOut, TagOut, WalkOut
 
 # Create a router for the main API
@@ -15,7 +16,7 @@ router = Router()
 # Add your endpoints to the router
 @router.get("/health")
 def health_check(request):
-    return {"status": "healthy"}
+    return {"status": "ok"}
 
 # Create the API instance and add the router to it
 api_instance = NinjaAPI(
@@ -31,6 +32,9 @@ api_instance.add_router("", router)
 
 # Add the walks router at root level
 api_instance.add_router("", walks_router)
+
+# Add the adventures router
+api_instance.add_router("/adventures", adventures_router)
 
 class UserSchema(Schema):
     id: Optional[int] = None
@@ -68,7 +72,7 @@ def get_current_user(request: HttpRequest) -> Dict[str, Any]:
 def get_preferences(request: HttpRequest) -> Dict[str, Any]:
     """Get user preferences"""
     if not request.user.is_authenticated:
-        return PreferencesSchema().dict()
+        return PreferencesSchema().dict() 
     
     # Replace with actual preference retrieval logic
     return {

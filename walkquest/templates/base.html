@@ -16,8 +16,11 @@
     <script id="config-data" type="application/json">
       {{ api_config|safe }}
     </script>
+    
+    <!-- Include Django AllAuth URLs for Vue components to access -->
+    {% include "components/django_allauth_urls.html" %}
+    
     <title>{% block title %}WalkQuest{% endblock %}</title>
-
     <!-- Update favicon paths -->
     <link 
       rel="icon" 
@@ -50,13 +53,14 @@
       rel="shortcut icon"
       href="{% static 'images/favicons/favicon.ico' %}"
     />
-
     <!-- Mapbox CSS -->
     <link
       href="https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.css"
       rel="stylesheet"
     />
-
+    {% if request.path|slice:":9" == '/accounts' %}
+    <link href="{% static 'css/auth.css' %}" rel="stylesheet" />
+    {% endif %}
     {% if debug %}
     {% vite_hmr_client %}
     {% endif %}
@@ -73,7 +77,27 @@
       <!-- Vue will mount the navigation here -->
       <main class="flex-1 relative">{% block content %}{% endblock %}</main>
     </div>
-    <div id="portal-root" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; pointer-events: none !important;"></div>
+    <div id="portal-root" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; pointer-events: none !important;">
+    </div>
+    
+    <!-- Include Django message context for Vue -->
+    <script>
+      window.djangoMessages = {
+        {% if messages %}
+          messages: [
+            {% for message in messages %}
+              {
+                message: "{{ message|escapejs }}",
+                tags: "{{ message.tags|escapejs }}",
+                level: {{ message.level }}
+              }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+          ]
+        {% else %}
+          messages: []
+        {% endif %}
+      };
+    </script>
   </body>
 </html>
 <style>
@@ -126,7 +150,6 @@
       pointer-events: none;
     }
   }
-
   #portal-root {
     position: fixed !important;
     top: 0 !important;
@@ -138,13 +161,11 @@
     contain: content;
     touch-action: none;
   }
-
   /* All direct children of portal-root need pointer events to be interactive */
   #portal-root > * {
     pointer-events: auto !important;
     touch-action: auto !important;
   }
-
   /* Dialog elements specifically need to handle clicks */
   #portal-root .dialog-overlay,
   #portal-root .adventure-log-dialog,

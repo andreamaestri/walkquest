@@ -1,0 +1,57 @@
+{% load i18n %}
+
+<div 
+  x-data="{ 
+    show: false, 
+    message: '', 
+    timeout: null,
+    showSnackbar(msg) {
+      clearTimeout(this.timeout);
+      this.message = msg;
+      this.show = true;
+      this.timeout = setTimeout(() => { this.show = false; }, 5000);
+    }
+  }" 
+  x-init="
+    $watch('show', value => {
+      if (!value) { setTimeout(() => { message = '' }, 300); }
+    });
+    
+    // Listen for Django messages with md-snackbar tag
+    {% if messages %}
+      {% for message in messages %}
+        {% if 'md-snackbar' in message.tags %}
+          showSnackbar('{{ message }}');
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+  "
+  @snackbar-show.window="showSnackbar($event.detail.message)"
+  class="fixed left-0 right-0 bottom-0 z-50 flex justify-center items-center p-4 pointer-events-none"
+>
+  <div 
+    x-show="show" 
+    x-transition:enter="transition ease-out duration-300"
+    x-transition:enter-start="transform translate-y-8 opacity-0"
+    x-transition:enter-end="transform translate-y-0 opacity-100"
+    x-transition:leave="transition ease-in duration-200"
+    x-transition:leave-start="transform translate-y-0 opacity-100"
+    x-transition:leave-end="transform translate-y-8 opacity-0"
+    class="
+      bg-surface-container-high text-on-surface-variant
+      px-4 py-3 rounded-full shadow-lg flex items-center gap-3
+      pointer-events-auto max-w-md mx-auto
+      border border-gray-200 dark:border-gray-800
+    "
+    style="padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));"
+  >
+    <div class="flex-1 text-sm" x-text="message"></div>
+    <button 
+      @click="show = false" 
+      class="p-1 rounded-full hover:bg-gray-200/20 text-on-surface-variant"
+      aria-label="{% translate 'Close' %}"
+    >
+      <Icon icon="mdi:close" class="w-5 h-5"></Icon>
+    </button>
+  </div>
+</div>

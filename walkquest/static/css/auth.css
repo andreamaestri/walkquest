@@ -1,0 +1,85 @@
+/* Base styles for auth pages */
+@import 'material3.css';
+
+/* Add any additional auth-specific styles here */
+.field-label {
+  margin-bottom: 0.5rem !important;
+  color: rgb(var(--md-sys-color-on-surface-variant)) !important;
+  font-size: 0.875rem !important;
+}
+
+.form-field {
+  margin-bottom: 1.5rem !important;
+}
+
+.auth-input {
+  width: 100% !important;
+  padding: 1rem !important;
+  border: 1px solid rgb(var(--md-sys-color-outline)) !important;
+  border-radius: 0.75rem !important;
+  background: rgb(var(--md-sys-color-surface-container-highest)) !important;
+  color: rgb(var(--md-sys-color-on-surface)) !important;
+  transition: border-color 0.2s ease !important;
+}
+
+.auth-input:focus {
+  outline: none !important;
+  border-color: rgb(var(--md-sys-color-primary)) !important;
+}
+
+.auth-button {
+  width: 100% !important;
+  padding: 1rem !important;
+  background: rgb(var(--md-sys-color-primary)) !important;
+  color: rgb(var(--md-sys-color-on-primary)) !important;
+  border: none !important;
+  border-radius: 1rem !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  transition: background 0.2s ease !important;
+}
+
+.auth-button:hover {
+  background: rgb(var(--md-sys-color-primary-container)) !important;
+  color: rgb(var(--md-sys-color-on-primary-container)) !important;
+}
+
+.auth-link {
+  color: rgb(var(--md-sys-color-primary)) !important;
+  text-decoration: none !important;
+  transition: color 0.2s ease !important;
+}
+
+.auth-link:hover {
+  color: rgb(var(--md-sys-color-primary-container)) !important;
+}
+
+.errorlist {
+  list-style: none !important;
+  padding: 0 !important;
+  margin: 0 0 1rem 0 !important;
+  color: rgb(var(--md-sys-color-error)) !important;
+  font-size: 0.875rem !important;
+}
+
+.alert {
+  padding: 1rem !important;
+  margin-bottom: 1rem !important;
+  border-radius: 0.75rem !important;
+  font-size: 0.875rem !important;
+}
+
+.alert-error {
+  background: rgb(var(--md-sys-color-error-container)) !important;
+  color: rgb(var(--md-sys-color-on-error-container)) !important;
+}
+
+.alert-success {
+  background: rgb(var(--md-sys-color-success-container)) !important;
+  color: rgb(var(--md-sys-color-on-success-container)) !important;
+}
+
+.alert-info {
+  background: rgb(var(--md-sys-color-secondary-container)) !important;
+  color: rgb(var(--md-sys-color-on-secondary-container)) !important;
+}

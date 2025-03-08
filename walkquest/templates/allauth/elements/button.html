@@ -18,3 +18,40 @@
   {% slot %}
   {% endslot %}
   </{% if attrs.href %}a{% else %}button{% endif %}>
+
+<style>
+.auth-button {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0.75rem 1.5rem !important;
+  border-radius: 20px !important;
+  font-weight: 500 !important;
+  background: rgb(var(--md-sys-color-primary)) !important;
+  color: rgb(var(--md-sys-color-on-primary)) !important;
+  border: none !important;
+  cursor: pointer !important;
+  text-decoration: none !important;
+  transition: opacity 0.2s !important;
+}
+
+.auth-button:hover {
+  opacity: 0.9 !important;
+}
+
+.auth-button:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+
+.auth-button--secondary {
+  background: rgb(var(--md-sys-color-secondary)) !important;
+  color: rgb(var(--md-sys-color-on-secondary)) !important;
+}
+
+.auth-button--outline {
+  background: transparent !important;
+  border: 2px solid rgb(var(--md-sys-color-outline)) !important;
+  color: rgb(var(--md-sys-color-on-surface)) !important;
+}
+</style>

@@ -64,3 +64,47 @@
 {% if slots.help_text %}
   <div class="form-text">{% slot help_text %}{% endslot %}</div>
 {% endif %}
+
+{% if field %}
+<div class="auth-field">
+  {% if label %}
+  <label for="{{ field.id_for_label }}" class="auth-field__label">{{ label }}</label>
+  {% endif %}
+  {{ field }}
+  {% if field.errors %}
+  <div class="auth-field__error">{{ field.errors.0 }}</div>
+  {% endif %}
+</div>
+
+<style>
+.auth-field {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.5rem !important;
+}
+
+.auth-field__label {
+  font-weight: 500 !important;
+  color: rgb(var(--md-sys-color-on-surface)) !important;
+}
+
+.auth-field input {
+  padding: 0.75rem 1rem !important;
+  border-radius: 12px !important;
+  border: 2px solid rgb(var(--md-sys-color-outline)) !important;
+  background: rgb(var(--md-sys-color-surface)) !important;
+  color: rgb(var(--md-sys-color-on-surface)) !important;
+  font-size: 1rem !important;
+}
+
+.auth-field input:focus {
+  outline: none !important;
+  border-color: rgb(var(--md-sys-color-primary)) !important;
+}
+
+.auth-field__error {
+  color: rgb(var(--md-sys-color-error)) !important;
+  font-size: 0.875rem !important;
+}
+</style>
+{% endif %}

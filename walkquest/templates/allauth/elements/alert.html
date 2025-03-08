@@ -1,7 +1,42 @@
 {% load i18n %}
 {% load allauth %}
 
-<div class="alert alert-error">
-  {% slot message %}
-{% endslot %}
+{% if messages %}
+<div class="auth-alerts">
+  {% for message in messages %}
+    <div class="auth-alert auth-alert--{{ message.tags }}">
+      {{ message }}
+    </div>
+  {% endfor %}
 </div>
+
+<style>
+.auth-alerts {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.5rem !important;
+  margin-bottom: 1.5rem !important;
+}
+
+.auth-alert {
+  padding: 1rem !important;
+  border-radius: 12px !important;
+  font-weight: 500 !important;
+}
+
+.auth-alert--error {
+  background: rgb(var(--md-sys-color-error-container)) !important;
+  color: rgb(var(--md-sys-color-on-error-container)) !important;
+}
+
+.auth-alert--success {
+  background: rgb(var(--md-sys-color-success-container)) !important;
+  color: rgb(var(--md-sys-color-on-success-container)) !important;
+}
+
+.auth-alert--info {
+  background: rgb(var(--md-sys-color-tertiary-container)) !important;
+  color: rgb(var(--md-sys-color-on-tertiary-container)) !important;
+}
+</style>
+{% endif %}

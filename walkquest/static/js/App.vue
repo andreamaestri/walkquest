@@ -17,6 +17,7 @@
       :type="uiStore.toast.type"
       @close="uiStore.hideToast"
     />
+    <MDSnackbar />
     <!-- Error boundary component -->
     <div v-if="hasError" class="error-boundary">
       <div class="error-content">

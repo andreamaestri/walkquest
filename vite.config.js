@@ -9,6 +9,11 @@ export default defineConfig({
   define: {
     __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: true
   },
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, 'walkquest/static/js')
+    }
+  },
   build: {
     manifest: "manifest.json",
     outDir: resolve('./walkquest/static/dist'),

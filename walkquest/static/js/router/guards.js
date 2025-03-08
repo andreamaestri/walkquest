@@ -8,7 +8,9 @@ export function requireAuth(to, from, next) {
     // Save the intended destination for redirect after login
     authStore.setRedirectPath(to.fullPath);
     sessionStorage.setItem('auth_redirect', to.fullPath);
-    next({ name: 'home' });
+    
+    // Redirect directly to Django allauth login page instead of home route
+    authStore.redirectToLogin();
     return;
   }
   

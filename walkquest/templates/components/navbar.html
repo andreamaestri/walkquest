@@ -25,6 +25,13 @@
             </div>
         </div>
 
+        <!-- Right pill - User menu -->
+        <div class="backdrop-blur-xl bg-white/15 rounded-full border border-white/25 transition-all duration-300 hover:bg-white/20 px-2 py-1">
+            <div class="hidden sm:block">
+                {% include "components/user_menu.html" %}
+            </div>
+        </div>
+
         <!-- Mobile menu button -->
         <div class="sm:hidden">
             <button @click="toggleMenu"
@@ -34,6 +41,24 @@
                 <Icon x-show="isOpen" icon="heroicons:x-mark" class="h-5 w-5"></Icon>
                 </svg>
             </button>
+        </div>
+    </div>
+
+    <!-- Mobile menu -->
+    <div x-show="isOpen" 
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 transform -translate-y-4"
+         x-transition:enter-end="opacity-100 transform translate-y-0"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100 transform translate-y-0"
+         x-transition:leave-end="opacity-0 transform -translate-y-4"
+         class="sm:hidden mt-4 backdrop-blur-xl bg-white/15 rounded-xl border border-white/25 shadow-lg p-4">
+        <div class="space-y-3">
+            <a href="{% url 'home' %}" class="mobile-nav-link">
+                {% translate "Walks" %}
+            </a>
+            <div class="border-t border-white/10 my-2"></div>
+            {% include "components/user_menu.html" %}
         </div>
     </div>
 </nav>

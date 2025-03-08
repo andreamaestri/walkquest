@@ -19,6 +19,9 @@ urlpatterns = [
     path("api/users/", include("walkquest.users.urls", namespace="users")),
     path('api/user/', UserAPI.as_view(), name='user_api'),
 
+    # Authentication URLs - for login, logout, signup
+    path("accounts/", include("allauth.urls")),
+    
     # Primary route using slug
     path("<slug:walk_id>/", views.index, name="walk-detail-by-slug"),
     

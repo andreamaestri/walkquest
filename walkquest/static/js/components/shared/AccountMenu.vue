@@ -10,24 +10,40 @@
         >
           <!-- User Info Section -->
           <div class="user-info">
-            <div class="avatar">
-              <span class="avatar-text">{{ userInitialsComputed }}</span>
+            <div class="avatar" :style="{ backgroundColor: avatarBgColor }">
+              <span class="avatar-text" v-if="!isLoadingUser">{{ userInitialsComputed || defaultInitials }}</span>
+              <Icon v-else icon="mdi:loading" class="loading-icon" />
             </div>
             <div class="user-details">
-              <span class="user-email">{{ emailComputed }}</span>
+              <span class="user-email" v-if="!isLoadingUser">{{ emailComputed || defaultEmail }}</span>
+              <span v-else class="user-loading">Loading...</span>
             </div>
           </div>
-
           <!-- Menu Items -->
           <div class="menu-items">
-            <button class="menu-item" @click="handleAction('profile')">
+            <button class="menu-item" @click="handleProfileClick">
               <Icon icon="mdi:account-settings" class="menu-icon" />
               <span>Profile Settings</span>
             </button>
-            <button class="menu-item" @click="handleAction('logout')">
-              <Icon icon="mdi:logout" class="menu-icon" />
-              <span>Sign Out</span>
-            </button>
+            
+            <a :href="authUrls.emailUrl" class="menu-item">
+              <Icon icon="mdi:email" class="menu-icon" />
+              <span>Manage Email</span>
+            </a>
+            
+            <a :href="authUrls.passwordChangeUrl" class="menu-item">
+              <Icon icon="mdi:key" class="menu-icon" />
+              <span>Change Password</span>
+            </a>
+            
+            <!-- Use a form for logout to handle CSRF correctly -->
+            <form ref="logoutForm" method="post" :action="authUrls.logoutUrl" style="display: contents;">
+              <input type="hidden" name="csrfmiddlewaretoken" :value="csrfToken">
+              <button type="submit" class="menu-item">
+                <Icon icon="mdi:logout" class="menu-icon" />
+                <span>Sign Out</span>
+              </button>
+            </form>
           </div>
         </div>
       </div>
@@ -36,10 +52,11 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted, markRaw } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { Icon } from '@iconify/vue';
 import { useAuthStore } from '../../stores/auth';
 import { useUiStore } from '../../stores/ui';
+import { useRouter } from 'vue-router';
 import { animate } from 'motion';
 
 const props = defineProps({
@@ -55,26 +72,55 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'action']);
 
-// Component refs
+// Component refs and state
 const menuRef = ref(null);
+const logoutForm = ref(null);
+const isLoadingUser = ref(false);
+
+// Default values if user data isn't loaded yet
+const defaultInitials = "U";
+const defaultEmail = "User";
 
 // Store access
 const authStore = useAuthStore();
 const uiStore = useUiStore();
+const router = useRouter();
 
 // Use computed properties to avoid reactivity issues
 const isMobileComputed = computed(() => uiStore.isMobile);
-const userInitialsComputed = computed(() => authStore.userInitials || '');
+const userInitialsComputed = computed(() => authStore.userInitials);
 const emailComputed = computed(() => authStore.user?.email || '');
+const csrfToken = computed(() => authStore.getCsrfToken());
+
+// Get authentication URLs from window.djangoAllAuth object
+const authUrls = computed(() => ({
+  loginUrl: window.djangoAllAuth?.loginUrl || '/accounts/login/',
+  signupUrl: window.djangoAllAuth?.signupUrl || '/accounts/signup/',
+  logoutUrl: window.djangoAllAuth?.logoutUrl || '/accounts/logout/',
+  passwordResetUrl: window.djangoAllAuth?.passwordResetUrl || '/accounts/password/reset/',
+  passwordChangeUrl: window.djangoAllAuth?.passwordChangeUrl || '/accounts/password/change/',
+  emailUrl: window.djangoAllAuth?.emailUrl || '/accounts/email/'
+}));
+
+// Avatar color generation
+const avatarBgColor = computed(() => {
+  const identifier = emailComputed.value;
+  if (!identifier) return 'rgb(var(--md-sys-color-primary))';
+  
+  let hash = 0;
+  for (let i = 0; i < identifier.length; i++) {
+    hash = identifier.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const hue = hash % 360;
+  return `oklch(70% 0.14 ${hue}deg)`;
+});
 
 // Menu positioning
 const menuPosition = computed(() => {
   if (!props.anchorEl || isMobileComputed.value) return {};
   
   try {
-    // Check if anchorEl is a Vue ref or a DOM element
     const element = props.anchorEl.value || props.anchorEl;
-    
     if (!element || !element.getBoundingClientRect) {
       console.warn('Invalid anchor element for menu positioning');
       return {};
@@ -92,6 +138,13 @@ const menuPosition = computed(() => {
   }
 });
 
+// Handle profile click navigation
+const handleProfileClick = () => {
+  router.push('/profile');
+  emit('close');
+  emit('action', 'profile');
+};
+
 // Handle overlay click
 const handleOverlayClick = (e) => {
   if (e.target === e.currentTarget) {
@@ -99,22 +152,24 @@ const handleOverlayClick = (e) => {
   }
 };
 
-// Handle menu actions
-const handleAction = (action) => {
-  emit('action', action);
-  emit('close');
-};
-
-// Keyboard event handler
-function handleKeydown(e) {
+// Handle escape key
+const handleKeydown = (e) => {
   if (e.key === 'Escape' && props.isOpen) {
     emit('close');
   }
-}
+};
 
 // Lifecycle hooks
 onMounted(() => {
   document.addEventListener('keydown', handleKeydown);
+  
+  // Refresh user data when menu opens if needed
+  if (props.isOpen && (!authStore.userDataLoaded || !authStore.user?.email)) {
+    isLoadingUser.value = true;
+    authStore.checkAuth().finally(() => {
+      isLoadingUser.value = false;
+    });
+  }
   
   // Animate menu entry
   if (menuRef.value) {
@@ -133,10 +188,6 @@ onMounted(() => {
       );
     } catch (error) {
       console.error('Animation error:', error);
-      // Fallback if animation fails
-      if (menuRef.value) {
-        menuRef.value.style.opacity = 1;
-      }
     }
   }
 });
@@ -145,30 +196,12 @@ onUnmounted(() => {
   document.removeEventListener('keydown', handleKeydown);
 });
 
-// Watch for changes in isOpen to handle animations
-watch(() => props.isOpen, (newValue) => {
-  if (newValue && menuRef.value) {
-    // Menu is opening, animate in
-    try {
-      animate(
-        menuRef.value,
-        {
-          opacity: [0, 1],
-          scale: [0.95, 1],
-          y: ['-0.5rem', '0']
-        },
-        {
-          duration: 0.2,
-          easing: [0.4, 0, 0.2, 1]
-        }
-      );
-    } catch (error) {
-      console.error('Animation error:', error);
-      // Fallback if animation fails
-      if (menuRef.value) {
-        menuRef.value.style.opacity = 1;
-      }
-    }
+// Watch for menu open to refresh user data
+watch(() => props.isOpen, async (isOpen) => {
+  if (isOpen && (!authStore.userDataLoaded || !authStore.user?.email)) {
+    isLoadingUser.value = true;
+    await authStore.checkAuth();
+    isLoadingUser.value = false;
   }
 });
 </script>
@@ -229,6 +262,8 @@ watch(() => props.isOpen, (newValue) => {
 .user-details {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .user-email {
@@ -238,6 +273,12 @@ watch(() => props.isOpen, (newValue) => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.user-loading {
+  font-size: 12px;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+  font-style: italic;
 }
 
 .menu-items {
@@ -257,6 +298,63 @@ watch(() => props.isOpen, (newValue) => {
   cursor: pointer;
   border-radius: 8px;
   transition: background-color 0.2s;
+  text-decoration: none;
+}
+
+.menu-item:hover {
+  background-color: rgb(var(--md-sys-color-surface-container-highest));
+}
+
+.menu-icon {
+  font-size: 20px;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+}
+
+/* Transitions */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.loading-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Update loading state styles */
+.user-loading {
+  font-size: 12px;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+  font-style: italic;
+}
+
+.menu-items {
+  padding: 8px;
+}
+
+.menu-item {
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  background: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: rgb(var(--md-sys-color-on-surface));
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background-color 0.2s;
+  text-decoration: none;
 }
 
 .menu-item:hover {

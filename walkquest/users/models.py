@@ -1,12 +1,12 @@
 from django.contrib.auth.models import AbstractUser
+from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from django.db.models import CharField
 from django.db.models import DateTimeField
+from django.db.models import JSONField
 from django.db.models import PositiveIntegerField
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
-from django.core.serializers.json import DjangoJSONEncoder
-from django.db.models import JSONField
 
 
 class User(AbstractUser):
@@ -38,7 +38,7 @@ class User(AbstractUser):
         ordering = ["-date_joined"]
         indexes = [
             models.Index(fields=["username"]),
-            models.Index(fields=["experience_points"]),  # Changed from 'xp'
+            models.Index(fields=["experience_points"]),
         ]
 
     def get_absolute_url(self) -> str:

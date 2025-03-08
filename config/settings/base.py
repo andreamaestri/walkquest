@@ -13,6 +13,14 @@ APPS_DIR = BASE_DIR / "walkquest"
 env = environ.Env()
 environ.Env.read_env(str(BASE_DIR / ".env"))
 
+# User display configuration - This determines how the user is displayed in messages
+def get_user_display(user):
+    """Return a user-friendly display name"""
+    if hasattr(user, 'name') and user.name:
+        return user.name
+    return user.email.split('@')[0]
+
+ACCOUNT_USER_DISPLAY = get_user_display
 
 # GENERAL
 # ------------------------------------------------------------------------------
@@ -166,12 +174,19 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "walkquest.middleware.CSRFMiddleware",  # Add our custom CSRF middleware
     "allauth.account.middleware.AccountMiddleware",
 ]
 
 # CORS settings
 # ------------------------------------------------------------------------------
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",  # Vite dev server
+    "http://127.0.0.1:5173",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+]
 CORS_ALLOW_HEADERS = [
     "accept",
     "accept-encoding",
@@ -265,8 +280,16 @@ FIXTURE_DIRS = (str(APPS_DIR / "fixtures"),)
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#session-cookie-httponly
 SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SECURE = True  # Requires HTTPS
+SESSION_COOKIE_SAMESITE = 'Lax'
 # https://docs.djangoproject.com/en/dev/ref/settings/#csrf-cookie-httponly
 CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SECURE = True  # Requires HTTPS
+CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+]
 # https://docs.djangoproject.com/en/dev/ref/settings/#x-frame-options
 X_FRAME_OPTIONS = "DENY"
 
@@ -360,9 +383,11 @@ CELERY_TASK_SEND_SENT_EVENT = True
 # ------------------------------------------------------------------------------
 ACCOUNT_ALLOW_REGISTRATION = env.bool("DJANGO_ACCOUNT_ALLOW_REGISTRATION", True)
 # https://docs.allauth.org/en/latest/account/configuration.html
-ACCOUNT_AUTHENTICATION_METHOD = "username"
+ACCOUNT_AUTHENTICATION_METHOD = "email"
 # https://docs.allauth.org/en/latest/account/configuration.html
 ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None
 # https://docs.allauth.org/en/latest/account/configuration.html
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 # https://docs.allauth.org/en/latest/account/configuration.html
@@ -384,6 +409,11 @@ HEADLESS_FRONTEND_URLS = {
 # Allauth Headless Configuration
 HEADLESS_ONLY = False  # Set to True if you want to disable traditional views completely
 HEADLESS_API_PREFIX = "_allauth/"  # This matches our URL configuration
+
+# Django Ninja API settings
+NINJA_JWT = {
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
 
 # django-compressor
 # ------------------------------------------------------------------------------

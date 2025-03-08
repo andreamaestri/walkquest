@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="account-container">
+  <div class="account-card">
+    {% block allauth_content %}{% endblock %}
+  </div>
+</div>
+
+<style>
+.account-container {
+  min-height: 100vh !important;
+  padding: 2rem 1rem !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  background: rgb(var(--md-sys-color-surface)) !important;
+}
+
+.account-card {
+  width: 100% !important;
+  max-width: 440px !important;
+  background: rgb(var(--md-sys-color-surface-container)) !important;
+  border-radius: 28px !important;
+  padding: 2rem !important;
+  box-shadow: var(--md-sys-elevation-2) !important;
+}
+
+@media (max-width: 640px) {
+  .account-container {
+    padding: 1rem !important;
+  }
+  
+  .account-card {
+    padding: 1.5rem !important;
+  }
+}
+</style>
+{% endblock content %}

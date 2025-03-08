@@ -10,9 +10,10 @@ export const useCompanionsStore = defineStore('companions', () => {
     isLoading.value = true
     error.value = null
     try {
-      const response = await fetch('/api/companions/')
+      const response = await fetch('/api/adventures/companions/')
       if (!response.ok) throw new Error('Failed to fetch companions')
-      userCompanions.value = await response.json()
+      const data = await response.json()
+      userCompanions.value = data.companions
     } catch (e) {
       error.value = e.message
       console.error('Error fetching companions:', e)
@@ -25,7 +26,7 @@ export const useCompanionsStore = defineStore('companions', () => {
     isLoading.value = true
     error.value = null
     try {
-      const response = await fetch('/api/companions/', {
+      const response = await fetch('/api/adventures/companions/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

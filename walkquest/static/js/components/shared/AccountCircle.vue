@@ -1,6 +1,5 @@
 <template>
   <div>
-    <!-- Existing AccountCircle template -->
     <div 
       class="account-circle-container"
       :class="{ 'desktop': !isMobileComputed, 'mobile': isMobileComputed }"
@@ -28,9 +27,9 @@
             'pressed': isPressed
           }"
         ></div>
-        <div v-if="isAuthenticatedComputed && userInitialsComputed" class="avatar-container">
+        <div v-if="isAuthenticatedComputed && (userInitialsComputed || 'U')" class="avatar-container">
           <div class="avatar-circle" :style="{ backgroundColor: avatarBgColor }">
-            <span class="avatar-initials">{{ userInitialsComputed }}</span>
+            <span class="avatar-initials">{{ userInitialsComputed || 'U' }}</span>
           </div>
         </div>
         <Icon
@@ -43,30 +42,52 @@
       </button>
     </div>
     
-    <!-- Auth Modal -->
-    <AuthModal
-      :is-open="showAuthModal"
-      @close="showAuthModal = false"
-      @submit="handleAuthSubmit"
-    />
-
-    <!-- Account Menu -->
+    <!-- Account Menu for authenticated users only -->
     <AccountMenu
-      v-if="buttonRef"
+      v-if="buttonRef && isAuthenticatedComputed"
       :is-open="showMenu"
       :anchor-el="buttonRef"
       @close="showMenu = false"
       @action="handleMenuAction"
     />
+    
+    <!-- Use standard Django auth menu for unauthenticated users -->
+    <Teleport to="#portal-root">
+      <Transition name="fade">
+        <div v-if="showAuthMenu && !isAuthenticatedComputed" class="auth-menu-container" :class="{ 'mobile': isMobileComputed }">
+          <div class="auth-menu-backdrop" @click="showAuthMenu = false"></div>
+          <div class="auth-menu">
+            <div class="auth-menu-header">
+              <h3 class="auth-menu-title">Account</h3>
+              <button class="close-button" @click="showAuthMenu = false">
+                <Icon icon="mdi:close" />
+              </button>
+            </div>
+            <div class="auth-menu-content">
+              <p class="auth-menu-text">Sign in to save your favorite walks, track your adventures and more.</p>
+              <div class="auth-links">
+                <a :href="authUrls.loginUrl" class="auth-link auth-link-primary">
+                  <Icon icon="mdi:login" class="auth-icon" />
+                  <span>Sign In</span>
+                </a>
+                <a :href="authUrls.signupUrl" class="auth-link auth-link-secondary">
+                  <Icon icon="mdi:account-plus" class="auth-icon" />
+                  <span>Create Account</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onMounted, onBeforeUnmount, readonly } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { Icon } from '@iconify/vue';
 import { useAuthStore } from '../../stores/auth';
 import { useUiStore } from '../../stores/ui';
-import AuthModal from './AuthModal.vue';
 import AccountMenu from './AccountMenu.vue';
 
 // Props with defaults
@@ -77,64 +98,62 @@ const props = defineProps({
   }
 });
 
-// Emit events that parent components can listen for
-const emit = defineEmits(['click', 'auth-submit']);
+// Emit events
+const emit = defineEmits(['click']);
 
 // Use the UI store for responsive layout
 const uiStore = useUiStore();
-// Create a computed property to avoid direct reactivity issues
 const isMobileComputed = computed(() => uiStore.isMobile);
 
 // State for interactive feedback
 const isHovered = ref(false);
 const isFocused = ref(false);
 const isPressed = ref(false);
+const showAuthMenu = ref(false);
+const showMenu = ref(false);
+const buttonRef = ref(null);
 
-// Add auth state management
-const showAuthModal = ref(false);
-
-// Use auth store
+// Use auth store with better reactive state handling
 const authStore = useAuthStore();
-// Create computed properties to avoid direct reactivity issues
 const isAuthenticatedComputed = computed(() => authStore.isAuthenticated);
-const userInitialsComputed = computed(() => authStore.userInitials);
-const usernameComputed = computed(() => authStore.user?.email || '');
+const userInitialsComputed = computed(() => {
+  // Only show initials if user data is fully loaded
+  if (!authStore.userDataLoaded || !authStore.user) return '';
+  return authStore.userInitials;
+});
 
-// Generate a consistent color based on username
+// Avatar color generation using email or username
 const avatarBgColor = computed(() => {
-  if (!usernameComputed.value) return 'rgb(var(--md-sys-color-primary))';
+  const identifier = authStore.user?.email || authStore.user?.username;
+  if (!identifier) return 'rgb(var(--md-sys-color-primary))';
   
-  // Simple hash function to generate a consistent hue from username
   let hash = 0;
-  for (let i = 0; i < usernameComputed.value.length; i++) {
-    hash = usernameComputed.value.charCodeAt(i) + ((hash << 5) - hash);
+  for (let i = 0; i < identifier.length; i++) {
+    hash = identifier.charCodeAt(i) + ((hash << 5) - hash);
   }
-  
-  // Convert to a hue value (0-360)
   const hue = hash % 360;
-  
-  // Return an MD3 style color using oklch
   return `oklch(70% 0.14 ${hue}deg)`;
 });
 
-// Component state
-const buttonRef = ref(null);
-const showMenu = ref(false);
+// Get authentication URLs
+const authUrls = computed(() => ({
+  loginUrl: window.djangoAllAuth?.loginUrl || '/accounts/login/',
+  signupUrl: window.djangoAllAuth?.signupUrl || '/accounts/signup/',
+  logoutUrl: window.djangoAllAuth?.logoutUrl || '/accounts/logout/',
+  passwordResetUrl: window.djangoAllAuth?.passwordResetUrl || '/accounts/password/reset/',
+  passwordChangeUrl: window.djangoAllAuth?.passwordChangeUrl || '/accounts/password/change/',
+  emailUrl: window.djangoAllAuth?.emailUrl || '/accounts/email/'
+}));
 
 // Handle click with authentication flow
 const handleClick = (event) => {
   isPressed.value = true;
+  emit('click', event);
   
-  // Show auth modal if not authenticated
   if (!isAuthenticatedComputed.value) {
-    showAuthModal.value = true;
-  } else {
-    // Make sure buttonRef exists before showing menu
-    if (buttonRef.value) {
-      showMenu.value = true;
-    } else {
-      console.error('Button reference is null');
-    }
+    showAuthMenu.value = !showAuthMenu.value;
+  } else if (buttonRef.value) {
+    showMenu.value = !showMenu.value;
   }
   
   // Reset pressed state after animation
@@ -143,29 +162,7 @@ const handleClick = (event) => {
   }, 300);
 };
 
-// Handle auth modal events
-const handleAuthSubmit = async ({ mode, data }) => {
-  if (isPressed.value) return; // Prevent duplicate submissions
-  
-  try {
-    isPressed.value = true;
-    if (mode === 'signup') {
-      await authStore.signup(data.email, data.password);
-    } else {
-      await authStore.login(data.email, data.password);
-    }
-    showAuthModal.value = false;
-  } catch (error) {
-    console.error('Auth error:', error);
-  } finally {
-    // Use nextTick to avoid state updates during render
-    nextTick(() => {
-      isPressed.value = false;
-    });
-  }
-};
-
-// Handle menu actions
+// Handle menu actions for authenticated users
 const handleMenuAction = async (action) => {
   if (action === 'logout' && !isPressed.value) {
     try {
@@ -175,31 +172,22 @@ const handleMenuAction = async (action) => {
     } catch (error) {
       console.error('Logout failed:', error);
     } finally {
-      // Use nextTick to avoid state updates during render
-      nextTick(() => {
-        isPressed.value = false;
-      });
+      isPressed.value = false;
     }
   } else if (action === 'profile') {
     showMenu.value = false;
   }
 };
 
-// Error handling wrapper for computed properties
-function safeComputed(getter) {
-  try {
-    return computed(getter);
-  } catch (error) {
-    console.error('Error in computed property:', error);
-    return computed(() => null);
-  }
-}
-
-// Ensure buttonRef is initialized
-onMounted(() => {
-  // Verify buttonRef is properly set
+// Initialize and clean up
+onMounted(async () => {
   if (!buttonRef.value) {
     console.warn('Button reference not initialized on mount');
+  }
+  
+  // Force refresh user data if needed and not already loading
+  if (isAuthenticatedComputed.value && !authStore.userDataLoaded && !authStore.isLoading) {
+    await authStore.checkAuth();
   }
 });
 </script>
@@ -238,12 +226,12 @@ onMounted(() => {
   -webkit-tap-highlight-color: transparent;
   transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
   outline: none;
-  border-radius: 50%; /* Full corner radius (md.sys.shape.corner.full) */
+  border-radius: 50%;
 }
 
 /* Desktop version styling */
 .account-circle-button.desktop {
-  width: 35px; /* MD3 spec: 30dp */
+  width: 35px;
   height: 35px;
   color: rgb(var(--md-sys-color-on-surface-variant));
 }
@@ -329,6 +317,122 @@ onMounted(() => {
   animation: ripple 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Auth Menu for unauthenticated users */
+.auth-menu-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
+.auth-menu-container.mobile .auth-menu {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  top: auto;
+  margin: 0;
+  border-radius: 28px 28px 0 0;
+  max-width: 100%;
+  width: 100%;
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+}
+
+.auth-menu-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(3px);
+  z-index: -1;
+}
+
+.auth-menu {
+  background-color: rgb(var(--md-sys-color-surface));
+  border-radius: 16px;
+  box-shadow: var(--md-sys-elevation-3);
+  overflow: hidden;
+  width: 280px;
+  margin: 8px;
+  margin-top: calc(env(safe-area-inset-top, 0px) + 56px);
+  animation: menuAppear 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.auth-menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background-color: rgb(var(--md-sys-color-surface-container-high));
+  border-bottom: 1px solid rgba(var(--md-sys-color-outline), 0.1);
+}
+
+.auth-menu-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.auth-menu-content {
+  padding: 16px;
+}
+
+.auth-menu-text {
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+}
+
+.auth-links {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auth-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  color: rgb(var(--md-sys-color-on-surface));
+  text-decoration: none;
+  transition: background-color 0.2s, transform 0.1s;
+  font-weight: 500;
+  background-color: rgb(var(--md-sys-color-surface-container));
+}
+
+.auth-link:hover {
+  background-color: rgb(var(--md-sys-color-surface-container-high));
+  transform: translateY(-1px);
+}
+
+.auth-link:active {
+  transform: translateY(1px);
+}
+
+.auth-link-primary {
+  background-color: rgb(var(--md-sys-color-primary));
+  color: rgb(var(--md-sys-color-on-primary));
+}
+
+.auth-link-secondary {
+  background-color: rgb(var(--md-sys-color-secondary));
+  color: rgb(var(--md-sys-color-on-secondary));
+}
+
+.auth-icon {
+  font-size: 22px;
+  color: rgb(var(--md-sys-color-primary));
+}
+
 /* Ripple animation for pressed state */
 @keyframes ripple {
   from {
@@ -362,6 +466,17 @@ onMounted(() => {
   
   .account-circle-button:active .state-layer {
     background-color: rgb(var(--md-sys-color-on-surface-variant) / 0.16);
+  }
+}
+
+@keyframes menuAppear {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 </style>

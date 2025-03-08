@@ -17,3 +17,43 @@
 </div>
 </div>
 </section>
+
+{% if title or content %}
+<div class="auth-panel">
+  {% if title %}
+  <div class="auth-panel__header">
+    <h2 class="auth-panel__title">{{ title }}</h2>
+  </div>
+  {% endif %}
+  
+  {% if content %}
+  <div class="auth-panel__content">
+    {{ content }}
+  </div>
+  {% endif %}
+</div>
+
+<style>
+.auth-panel {
+  background: rgb(var(--md-sys-color-surface-container-low)) !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+}
+
+.auth-panel__header {
+  padding: 1rem 1.5rem !important;
+  border-bottom: 1px solid rgb(var(--md-sys-color-outline-variant)) !important;
+}
+
+.auth-panel__title {
+  font-size: 1.25rem !important;
+  font-weight: 600 !important;
+  color: rgb(var(--md-sys-color-on-surface)) !important;
+  margin: 0 !important;
+}
+
+.auth-panel__content {
+  padding: 1.5rem !important;
+}
+</style>
+{% endif %}

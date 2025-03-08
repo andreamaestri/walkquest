@@ -103,6 +103,7 @@ import { useWalksStore } from "../stores/walks";
 import { useLocationStore } from "../stores/locationStore";
 import { useSearchStore } from "../stores/searchStore";
 import { useAdventureDialogStore } from "../stores/adventureDialog";
+import { useAuthStore } from "../stores/auth";
 
 // Import composables and utilities
 import { useMap } from "../composables/useMap";
@@ -152,6 +153,7 @@ const uiStore = useUiStore();
 const locationStore = useLocationStore();
 const searchStore = useSearchStore();
 const adventureDialogStore = useAdventureDialogStore();
+const authStore = useAuthStore();
 
 // Initialize composables
 const { setMapInstance, flyToLocation } = useMap();
@@ -356,15 +358,10 @@ const walks = computed(() => {
  * Finds walk by ID from available walks
  */
 const selectedWalk = computed(() => {
-  if (!route.params.walk_slug && !route.params.walk_id) return null;
+  if (!route.params.walk_id) return null;
   
-  // Try to find walk by slug first
-  if (route.params.walk_slug) {
-    return walks.value.find(walk => walk.walk_id === route.params.walk_slug);
-  }
-  
-  // Fallback to ID lookup
-  return walks.value.find(walk => walk.id === route.params.walk_id);
+  // Find walk by walk_id slug
+  return walks.value.find(walk => walk.walk_id === route.params.walk_id);
 });
 
 const selectedWalkId = computed(() => selectedWalk.value?.id);
@@ -404,7 +401,7 @@ const handleWalkSelection = async (walk) => {
 
     // Navigate using walk_id for slug if available
     if (walk.walk_id) {
-      await router.push({ name: 'walk', params: { walk_slug: walk.walk_id } });
+      await router.push({ name: 'walk', params: { walk_id: walk.walk_id } });
     } else {
       await router.push({ name: 'walk-by-id', params: { walk_id: walk.id } });
     }
@@ -571,8 +568,8 @@ const handleDirections = () => {
  * Opens account-related functionality
  */
 const handleAccountClick = (event) => {
-  // Open account menu or navigate to account page
-  router.push({ name: 'account' });
+  // Let the AccountCircle component handle all interactions
+  // The navigation to profile will be handled through the menu
 };
 
 /**
@@ -590,8 +587,8 @@ const initializeInterface = () => {
       uiStore.setError("Failed to load walks. Please try again later.");
     }).then(() => {
       // After walks are loaded, handle deep linking if walk is in URL
-      if (route.params.walk_slug || route.params.walk_id) {
-        const walkId = route.params.walk_slug || route.params.walk_id;
+      if (route.params.walk_id) {
+        const walkId = route.params.walk_id;
         const walk = walkId.includes('-') 
           ? walksStore.walks.find(w => w.walk_id === walkId) // Find by slug
           : walksStore.getWalkById(walkId); // Find by ID
@@ -674,7 +671,7 @@ onMounted(() => {
   
   try {
     // If we have a walk in the URL, show the drawer
-    if (route.params.walk_slug || route.params.walk_id) {
+    if (route.params.walk_id) {
       uiStore.handleWalkSelected();
       uiStore.showDrawer = true;
     }

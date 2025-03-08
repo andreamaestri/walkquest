@@ -1,0 +1,13 @@
+{% load i18n %}
+
+<script>
+  // Create a global object to store Django AllAuth URLs
+  window.djangoAllAuth = {
+    loginUrl: "{% url 'account_login' %}",
+    signupUrl: "{% url 'account_signup' %}",
+    logoutUrl: "{% url 'account_logout' %}",
+    passwordResetUrl: "{% url 'account_reset_password' %}",
+    passwordChangeUrl: "{% url 'account_change_password' %}",
+    emailUrl: "{% url 'account_email' %}"
+  };
+</script>

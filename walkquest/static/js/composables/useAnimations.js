@@ -5,37 +5,16 @@ import { animate, spring } from 'motion';
  * Provides consistent animation patterns across components
  */
 export function useAnimations() {
-  /**
-   * Animation configurations for different types of animations
-   */
+  // Animation configurations for different types of animations
   const animationConfigs = {
     fluid: {
+      duration: 0.3,
+      easing: [0.2, 0, 0.2, 1]
+    },
+    spring: {
       type: 'spring',
       stiffness: 300,
-      damping: 30,
-      mass: 0.8,
-      restSpeed: 0.01,
-      restDelta: 0.01
-    },
-    fluidFast: {
-      type: 'spring',
-      stiffness: 400,
-      damping: 25,
-      mass: 0.6,
-      restSpeed: 0.01,
-      restDelta: 0.01
-    },
-    easeOut: {
-      easing: [0.22, 1, 0.36, 1],
-      duration: 0.6
-    },
-    md3Standard: {
-      duration: 0.3,
-      easing: [0.2, 0, 0.2, 1] // MD3 standard easing
-    },
-    md3Exit: {
-      duration: 0.25,
-      easing: [0.4, 0, 1, 1] // MD3 exit easing
+      damping: 30
     }
   };
 
@@ -216,27 +195,21 @@ export function useAnimations() {
     if (wasSelected) {
       // Deselected animation
       return animate(element, { 
-        scale: [1, 0.95, 1],
+        scale: [1],
         backgroundColor: [
           'rgb(var(--md-sys-color-secondary-container))',
           'rgb(var(--md-sys-color-surface-container))'
         ]
-      }, {
-        duration: 0.3,
-        easing: [0.2, 0, 0.2, 1]
-      });
+      }, animationConfigs.fluid);
     } else {
       // Selected animation
       return animate(element, { 
-        scale: [1, 1.1, 1],
+        scale: [1],
         backgroundColor: [
           'rgb(var(--md-sys-color-surface-container))',
           'rgb(var(--md-sys-color-secondary-container))'
         ]
-      }, {
-        duration: 0.3,
-        easing: spring({ stiffness: 300, damping: 30 })
-      });
+      }, animationConfigs.fluid);
     }
   };
 
@@ -251,10 +224,7 @@ export function useAnimations() {
     return animate(element, {
       opacity: [0, 1],
       y: ['100%', '0%']
-    }, {
-      duration: 0.3,
-      easing: [0.2, 0, 0.2, 1]
-    });
+    }, animationConfigs.fluid);
   };
 
   /**
@@ -270,8 +240,7 @@ export function useAnimations() {
       opacity: [1, 0],
       y: ['0%', '100%']
     }, {
-      duration: 0.2,
-      easing: [0.4, 0, 1, 1],
+      ...animationConfigs.fluid,
       onComplete
     });
   };
@@ -288,10 +257,7 @@ export function useAnimations() {
     return animate(element, {
       x: [direction === 'prev' ? '-20px' : '20px', '0px'],
       opacity: [0.8, 1]
-    }, {
-      duration: 0.2,
-      easing: [0.2, 0, 0.2, 1]
-    });
+    }, animationConfigs.fluid);
   };
 
   /**
@@ -306,10 +272,7 @@ export function useAnimations() {
     return animate(element, {
       y: [direction === 'up' ? '10px' : '-10px', '0px'],
       opacity: [0.5, 1]
-    }, {
-      duration: 0.2,
-      easing: [0.2, 0, 0.2, 1]
-    });
+    }, animationConfigs.fluid);
   };
 
   return {

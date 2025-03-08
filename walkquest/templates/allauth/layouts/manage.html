@@ -1,6 +1,23 @@
-{% extends "base.html" %}
+{% extends "allauth/base.html" %}
 
-{% block main %}
-  {% block content %}
-  {% endblock content %}
-{% endblock main %}
+{% block allauth_content %}
+<div class="manage-container">
+  <h1 class="manage-title">{% block title %}{% endblock %}</h1>
+  
+  {% block content %}{% endblock %}
+</div>
+
+<style>
+.manage-container {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1.5rem !important;
+}
+
+.manage-title {
+  font-size: 1.75rem !important;
+  font-weight: 700 !important;
+  color: rgb(var(--md-sys-color-on-surface)) !important;
+}
+</style>
+{% endblock %}
