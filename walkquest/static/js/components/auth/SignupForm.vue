@@ -14,6 +14,8 @@
       </div>
 
       <form @submit.prevent="handleSubmit" class="auth-form">
+        <!-- Added hidden CSRF field -->
+        <input type="hidden" name="csrfmiddlewaretoken" :value="csrfToken" />
         <!-- Email Field -->
         <div class="md3-field-container">
           <div class="md3-text-field" :class="{
@@ -117,7 +119,7 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { useAuthStore } from '../../stores/auth'
@@ -135,6 +137,38 @@ const showPassword2 = ref(false)
 const error = ref(null)
 const errors = ref({})
 const response = reactive({ fetching: false, content: null })
+
+// Add a CSRF token ref and a function to get the token
+const csrfToken = ref('')
+onMounted(() => {
+  getCsrfToken()
+})
+function getCsrfToken() {
+  // Try to get from meta tag
+  const metaToken = document.querySelector('meta[name="csrf-token"]')
+  if (metaToken) {
+    csrfToken.value = metaToken.getAttribute('content')
+    return
+  }
+  // Try to get from cookie (if not httpOnly)
+  const name = 'csrftoken='
+  const decodedCookie = decodeURIComponent(document.cookie)
+  const cookies = decodedCookie.split(';')
+  for (let cookie of cookies) {
+    cookie = cookie.trim()
+    if (cookie.indexOf(name) === 0) {
+      csrfToken.value = cookie.substring(name.length, cookie.length)
+      return
+    }
+  }
+  // Try to get from a hidden input (if present)
+  const inputToken = document.querySelector('input[name="csrfmiddlewaretoken"]')
+  if (inputToken) {
+    csrfToken.value = inputToken.value
+    return
+  }
+  console.warn("CSRF token not found from meta, cookie, or hidden input.")
+}
 
 // Handle form submission
 async function handleSubmit() {

@@ -162,6 +162,8 @@ const handleKeydown = (e) => {
 // Lifecycle hooks
 onMounted(() => {
   document.addEventListener('keydown', handleKeydown);
+  // Set the CSRF token on mount, so the logout form has a valid token.
+  csrfToken.value = getCSRFToken();
   
   // Refresh user data when menu opens if needed
   if (props.isOpen && (!authStore.userDataLoaded || !authStore.user?.email)) {
