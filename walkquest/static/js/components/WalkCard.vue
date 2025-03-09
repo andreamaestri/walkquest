@@ -125,17 +125,52 @@ const moreCount = computed(() => {
   return cats.length > 3 ? cats.length - 3 : 0
 })
 
+const categoryStyles = {
+  'circular-walks': {
+    backgroundColor: 'rgb(233,221,255)',
+    color: 'rgb(77,61,117)',
+    fontWeight: 600,
+    padding: '4px 8px',
+    borderRadius: '16px'
+  },
+  'coastal-walks': {
+    backgroundColor: 'rgb(232,222,248)',
+    color: 'rgb(74,68,88)',
+    fontWeight: 600,
+    padding: '4px 8px',
+    borderRadius: '16px'
+  },
+  'pub-walks': {
+    backgroundColor: 'rgb(255,217,227)',
+    color: 'rgb(99,59,72)',
+    fontWeight: 600,
+    padding: '4px 8px',
+    borderRadius: '16px'
+  },
+  'linear-walks': {
+    backgroundColor: 'rgb(230,240,255)',
+    color: 'rgb(30,70,120)',
+    fontWeight: 600,
+    padding: '4px 8px',
+    borderRadius: '16px'
+  },
+  'woodland-walks': {
+    backgroundColor: 'rgb(225,245,235)',
+    color: 'rgb(34,85,45)',
+    fontWeight: 600,
+    padding: '4px 8px',
+    borderRadius: '16px'
+  }
+};
+
 const getCategoryStyle = (cat) => {
-  if (cat.slug === 'circular-walks') {
-    return { backgroundColor: 'rgb(233,221,255)', color: 'rgb(77,61,117)' }
-  }
-  if (cat.slug === 'coastal-walks') {
-    return { backgroundColor: 'rgb(232,222,248)', color: 'rgb(74,68,88)' }
-  }
-  if (cat.slug === 'pub-walks') {
-    return { backgroundColor: 'rgb(255,217,227)', color: 'rgb(99,59,72)' }
-  }
-  return { backgroundColor: '#eee', color: '#333' }
+  return categoryStyles[cat.slug] || { 
+    backgroundColor: '#eee', 
+    color: '#333',
+    fontWeight: 600,
+    padding: '4px 8px',
+    borderRadius: '16px'
+  };
 }
 </script>
 
