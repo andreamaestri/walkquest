@@ -132,10 +132,12 @@ walkquest/
 - **Walk Management:**  
   - CRUD operations for curated walking adventures (e.g., "Smuggler's Secrets Coast")
   - Filtering by difficulty, duration, and features
+  - **Alignment with LO2 & LO7:** Demonstrates the ability to develop and implement a data model and use object-based software concepts.
 
 - **User Features:**  
   - User registration, login, and profile management  
   - Favorites, achievement tracking, badges, and leveling system
+  - **Alignment with LO3:** Demonstrates the ability to implement and configure authorization, authentication, and permission features.
 
 - **Gamification:**  
   - Adventure challenges and time-limited events with exclusive rewards
@@ -143,11 +145,16 @@ walkquest/
 - **Map Integration:**  
   - Mapbox integration for route visualization (configured via Django settings)
 
+- **Agile Methodology (LO1):**
+  - Utilizing an Agile tool to plan and track all major functionality.
+  - Documenting and implementing user stories, linking them to project goals within an agile tool.
+
 ## 6. Testing and Deployment
 
 **Testing:**
 - Unit tests for models and API endpoints (walkquest/conftest.py)
 - Integration tests for user authentication and data retrieval
+- **Alignment with LO4:** Demonstrates the ability to design, create, and execute manual or automated tests.
 
 **Deployment:**
 - **Production Environment Setup:**  
@@ -156,6 +163,7 @@ walkquest/
 - **Scaling:**  
   - Redis for caching  
   - Celery for background task processing
+- **Alignment with LO6:** Demonstrates the ability to deploy the application to a cloud-based platform, ensuring proper functionality and security.
 
 ## 7. Future Enhancements
 
@@ -169,7 +177,11 @@ walkquest/
   - User-generated content and enhanced social sharing  
   - Advanced gamification with leaderboards
 
+- **Enhanced Testing and Documentation (LO4 & LO5):**
+  - Implementing more comprehensive testing procedures.
+  - Improving documentation of the codebase and development process.
+  - Ensuring secure code management practices.
+
 ---
 
 This brief focuses on the technical aspects of the project using Django, Django Ninja, and Vue.js. For further details or adjustments, please review the related source files such as api.py and WalkInterface.vue.
-```

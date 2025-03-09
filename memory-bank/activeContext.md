@@ -2,6 +2,11 @@
 
 ## Current Focus
 
+### Learning Outcomes and Assessment Criteria Alignment
+
+- Aligning project tasks and priorities with the learning outcomes and assessment criteria defined in `criteria.md`.
+- Ensuring that the project demonstrates proficiency in Agile methodology, full-stack web application development, data modeling, authorization, authentication, testing, version control, and deployment.
+
 ### Vue.js Component Error Investigation - CRITICAL ISSUE 🔴
 - Recurring errors in component hierarchy affecting multiple components
 - Unhandled errors during component update and setup function execution

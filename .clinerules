@@ -28,3 +28,11 @@
 - Format with both Prettier (frontend) and Ruff (backend)
 - Always document store pattern changes
 - All new features need corresponding tests
+
+# Current Priorities
+- **CRITICAL:** Resolve Vue.js component errors (AccountCircle, AuthModal, SearchHeader, WalkInterface, RouterView)
+- **CRITICAL:** Fix DynamicScroller implementation in WalkList.vue
+- **HIGH:** Address dependency injection issues (improper inject() usage)
+- **HIGH:** Improve testing coverage (component errors, lifecycle, DI, virtual list)
+- **MEDIUM:** Update documentation (error debugging, DI, error handling, virtual list)
+- **MANDATORY:** Align all development with learning outcomes in criteria.md

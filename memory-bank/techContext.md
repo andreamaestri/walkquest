@@ -114,6 +114,7 @@
 - PostgreSQL with PostGIS extension
 - Redis (for production caching)
 - Development tools (VSCode recommended)
+- Agile project management tool (e.g., Jira, Trello) for LO1
 
 ### Local Setup Steps
 1. **Clone and Environment**
