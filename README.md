@@ -846,11 +846,75 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Map integration: Modified from Mapbox examples
 - Virtual list: Modified from vue-virtual-scroller
 
-### Content & Media
-- Historical content: Cornwall Historical Society
-- Walking routes: Local experts and guides
-- Icons: Iconify
-- Custom illustrations: DALL-E generated
+### Content & Media Attribution
+
+#### Historical Content
+- **Cornwall Historical Society**
+  - Historical site information and descriptions
+  - Local folklore and cultural narratives
+  - Heritage site documentation
+  - License: CC BY-SA 4.0
+
+#### Route & Trail Data
+- **Local Experts & Guides**
+  - Curated walking routes
+  - Trail safety information
+  - Local knowledge and insights
+  - Custom content agreement in place
+
+- **Cornwall Council**
+  - Public Rights of Way data
+  - Trail accessibility information
+  - Open Government License v3.0
+
+#### Visual Assets & Animations
+- **Icon System**
+  - [Iconify](https://iconify.design/) - MIT License
+  - Custom SVG icons - Original work
+  - Tailwind UI components - Licensed
+  - Component-specific icons - Original work
+
+- **Animations & Transitions**
+  - Custom spring animations:
+    - 'float': Smooth floating effect
+    - 'bounce-spring': Spring-based bouncing
+    - 'pulse-scale': Subtle pulsing effect
+    - 'rotate-spring': Rotating with spring physics
+    - 'slide-up': Smooth entry animation
+    - 'morph': Shape-morphing effect
+    - 'wiggle': Playful wiggle animation
+    - 'scale': Scale in/out effect
+  - Custom timing functions:
+    - spring-light
+    - spring-regular
+    - spring-heavy
+  - Transition durations:
+    - quick
+    - normal
+    - slow
+
+- **Background Effects**
+  - Gradient systems:
+    - gradient-radial
+    - gradient-morphing
+  - All animations and effects original work
+
+#### Map Resources
+- **Mapbox**
+  - Base maps and tiles - Commercial license
+  - Custom style modifications - Original work
+
+- **OpenStreetMap Data**
+  - Geographical base data
+  - Point of interest information
+  - ODbL License v1.0
+
+#### Documentation
+- **Trail Guides**
+  - Safety instructions - Original work
+  - Route descriptions - Original work
+  - Historical context - CC BY-SA 4.0
+  - Technical documentation - MIT License
 
 This README provides a clear distinction between:
 - Custom-built features
