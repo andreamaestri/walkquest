@@ -227,7 +227,11 @@ export const useAuthStore = defineStore('auth', {
 
               // Show initial welcome message if not shown yet
               if (!this.hasShownWelcome) {
-                this.showSnackbar("Welcome to WalkQuest!");
+                const username = this.user.username || '';
+                const welcomeMessage = username 
+                  ? `Welcome to WalkQuest, ${username}!` 
+                  : "Welcome to WalkQuest!";
+                this.showSnackbar(welcomeMessage);
                 this.hasShownWelcome = true;
               }
 

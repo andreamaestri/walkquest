@@ -389,7 +389,8 @@ defineExpose({
   position: absolute;
   right: 16px;
   left: auto;
-  top: 55%;
+  top: 50%;
+  bottom: auto;
   transform: translateY(-50%);
   z-index: 3;
   margin-left: 8px;

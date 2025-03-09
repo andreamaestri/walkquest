@@ -52,7 +52,7 @@ def user_logged_in_handler(sender, request, user, **kwargs):
     """Handle user login signal"""
     user_display = settings.ACCOUNT_USER_DISPLAY(user)
     new_user = not getattr(user, "has_visited", False)
-    message = "Welcome to WalkQuest!" if new_user else f"Welcome back, {user_display}!"
+    message = f"Welcome to WalkQuest! {user_display}" if new_user else f"Welcome back, {user_display}!"
     
     push_auth_state_to_frontend(
         request,

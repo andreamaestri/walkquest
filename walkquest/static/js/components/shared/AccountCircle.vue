@@ -224,6 +224,10 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.m3-icon-button  {  
+  left: 0!important;
+}
+
 .account-circle-container {
   position: relative;
   display: inline-flex;
@@ -278,7 +282,7 @@ onUnmounted(() => {
 
 .account-circle-button.mobile:hover,
 .account-circle-button.mobile:focus-visible {
-  background-color: rgb(var(--md-sys-color-primary));
+  scale: 1.25;
 }
 
 .account-icon {
@@ -309,9 +313,8 @@ onUnmounted(() => {
   position: relative;
   width: 34px;
   height: 34px;
-  min-width: 34px;
-  min-height: 34px;
   border-radius: 50%;
+  margin-bottom: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -321,6 +324,7 @@ onUnmounted(() => {
   user-select: none;
   overflow: hidden; /* Prevent content from overflowing */
   flex-shrink: 0; /* Prevent the circle from shrinking */
+  box-shadow: var(--md-sys-elevation-2);
 }
 
 .avatar-initials {
@@ -349,6 +353,11 @@ onUnmounted(() => {
 
 .account-circle-button.mobile .state-layer.hovered {
   background-color: rgb(var(--md-sys-color-on-surface) / 0.08);
+}
+
+.search-wrapper:not(.search-active) .desktop-avatar {
+  top: 55%!important;
+  bottom: auto!important;
 }
 
 .state-layer.focused {
