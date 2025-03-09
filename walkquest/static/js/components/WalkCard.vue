@@ -9,7 +9,13 @@
   >
     <div class="walk-content">
       <div class="walk-info">
-        <h3 class="walk-title">{{ walk.walk_name || walk.title }}</h3>
+        <div class="title-row">
+          <h3 class="walk-title">{{ walk.walk_name || walk.title }}</h3>
+          <div class="favorite-icon" @click.stop="handleFavorite">
+            <Icon :icon="walk.is_favorite ? 'material-symbols:star-rounded' : 'material-symbols:star-outline-rounded'" 
+                  :class="{'is-favorite': walk.is_favorite, 'is-pending': isPendingFavorite}" />
+          </div>
+        </div>
       </div>
       
       <div class="walk-details">
@@ -205,12 +211,43 @@ const getCategoryStyle = (cat) => {
   margin-bottom: 12px;
 }
 
+.title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
 .walk-title {
+  flex-grow: 1;
+  margin-right: 8px;
   font-size: 1rem;
   font-weight: 500;
   color: rgb(var(--md-sys-color-on-surface));
   margin: 0 0 4px 0;
   line-height: 1.5;
+}
+
+.favorite-icon {
+  font-size: 1.5rem;
+  color: rgb(var(--md-sys-color-outline));
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+}
+
+.favorite-icon .is-favorite {
+  color: rgb(var(--md-sys-color-primary));
+}
+
+.favorite-icon .is-pending {
+  opacity: 0.6;
+}
+
+.favorite-icon:hover {
+  transform: scale(1.1);
 }
 
 .walk-meta {
@@ -385,6 +422,11 @@ const getCategoryStyle = (cat) => {
   .walk-card:hover::before,
   .walk-card:active::before {
     opacity: 1;
+  }
+
+  .favorite-icon {
+    font-size: 1.75rem;
+    padding: 8px;
   }
 }
 </style>
