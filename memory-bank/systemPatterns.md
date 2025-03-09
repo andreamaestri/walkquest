@@ -3,6 +3,32 @@
 ## Architecture
 WalkQuest follows a Model-View-Template (MVT) architecture on the backend with Django, and a component-based architecture on the frontend with Vue.js. The system is designed for scalability, maintainability, and performance.
 
+### Project Structure Attribution
+1. **Cookiecutter Django Foundation**
+   - Basic project structure and configuration
+   - User authentication boilerplate
+   - Settings configuration
+   - Development tools setup
+   - Django core apps integration
+
+2. **Custom Implementation**
+   - Adventure/Walk tracking system
+   - Gamification mechanics
+   - Custom user profile extensions
+   - Frontend Vue.js components
+   - Map integration
+   - Virtual scrolling implementation
+   - Achievement system
+
+3. **Third-Party Integrations**
+   - Django Framework base functionality
+   - Vue.js 3 frontend framework
+   - Mapbox GL JS map functionality
+   - Tailwind CSS styling
+   - iconify-prerendered icons
+   - Vue Virtual Scroller (modified)
+   - Motion animations
+
 ## Key Technical Decisions
 
 ### Backend Architecture
