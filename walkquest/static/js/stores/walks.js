@@ -50,16 +50,23 @@ export const useWalksStore = defineStore('walks', {
 
     async toggleFavorite(walkId) {
       if (this.pendingFavorites.has(walkId)) return;
-
+      
+      const uiStore = useUiStore();
       this.pendingFavorites.add(walkId);
+      
       try {
         const walk = this.walks.find(w => w.id === walkId);
         if (!walk) throw new Error('Walk not found');
 
         const result = await WalksAPI.toggleFavorite(walkId);
         walk.is_favorite = result.is_favorite;
+        
+        // Show success message
+        const action = walk.is_favorite ? 'added to' : 'removed from';
+        uiStore.showSnackbar(`${walk.walk_name} ${action} favorites`);
       } catch (error) {
         console.error('Error toggling favorite:', error);
+        uiStore.showSnackbar('Failed to update favorite', 'error');
         throw error;
       } finally {
         this.pendingFavorites.delete(walkId);

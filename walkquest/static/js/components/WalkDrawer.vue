@@ -22,7 +22,7 @@
           :walk="walk"
           :isMobile="isMobile"
           @start-walk="handleStartWalkClick"
-          @save-walk="() => {}"
+          @save-walk="handleFavoriteToggle"
           @share="handleShare"
           @directions="() => {}"
           @recenter="handleRecenter"
@@ -64,8 +64,9 @@ const props = defineProps({
 
 const emit = defineEmits(["close", "start-walk", "loading-change", "category-selected", "recenter"]);
 
-// Get UI store
+// Get stores
 const uiStore = useUiStore();
+const walksStore = useWalksStore();
 
 // Component refs
 const drawerRef = ref(null);
@@ -89,7 +90,6 @@ const {
 } = useDrawerAnimations();
 
 const router = useRouter();
-const walksStore = useWalksStore();
 
 // Watch for walk changes to handle transitions
 watch(
@@ -300,6 +300,15 @@ function handleShare() {
 
 function handleRecenter() {
   emit('recenter');
+}
+
+// Add the new handler function
+async function handleFavoriteToggle(walk) {
+  try {
+    await walksStore.toggleFavorite(walk.id);
+  } catch (error) {
+    console.error('Error toggling favorite:', error);
+  }
 }
 
 // Clean up animations and observers when component is unmounted

@@ -32,6 +32,9 @@ export const useUiStore = defineStore('ui', () => {
   // Actions
   const setError = (message) => {
     error.value = message;
+    if (message) {
+      showSnackbar(message, 'error');
+    }
   };
 
   const setLoading = (value) => {
@@ -99,6 +102,18 @@ export const useUiStore = defineStore('ui', () => {
     return () => window.removeEventListener('resize', checkMobile);
   };
 
+  // Add showSnackbar method
+  const showSnackbar = (message, type = 'info') => {
+    if (!message) return;
+    
+    let formattedMessage = message;
+    if (type === 'error') {
+      formattedMessage = `Error: ${message}`;
+    }
+    
+    snackbar.show(formattedMessage);
+  };
+
   // Replace toast with snackbar
   const showToast = (message) => {
     snackbar.showMessage(message);
@@ -129,6 +144,7 @@ export const useUiStore = defineStore('ui', () => {
     handleWalkClosed,
     toggleSidebar,
     initializeResponsiveState,
+    showSnackbar,
     showToast
   };
 });

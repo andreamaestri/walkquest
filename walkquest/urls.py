@@ -18,6 +18,9 @@ urlpatterns = [
     # API routes - user-specific endpoints
     path("api/users/", include("walkquest.users.urls", namespace="users")),
     path('api/user/', UserAPI.as_view(), name='user_api'),
+    
+    # Walks app URLs
+    path("", include("walkquest.walks.urls", namespace="walks")),
 
     # Authentication URLs - for login, logout, signup
     path("accounts/", include("allauth.urls")),

@@ -44,6 +44,7 @@ import BottomSheet from '@douxcode/vue-spring-bottom-sheet'
 import WalkDrawerHeader from './shared/WalkDrawerHeader.vue';
 import WalkDrawerContent from './shared/WalkDrawerContent.vue';
 import { useAdventureDialogStore } from '../stores/adventureDialog';
+import { useWalksStore } from '../stores/walks';
 
 const props = defineProps({
   walk: {
@@ -57,6 +58,8 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['update:modelValue', 'close', 'start-walk', 'save-walk', 'directions', 'category-selected', 'recenter']);
+
+const walksStore = useWalksStore();
 
 const bottomSheetRef = ref(null);
 const isOpen = ref(props.modelValue);
@@ -196,8 +199,44 @@ function handleStartWalk() {
   adventureDialogStore.openDialog(props.walk);
 }
 
-function handleSaveWalk() {
-  emit('save-walk');
+async function handleSaveWalk(walk) {
+  try {
+    await walksStore.toggleFavorite(walk.id);
+  } catch (error) {
+    console.error('Error toggling favorite:', error);
+  }
+}
+
+function getCSRFToken() {
+  // Try cookie first (Django's default approach)
+  let token = getCSRFCookie();
+  
+  // If not in cookie, try meta tag
+  if (!token) {
+    const metaTag = document.querySelector('meta[name="csrf-token"]');
+    token = metaTag?.getAttribute('content');
+  }
+  
+  // If still not found, try the X-CSRFToken header
+  if (!token) {
+    token = document.querySelector('meta[name="X-CSRFToken"]')?.getAttribute('content');
+  }
+  
+  return token;
+}
+
+function getCSRFCookie() {
+  const name = 'csrftoken=';
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+      cookie = cookie.trim();
+      if (cookie.startsWith(name)) {
+        return cookie.substring(name.length);
+      }
+    }
+  }
+  return null;
 }
 
 function handleCategorySelected(category) {

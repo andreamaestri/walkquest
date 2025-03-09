@@ -13,6 +13,7 @@ const cancelActiveRequest = (endpoint) => {
   }
 };
 
+// Create ky instance with common configuration
 const api = ky.create({
   prefixUrl: '/api',
   headers: {
@@ -21,7 +22,7 @@ const api = ky.create({
   },
   hooks: {
     beforeRequest: [
-      (request) => {
+      (request, options) => {
         console.log('Request URL:', request.url);
         
         // Get normalized endpoint for tracking
@@ -34,8 +35,8 @@ const api = ky.create({
         const controller = new AbortController();
         activeRequests.set(endpoint, controller);
         
-        // Attach signal to this request
-        request.signal = controller.signal;
+        // Set signal in options instead of on request
+        options.signal = controller.signal;
       }
     ],
     afterResponse: [
@@ -84,78 +85,31 @@ const normalizeWalkData = (data) => {
 };
 
 // API Methods
-const filterWalks = async (params = {}, signal) => {
+const filterWalks = async (params = {}) => {
   try {
-    // Create a request-specific controller if none provided
-    const controller = signal ? null : new AbortController();
-    const requestSignal = signal || controller?.signal;
-    
-    // Determine endpoint for tracking
     const endpoint = params.latitude && params.longitude ? 'walks/nearby' : 'walks';
-    
-    // Track this request for potential cancellation
-    if (controller) {
-      cancelActiveRequest(endpoint);
-      activeRequests.set(endpoint, controller);
-    }
     
     // If location parameters are provided, use the nearby endpoint
     if (params.latitude && params.longitude) {
-      const searchParams = new URLSearchParams({
+      const searchParams = {
         latitude: params.latitude,
         longitude: params.longitude,
         radius: params.radius || 5000,
         limit: params.limit || 50
-      });
+      };
       
-      const response = await fetch(`/api/walks/nearby?${searchParams}`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value
-        },
-        signal: requestSignal
-      });
-
-      // Clean up on completion
-      if (controller) {
-        activeRequests.delete(endpoint);
-      }
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
+      const data = await api.get('walks/nearby', { searchParams }).json();
       return normalizeWalkData(data);
     }
     
     // Otherwise use the standard filtering endpoint
-    const searchParams = new URLSearchParams();
-    if (params.search) searchParams.append('search', params.search);
+    const searchParams = {};
+    if (params.search) searchParams.search = params.search;
     if (params.categories?.length) {
-      searchParams.append('categories', params.categories.join(','));
+      searchParams.categories = params.categories.join(',');
     }
     
-    const response = await fetch(`/api/walks${searchParams.toString() ? '?' + searchParams.toString() : ''}`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value
-      },
-      signal: requestSignal
-    });
-
-    // Clean up on completion
-    if (controller) {
-      activeRequests.delete(endpoint);
-    }
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
+    const data = await api.get('walks', { searchParams }).json();
     return normalizeWalkData(data);
   } catch (error) {
     // Don't report aborted requests as errors
@@ -168,37 +122,12 @@ const filterWalks = async (params = {}, signal) => {
   }
 };
 
-const search = async (query, signal) => {
+const search = async (query) => {
   try {
-    // Create a request-specific controller if none provided
-    const controller = signal ? null : new AbortController();
-    const requestSignal = signal || controller?.signal;
+    const data = await api.get('walks/search', {
+      searchParams: { q: query }
+    }).json();
     
-    // Track this request for potential cancellation
-    const endpoint = 'walks/search';
-    if (controller) {
-      cancelActiveRequest(endpoint);
-      activeRequests.set(endpoint, controller);
-    }
-    
-    const response = await fetch(`/api/walks/search?q=${encodeURIComponent(query)}`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json'
-      },
-      signal: requestSignal
-    });
-    
-    // Clean up on completion
-    if (controller) {
-      activeRequests.delete(endpoint);
-    }
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
     return { walks: normalizeWalkData(data) };
   } catch (error) {
     // Don't report aborted requests as errors
@@ -225,37 +154,10 @@ const filter = async (categories) => {
   }
 };
 
-const getGeometry = async (walkId, signal) => {
+const getGeometry = async (walkId) => {
   try {
-    // Create a request-specific controller if none provided
-    const controller = signal ? null : new AbortController();
-    const requestSignal = signal || controller?.signal;
-    
-    // Track this request for potential cancellation
-    const endpoint = `walks/${walkId}/geometry`;
-    if (controller) {
-      cancelActiveRequest(endpoint);
-      activeRequests.set(endpoint, controller);
-    }
-    
-    const response = await fetch(`/api/walks/${walkId}/geometry`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json'
-      },
-      signal: requestSignal
-    });
-    
-    // Clean up on completion
-    if (controller) {
-      activeRequests.delete(endpoint);
-    }
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    return await response.json();
+    const data = await api.get(`walks/${walkId}/geometry`).json();
+    return data;
   } catch (error) {
     // Don't report aborted requests as errors
     if (error.name === 'AbortError') {
@@ -277,6 +179,24 @@ const getFeatures = async () => {
   }
 };
 
+const toggleFavorite = async (walkId) => {
+  try {
+    const response = await api.post(`walks/${walkId}/favorite`).json();
+    
+    if (response.status !== 'success') {
+      throw new Error(response.message || 'Failed to toggle favorite');
+    }
+    
+    return {
+      walkId: response.walk_id,
+      is_favorite: response.is_favorite
+    };
+  } catch (error) {
+    console.error('Failed to toggle favorite:', error);
+    throw error;
+  }
+};
+
 // Export the utility function for component usage
 export const cancelRequest = cancelActiveRequest;
 
@@ -295,7 +215,8 @@ export {
   search,
   filter,
   getGeometry,
-  getFeatures
+  getFeatures,
+  toggleFavorite
 }
 
 // Export the API object
@@ -305,6 +226,7 @@ export const WalksAPI = {
   filter,
   getGeometry,
   getFeatures,
+  toggleFavorite,
   cancelRequest,
   cancelAllRequests
 }

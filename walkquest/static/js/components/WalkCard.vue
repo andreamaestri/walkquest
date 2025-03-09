@@ -45,7 +45,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useWalksStore } from '../stores/walks'
-import { getBadgeInfo } from '../utils/helpers'
+import { getBadgeInfo, normalizeLevel } from '../utils/helpers'
 import { Icon } from '@iconify/vue' 
 const props = defineProps({
   walk: {
@@ -85,17 +85,34 @@ const formatDuration = (duration) => {
   return `${duration} min`
 }
 
+const getDifficultyLevel = (steepnessLevel) => {
+  const normalizedLevel = normalizeLevel(steepnessLevel || 'NOVICE WANDERER');
+
+  if (normalizedLevel === "NOVICE WANDERER") return 'easy';
+  if (normalizedLevel === "GREY'S PATHFINDER" || normalizedLevel === "TRAIL RANGER") return 'medium';
+  if (normalizedLevel === "TRAIL RANGER") return 'medium';
+  if (normalizedLevel === "WARDEN'S ASCENT" || normalizedLevel === "MASTER WAYFARER") return 'hard';
+  if (normalizedLevel === "MASTER WAYFARER") return 'hard';
+
+  // Simplified fallback detection using fewer keywords
+  const difficulty = (steepnessLevel || 'easy').toLowerCase();
+  if (difficulty.includes('novice')) return 'easy';
+  if (difficulty.includes('pathfinder') || difficulty.includes('ranger')) return 'medium';
+  if (difficulty.includes('ascend') || difficulty.includes('master')) return 'hard';
+
+  return 'easy';
+}
+
 const difficultyClass = computed(() => {
-  const difficulty = props.walk.difficulty?.toLowerCase() || 'easy'
-  return {
-    'easy': difficulty.includes('easy'),
-    'medium': difficulty.includes('medium') || difficulty.includes('moderate'),
-    'hard': difficulty.includes('hard') || difficulty.includes('challenging')
-  }
+  const steepnessLevel = props.walk.steepness_level || props.walk.difficulty;
+  return getDifficultyLevel(steepnessLevel);
 })
 
 const difficultyText = computed(() => {
-  return props.walk.difficulty || 'Easy'
+  const steepnessLevel = props.walk.steepness_level || props.walk.difficulty;
+  const level = getDifficultyLevel(steepnessLevel);
+  // Capitalize first letter for display
+  return level.charAt(0).toUpperCase() + level.slice(1);
 })
 
 const firstCategories = computed(() => {

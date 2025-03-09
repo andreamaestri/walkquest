@@ -31,13 +31,14 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.contrib.gis.geos import GEOSGeometry
 from django.db.models import Count
 from django.db.models import QuerySet
-from django.http import HttpResponse, Http404
-from django.http import JsonResponse
+from django.http import HttpResponse, Http404, JsonResponse
+from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.cache import cache_page
 from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.http import require_POST
 from django.views.generic import ListView
 from tagulous.models.tagged import TaggedManager
 from tagulous.views import autocomplete
@@ -176,6 +177,7 @@ class HomePageView(ListView):
                 "has_bus_access": bool(walk.has_bus_access),
                 "has_stiles": bool(walk.has_stiles),
                 "created_at": walk.created_at.isoformat() if walk.created_at else None,
+                "is_favorite": walk.is_favorite_of(self.request.user)
             }
         except Exception as e:
             logger.exception(f"Walk serialization error for walk ID {walk.id}: {str(e)}")
@@ -540,3 +542,32 @@ class WalkGeometryView(View):
                 content_type=self.CONTENT_TYPE,
                 status=500,
             )
+
+
+@require_POST
+@csrf_protect
+def toggle_favorite(request, walk_id):
+    """Toggle a walk as favorite for the current user."""
+    if not request.user.is_authenticated:
+        return JsonResponse({"error": "Authentication required"}, status=401)
+    
+    walk = get_object_or_404(Walk, id=walk_id)
+    
+    # Check if the walk is already favorited
+    is_favorite = walk.is_favorite_of(request.user)
+    
+    # Toggle the favorite status
+    if is_favorite:
+        walk.favorites.remove(request.user)
+        is_favorite = False
+    else:
+        walk.favorites.add(request.user)
+        is_favorite = True
+    
+    # Return updated walk data
+    return JsonResponse({
+        "id": str(walk.id),
+        "walk_id": walk.walk_id,
+        "walk_name": walk.walk_name,
+        "is_favorite": is_favorite
+    })
