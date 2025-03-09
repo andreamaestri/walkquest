@@ -15,7 +15,9 @@ export const useAuthStore = defineStore('auth', {
     signupError: null,
     initialized: false,
     userDataLoaded: false,
-    authChangeListener: null
+    authChangeListener: null,
+    hasShownWelcome: false,
+    processedMessages: new Set()
   }),
   
   getters: {
@@ -222,6 +224,15 @@ export const useAuthStore = defineStore('auth', {
               this.user = data.user;
               this.isAuthenticated = true;
               this.userDataLoaded = true;
+
+              // Show initial welcome message if not shown yet
+              if (!this.hasShownWelcome) {
+                this.showSnackbar("Welcome to WalkQuest!");
+                this.hasShownWelcome = true;
+              }
+
+              // Process any pending messages
+              this.processDjangoMessages();
               return true;
             }
             
@@ -273,7 +284,11 @@ export const useAuthStore = defineStore('auth', {
       if (event.detail?.is_authenticated) {
         this.user = event.detail.user;
         this.isAuthenticated = true;
-        this.showSnackbar(`Welcome back, ${event.detail.user.username || event.detail.user.email}!`);
+        
+        // Process any messages in the event
+        if (event.detail.message) {
+          this.showSnackbar(event.detail.message);
+        }
       } else {
         this.user = null;
         this.isAuthenticated = false;
@@ -283,19 +298,33 @@ export const useAuthStore = defineStore('auth', {
       }
     },
     
-    showSnackbar(message) {
+    showSnackbar(message, tags = '') {
+      // Don't show duplicate messages
+      const messageKey = `${message}-${Date.now()}`;
+      if (this.processedMessages.has(messageKey)) return;
+      
       const snackbar = useSnackbar();
       snackbar.show(message);
+      
+      // Add to processed messages with timestamp
+      this.processedMessages.add(messageKey);
+      
+      // Clean up old messages after 5 seconds
+      setTimeout(() => {
+        this.processedMessages.delete(messageKey);
+      }, 5000);
     },
     
     processDjangoMessages() {
       if (window.djangoMessages?.messages) {
-        for (const message of window.djangoMessages.messages) {
-          if (message.tags.includes('md-snackbar')) {
-            this.showSnackbar(message.message);
+        const messages = window.djangoMessages.messages;
+        window.djangoMessages.messages = []; // Clear immediately to prevent duplicates
+        
+        for (const message of messages) {
+          if (message.tags?.includes('md-snackbar')) {
+            this.showSnackbar(message.message, message.tags);
           }
         }
-        window.djangoMessages.messages = [];
       }
     },
     
@@ -354,6 +383,7 @@ export const useAuthStore = defineStore('auth', {
     cleanup() {
       this.stopPolling();
       this.removeAuthChangeListener();
+      this.processedMessages.clear();
     }
   }
 });

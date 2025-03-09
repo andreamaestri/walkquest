@@ -10,44 +10,22 @@ export const URLs = Object.freeze({
   LOGOUT: '/accounts/logout/',
   SIGNUP: '/accounts/signup/',
   SESSION: '/users/api/auth-events/',
-  VERIFY_EMAIL: '/accounts/confirm-email/',
+  VERIFY_EMAIL: '/accounts/email/verify/',
   PASSWORD_RESET: '/accounts/password/reset/',
   CHANGE_PASSWORD: '/accounts/password/change/',
   EMAIL: '/accounts/email/',
-  PROVIDERS: '/accounts/3rdparty/',
+  PROVIDERS: '/accounts/social/providers/',
 });
 
 // Get CSRF token from cookies or meta tag
 function getCsrfToken() {
-  let cookieValue = null;
-  if (document.cookie && document.cookie !== '') {
-    const cookies = document.cookie.split(';');
-    for (let i = 0; i < cookies.length; i++) {
-      const cookie = cookies[i].trim();
-      if (cookie.substring(0, 'csrftoken'.length + 1) === ('csrftoken=')) {
-        cookieValue = decodeURIComponent(cookie.substring('csrftoken'.length + 1));
-        break;
-      }
-    }
+  const name = 'csrftoken=';
+  let token = document.cookie.split(';').find(c => c.trim().startsWith(name));
+  if (token) {
+    return token.substring(name.length + 1);
   }
-  
-  // If not found in cookie, try meta tag
-  if (!cookieValue) {
-    const metaToken = document.querySelector('meta[name="csrf-token"]');
-    if (metaToken) {
-      cookieValue = metaToken.getAttribute('content');
-    }
-  }
-  
-  // If still not found, try hidden input field
-  if (!cookieValue) {
-    const inputToken = document.querySelector('input[name="csrfmiddlewaretoken"]');
-    if (inputToken) {
-      cookieValue = inputToken.value;
-    }
-  }
-  
-  return cookieValue;
+  const metaToken = document.querySelector('meta[name="csrf-token"]');
+  return metaToken ? metaToken.getAttribute('content') : null;
 }
 
 // Make a request to the allauth API
@@ -57,19 +35,18 @@ async function request(method, path, data) {
     headers: {
       'Accept': 'application/json',
       'X-CSRFToken': getCsrfToken(),
+      'X-Requested-With': 'XMLHttpRequest'
     },
     credentials: 'same-origin'
   };
 
   if (data) {
-    // Convert data to FormData for traditional form submission
-    if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
-      const formData = new FormData();
-      for (const [key, value] of Object.entries(data)) {
-        formData.append(key, value);
-      }
-      options.body = formData;
+    if (method === 'GET') {
+      // Add query params for GET requests
+      const params = new URLSearchParams(data);
+      path = `${path}?${params}`;
     } else {
+      // Add body for non-GET requests
       options.body = JSON.stringify(data);
       options.headers['Content-Type'] = 'application/json';
     }
@@ -93,174 +70,77 @@ async function request(method, path, data) {
     if (contentType && contentType.includes('application/json')) {
       const result = await response.json();
       
+      // If there are messages, they will be in window.djangoMessages
+      // The auth store will handle showing them via snackbar
+
       // Dispatch auth change event if authentication state changed
       if (response.status === 401 || 
           response.status === 410 || 
           (response.status === 200 && result.meta?.is_authenticated !== undefined)) {
-        const event = new CustomEvent('allauth.auth.change', { detail: result });
+        const event = new CustomEvent('allauth.auth.change', { 
+          detail: {
+            ...result,
+            statusCode: response.status
+          }
+        });
         document.dispatchEvent(event);
       }
       
-      return result;
+      return {
+        ...result,
+        status: response.status
+      };
     } else {
-      // Handle HTML responses
+      // For non-JSON responses, check for Django messages in the HTML
       const text = await response.text();
-      if (response.redirected) {
-        // Follow redirect for successful login/signup
-        window.location.href = response.url;
-        return { status: response.status };
-      }
       
-      // Parse error messages from HTML response
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(text, 'text/html');
-      const errorMessages = doc.querySelectorAll('.alert-error, .errorlist li');
-      const errors = Array.from(errorMessages).map(el => el.textContent);
-      
+      // Simple success response with status
       return {
         status: response.status,
-        message: errors.join('. ') || 'An error occurred',
-        errors: {}
+        message: response.ok ? 'Operation successful' : 'Operation failed',
+        html: text
       };
     }
   } catch (error) {
     console.error('API request error:', error);
+    // Ensure errors are also shown in snackbar via auth store
     return {
       status: 500,
-      message: 'Failed to connect to server',
-      errors: {}
+      message: error.message || 'Failed to connect to server',
+      error: true
     };
   }
 }
 
 // Login with email and password
-export async function login(email, password, remember = false) {
-  try {
-    // Get CSRF token
-    const csrfToken = getCsrfToken();
-    
-    const formData = new FormData();
-    formData.append('login', email);
-    formData.append('password', password);
-    if (remember) {
-      formData.append('remember', 'on');
-    }
-    
-    const response = await fetch('/accounts/login/', {
-      method: 'POST',
-      headers: {
-        'X-CSRFToken': csrfToken,
-        'X-Requested-With': 'XMLHttpRequest',
-      },
-      credentials: 'same-origin',
-      body: formData,
-    });
-    
-    if (!response.ok) {
-      const contentType = response.headers.get("content-type");
-      if (contentType && contentType.includes("application/json")) {
-        const errorData = await response.json();
-        throw errorData;
-      }
-      throw new Error(`Login failed: ${response.status}`);
-    }
-    
-    const contentType = response.headers.get("content-type");
-    if (contentType && contentType.includes("application/json")) {
-      return await response.json();
-    }
-    
-    return { status: response.status };
-  } catch (error) {
-    console.error('Login error:', error);
-    throw error;
-  }
+export async function login(data) {
+  // Django's default login form expects 'login' for the email/username field
+  const loginData = {
+    login: data.email,
+    password: data.password
+  };
+  return await request('POST', URLs.LOGIN, loginData);
 }
 
 // Signup with email and password
-export async function signUp(email, password1, password2) {
-  try {
-    const csrfToken = getCsrfToken();
-    
-    const response = await fetch('/accounts/signup/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'X-CSRFToken': csrfToken,
-        'X-Requested-With': 'XMLHttpRequest',
-      },
-      credentials: 'same-origin',
-      body: JSON.stringify({
-        email,
-        password1,
-        password2
-      }),
-    });
-    
-    if (!response.ok) {
-      const contentType = response.headers.get("content-type");
-      if (contentType && contentType.includes("application/json")) {
-        const errorData = await response.json();
-        throw errorData;
-      }
-      throw new Error(`Signup failed: ${response.status}`);
-    }
-    
-    const contentType = response.headers.get("content-type");
-    if (contentType && contentType.includes("application/json")) {
-      return await response.json();
-    }
-    
-    return { status: response.status };
-  } catch (error) {
-    console.error('Signup error:', error);
-    throw error;
-  }
+export async function signUp(data) {
+  // Django's default signup form expects 'email', 'password1', and 'password2'
+  const signupData = {
+    email: data.email,
+    password1: data.password,
+    password2: data.password
+  };
+  return await request('POST', URLs.SIGNUP, signupData);
 }
 
 // Logout the current user
 export async function logout() {
-  try {
-    const csrfToken = getCsrfToken();
-    
-    const response = await fetch('/accounts/logout/', {
-      method: 'POST',
-      headers: {
-        'X-CSRFToken': csrfToken,
-        'X-Requested-With': 'XMLHttpRequest',
-      },
-      credentials: 'same-origin',
-    });
-    
-    return { status: response.status };
-  } catch (error) {
-    console.error('Logout error:', error);
-    throw error;
-  }
+  return await request('POST', URLs.LOGOUT);
 }
 
 // Get current authentication state
 export async function getAuth() {
-  try {
-    const response = await fetch('/api/auth/user/', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      credentials: 'same-origin',
-    });
-
-    if (!response.ok) {
-      throw new Error(`Authentication check failed: ${response.status}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Authentication check error:', error);
-    return { is_authenticated: false };
-  }
+  return await request('GET', URLs.SESSION);
 }
 
 // Get configuration information

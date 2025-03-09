@@ -5,6 +5,7 @@
 
 // Global reference that will be set when the snackbar component is mounted
 let snackbarInstance = null;
+let messageQueue = [];
 
 /**
  * Register the snackbar instance
@@ -12,6 +13,13 @@ let snackbarInstance = null;
  */
 export function registerSnackbar(instance) {
   snackbarInstance = instance;
+  // Process any queued messages
+  if (messageQueue.length > 0) {
+    messageQueue.forEach(message => {
+      snackbarInstance.showMessage(message);
+    });
+    messageQueue = [];
+  }
 }
 
 /**
@@ -28,7 +36,9 @@ export function useSnackbar() {
       // Direct component call if instance is available
       snackbarInstance.showMessage(message);
     } else {
-      // Fallback to custom event approach
+      // Queue the message if instance not available yet
+      messageQueue.push(message);
+      // Also dispatch event as fallback
       window.dispatchEvent(
         new CustomEvent('snackbar-show', {
           detail: { message }

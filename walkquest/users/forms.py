@@ -1,4 +1,4 @@
-from allauth.account.forms import SignupForm
+from allauth.account.forms import SignupForm, ResetPasswordForm, LoginForm
 from allauth.socialaccount.forms import SignupForm as SocialSignupForm
 from django.contrib.auth import forms as admin_forms
 from django.utils.translation import gettext_lazy as _
@@ -47,6 +47,24 @@ class UserSignupForm(SignupForm):
         user.name = self.cleaned_data.get('name', '')
         user.save()
         return user
+
+
+class UserLoginForm(LoginForm):
+    """
+    Custom login form that extends the default allauth LoginForm.
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Customize form fields
+        for field_name, field in self.fields.items():
+            field.widget.attrs.update({'class': 'md3-input'})
+    
+    def login(self, request, redirect_url=None):
+        # Custom login processing if needed
+        # You have access to self.user here
+        
+        # Return the original result from parent's login method
+        return super().login(request, redirect_url)
 
 
 class UserSocialSignupForm(SocialSignupForm):

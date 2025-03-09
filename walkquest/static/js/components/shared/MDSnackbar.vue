@@ -7,13 +7,6 @@
       >
         <div class="snackbar" :class="{ 'show': show }">
           <span class="snackbar-message">{{ message }}</span>
-          <button 
-            class="snackbar-close"
-            @click="hide"
-            aria-label="Close"
-          >
-            <Icon icon="mdi:close" />
-          </button>
         </div>
       </div>
     </Transition>
@@ -41,8 +34,22 @@ const showMessage = (msg) => {
     clearTimeout(timeout.value);
   }
   
-  message.value = msg;
-  show.value = true;
+  // If a message is already showing, hide it first
+  if (show.value) {
+    hide();
+    // Wait for hide animation to complete
+    setTimeout(() => {
+      message.value = msg;
+      requestAnimationFrame(() => {
+        show.value = true;
+      });
+    }, 300);
+  } else {
+    message.value = msg;
+    requestAnimationFrame(() => {
+      show.value = true;
+    });
+  }
   
   // Auto-hide after duration
   timeout.value = setTimeout(() => {
@@ -106,25 +113,26 @@ onUnmounted(() => {
   align-items: center;
   padding: 1rem;
   pointer-events: none;
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
 }
 
 .snackbar {
   background-color: #322F35;
   color: #D0BCFF;
-  min-height: 48px; /* Single line height */
-  padding: 0 16px;
-  border-radius: 4px; /* md.sys.shape.corner.extra-small */
+  max-height: 48px;
+  padding: 12px 16px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   gap: 8px;
   box-shadow: var(--md-sys-elevation-3);
-  max-width: 24rem;
+  max-width: min(24rem, calc(100vw - 2rem));
   margin: 0 auto;
-  transform: translateY(100%);
+  transform: translateY(100px);
   opacity: 0;
   transition: transform 0.3s ease-out, opacity 0.3s ease-out;
   pointer-events: auto;
-  padding-bottom: calc(0px + env(safe-area-inset-bottom, 0px));
+  will-change: transform, opacity;
 }
 
 .snackbar.show {
@@ -135,38 +143,21 @@ onUnmounted(() => {
 .snackbar-message {
   font-family: 'Inter', system-ui, sans-serif;
   font-optical-sizing: auto;
-  font-size: 14pt;
-  font-weight: 300;
+  font-size: 14px;
+  font-weight: 400;
   line-height: 1.25rem;
-  letter-spacing: 0.25pt;
+  letter-spacing: 0.25px;
   color: #F5EFF7;
   flex: 1;
 }
 
-.snackbar-close {
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border-radius: 50%;
-  border: none;
-  background: transparent;
-  color: #D0BCFF;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.2s;
-}
-
 .snackbar-close:hover {
-  background-color: rgba(var(--md-sys-color-inverse-on-surface), 0.08);
+  background-color: rgba(208, 188, 255, 0.08);
 }
 
-/* When message has multiple lines */
-.snackbar:has(.snackbar-message:not(:empty)) {
-  min-height: 48pt;
+.snackbar-close:active {
+  background-color: rgba(208, 188, 255, 0.12);
 }
-
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.3s ease;
@@ -175,5 +166,11 @@ onUnmounted(() => {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+@media (max-width: 640px) {
+  .snackbar {
+    margin-bottom: env(safe-area-inset-bottom, 0px);
+  }
 }
 </style>

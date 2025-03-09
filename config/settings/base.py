@@ -212,11 +212,9 @@ STATICFILES_DIRS = [
 
 # Django Vite Configuration
 DJANGO_VITE = {
-    "default": {
-        "dev_mode": DEBUG,
-        "manifest_path": str(APPS_DIR / "static" / "dist" / "manifest.json"),
-        "static_url_prefix": "dist/",
-    },
+    "dev_mode": DEBUG,
+    "manifest_path": str(APPS_DIR / "static" / "dist" / "manifest.json"),
+    "static_url_prefix": "dist/",
 }
 
 
@@ -393,7 +391,10 @@ ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 # https://docs.allauth.org/en/latest/account/configuration.html
 ACCOUNT_ADAPTER = "walkquest.users.adapters.AccountAdapter"
 # https://docs.allauth.org/en/latest/account/forms.html
-ACCOUNT_FORMS = {"signup": "walkquest.users.forms.UserSignupForm"}
+ACCOUNT_FORMS = {
+    "signup": "walkquest.users.forms.UserSignupForm",
+    "change_password": "walkquest.users.forms.CustomPasswordChangeForm"
+}
 # https://docs.allauth.org/en/latest/socialaccount/configuration.html
 SOCIALACCOUNT_ADAPTER = "walkquest.users.adapters.SocialAccountAdapter"
 # https://docs.allauth.org/en/latest/socialaccount/configuration.html
@@ -447,3 +448,6 @@ def immutable_file_test(_path, url):
 
 WHITENOISE_IMMUTABLE_FILE_TEST = immutable_file_test
 
+ACCOUNT_FORMS = {
+    'login': 'walkquest.users.forms.UserLoginForm',
+}
