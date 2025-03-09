@@ -9,6 +9,7 @@
 
 WalkQuest is an **adventure-driven, gamified walking app** designed to immerse users in Cornwall’s rich history, nature, and folklore through thematic walking adventures. Complete curated walks, uncover hidden stories, and earn achievements as you explore.
 Agile board can be found on notion: https://www.notion.so/walkquest-14b1c34ea4638055afa8ef67df8b5327
+
 ---
 ## Key Features
 
@@ -26,21 +27,74 @@ Discover hidden gems, historic landmarks, and nature trails across Cornwall, fro
 Filter walks by difficulty, duration, features, and more, ensuring the perfect adventure for every explorer.
 
 ---
+## Technology Stack
+
+**Backend:**
+
+- **Framework:** Django 5.x (GeoDjango-Django Cookiecutter)
+- **API Framework:** Django Ninja
+- **Database:** PostgreSQL with PostGIS
+- **Authentication:** Django AllAuth
+- **Task Queue:** Celery
+- **Testing & Quality:** Pytest, Ruff, mypy
+
+**Frontend:**
+
+- **Framework:** Vue.js 3
+- **Component Libraries:**
+  - Vue components such as MapView, WalkList, WalkInterface. We're using a custom virtual list implementation for WalkList
+- **Styling:** Tailwind CSS (no custom classes, all in the HTML)
+- **Bundler:** Vite
+- **State Management:** Pinia
+- **Icon Library:** iconify-prerendered/vue-mdi
+
+---
 ## Development Guide
 
 ### Setting Up Your Environment
 
-#### Install Dependencies
-```bash
-pip install -r requirements/local.txt
-npm install
-```
+#### Prerequisites
+- Python (Django 5.x)
+- Node.js (for Vue.js and build tools)
+- PostgreSQL with PostGIS extension
+- Redis (for production caching)
+- Development tools (VSCode recommended)
 
-### Running the Project
-```bash
-python manage.py migrate
-python manage.py runserver
-```
+#### Local Setup Steps
+1. **Clone and Environment**
+   ```bash
+   git clone [repository]
+   python -m venv venv
+   source venv/bin/activate  # or `venv\Scripts\activate` on Windows
+   ```
+
+2. **Dependencies**
+   ```bash
+   pip install -r requirements/local.txt
+   npm install
+   npm install vue-virtual-scroller@next
+   ```
+
+3. **Database**
+   - Install PostgreSQL with PostGIS
+   - Create database
+   - Run migrations: `python manage.py migrate`
+
+4. **Development Server**
+   ```bash
+   python manage.py runserver  # Django server
+   npm run dev               # Vite dev server
+   ```
+
+---
+## Current Development Focus
+
+### Critical Issues 🔴
+- **Vue.js Component Errors:** Unhandled errors during component update and setup function execution in components like AccountCircle, AuthModal, SearchHeader, and WalkInterface.
+- **Vue Virtual Scroller Implementation:** DynamicScroller/DynamicScrollerItem not rendering cards properly.
+
+### Active Development 🟢
+- **User Profile and Preferences:** Implementing user profile settings and preferences management with Material Design 3 styled UI components.
 
 ---
 ## Basic Commands
@@ -77,6 +131,25 @@ Run Celery beat for periodic tasks:
 cd walkquest
 celery -A config.celery_app beat
 ```
+
+---
+## Testing
+
+### Testing Status
+- Component error reproduction tests - 🔴
+- Lifecycle management tests - 🔴
+- Dependency injection tests - 🔴
+- Virtual list tests (priority) - 🔴
+
+### Testing Implementation
+- Implement component error reproduction tests
+- Implement lifecycle management tests
+- Implement dependency injection tests
+- Implement virtual list rendering tests
+- Implement store integration tests
+- Implement component unit tests
+- Implement integration tests
+- Implement performance benchmarks
 
 ---
 ## Deployment Guide
@@ -139,4 +212,3 @@ Follow the [Heroku Deployment Guide](https://cookiecutter-django.readthedocs.io/
 - Historical references sourced from public archives and local guides.
 
 Explore the Quest. **Walk in the adventure!** 🧭🥾
-
