@@ -236,16 +236,15 @@ onUnmounted(() => {
 .account-circle-container.desktop {
   height: 40px;
   width: 40px;
-  margin-left: 8px;
 }
 
-/* Mobile version (standalone) */
+/* Mobile version (standalone) - Moved to left side on mobile */
 .account-circle-container.mobile {
   position: absolute;
-  top: calc(4px + env(safe-area-inset-top, 0px));
-  right: calc(4px + env(safe-area-inset-right, 0px));
-  z-index: 50; /* Increased z-index to ensure visibility */
-  pointer-events: auto; /* Ensure clicks are registered */
+  top: calc(4 + env(safe-area-inset-top, 0px)); 
+  left: calc(4px + env(safe-area-inset-left, 0px)); /* Moved to left side */
+  z-index: 50;
+  pointer-events: auto;
 }
 
 .account-circle-button {
@@ -270,20 +269,22 @@ onUnmounted(() => {
 
 /* Mobile version styling */
 .account-circle-button.mobile {
-  width: 40px;
-  height: 40px;
-  background-color: rgb(var(--md-sys-color-surface-container-high));
-  color: rgb(var(--md-sys-color-on-surface));
-  box-shadow: var(--md-sys-elevation-3);
+  width: 52px;
+  height: 52px;
+  padding: 0!important;
+  background-color: transparent;
+  color: rgb(var(--md-sys-color-surface));
 }
 
 .account-circle-button.mobile:hover,
 .account-circle-button.mobile:focus-visible {
-  background-color: rgb(var(--md-sys-color-surface-container-highest));
+  background-color: rgb(var(--md-sys-color-primary));
 }
 
 .account-icon {
-  font-size: 32px; /* Slightly smaller for better proportions */
+  font-size: 52px!important;
+  width: 52px;
+  height: 52px;
   transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 1;
 }

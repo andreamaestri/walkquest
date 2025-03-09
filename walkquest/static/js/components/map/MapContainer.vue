@@ -33,33 +33,62 @@
           <WalkMarkers :walks="visibleWalks" :selected-walk-id="selectedWalkId" @marker-click="handleMarkerClick"
             @marker-mounted="handleMarkerMounted" @popup-open-walk="handlePopupOpenWalk" />
             
-          <!-- Navigation control with key to force re-creation when layout changes -->
-          <MapboxNavigationControl 
-            v-if="mapInstance"
-            :key="`nav-control-${uiStore.isMobile ? 'mobile' : 'desktop'}`"
-            :position="uiStore.isMobile ? 'top-left' : 'top-right'" 
-            :show-compass="true" 
-            :show-zoom="true" 
-            :visualize-pitch="true"
-            class="navigation-control" />
+          <!-- Combined Mapbox controls with conditional rendering based on device type -->
+          <template v-if="mapInstance">
+            <!-- On desktop: separate navigation and geolocation controls -->
+            <template v-if="!uiStore.isMobile">
+              <MapboxNavigationControl 
+                key="nav-control-desktop"
+                position="top-right" 
+                :show-compass="true" 
+                :show-zoom="true" 
+                :visualize-pitch="true"
+                class="navigation-control" />
+                
+              <MapboxGeolocateControl
+                key="geo-control-desktop"
+                position="top-right"
+                :positionOptions="{
+                  enableHighAccuracy: true,
+                  timeout: 6000
+                }"
+                :trackUserLocation="true"
+                :showAccuracyCircle="true"
+                :showUserLocation="true"
+                :fitBoundsOptions="{
+                  maxZoom: 15
+                }"
+                class="geolocate-control"
+              />
+            </template>
             
-          <!-- Geolocation control with key to force re-creation when layout changes -->
-          <MapboxGeolocateControl
-            v-if="mapInstance"
-            :key="`geo-control-${uiStore.isMobile ? 'mobile' : 'desktop'}`"
-            :position="uiStore.isMobile ? 'top-left' : 'top-right'"
-            :positionOptions="{
-              enableHighAccuracy: true,
-              timeout: 6000
-            }"
-            :trackUserLocation="true"
-            :showAccuracyCircle="true"
-            :showUserLocation="true"
-            :fitBoundsOptions="{
-              maxZoom: 15
-            }"
-            class="geolocate-control"
-          />
+            <!-- On mobile: all controls on the right side -->
+            <template v-else>
+              <MapboxNavigationControl 
+                key="nav-control-mobile"
+                position="top-right" 
+                :show-compass="true" 
+                :show-zoom="true" 
+                :visualize-pitch="true"
+                class="navigation-control" />
+                
+              <MapboxGeolocateControl
+                key="geo-control-mobile"
+                position="top-right"
+                :positionOptions="{
+                  enableHighAccuracy: true,
+                  timeout: 6000
+                }"
+                :trackUserLocation="true"
+                :showAccuracyCircle="true"
+                :showUserLocation="true"
+                :fitBoundsOptions="{
+                  maxZoom: 15
+                }"
+                class="geolocate-control"
+              />
+            </template>
+          </template>
         </template>
       </MapboxMap>
     </div>
@@ -312,6 +341,12 @@ const handleMapCreated = (map) => {
       logoElement.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
       logoElement.style.opacity = mapLoaded.value ? '0.8' : '0'; // Fade in when map is loaded
     }
+    
+    // Ensure only one set of controls is visible on mobile
+    if (uiStore.isMobile) {
+      // Remove any duplicate controls that might have been created
+      cleanupDuplicateControls();
+    }
   };
 
   // Create a mutation observer to detect when the logo is added to the DOM
@@ -378,6 +413,35 @@ const handleMapCreated = (map) => {
   mapBounds.value = map.getBounds();
 
   emit('map-created', map);
+};
+
+/**
+ * Clean up duplicate controls on mobile
+ * Ensures only one set of each control type is visible
+ */
+const cleanupDuplicateControls = () => {
+  if (!mapContainerRef.value) return;
+  
+  // Get all control groups
+  const controlGroups = mapContainerRef.value.querySelectorAll('.mapboxgl-ctrl-group');
+  
+  // Track the controls we've seen by their content
+  const seenControls = new Set();
+  
+  // Check each control group
+  controlGroups.forEach((group, index) => {
+    // Create a simple hash based on the control's inner HTML
+    const controlHash = group.innerHTML.includes('geolocate') ? 'geolocate' : 
+                        group.innerHTML.includes('compass') ? 'navigation' : 
+                        `other-${index}`;
+    
+    // If we've seen this control type already, remove it
+    if (seenControls.has(controlHash)) {
+      group.remove();
+    } else {
+      seenControls.add(controlHash);
+    }
+  });
 };
 
 /**
@@ -751,6 +815,10 @@ onMounted(() => {
     resizeObserver.value = new ResizeObserver(debounce(() => {
       if (mapInstance.value) {
         mapInstance.value.resize();
+        // Check for and clean up duplicate controls whenever the map resizes
+        if (uiStore.isMobile) {
+          cleanupDuplicateControls();
+        }
       }
     }, 100));
     
@@ -773,6 +841,14 @@ onBeforeUnmount(() => {
 
   // Clear collections
   spatialIndex.value.clear();
+});
+
+// Watch for changes in mobile state to handle control visibility
+watch(() => uiStore.isMobile, (isMobile) => {
+  // Small delay to ensure DOM is updated
+  setTimeout(() => {
+    cleanupDuplicateControls();
+  }, 100);
 });
 
 const handleRecenterToWalk = () => {
@@ -1267,6 +1343,13 @@ defineExpose({
   }
 }
 
+/* Prevent duplicate controls on mobile */
+@media (max-width: 768px) {
+  :deep(.mapboxgl-ctrl-group:nth-of-type(n+3)) {
+    display: none;
+  }
+}
+
 /* Ensure controls have proper z-index and pointer events */
 :deep(.mapboxgl-control-container) {
   pointer-events: none;
@@ -1291,6 +1374,30 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* Ensure proper spacing between controls on mobile */
+@media (max-width: 768px) {
+  :deep(.mapboxgl-ctrl-top-left .mapboxgl-ctrl),
+  :deep(.mapboxgl-ctrl-top-right .mapboxgl-ctrl) {
+    margin: 10px 10px 0 0;
+  }
+  
+  :deep(.mapboxgl-ctrl-top-right .mapboxgl-ctrl) {
+    float: right;
+    margin: 10px 0 0 10px;
+  }
+  
+  /* Stack the controls vertically on mobile */
+  :deep(.mapboxgl-ctrl-top-right) {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+  
+  :deep(.mapboxgl-ctrl-top-right .mapboxgl-ctrl) {
+    margin-bottom: 8px;
+  }
 }
 
 /* Update the loading indicator position for safe areas */
