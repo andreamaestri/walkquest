@@ -2,7 +2,7 @@ from typing import List, Optional, Dict, Any
 
 from django.http import HttpRequest, JsonResponse
 from django.views import View
-from ninja import Router, NinjaAPI, Schema
+from ninja import Router, NinjaAPI, Schema, Swagger
 from allauth.headless.contrib.ninja.security import x_session_token_auth
 
 from walkquest.walks.models import Walk
@@ -22,7 +22,6 @@ def health_check(request):
 api_instance = NinjaAPI(
     title="Main API",
     version="1.0.0",
-    urls_namespace="main-api",
     parser=ORJSONParser(),
     renderer=ORJSONRenderer()
 )
