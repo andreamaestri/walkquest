@@ -527,7 +527,7 @@ watch(() => searchError.value, async (error) => {
 .mapboxgl-ctrl-geocoder .mapboxgl-ctrl-geocoder--pin-right > * {
   z-index: 12; /* Increased z-index */
   position: absolute;
-  right: 8px;
+  right: 38px;
   top: 50%;
   transform: translateY(-50%);
 }
