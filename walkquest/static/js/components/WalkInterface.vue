@@ -2,7 +2,7 @@
   <div class="h-screen w-screen overflow-hidden flex relative bg-surface">
     <!-- Navigation Rail (Desktop) -->
     <NavigationRail
-      v-if="!uiStore.isMobile"
+      v-if="!isMobileComputed"
       :walks="walks"
       :selected-walk-id="selectedWalkId"
       :filtered-walks="filteredWalks"
@@ -23,7 +23,7 @@
 
     <!-- Mobile Walk List - Only shown when explicitly toggled by FAB action -->
     <MobileWalkList
-      v-if="uiStore.isMobile && showWalksBottomSheet"
+      v-if="isMobileComputed && showWalksBottomSheet"
       ref="mobileWalkListRef"
       :walks="filteredWalks"
       :selected-walk-id="selectedWalkId"
@@ -36,7 +36,7 @@
     
     <!-- Mobile FAB with child menu -->
     <SpeedDial 
-      v-if="uiStore.isMobile && !selectedWalkId" 
+      v-if="isMobileComputed && !selectedWalkId" 
       class="mobile-fab" 
       @action="handleFabAction" 
     />
@@ -56,10 +56,10 @@
 
     <!-- Walk Drawer (Desktop) -->
     <WalkDrawer
-      v-if="selectedWalkId && !uiStore.isMobile && uiStore.showDrawer"
+      v-if="selectedWalkId && !isMobileComputed && showDrawerComputed"
       :key="selectedWalkId"
       :walk="selectedWalk"
-      :is-open="uiStore.showDrawer"
+      :is-open="showDrawerComputed"
       :isMobile="false"
       ref="walkDrawerRef"
       @close="handleDrawerClose"
@@ -70,7 +70,7 @@
     
     <!-- Mobile Walk Detail Bottom Sheet -->
     <MobileWalkDrawer 
-      v-if="selectedWalk && uiStore.isMobile"
+      v-if="selectedWalk && isMobileComputed"
       :walk="selectedWalk"
       v-model="showWalkDetailSheet"
       @close="handleDrawerClose"
@@ -147,13 +147,18 @@ const props = defineProps({
 const router = useRouter();
 const route = useRoute();
 
-// Initialize stores
-const walksStore = useWalksStore();
-const uiStore = useUiStore();
-const locationStore = useLocationStore();
-const searchStore = useSearchStore();
-const adventureDialogStore = useAdventureDialogStore();
-const authStore = useAuthStore();
+// Initialize stores inside setup context
+const stores = {
+  walks: useWalksStore(),
+  ui: useUiStore(),
+  location: useLocationStore(),
+  search: useSearchStore(),
+  adventureDialog: useAdventureDialogStore(),
+  auth: useAuthStore()
+};
+
+const isMobileComputed = computed(() => stores.ui.isMobile);
+const showDrawerComputed = computed(() => stores.ui.showDrawer);
 
 // Initialize composables
 const { setMapInstance, flyToLocation } = useMap();
@@ -210,16 +215,16 @@ function handleTabChange(tab) {
   activeTab.value = tab
   switch (tab) {
     case 'explore':
-      searchStore.setSearchMode('walks')
-      locationStore.clearLocation()
+      stores.search.setSearchMode('walks')
+      stores.location.clearLocation()
       showWalksBottomSheet.value = false // Close sheet when switching to explore
       break
     case 'nearby':
-      searchStore.setSearchMode('locations')
+      stores.search.setSearchMode('locations')
       showWalksBottomSheet.value = false // Close sheet when switching to nearby
       break
     case 'categories':
-      searchStore.setSearchMode('categories')
+      stores.search.setSearchMode('categories')
       showWalksBottomSheet.value = true
       break
   }
@@ -262,7 +267,7 @@ const handleFabAction = (action) => {
       });
       break;
     default:
-      uiStore.setError(`Unknown action: ${action}`);
+      stores.ui.setError(`Unknown action: ${action}`);
   }
 }
 
@@ -293,12 +298,12 @@ function handleSearchFocus() {
  */
 function handleSaveWalk(walk) {
   // Save walk to user favorites
-  uiStore.setLoadingState("saving", true);
+  stores.ui.setLoadingState("saving", true);
   try {
-    walksStore.saveWalk(walk);
-    uiStore.showSnackbar("Walk saved to favorites");
+    stores.walks.saveWalk(walk);
+    stores.ui.showSnackbar("Walk saved to favorites");
   } finally {
-    uiStore.setLoadingState("saving", false);
+    stores.ui.setLoadingState("saving", false);
   }
 }
 
@@ -306,8 +311,8 @@ function handleSaveWalk(walk) {
  * Extract reactive state from stores using storeToRefs
  * This preserves reactivity while avoiding unnecessary re-renders
  */
-const { error } = storeToRefs(uiStore);
-const { searchQuery, searchMode } = storeToRefs(searchStore);
+const { error } = storeToRefs(stores.ui);
+const { searchQuery, searchMode } = storeToRefs(stores.search);
 
 /**
  * Computed property for filtered walks
@@ -329,8 +334,8 @@ const filteredWalks = computed(() => {
   }
 
   // Handle location-based filtering
-  if (searchMode.value === "locations" && locationStore.userLocation) {
-    return locationStore.nearbyWalks;
+  if (searchMode.value === "locations" && stores.location.userLocation) {
+    return stores.location.nearbyWalks;
   }
 
   return results;
@@ -341,9 +346,9 @@ const filteredWalks = computed(() => {
  * Normalizes walk data from store
  */
 const walks = computed(() => {
-  if (!Array.isArray(walksStore.walks)) return [];
+  if (!Array.isArray(stores.walks.walks)) return [];
   
-  return walksStore.walks.map((walk) => ({
+  return stores.walks.walks.map((walk) => ({
     id: walk.id,
     lat: walk.latitude,
     lng: walk.longitude,
@@ -371,7 +376,7 @@ const selectedWalkId = computed(() => selectedWalk.value?.id);
  * Combines selected walk and drawer visibility
  */
 const isDrawerOpen = computed(
-  () => Boolean(selectedWalk.value) && uiStore.showDrawer
+  () => Boolean(selectedWalk.value) && stores.ui.showDrawer
 );
 
 /**
@@ -392,10 +397,10 @@ const handleWalkSelection = async (walk) => {
     localStorage.setItem("sidebarExpanded", "false"); // Persist collapsed state
     
     // Hide sidebar and show drawer
-    uiStore.handleWalkSelected();
+    stores.ui.handleWalkSelected();
 
     // For mobile, show the walk detail bottom sheet
-    if (uiStore.isMobile) {
+    if (isMobileComputed.value) {
       showWalkDetailSheet.value = true;
     }
 
@@ -422,7 +427,7 @@ const handleDrawerClose = async () => {
   // Close drawer
   await router.push({ name: 'home' });
   isExpanded.value = true;
-  uiStore.handleWalkClosed();
+  stores.ui.handleWalkClosed();
   showWalkDetailSheet.value = false; // Also close mobile walk detail sheet
 };
 
@@ -432,7 +437,7 @@ const handleDrawerClose = async () => {
  */
 const handleStartWalk = (walk) => {
   // Open the adventure log dialog instead of closing
-  adventureDialogStore.openDialog(walk);
+  stores.adventureDialog.openDialog(walk);
 };
 
 /**
@@ -441,13 +446,13 @@ const handleStartWalk = (walk) => {
  */
 const handleCategorySelected = (category) => {
   // Close the mobile sheet if on mobile
-  if (uiStore.isMobile) {
+  if (isMobileComputed.value) {
     showWalkDetailSheet.value = false;
   }
   
   // Filter walks by the selected category
-  searchStore.setSearchMode('categories');
-  searchStore.setSearchQuery(category.name);
+  stores.search.setSearchMode('categories');
+  stores.search.setSearchQuery(category.name);
 };
 
 /**
@@ -481,8 +486,8 @@ const handleFabClick = async () => {
  */
 const handleLocationSelected = async (location) => {
   if (!location?.center) {
-    searchStore.setError(null);
-    locationStore.clearLocation();
+    stores.search.setError(null);
+    stores.location.clearLocation();
     return;
   }
 
@@ -505,18 +510,18 @@ const handleLocationSelected = async (location) => {
     
     // Store the selected location
     if (location.center && location.place_name) {
-      await locationStore.setUserLocation({
+      await stores.location.setUserLocation({
         latitude: location.center[1],
         longitude: location.center[0],
         place_name: location.place_name,
       });
     }
     
-    searchStore.setError(null);
+    stores.search.setError(null);
   } catch (error) {
-    searchStore.setError("Unable to process location");
+    stores.search.setError("Unable to process location");
   } finally {
-    uiStore.setLoadingState("location", false);
+    stores.ui.setLoadingState("location", false);
   }
 };
 
@@ -533,7 +538,7 @@ const handleMapCreated = (map) => {
  * Updates UI state when map is loaded
  */
 const handleMapLoad = () => {
-  uiStore.setLoadingState("map", false);
+  stores.ui.setLoadingState("map", false);
 };
 
 /**
@@ -578,47 +583,48 @@ const handleAccountClick = (event) => {
  */
 const initializeInterface = () => {
   try {
-    const cleanup = uiStore.initializeResponsiveState();
+    const cleanup = stores.ui.initializeResponsiveState();
     
     // Initialize UI based on device type
     
     // Load walks with proper error handling
-    walksStore.loadWalks().catch((err) => {
-      uiStore.setError("Failed to load walks. Please try again later.");
+    stores.walks.loadWalks().catch((err) => {
+      console.error('Error loading walks:', err);
+      stores.ui.setError("Failed to load walks. Please try again later.");
     }).then(() => {
       // After walks are loaded, handle deep linking if walk is in URL
       if (route.params.walk_id) {
         const walkId = route.params.walk_id;
         const walk = walkId.includes('-') 
-          ? walksStore.walks.find(w => w.walk_id === walkId) // Find by slug
-          : walksStore.getWalkById(walkId); // Find by ID
+          ? stores.walks.walks.find(w => w.walk_id === walkId) // Find by slug
+          : stores.walks.getWalkById(walkId); // Find by ID
 
         if (walk) {
           handleWalkSelection(walk).catch(() => {
-            uiStore.setError("Failed to load walk details.");
+            stores.ui.setError("Failed to load walk details.");
           });
         } else {
-          uiStore.setError("Walk not found.");
+          stores.ui.setError("Walk not found.");
         }
       }
     });
     
-    if (walksStore.walks.length && !uiStore.isMobile) {
-      uiStore.setSidebarVisibility(true);
+    if (stores.walks.walks.length && !isMobileComputed.value) {
+      stores.ui.setSidebarVisibility(true);
     }
     
     if (props.walkId) {
-      const walk = walksStore.getWalkById(props.walkId);
+      const walk = stores.walks.getWalkById(props.walkId);
       if (walk) {
         handleWalkSelection(walk).catch(() => {
-          uiStore.setError("Failed to load walk details.");
+          stores.ui.setError("Failed to load walk details.");
         });
       }
     }
     
     return cleanup;
   } catch (error) {
-    uiStore.setError(
+    stores.ui.setError(
       "Failed to initialize application. Please refresh the page."
     );
     return () => {}; // Return empty cleanup function in case of error
@@ -627,14 +633,14 @@ const initializeInterface = () => {
 
 // Watch for selected walk changes to update mobile walk detail sheet visibility
 watch(selectedWalk, (newWalk) => {
-  if (uiStore.isMobile) {
+  if (isMobileComputed.value) {
     showWalkDetailSheet.value = !!newWalk;
   }
 });
 
 // Watch for mobile walk selection to properly handle bottom sheet state
 watch(selectedWalk, (newWalk) => {
-  if (uiStore.isMobile) {
+  if (isMobileComputed.value) {
     showWalkDetailSheet.value = !!newWalk;
     // Ensure walks bottom sheet is closed when a walk is selected
     if (newWalk) {
@@ -648,7 +654,7 @@ watch(selectedWalk, (newWalk) => {
 
 // Watch for route changes to properly handle bottom sheet state
 watch(route, (newRoute) => {
-  if (uiStore.isMobile && newRoute.name === 'home') {
+  if (isMobileComputed.value && newRoute.name === 'home') {
     // Reset bottom sheet states when navigating home
     showWalkDetailSheet.value = false;
     if (!['categories', 'walks'].includes(activeTab.value)) {
@@ -672,12 +678,12 @@ onMounted(() => {
   try {
     // If we have a walk in the URL, show the drawer
     if (route.params.walk_id) {
-      uiStore.handleWalkSelected();
-      uiStore.showDrawer = true;
+      stores.ui.handleWalkSelected();
+      stores.ui.showDrawer = true;
     }
 
     // Set CSS variables for mobile nav height
-    if (uiStore.isMobile) {
+    if (isMobileComputed.value) {
       document.documentElement.style.setProperty('--bottom-nav-height', '80px');
       
       // Also set safe area inset from environment if available
@@ -700,11 +706,11 @@ onMounted(() => {
         cleanup();
         window.removeEventListener("popstate", preventRouteChange);
       } catch (error) {
-        uiStore.setError("Error during cleanup. Please refresh the page.");
+        stores.ui.setError("Error during cleanup. Please refresh the page.");
       }
     });
   } catch (error) {
-    uiStore.setError("Failed to mount component. Please refresh the page.");
+    stores.ui.setError("Failed to mount component. Please refresh the page.");
   }
 });
 </script>

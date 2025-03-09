@@ -3,18 +3,18 @@
     <header 
       ref="searchHeader"
       class="w-full transition-all duration-300 ease-md3 py-2"
-      :class="isSearchActive && uiStore.isMobile ? 'fixed inset-x-0 top-0 z-50 py-0' : 'bg-surface-variant'"
-      :style="{ top: uiStore.isMobile ? 'var(--safe-area-top, 0px)' : '0' }"
+      :class="isSearchActive && isMobileComputed ? 'fixed inset-x-0 top-0 z-50 py-0' : 'bg-surface-variant'"
+      :style="{ top: isMobileComputed ? 'var(--safe-area-top, 0px)' : '0' }"
     >
 
       <!-- Search bar for desktop and active mobile search -->
       <div
-        v-if="!uiStore.isMobile || isSearchActive"
+        v-if="!isMobileComputed || isSearchActive"
         class="search-wrapper transition-all duration-300 ease-md3 mx-auto flex items-center"
         :class="[
           searchContainerClass + ' search-container',
           isSearchActive ? 'search-active' : '',
-          isSearchActive && uiStore.isMobile ? 'h-full' : ''
+          isSearchActive && isMobileComputed ? 'h-full' : ''
         ]"
       >
         <SearchView
@@ -33,7 +33,7 @@
         
         <!-- Account Circle as trailing icon in search bar for desktop layout -->
         <AccountCircle
-          v-if="!uiStore.isMobile && !isSearchActive"
+          v-if="!isMobileComputed && !isSearchActive"
           :is-active="accountActive"
           @click="handleAccountClick"
           class="desktop-avatar"
@@ -51,7 +51,7 @@
     <!-- Mobile Bottom Sheet for search results 
          Using dynamic snap points for better UX: peek (200px), half (50% of screen), and fullscreen -->
     <BottomSheet 
-      v-if="uiStore.isMobile && isSearchActive" 
+      v-if="isMobileComputed && isSearchActive" 
       ref="mobileBottomSheet"
       :blocking="true"
       :can-swipe-close="true"
@@ -87,7 +87,7 @@
     
     <!-- Account Circle as standalone icon for mobile layout -->
     <AccountCircle
-      v-if="uiStore.isMobile"
+      v-if="isMobileComputed"
       :is-active="accountActive"
       @click="handleAccountClick"
     />
@@ -116,8 +116,14 @@ const props = defineProps({
 
 const emit = defineEmits(['location-selected', 'walk-selected', 'account-click']);
 
-const uiStore = useUiStore();
-const searchStore = useSearchStore();
+// Setup store instances inside setup function
+const stores = {
+  ui: useUiStore(),
+  search: useSearchStore()
+};
+
+// Computed properties for reactive state
+const isMobileComputed = computed(() => stores.ui.isMobile);
 
 const searchHeader = ref(null);
 const mobileBottomSheet = ref(null);
@@ -136,15 +142,30 @@ const BREAKPOINTS = {
   XLARGE: 1440
 };
 
+// Event cleanup tracker
+const cleanup = {
+  eventListeners: new Set(),
+  bottomSheetListener: null
+};
+
+const addEventListenerWithCleanup = (target, event, handler) => {
+  target.addEventListener(event, handler);
+  cleanup.eventListeners.add(() => target.removeEventListener(event, handler));
+};
+
 onMounted(() => {
-  window.addEventListener('resize', handleResize);
-  document.addEventListener('keydown', handleKeyDown);
+  addEventListenerWithCleanup(window, 'resize', handleResize);
+  addEventListenerWithCleanup(document, 'keydown', handleKeyDown);
   maxHeight.value = window.innerHeight - 60;
 });
 
 onUnmounted(() => {
-  window.removeEventListener('resize', handleResize);
-  document.removeEventListener('keydown', handleKeyDown);
+  // Clean up all registered event listeners
+  cleanup.eventListeners.forEach(cleanupFn => cleanupFn());
+  cleanup.eventListeners.clear();
+  
+  // Clean up bottom sheet listener if exists
+  if (cleanup.bottomSheetListener) cleanup.bottomSheetListener();
 });
 
 const handleResize = () => {
@@ -154,7 +175,7 @@ const handleResize = () => {
 
 const handleKeyDown = (event) => {
   if (event.key === 'Escape' && isSearchActive.value) {
-    if (mobileBottomSheet.value && uiStore.isMobile) {
+    if (mobileBottomSheet.value && isMobileComputed.value) {
       if (bottomSheetHeight.value > maxHeight.value * 0.8) {
         mobileBottomSheet.value.snapToPoint('50%');
       } else if (bottomSheetHeight.value > maxHeight.value * 0.4) {
@@ -184,7 +205,7 @@ const handleBottomSheetClosed = () => {
 const activateSearch = () => {
   if (!isSearchActive.value) {
     isSearchActive.value = true;
-    if (uiStore.isMobile) {
+    if (isMobileComputed.value) {
       document.body.classList.add('overflow-hidden');
       const searchContainer = document.querySelector('.search-wrapper');
       if (searchContainer) {
@@ -194,7 +215,13 @@ const activateSearch = () => {
         if (mobileBottomSheet.value) {
           mobileBottomSheet.value.open();
           mobileBottomSheet.value.snapToPoint('50%');
-          mobileBottomSheet.value.$el.addEventListener('sheet-position-change', (event) => {
+          
+          // Clean up any existing bottom sheet listener
+          if (cleanup.bottomSheetListener) cleanup.bottomSheetListener();
+          
+          // Set up new bottom sheet listener with cleanup
+          const handlePositionChange = (event) => {
+            if (!mobileBottomSheet.value) return;
             bottomSheetHeight.value = event.detail.currentHeight;
           });
         }
@@ -205,7 +232,7 @@ const activateSearch = () => {
 
 const deactivateSearch = () => {
   if (isSearchActive.value) {
-    if (uiStore.isMobile) {
+    if (isMobileComputed.value) {
       if (mobileBottomSheet.value) {
         if (mobileBottomSheet.value.$el) {
           mobileBottomSheet.value.$el.removeEventListener('sheet-position-change', () => {});
@@ -233,8 +260,8 @@ const deactivateSearch = () => {
 };
 
 const searchQuery = computed({
-  get: () => searchStore.searchQuery,
-  set: (value) => searchStore.setSearchQuery(value)
+  get: () => stores.search.searchQuery,
+  set: (value) => stores.search.setSearchQuery(value)
 });
 
 const searchMode = computed(() => searchStore.searchMode);

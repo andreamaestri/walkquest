@@ -107,10 +107,6 @@ const emit = defineEmits(['click']);
 // Router instance
 const router = useRouter();
 
-// Use the UI store for responsive layout
-const uiStore = useUiStore();
-const isMobileComputed = computed(() => uiStore.isMobile);
-
 // State for interactive feedback
 const isHovered = ref(false);
 const isFocused = ref(false);
@@ -119,18 +115,24 @@ const showAuthMenu = ref(false);
 const showMenu = ref(false);
 const buttonRef = ref(null);
 
-// Use auth store with better reactive state handling
-const authStore = useAuthStore();
-const isAuthenticatedComputed = computed(() => authStore.isAuthenticated);
+// Setup store instances inside setup function
+const stores = {
+  auth: useAuthStore(),
+  ui: useUiStore()
+};
+
+// Computed properties using store references
+const isMobileComputed = computed(() => stores.ui.isMobile);
+const isAuthenticatedComputed = computed(() => stores.auth.isAuthenticated);
 const userInitialsComputed = computed(() => {
   // Only show initials if user data is fully loaded
-  if (!authStore.userDataLoaded || !authStore.user) return '';
-  return authStore.userInitials;
+  if (!stores.auth.userDataLoaded || !stores.auth.user) return '';
+  return stores.auth.userInitials;
 });
 
 // Avatar color generation using email or username
 const avatarBgColor = computed(() => {
-  const identifier = authStore.user?.email || authStore.user?.username;
+  const identifier = stores.auth.user?.email || stores.auth.user?.username;
   if (!identifier) return 'rgb(var(--md-sys-color-primary))';
   
   let hash = 0;
@@ -204,7 +206,7 @@ const handleClickOutside = (event) => {
   }
 };
 
-// Update lifecycle hooks
+// Lifecycle hooks with proper cleanup
 onMounted(async () => {
   if (!buttonRef.value) {
     console.warn('Button reference not initialized on mount');
@@ -213,13 +215,20 @@ onMounted(async () => {
   document.addEventListener('mousedown', handleClickOutside);
   
   // Force refresh user data if needed and not already loading
-  if (isAuthenticatedComputed.value && !authStore.userDataLoaded && !authStore.isLoading) {
-    await authStore.checkAuth();
+  try {
+    if (isAuthenticatedComputed.value && !stores.auth.userDataLoaded && !stores.auth.isLoading) {
+      await stores.auth.checkAuth();
+    }
+  } catch (error) {
+    console.error('Error checking auth on mount:', error);
   }
 });
 
 onUnmounted(() => {
   document.removeEventListener('mousedown', handleClickOutside);
+  if (showMenu.value) {
+    showMenu.value = false;
+  }
 });
 </script>
 
