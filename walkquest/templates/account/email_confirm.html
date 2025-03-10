@@ -1,0 +1,25 @@
+{% extends "account/base.html" %}
+
+{% load i18n %}
+{% load account %}
+
+{% block head_title %}{% trans "Verify Your Email Address" %}{% endblock %}
+
+{% block inner %}
+    <h2 class="text-2xl font-bold mb-4">{% trans "Verify Your Email Address" %}</h2>
+    
+    {% if confirmation %}
+        {% user_display confirmation.email_address.user as user_display %}
+        
+        <p class="mb-4">{% blocktrans with confirmation.email_address.email as email %}Please confirm that <a href="mailto:{{ email }}" class="text-blue-600 hover:underline">{{ email }}</a> is an email address for user {{ user_display }}.{% endblocktrans %}</p>
+
+        <form method="post" action="{% url 'account_confirm_email' confirmation.key %}">
+            {% csrf_token %}
+            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">{% trans 'Confirm' %}</button>
+        </form>
+        
+    {% else %}
+        {% url 'account_email' as email_url %}
+        
+        <p class="mb-4">{% blocktrans %}This email confirmation link has expired or is invalid. Please <a href="{{ email_url }}" class="text-blue-600 hover:underline">request a new email confirmation</a>.{% endblocktrans %}</p>
+    {% endif %}

@@ -89,7 +89,7 @@ def list_walks(
     try:
         # Query walks with prefetches
         walks = Walk.objects.prefetch_related(
-            "features", "categories", "related_categories"
+            "features", "categories", "related_categories",
         )
 
         # Annotate favorites
@@ -169,7 +169,7 @@ def find_nearby_walks(
     try:
         # Get bounding box for initial filtering
         min_lat, max_lat, min_lng, max_lng = get_bounding_box(
-            latitude, longitude, radius
+            latitude, longitude, radius,
         )
 
         # Query walks within bounding box
@@ -191,14 +191,14 @@ def find_nearby_walks(
         for walk in walks:
             try:
                 distance = haversine(
-                    latitude, longitude, float(walk.latitude), float(walk.longitude)
+                    latitude, longitude, float(walk.latitude), float(walk.longitude),
                 )
                 if distance <= radius:
                     results.append((distance, walk))
             except (ValueError, TypeError) as e:
                 logger.warning(
                     "Error calculating distance for walk %s: %s",
-                    walk.id, str(e)
+                    walk.id, str(e),
                 )
                 continue
 
@@ -266,7 +266,7 @@ def get_walk(request: HttpRequest, identifier: str) -> WalkOutSchema:
         # Get annotated walk
         walk = annotate_favorites(
             Walk.objects.prefetch_related(
-                "features", "categories", "related_categories"
+                "features", "categories", "related_categories",
             ),
             request.user,
         ).get(id=walk.id)
@@ -346,7 +346,7 @@ def list_tags(request: HttpRequest) -> list[TagResponseSchema]:
     # Get feature tags with counts
     feature_tags = (
         WalkFeatureTag.objects.annotate(
-            usage_count=Count("walks", distinct=True)
+            usage_count=Count("walks", distinct=True),
         )
         .filter(usage_count__gt=0)
         .values("name", "slug", "usage_count")
@@ -415,7 +415,7 @@ def get_walk_geometry(request: HttpRequest, walk_id: UUID) -> GeometrySchema:
         )
 
         if not walk.route_geometry:
-            
+
             def raise_geometry_error():
                 raise GeometryError(str(walk_id), "No geometry data available")
 

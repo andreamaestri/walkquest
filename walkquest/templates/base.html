@@ -58,11 +58,13 @@
       href="https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.css"
       rel="stylesheet"
     />
+    <!-- Add Tailwind CSS -->
+    <link href="{% static 'css/project.css' %}" rel="stylesheet" />
     <link href="{% static 'css/auth.css' %}" rel="stylesheet" />
     {% if debug %}
     {% vite_hmr_client %}
     {% endif %}
-    {% if request.path != '/accounts/signup/' %}
+    {% if '/accounts/' not in request.path %}
     {% vite_hmr_client %}
     {% vite_asset 'walkquest/static/js/main.js' %}
     {% endif %}

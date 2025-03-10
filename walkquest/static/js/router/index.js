@@ -47,7 +47,14 @@ const routes = [
     path: '/accounts/logout',
     redirect: '/'
   },
-  
+  // Don't handle Django auth-related URLs in Vue router
+  {
+    path: '/accounts/:path(.*)',
+    beforeEnter: (to) => {
+      window.location.href = to.fullPath;
+      return false;
+    }
+  }
 ];
 
 const router = createRouter({

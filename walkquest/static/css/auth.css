@@ -1,7 +1,25 @@
 /* Base styles for auth pages */
 @import 'material3.css';
 
-/* Add any additional auth-specific styles here */
+.auth-container {
+  min-height: 100vh !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 1rem !important;
+  background: rgb(var(--md-sys-color-background)) !important;
+}
+
+.auth-card {
+  width: 100% !important;
+  max-width: 24rem !important;
+  padding: 2rem !important;
+  background: rgb(var(--md-sys-color-surface)) !important;
+  border-radius: 1.5rem !important;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important;
+}
+
+/* Form field styles */
 .field-label {
   margin-bottom: 0.5rem !important;
   color: rgb(var(--md-sys-color-on-surface-variant)) !important;
