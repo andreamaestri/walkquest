@@ -111,6 +111,7 @@
             :is-compact="!isExpanded"
             @walk-selected="handleWalkSelection"
             @walk-expanded="handleWalkExpanded"
+            @filtered-walks-update="handleFilteredWalksUpdate"
             v-show="isExpanded"
           />
         </div>
@@ -150,7 +151,7 @@ const props = defineProps({
 /**
  * Emits for component communication
  */
-const emit = defineEmits(['walk-selected', 'fab-click', 'walk-expanded', 'drawer-closed', 'location-selected']);
+const emit = defineEmits(['walk-selected', 'fab-click', 'walk-expanded', 'drawer-closed', 'location-selected', 'filtered-walks-update']);
 
 // Router and stores
 const router = useRouter();
@@ -297,6 +298,14 @@ const handleWalkSelection = (walk) => {
       router.push({ name: 'walk-by-id', params: { walk_id: walk.id } });
     }
   }
+};
+
+/**
+ * Handle filtered walks update from WalkList
+ * Emits the filtered walks to parent component for map filtering
+ */
+const handleFilteredWalksUpdate = (filteredWalks) => {
+  emit('filtered-walks-update', filteredWalks);
 };
 
 const handleWalkExpanded = ({ walkId, expanded }) => {

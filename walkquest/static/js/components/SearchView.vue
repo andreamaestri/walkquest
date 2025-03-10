@@ -310,7 +310,7 @@ const props = defineProps({
   searchMode: {
     type: String,
     default: 'walks',
-    validator: (value) => ['walks', 'locations'].includes(value)
+    validator: (value) => ['walks', 'locations', 'categories'].includes(value)
   },
   mapboxToken: {
     type: String,

@@ -142,7 +142,16 @@ const props = defineProps({
 /**
  * Emits for component communication
  */
-const emit = defineEmits(['map-created', 'map-loaded', 'walk-selected']);
+const emit = defineEmits(['map-created', 'map-loaded', 'walk-selected']);  
+
+/**
+ * Handle category filter updates
+ * Updates the filtered walks and rebuilds the spatial index
+ */
+function handleCategoryFilter(filteredWalks) {
+  categoryFilteredWalks.value = filteredWalks;
+  updateSpatialIndex(); // Rebuild index with filtered walks
+}
 
 // Component refs
 const mapContainerRef = shallowRef(null);
@@ -163,6 +172,7 @@ const markerKey = ref(0);
 const isAnimating = ref(false); // Track if map animation is in progress
 const pendingMarkerUpdates = ref(false); // Track if marker updates are pending
 const animationInProgress = ref(false); // Track any animation in progress
+const categoryFilteredWalks = ref(props.walks); // Track walks filtered by category
 
 // Extract setMapInstance from useMap
 const { setMapInstance, flyToLocation } = useMap();
@@ -222,10 +232,11 @@ const mapContainerStyle = computed(() => ({
 /**
  * Computed property for visible walks
  * Uses spatial indexing for performance optimization
+ * Combined with category filtering
  */
 const visibleWalks = computed(() => {
-  if (!mapBounds.value || !props.walks?.length) {
-    return props.walks || [];
+  if (!mapBounds.value || !categoryFilteredWalks.value?.length) {
+    return categoryFilteredWalks.value || [];
   }
 
   const bounds = mapBounds.value;
@@ -242,7 +253,12 @@ const visibleWalks = computed(() => {
     for (let y = minCellY; y <= maxCellY; y++) {
       const cellKey = `${x}:${y}`;
       const cellWalks = spatialIndex.value.get(cellKey) || [];
-      cellWalks.forEach((walk) => visibleSet.add(walk));
+      cellWalks.forEach((walk) => {
+        // Only add walks that are in the category filtered set
+        if (categoryFilteredWalks.value.some(filteredWalk => filteredWalk.id === walk.id)) {
+          visibleSet.add(walk);
+        }
+      });
     }
   }
 
@@ -281,6 +297,8 @@ function updateSpatialIndex() {
   const newIndex = new Map();
   const cellSize = 0.1; // roughly 11km at equator
 
+  // Use categoryFilteredWalks to build the spatial index
+  // This ensures the spatial index only contains walks that match the category filter
   for (const walk of props.walks) {
     const lng = Number(walk.longitude) || Number(walk.lng);
     const lat = Number(walk.latitude) || Number(walk.lat);
@@ -890,7 +908,8 @@ defineExpose({
     if (!mapInstance.value || animationInProgress.value) return;
     mapInstance.value.flyTo(options);
   },
-  handleRecenterToWalk
+  handleRecenterToWalk,
+  handleCategoryFilter
 });
 </script>
 

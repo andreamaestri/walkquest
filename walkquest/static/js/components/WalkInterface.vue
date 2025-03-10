@@ -10,6 +10,7 @@
       @fab-click="handleFabClick"
       @walk-expanded="handleWalkExpanded"
       @location-selected="handleLocationSelected"
+      @filtered-walks-update="handleFilteredWalksUpdate"
     />
 
     <!-- Header with Search Bar -->
@@ -43,7 +44,6 @@
 
     <!-- Map Container -->
     <MapContainer
-      ref="mapContainer"
       :mapbox-token="mapboxToken"
       :map-config="mapConfig"
       :selected-walk-id="selectedWalkId"
@@ -52,6 +52,7 @@
       @map-created="handleMapCreated"
       @map-loaded="handleMapLoad"
       @walk-selected="handleWalkSelection"
+      ref="mapContainerRef"
     />
 
     <!-- Walk Drawer (Desktop) -->
@@ -167,6 +168,7 @@ const { animateInterfaceElement, animationConfigs } = useAnimations();
 
 // Component refs
 const mapContainer = shallowRef(null);
+const mapContainerRef = ref(null); // Add missing ref declaration for mapContainerRef
 const walkDrawerRef = ref(null);
 const drawerMounted = ref(false);
 const mobileWalkListRef = ref(null);
@@ -438,6 +440,16 @@ const handleDrawerClose = async () => {
 const handleStartWalk = (walk) => {
   // Open the adventure log dialog instead of closing
   stores.adventureDialog.openDialog(walk);
+};
+
+/**
+ * Handle filtered walks update from NavigationRail or WalkList
+ * Passes filtered walks to MapContainer for map filtering
+ */
+const handleFilteredWalksUpdate = (filteredWalks) => {
+  if (mapContainerRef.value && mapContainerRef.value.handleCategoryFilter) {
+    mapContainerRef.value.handleCategoryFilter(filteredWalks);
+  }
 };
 
 /**

@@ -157,7 +157,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['walk-selected', 'location-selected'])
+const emit = defineEmits(['walk-selected', 'location-selected', 'filtered-walks-update'])
 
 // UI interaction refs
 const scroller = shallowRef(null)
@@ -662,6 +662,17 @@ watch(selectedCategory, (newCategory) => {
     }
   }
 })
+
+// Watch for filtered results changes and emit event for map filtering
+watch(filteredResults, (newResults) => {
+  // Make sure to emit the complete walk objects for proper marker management
+  if (Array.isArray(newResults)) {
+    // Log the filtered results count for debugging
+    console.log(`Filtered walks: ${newResults.length} walks`);
+    // Emit the filtered walks to parent components for map marker filtering
+    emit('filtered-walks-update', newResults);
+  }
+}, { immediate: true })
 </script>
 
 <style scoped>
