@@ -2,6 +2,19 @@
 
 ## Current Focus
 
+### Backend Code Quality Issues - NEW 🔴
+- Ruff check revealed 110 errors requiring attention
+- Key issues:
+  - Code style and long lines (E501 violations)
+  - Error handling patterns (BLE001 - blind exception catching)
+  - Path handling improvements (PTH series)
+  - Performance optimizations (PERF401 - list comprehension usage)
+  - Security concerns (S106, S603)
+  - Database model improvements (DJ008, DJ012)
+  - F-string usage in logging (G004)
+  - Magic numbers in code (PLR2004)
+  - Boolean handling issues (FBT series)
+
 ### Learning Outcomes and Assessment Criteria Alignment
 
 - Aligning project tasks and priorities with the learning outcomes and assessment criteria defined in `criteria.md`.
