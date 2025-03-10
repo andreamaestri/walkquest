@@ -1,6 +1,7 @@
 {% extends "account/base.html" %}
 {% load i18n %}
 {% load account socialaccount %}
+{% load static %}
 
 {% block head_title %}{% trans "Sign Up" %}{% endblock %}
 
@@ -50,7 +51,7 @@
 
   <div class="form-field">
     <div class="auth-input-wrapper">
-      <input type="password" name="password1" placeholder=" " id="id_password1" class="auth-input" required>
+      <input type="new-password" name="password1" placeholder=" " id="id_password1" class="auth-input" required>
       <iconify-icon icon="material-symbols:lock-outline" class="auth-input-icon"></iconify-icon>
     </div>
     <label for="id_password1" class="field-label">{% trans "Password" %}</label>
@@ -81,7 +82,7 @@
 
   <div class="form-field">
     <div class="auth-input-wrapper">
-      <input type="password" name="password2" placeholder=" " id="id_password2" class="auth-input" required>
+      <input type="new-password" name="password2" placeholder=" " id="id_password2" class="auth-input" required>
       <iconify-icon icon="material-symbols:lock-outline" class="auth-input-icon"></iconify-icon>
     </div>
     <label for="id_password2" class="field-label">{% trans "Confirm Password" %}</label>
@@ -176,87 +177,6 @@
 }
 </style>
 
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    const passwordInput = document.getElementById('id_password1');
-    const emailInput = document.getElementById('id_email');
-    const requirements = document.querySelectorAll('.requirement');
-    
-    // Common passwords list (simplified for demo)
-    const commonPasswords = ['password', '123456', 'qwerty', 'admin', 'welcome', 'password123'];
-    
-    function checkPasswordRequirements(password, email) {
-      // Check length requirement
-      const lengthRequirement = document.querySelector('[data-requirement="length"]');
-      if (password.length >= 8) {
-        lengthRequirement.classList.add('valid');
-        lengthRequirement.classList.remove('invalid');
-      } else {
-        lengthRequirement.classList.add('invalid');
-        lengthRequirement.classList.remove('valid');
-      }
-      
-      // Check if password is similar to personal info
-      const personalRequirement = document.querySelector('[data-requirement="personal"]');
-      const emailUsername = email ? email.split('@')[0] : '';
-      const isSimilarToEmail = emailUsername && password.toLowerCase().includes(emailUsername.toLowerCase());
-      
-      if (!isSimilarToEmail && password.length > 0) {
-        personalRequirement.classList.add('valid');
-        personalRequirement.classList.remove('invalid');
-      } else if (password.length > 0) {
-        personalRequirement.classList.add('invalid');
-        personalRequirement.classList.remove('valid');
-      }
-      
-      // Check if password is common
-      const commonRequirement = document.querySelector('[data-requirement="common"]');
-      if (!commonPasswords.includes(password.toLowerCase()) && password.length > 0) {
-        commonRequirement.classList.add('valid');
-        commonRequirement.classList.remove('invalid');
-      } else if (password.length > 0) {
-        commonRequirement.classList.add('invalid');
-        commonRequirement.classList.remove('valid');
-      }
-      
-      // Check if password is entirely numeric
-      const numericRequirement = document.querySelector('[data-requirement="numeric"]');
-      const isEntirelyNumeric = /^\d+$/.test(password);
-      
-      if (!isEntirelyNumeric && password.length > 0) {
-        numericRequirement.classList.add('valid');
-        numericRequirement.classList.remove('invalid');
-      } else if (password.length > 0) {
-        numericRequirement.classList.add('invalid');
-        numericRequirement.classList.remove('valid');
-      }
-    }
-    
-    // Add animation when checking requirements
-    function animateRequirement(requirement) {
-      requirement.classList.add('checking');
-      setTimeout(() => {
-        requirement.classList.remove('checking');
-      }, 500);
-    }
-    
-    // Initial check
-    if (passwordInput) {
-      checkPasswordRequirements(passwordInput.value, emailInput ? emailInput.value : '');
-      
-      // Check on password input
-      passwordInput.addEventListener('input', function() {
-        requirements.forEach(animateRequirement);
-        checkPasswordRequirements(this.value, emailInput ? emailInput.value : '');
-      });
-      
-      // Check when email changes (for personal info similarity)
-      if (emailInput) {
-        emailInput.addEventListener('change', function() {
-          checkPasswordRequirements(passwordInput.value, this.value);
-        });
-      }
-    }
-  });
-</script>
+<!-- Include the password validation script -->
+<script src="{% static 'js/password-validation.js' %}"></script>
 {% endblock %}
