@@ -2,16 +2,16 @@
 import re
 import subprocess
 from pathlib import Path
-from typing import List, Tuple, Optional
 
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand
+from django.core.management.base import CommandError
 
 ALLOWED_FORMATS = ["requirements.txt"]
 ALLOWED_OPTIONS = ["--with", "--without", "--without-hashes"]
 FILENAME_PATTERN = re.compile(r"^[a-zA-Z0-9_.-]+\.txt$")
 
 
-def validate_poetry_args(args: List[str]) -> bool:
+def validate_poetry_args(args: list[str]) -> bool:
     """Validate poetry command arguments."""
     if not args:
         return True
@@ -22,7 +22,7 @@ def validate_poetry_args(args: List[str]) -> bool:
     )
 
 
-def sanitize_package_name(package: str) -> Optional[str]:
+def sanitize_package_name(package: str) -> str | None:
     """Sanitize package name for GitHub URL construction."""
     if re.match(r"^[a-zA-Z0-9_.-]+$", package):
         return package
@@ -42,7 +42,7 @@ class Command(BaseCommand):
             req_dir.mkdir(exist_ok=True)
 
             # Define requirements configurations
-            files: List[Tuple[str, List[str]]] = [
+            files: list[tuple[str, list[str]]] = [
                 ("base.txt", []),
                 ("local.txt", ["--with", "dev"]),
                 ("production.txt", ["--without", "dev"]),
@@ -50,10 +50,12 @@ class Command(BaseCommand):
 
             for filename, poetry_args in files:
                 if not FILENAME_PATTERN.match(filename):
-                    raise CommandError(f"Invalid filename: {filename}")
+                    msg = f"Invalid filename: {filename}"
+                    raise CommandError(msg)
 
                 if not validate_poetry_args(poetry_args):
-                    raise CommandError(f"Invalid poetry arguments: {poetry_args}")
+                    msg = f"Invalid poetry arguments: {poetry_args}"
+                    raise CommandError(msg)
 
                 output = req_dir / filename
                 cmd = ["poetry", "export", "-f", "requirements.txt"]
@@ -82,7 +84,7 @@ class Command(BaseCommand):
                                 if pkg_name:
                                     formatted.append(
                                         f"{package}=={version}  "
-                                        f"# https://github.com/{pkg_name}/{pkg_name}"
+                                        f"# https://github.com/{pkg_name}/{pkg_name}",
                                     )
                                 else:
                                     formatted.append(f"{package}=={version}")
@@ -95,21 +97,22 @@ class Command(BaseCommand):
                     output.write_text("\n".join(formatted))
 
                     self.stdout.write(
-                        self.style.SUCCESS(f"Generated {filename}")
+                        self.style.SUCCESS(f"Generated {filename}"),
                     )
 
                 except subprocess.CalledProcessError as e:
                     self.stderr.write(
                         self.style.ERROR(
-                            f"Error generating {filename}: {e.stderr}"
-                        )
+                            f"Error generating {filename}: {e.stderr}",
+                        ),
                     )
                 except OSError as e:
                     self.stderr.write(
                         self.style.ERROR(
-                            f"OS error while processing {filename}: {e}"
-                        )
+                            f"OS error while processing {filename}: {e}",
+                        ),
                     )
 
         except Exception as e:
-            raise CommandError(f"Failed to generate requirements: {e}") from e
+            msg = f"Failed to generate requirements: {e}"
+            raise CommandError(msg) from e

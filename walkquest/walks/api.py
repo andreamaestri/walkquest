@@ -1,50 +1,67 @@
-import math
+"""API endpoints for walks functionality."""
+import logging
 from uuid import UUID
 
 import orjson
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db.models import Count
-from django.db.models import Exists
-from django.db.models import OuterRef
-from django.db.models import Value
 from django.http import HttpRequest
-from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from ninja import Query
 from ninja import Router
-from ninja import Schema
 from ninja.parser import Parser
 from ninja.renderers import BaseRenderer
 
+from .constants import DEFAULT_MAP_CENTER
+from .constants import DEFAULT_MAP_ZOOM
+from .constants import DEFAULT_SEARCH_LIMIT
+from .constants import DEFAULT_SEARCH_RADIUS_METERS
+from .constants import MARKER_COLORS
+from .exceptions import AuthenticationRequiredError
+from .exceptions import GeometryError
+from .exceptions import InvalidCoordinatesError
+from .exceptions import WalkFilterError
+from .exceptions import WalkNotFoundError
 from .models import Walk
 from .models import WalkCategoryTag
 from .models import WalkFeatureTag
 from .schemas import ConfigSchema
+from .schemas import GeometrySchema
 from .schemas import TagResponseSchema
 from .schemas import WalkOutSchema
+from .utils import annotate_favorites
+from .utils import format_points_of_interest
+from .utils import format_pub_entry
+from .utils import get_bounding_box
+from .utils import haversine
 
+logger = logging.getLogger(__name__)
 
 # Define custom ORJSONParser
 class ORJSONParser(Parser):
+    """Custom JSON parser using orjson."""
+
     def parse_body(self, request):
+        """Parse request body using orjson."""
         return orjson.loads(request.body)
 
-
-# Define custom ORJSONRenderer using BaseRenderer
+# Define custom ORJSONRenderer
 class ORJSONRenderer(BaseRenderer):
+    """Custom JSON renderer using orjson."""
+
     media_type = "application/json"
 
     def render(self, request, data, *, response_status):
+        """Render response using orjson."""
         return orjson.dumps(data)
-
 
 # Create a Router for walks API endpoints
 api = Router()
 
-
 @api.get("/", response=dict)
 def api_root(request):
-    """API root endpoint that returns available endpoints"""
+    """API root endpoint that returns available endpoints."""
     return {
         "version": "1.0.0",
         "endpoints": {
@@ -58,7 +75,6 @@ def api_root(request):
         },
     }
 
-
 @api.get("/walks", response=list[WalkOutSchema])
 def list_walks(
     request: HttpRequest,
@@ -66,22 +82,20 @@ def list_walks(
     categories: str | None = None,
     features: str | None = None,
     difficulty: str | None = None,
-    has_bus_access: bool | None = None,  # renamed parameter
+    has_bus_access: bool | None = None,
     has_stiles: bool | None = None,
-):
-    """List walks with optional filtering"""
+) -> list[WalkOutSchema]:
+    """List walks with optional filtering."""
     try:
+        # Query walks with prefetches
         walks = Walk.objects.prefetch_related(
-            "features", "categories", "related_categories",
-        ).annotate(
-            is_favorite=Exists(
-                Walk.favorites.through.objects.filter(
-                    walk_id=OuterRef("pk"), user=request.user,
-                ),
-            )
-            if request.user.is_authenticated
-            else Value(False),
+            "features", "categories", "related_categories"
         )
+
+        # Annotate favorites
+        walks = annotate_favorites(walks, request.user)
+
+        # Apply filters
         if search:
             walks = walks.filter(walk_name__icontains=search)
         if categories:
@@ -92,81 +106,73 @@ def list_walks(
             walks = walks.filter(steepness_level=difficulty)
         if has_stiles is not None:
             walks = walks.filter(has_stiles=has_stiles)
-        if has_bus_access is not None:  # updated filtering
+        if has_bus_access is not None:
             walks = walks.filter(has_bus_access=has_bus_access)
 
-        walk_list = []
-        for walk in walks:
-            # Format points_of_interest as a list by splitting on semicolons and stripping whitespace
-            # ...existing code for walk conversion...
-            walk_list.append(
-                WalkOutSchema(
-                    id=walk.id,
-                    walk_id=walk.walk_id,
-                    walk_name=walk.walk_name,
-                    distance=walk.distance,
-                    latitude=walk.latitude,
-                    longitude=walk.longitude,
-                    has_pub=walk.has_pub,
-                    has_cafe=walk.has_cafe,
-                    is_favorite=walk.is_favorite,
-                    features=[
-                        {"name": f.name, "slug": f.slug} for f in walk.features.all()
-                    ],
-                    categories=[
-                        {"name": c.name, "slug": c.slug} for c in walk.categories.all()
-                    ],
-                    related_categories=[
-                        {"name": rc.name, "slug": rc.slug}
-                        for rc in walk.related_categories.all()
-                    ],
-                    highlights=walk.highlights,
-                    points_of_interest=[poi.strip() for poi in walk.points_of_interest.split(";")] if walk.points_of_interest else [],
-                    os_explorer_reference=walk.os_explorer_reference,
-                    steepness_level=walk.steepness_level,
-                    footwear_category=walk.footwear_category,
-                    recommended_footwear=walk.recommended_footwear,
-                    pubs_list=[
-                        pub
-                        if isinstance(pub, dict) and "name" in pub
-                        else {"name": str(pub)}
-                        for pub in walk.pubs_list
-                    ],
-                    trail_considerations=walk.trail_considerations,
-                    has_stiles=walk.has_stiles,
-                    has_bus_access=walk.has_bus_access,
-                    created_at=walk.created_at.isoformat(),
-                    updated_at=walk.updated_at.isoformat(),
-                ),
+        # Convert queryset to schema objects
+        return [
+            WalkOutSchema(
+                id=walk.id,
+                walk_id=walk.walk_id,
+                walk_name=walk.walk_name,
+                distance=walk.distance,
+                latitude=walk.latitude,
+                longitude=walk.longitude,
+                has_pub=walk.has_pub,
+                has_cafe=walk.has_cafe,
+                is_favorite=walk.is_favorite,
+                features=[
+                    {"name": f.name, "slug": f.slug} for f in walk.features.all()
+                ],
+                categories=[
+                    {"name": c.name, "slug": c.slug} for c in walk.categories.all()
+                ],
+                related_categories=[
+                    {"name": rc.name, "slug": rc.slug}
+                    for rc in walk.related_categories.all()
+                ],
+                highlights=walk.highlights,
+                points_of_interest=format_points_of_interest(walk.points_of_interest),
+                os_explorer_reference=walk.os_explorer_reference,
+                steepness_level=walk.steepness_level,
+                footwear_category=walk.footwear_category,
+                recommended_footwear=walk.recommended_footwear,
+                pubs_list=[format_pub_entry(pub) for pub in walk.pubs_list],
+                trail_considerations=walk.trail_considerations,
+                has_stiles=walk.has_stiles,
+                has_bus_access=walk.has_bus_access,
+                created_at=walk.created_at.isoformat(),
+                updated_at=walk.updated_at.isoformat(),
             )
-        return walk_list
-    except Exception:
-        return []
+            for walk in walks
+        ]
 
+    except ValidationError as e:
+        logger.warning("Validation error in list_walks: %s", str(e))
+        return []
+    except WalkFilterError as e:
+        logger.warning("Filter error in list_walks: %s", str(e))
+        return []
+    except Exception:
+        logger.exception("Unexpected error in list_walks")
+        return []
 
 @api.get("/walks/nearby", response=list[WalkOutSchema])
 def find_nearby_walks(
-    request,
+    request: HttpRequest,
     latitude: float = Query(..., description="Latitude of the center point"),
     longitude: float = Query(..., description="Longitude of the center point"),
-    radius: float = Query(5000, description="Search radius in meters"),
-    limit: int = Query(50, description="Maximum number of results to return"),
-):
-    """Find walks near a specific location using efficient spatial queries"""
+    radius: float = Query(DEFAULT_SEARCH_RADIUS_METERS, description="Search radius in meters"),
+    limit: int = Query(DEFAULT_SEARCH_LIMIT, description="Maximum number of results"),
+) -> list[WalkOutSchema]:
+    """Find walks near a specific location using efficient spatial queries."""
     try:
-        # Validate coordinates
-        if not (-90 <= latitude <= 90) or not (-180 <= longitude <= 180):
-            return []
+        # Get bounding box for initial filtering
+        min_lat, max_lat, min_lng, max_lng = get_bounding_box(
+            latitude, longitude, radius
+        )
 
-        # Calculate bounding box for initial filtering
-        lat_radius = radius / 111000  # Convert meters to degrees
-        lng_radius = lat_radius / math.cos(math.radians(latitude))
-
-        min_lat = latitude - lat_radius
-        max_lat = latitude + lat_radius
-        min_lng = longitude - lng_radius
-        max_lng = longitude + lng_radius
-
+        # Query walks within bounding box
         walks = (
             Walk.objects.filter(
                 latitude__gte=min_lat,
@@ -175,81 +181,79 @@ def find_nearby_walks(
                 longitude__lte=max_lng,
             )
             .prefetch_related("features", "categories", "related_categories")
-            .annotate(
-                is_favorite=Exists(
-                    Walk.favorites.through.objects.filter(
-                        walk_id=OuterRef("pk"), user=request.user,
-                    ),
-                )
-                if request.user.is_authenticated
-                else Value(False),
-            )
         )
 
-        # Calculate exact distances and prepare response
+        # Annotate favorites
+        walks = annotate_favorites(walks, request.user)
+
+        # Calculate exact distances and filter
         results = []
         for walk in walks:
             try:
                 distance = haversine(
-                    latitude, longitude, float(walk.latitude), float(walk.longitude),
+                    latitude, longitude, float(walk.latitude), float(walk.longitude)
                 )
-
                 if distance <= radius:
-                    walk_out = WalkOutSchema(
-                        id=walk.id,
-                        walk_id=walk.walk_id,
-                        walk_name=walk.walk_name,
-                        distance=walk.distance,
-                        latitude=walk.latitude,
-                        longitude=walk.longitude,
-                        has_pub=walk.has_pub,
-                        has_cafe=walk.has_cafe,
-                        is_favorite=walk.is_favorite,
-                        features=[
-                            {"name": f.name, "slug": f.slug}
-                            for f in walk.features.all()
-                        ],
-                        categories=[
-                            {"name": c.name, "slug": c.slug}
-                            for c in walk.categories.all()
-                        ],
-                        related_categories=[
-                            {"name": rc.name, "slug": rc.slug}
-                            for rc in walk.related_categories.all()
-                        ],
-                        highlights=walk.highlights,
-                        points_of_interest=[poi.strip() for poi in walk.points_of_interest.split(";")] if walk.points_of_interest else [],
-                        os_explorer_reference=walk.os_explorer_reference,
-                        steepness_level=walk.steepness_level,
-                        footwear_category=walk.footwear_category,
-                        recommended_footwear=walk.recommended_footwear,
-                        pubs_list=[
-                            pub
-                            if isinstance(pub, dict) and "name" in pub
-                            else {"name": str(pub)}
-                            for pub in walk.pubs_list
-                        ],
-                        trail_considerations=walk.trail_considerations,
-                        has_stiles=walk.has_stiles,
-                        has_bus_access=walk.has_bus_access,
-                        created_at=walk.created_at.isoformat(),
-                        updated_at=walk.updated_at.isoformat(),
-                    )
-                    results.append(walk_out)
-            except (ValueError, TypeError):
+                    results.append((distance, walk))
+            except (ValueError, TypeError) as e:
+                logger.warning(
+                    "Error calculating distance for walk %s: %s",
+                    walk.id, str(e)
+                )
                 continue
 
         # Sort by distance and limit results
-        results.sort(key=lambda x: float(x.distance) if x.distance else float("inf"))
-        return results[:limit]
+        results.sort(key=lambda x: x[0])
+        results = results[:limit]
 
+        # Convert to schema objects
+        return [
+            WalkOutSchema(
+                id=walk.id,
+                walk_id=walk.walk_id,
+                walk_name=walk.walk_name,
+                distance=walk.distance,
+                latitude=walk.latitude,
+                longitude=walk.longitude,
+                has_pub=walk.has_pub,
+                has_cafe=walk.has_cafe,
+                is_favorite=walk.is_favorite,
+                features=[
+                    {"name": f.name, "slug": f.slug} for f in walk.features.all()
+                ],
+                categories=[
+                    {"name": c.name, "slug": c.slug} for c in walk.categories.all()
+                ],
+                related_categories=[
+                    {"name": rc.name, "slug": rc.slug}
+                    for rc in walk.related_categories.all()
+                ],
+                highlights=walk.highlights,
+                points_of_interest=format_points_of_interest(walk.points_of_interest),
+                os_explorer_reference=walk.os_explorer_reference,
+                steepness_level=walk.steepness_level,
+                footwear_category=walk.footwear_category,
+                recommended_footwear=walk.recommended_footwear,
+                pubs_list=[format_pub_entry(pub) for pub in walk.pubs_list],
+                trail_considerations=walk.trail_considerations,
+                has_stiles=walk.has_stiles,
+                has_bus_access=walk.has_bus_access,
+                created_at=walk.created_at.isoformat(),
+                updated_at=walk.updated_at.isoformat(),
+            )
+            for _, walk in results
+        ]
+
+    except InvalidCoordinatesError as e:
+        logger.warning("Invalid coordinates in find_nearby_walks: %s", str(e))
+        return []
     except Exception:
+        logger.exception("Unexpected error in find_nearby_walks")
         return []
 
-
 @api.get("/walks/{identifier}", response=WalkOutSchema)
-def get_walk(request: HttpRequest, identifier: str):
-    """Get a single walk by ID or slug"""
+def get_walk(request: HttpRequest, identifier: str) -> WalkOutSchema:
+    """Get a single walk by ID or slug."""
     try:
         # Try UUID first
         try:
@@ -259,21 +263,13 @@ def get_walk(request: HttpRequest, identifier: str):
             # If not UUID, try slug
             walk = Walk.objects.get(walk_id=identifier)
 
-        walk = (
+        # Get annotated walk
+        walk = annotate_favorites(
             Walk.objects.prefetch_related(
-                "features", "categories", "related_categories",
-            )
-            .annotate(
-                is_favorite=Exists(
-                    Walk.favorites.through.objects.filter(
-                        walk_id=OuterRef("pk"), user=request.user,
-                    ),
-                )
-                if request.user.is_authenticated
-                else Value(False),
-            )
-            .get(id=walk.id)  # Use get() again to get annotated version
-        )
+                "features", "categories", "related_categories"
+            ),
+            request.user,
+        ).get(id=walk.id)
 
         return WalkOutSchema(
             id=walk.id,
@@ -285,77 +281,58 @@ def get_walk(request: HttpRequest, identifier: str):
             has_pub=walk.has_pub,
             has_cafe=walk.has_cafe,
             is_favorite=walk.is_favorite,
-            features=[{"name": f.name, "slug": f.slug} for f in walk.features.all()],
-            categories=[{"name": c.name, "slug": c.slug} for c in walk.categories.all()],
+            features=[
+                {"name": f.name, "slug": f.slug} for f in walk.features.all()
+            ],
+            categories=[
+                {"name": c.name, "slug": c.slug} for c in walk.categories.all()
+            ],
             related_categories=[
                 {"name": rc.name, "slug": rc.slug}
                 for rc in walk.related_categories.all()
             ],
             highlights=walk.highlights,
-            points_of_interest=[poi.strip() for poi in walk.points_of_interest.split(";")] if walk.points_of_interest else [],
+            points_of_interest=format_points_of_interest(walk.points_of_interest),
             os_explorer_reference=walk.os_explorer_reference,
             steepness_level=walk.steepness_level,
             footwear_category=walk.footwear_category,
             recommended_footwear=walk.recommended_footwear,
-            pubs_list=[
-                pub if isinstance(pub, dict) and "name" in pub else {"name": str(pub)}
-                for pub in walk.pubs_list
-            ],
+            pubs_list=[format_pub_entry(pub) for pub in walk.pubs_list],
             trail_considerations=walk.trail_considerations,
             has_stiles=walk.has_stiles,
             has_bus_access=walk.has_bus_access,
             created_at=walk.created_at.isoformat(),
             updated_at=walk.updated_at.isoformat(),
         )
-    except Walk.DoesNotExist:
-        return JsonResponse(
-            {"error": "Walk not found"},
-            status=404,
-        )
+
+    except Walk.DoesNotExist as e:
+        raise WalkNotFoundError(identifier) from e
     except Exception:
-        return JsonResponse(
-            {"error": "Internal server error"},
-            status=500,
-        )
+        logger.exception("Error fetching walk %s", identifier)
+        raise
 
-
-@api.post("/walks/{id}/favorite")
-def toggle_favorite(request: HttpRequest, id: UUID):
-    """Toggle favorite status for a walk"""
+@api.post("/walks/{walk_id}/favorite")
+def toggle_favorite(request: HttpRequest, walk_id: UUID) -> dict:
+    """Toggle favorite status for a walk."""
     if not request.user.is_authenticated:
-        return {"status": "error", "message": "Authentication required"}
+        error_message = "favoriting walks"
+        raise AuthenticationRequiredError(error_message)
 
-    walk = get_object_or_404(Walk, id=id)
-    if walk.favorites.filter(id=request.user.id).exists():
+    walk = get_object_or_404(Walk, id=walk_id)
+    is_favorite = walk.favorites.filter(id=request.user.id).exists()
+
+    if is_favorite:
         walk.favorites.remove(request.user)
         is_favorite = False
     else:
         walk.favorites.add(request.user)
         is_favorite = True
 
-    return {"status": "success", "walk_id": str(id), "is_favorite": is_favorite}
+    return {"status": "success", "walk_id": str(walk_id), "is_favorite": is_favorite}
 
-
-class TagResponseSchema(Schema):
-    name: str
-    slug: str
-    usage_count: int
-    type: str
-
-
-# Add MarkerSchema definition
-class MarkerSchema(Schema):
-    id: int
-    latitude: float
-    longitude: float
-
-
-# List tags
 @api.get("/tags", response=list[TagResponseSchema])
-def list_tags(request):
-    """Get all walk tags with usage counts"""
-    tags = []
-
+def list_tags(request: HttpRequest) -> list[TagResponseSchema]:
+    """Get all walk tags with usage counts."""
     # Get category tags with counts
     category_tags = (
         WalkCategoryTag.objects.annotate(
@@ -366,136 +343,100 @@ def list_tags(request):
         .values("name", "slug", "usage_count")
     )
 
-    # Add type field for category tags
-    for tag in category_tags:
-        tags.append(
-            {
-                "name": tag["name"],
-                "slug": tag["slug"],
-                "usage_count": tag["usage_count"],
-                "type": "category",
-            },
-        )
-
     # Get feature tags with counts
     feature_tags = (
-        WalkFeatureTag.objects.annotate(usage_count=Count("walks", distinct=True))
+        WalkFeatureTag.objects.annotate(
+            usage_count=Count("walks", distinct=True)
+        )
         .filter(usage_count__gt=0)
         .values("name", "slug", "usage_count")
     )
 
-    # Add type field for feature tags
-    for tag in feature_tags:
-        tags.append(
-            {
-                "name": tag["name"],
-                "slug": tag["slug"],
-                "usage_count": tag["usage_count"],
-                "type": "feature",
-            },
+    # Combine and format tags
+    return [
+        TagResponseSchema(
+            name=tag["name"],
+            slug=tag["slug"],
+            usage_count=tag["usage_count"],
+            type="category",
         )
-
-    return tags
-
+        for tag in category_tags
+    ] + [
+        TagResponseSchema(
+            name=tag["name"],
+            slug=tag["slug"],
+            usage_count=tag["usage_count"],
+            type="feature",
+        )
+        for tag in feature_tags
+    ]
 
 @api.get("/config", response=ConfigSchema)
-def get_config(request):
-    """Get application configuration"""
-    return {
-        "mapboxToken": settings.MAPBOX_TOKEN,
-        "map": {
+def get_config(request: HttpRequest) -> ConfigSchema:
+    """Get application configuration."""
+    return ConfigSchema(
+        mapboxToken=settings.MAPBOX_TOKEN,
+        map={
             "style": "mapbox://styles/mapbox/outdoors-v12?optimize=true",
-            "defaultCenter": [-4.85, 50.4],  # Cornwall's approximate center
-            "defaultZoom": 9.5,
-            "markerColors": {
-                "default": "#FF0000",  # Red markers
-                "selected": "#00FF00",  # Green markers for selected
-                "favorite": "#FFD700",  # Gold for favorites
-            },
+            "defaultCenter": DEFAULT_MAP_CENTER,
+            "defaultZoom": DEFAULT_MAP_ZOOM,
+            "markerColors": MARKER_COLORS,
         },
-        "filters": {"categories": True, "features": True, "distance": True},
-    }
-
+        filters={
+            "categories": True,
+            "features": True,
+            "distance": True,
+        },
+    )
 
 @api.get("/filters")
-def get_filters(request):
-    """Get available filter options"""
+def get_filters(request: HttpRequest) -> dict:
+    """Get available filter options."""
     return {
         "difficulties": [choice[0] for choice in Walk.DIFFICULTY_CHOICES],
         "footwear": [choice[0] for choice in Walk.FOOTWEAR_CHOICES],
-        "categories": list(WalkCategoryTag.objects.values("name", "slug")),
-        "features": list(WalkFeatureTag.objects.values("name", "slug")),
+        "categories": [
+            {"name": tag.name, "slug": tag.slug}
+            for tag in WalkCategoryTag.objects.all()
+        ],
+        "features": [
+            {"name": tag.name, "slug": tag.slug}
+            for tag in WalkFeatureTag.objects.all()
+        ],
     }
 
-
-class GeometrySchema(Schema):
-    type: str = "Feature"
-    geometry: dict
-    properties: dict
-
-
-@api.get("/walks/{id}/geometry", response=GeometrySchema)
-def get_walk_geometry(request: HttpRequest, id: UUID):
-    """Get GeoJSON geometry for a walk route"""
+@api.get("/walks/{walk_id}/geometry", response=GeometrySchema)
+def get_walk_geometry(request: HttpRequest, walk_id: UUID) -> GeometrySchema:
+    """Get GeoJSON geometry for a walk route."""
     try:
         walk = get_object_or_404(
-            Walk.objects.only("id", "walk_name", "distance", "route_geometry"), id=id,
+            Walk.objects.only("id", "walk_name", "distance", "route_geometry"),
+            id=walk_id,
         )
 
+        if not walk.route_geometry:
+            
+            def raise_geometry_error():
+                raise GeometryError(str(walk_id), "No geometry data available")
+
+            raise_geometry_error()
+
         # Convert the geometry to GeoJSON
-        if walk.route_geometry:
-            geojson = orjson.loads(walk.route_geometry.geojson)
+        geojson = orjson.loads(walk.route_geometry.geojson)
 
-            # Create a GeoJSON Feature
-            return {
-                "type": "Feature",
-                "geometry": geojson,
-                "properties": {
-                    "id": str(walk.id),
-                    "name": walk.walk_name,
-                    "distance": float(walk.distance) if walk.distance else 0,
-                },
-            }
+        return GeometrySchema(
+            type="Feature",
+            geometry=geojson,
+            properties={
+                "id": str(walk.id),
+                "name": walk.walk_name,
+                "distance": float(walk.distance) if walk.distance else 0,
+            },
+        )
 
-
+    except Walk.DoesNotExist as e:
+        raise WalkNotFoundError(str(walk_id)) from e
     except Exception:
-        return JsonResponse({"error": "Failed to fetch route geometry"}, status=404)
+        logger.exception("Error fetching geometry for walk %s", walk_id)
+        raise GeometryError(str(walk_id), "Failed to retrieve geometry") from None
 
-
-def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    """Calculate distance in meters using Haversine formula"""
-    R = 6371000  # Radius of Earth in meters
-
-    phi1, phi2 = math.radians(lat1), math.radians(lat2)
-    dphi = math.radians(lat2 - lat1)
-    dlambda = math.radians(lon2 - lon1)
-
-    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-
-    return R * c
-
-
-def walk_to_dict(walk: Walk) -> dict:
-    """Convert a Walk instance to a dictionary with all necessary fields"""
-    return {
-        "id": str(walk.id),
-        "walk_id": walk.walk_id,
-        "walk_name": walk.walk_name,
-        "highlights": walk.highlights,
-        "distance": float(walk.distance) if walk.distance else None,
-        "steepness_level": walk.steepness_level,
-        "latitude": float(walk.latitude),
-        "longitude": float(walk.longitude),
-        "features": [{"name": f.name, "slug": f.slug} for f in walk.features.all()],
-        "categories": [{"name": c.name, "slug": c.slug} for c in walk.categories.all()],
-        "related_categories": [
-            {"name": rc.name, "slug": rc.slug} for rc in walk.related_categories.all()
-        ],
-        "has_pub": bool(walk.has_pub),
-        "has_cafe": bool(walk.has_cafe),
-        "has_bus_access": bool(walk.has_bus_access),
-        "has_stiles": bool(walk.has_stiles),
-        "created_at": walk.created_at.isoformat() if walk.created_at else None,
-        "updated_at": walk.updated_at.isoformat() if walk.updated_at else None,
-    }

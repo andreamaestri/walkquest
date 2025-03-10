@@ -2,15 +2,20 @@
 import pytest
 from django.test import Client
 from django.urls import reverse
+from rest_framework import status
 from rest_framework.test import APIClient
 
 from walkquest.users.models import User
-from .test_config import (
-    TEST_USER_PASSWORD,
-    TEST_USER_EMAIL,
-    TEST_USER_USERNAME,
-    TEST_NEW_USER_PASSWORD,
-)
+
+from .test_config import TEST_NEW_USER_PASSWORD
+from .test_config import TEST_USER_EMAIL
+from .test_config import TEST_USER_PASSWORD
+from .test_config import TEST_USER_USERNAME
+
+# HTTP status code constants
+HTTP_200_OK = status.HTTP_200_OK
+HTTP_302_FOUND = status.HTTP_302_FOUND
+HTTP_401_UNAUTHORIZED = status.HTTP_401_UNAUTHORIZED
 
 
 @pytest.mark.django_db
@@ -30,7 +35,7 @@ class TestUserAPI:
     def test_get_user_authenticated(self):
         """Test authenticated user can get their profile."""
         response = self.client.get(reverse("user_api"))
-        assert response.status_code == 200
+        assert response.status_code == HTTP_200_OK
         assert response.json()["email"] == TEST_USER_EMAIL
         assert response.json()["username"] == TEST_USER_USERNAME
 
@@ -38,12 +43,12 @@ class TestUserAPI:
         """Test unauthenticated access is rejected."""
         self.client.force_authenticate(user=None)
         response = self.client.get(reverse("user_api"))
-        assert response.status_code == 401
+        assert response.status_code == HTTP_401_UNAUTHORIZED
 
     def test_get_preferences_authenticated(self):
         """Test authenticated user can get their preferences."""
         response = self.client.get(reverse("user-preferences"))
-        assert response.status_code == 200
+        assert response.status_code == HTTP_200_OK
         assert "theme" in response.json()
         assert "language" in response.json()
 
@@ -53,9 +58,9 @@ class TestUserAPI:
         response = self.client.patch(
             reverse("user-preferences"),
             data,
-            format="json"
+            format="json",
         )
-        assert response.status_code == 200
+        assert response.status_code == HTTP_200_OK
         assert response.json()["theme"] == "dark"
         assert response.json()["language"] == "fr"
 
@@ -86,7 +91,7 @@ class TestAuthentication:
             "name": "New User",
         }
         response = self.client.post(self.signup_url, data)
-        assert response.status_code == 302  # Redirect after successful signup
+        assert response.status_code == HTTP_302_FOUND
         assert User.objects.filter(email="newuser@example.com").exists()
 
     def test_login_flow(self):
@@ -104,9 +109,9 @@ class TestAuthentication:
             {
                 "login": TEST_USER_EMAIL,
                 "password": TEST_USER_PASSWORD,
-            }
+            },
         )
-        assert response.status_code == 302  # Redirect after successful login
+        assert response.status_code == HTTP_302_FOUND  # Redirect after successful login
 
     def test_logout_flow(self):
         """Test user logout flow."""
@@ -120,4 +125,4 @@ class TestAuthentication:
 
         # Test logout
         response = self.client.post(self.logout_url)
-        assert response.status_code == 302  # Redirect after logout
+        assert response.status_code == HTTP_302_FOUND  # Redirect after logout

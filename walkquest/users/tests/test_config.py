@@ -9,5 +9,5 @@ TEST_USER_USERNAME: Final = os.environ.get("TEST_USER_USERNAME", "testuser")
 
 # Default test password that meets Django's requirements
 TEST_NEW_USER_PASSWORD: Final = os.environ.get(
-    "TEST_NEW_USER_PASSWORD", "SecureNewPass123!"
+    "TEST_NEW_USER_PASSWORD", "SecureNewPass123!",
 )
