@@ -182,6 +182,7 @@ django-widget-tweaks = "^1.5.0"
 django-browser-reload = "^1.17.0"
 orjson = "^3.10.15"
 django-vite = "^3.0.6"
+python-decouple = "^3.8"
 
 
 [tool.poetry.group.dev.dependencies]

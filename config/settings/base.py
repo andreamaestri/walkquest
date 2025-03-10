@@ -1,5 +1,5 @@
 # ruff: noqa: ERA001, E501
-"""Base settings to build other settings files upon."""
+\"\"\"Base settings to build other settings files upon.\"\"\"
 
 import re
 import ssl
@@ -15,7 +15,7 @@ environ.Env.read_env(str(BASE_DIR / ".env"))
 
 # User display configuration - This determines how the user is displayed in messages
 def get_user_display(user):
-    """Return a user-friendly display name"""
+    \"\"\"Return a user-friendly display name\"\"\"
     if hasattr(user, 'name') and user.name:
         return user.name
     return user.email.split('@')[0]
@@ -298,15 +298,29 @@ EMAIL_BACKEND = env(
     "DJANGO_EMAIL_BACKEND",
     default="django.core.mail.backends.smtp.EmailBackend",
 )
+
+EMAIL_HOST = env("EMAIL_HOST", cast=str, default=None)
+EMAIL_PORT = env("EMAIL_PORT", cast=str, default='587') # Recommended
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", cast=str, default=None)
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", cast=str, default=None)
+EMAIL_USE_TLS = True
+EMAIL_USE_SSL = False
 # https://docs.djangoproject.com/en/dev/ref/settings/#email-timeout
 EMAIL_TIMEOUT = 5
+
+ADMIN_USER_NAME=env("ADMIN_USER_NAME", default="Admin user")
+ADMIN_USER_EMAIL=env("ADMIN_USER_EMAIL", default=None)
+
+MANAGERS=[]
+ADMINS = [(env("ADMIN_USER_NAME", default="Admin user"), env("ADMIN_USER_EMAIL", default=""))]
+MANAGERS = ADMINS
 
 # ADMIN
 # ------------------------------------------------------------------------------
 # Django Admin URL.
 ADMIN_URL = "admin/"
 # https://docs.djangoproject.com/en/dev/ref/settings/#admins
-ADMINS = [("""Andrea Maestri""", "hello@andreadev.uk")]
+# ADMINS = [(env("ADMIN_USER_NAME", default="Admin user"), env("ADMIN_USER_EMAIL", default=""))]
 # https://docs.djangoproject.com/en/dev/ref/settings/#managers
 MANAGERS = ADMINS
 # https://cookiecutter-django.readthedocs.io/en/latest/settings.html#other-environment-settings
@@ -323,7 +337,7 @@ LOGGING = {
     "disable_existing_loggers": False,
     "formatters": {
         "verbose": {
-            "format": "%(levelname)s %(asctime)s %(module)s %(process%d %(thread)d %(message)s %(name)s %(funcName)s %(pathname)s:%(lineno)d",
+            "format": "%(levelname)s %(asctime)s %(module)s %(process)d %(thread)d %(message)s",
         },
     },
     "handlers": {
@@ -442,8 +456,8 @@ ICONIFY_COLLECTIONS = {
 
 # Whitenoise configuration
 def immutable_file_test(_path, url):
-    """Test if a file should be treated as immutable."""
-    return bool(re.match(r"^.+[.-][0-9a-zA-Z_-]{8,12}\..+$", url))
+    \"\"\"Test if a file should be treated as immutable.\"\"\"
+    return bool(re.match(r"^.+[.-][0-9a-zA-Z_-]{8,12}\\..+$", url))
 
 
 WHITENOISE_IMMUTABLE_FILE_TEST = immutable_file_test
