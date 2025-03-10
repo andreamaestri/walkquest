@@ -21,19 +21,6 @@ const routes = [
     }
   },
   {
-    path: '/signup',
-    name: 'signup',
-    component: () => import('../components/auth/SignupForm.vue'),
-    beforeEnter: (to, from, next) => {
-      const authStore = useAuthStore();
-      if (authStore.isAuthenticated) {
-        next('/');
-      } else {
-        next();
-      }
-    }
-  },
-  {
     path: '/profile',
     name: 'profile',
     component: () => import('../components/profile/ProfileSettings.vue'),
@@ -57,13 +44,10 @@ const routes = [
     redirect: '/login'
   },
   {
-    path: '/accounts/signup',
-    redirect: '/signup'
-  },
-  {
     path: '/accounts/logout',
     redirect: '/'
-  }
+  },
+  
 ];
 
 const router = createRouter({

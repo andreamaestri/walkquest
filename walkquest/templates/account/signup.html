@@ -4,9 +4,9 @@
 
 {% block head_title %}{% trans "Signup" %}{% endblock %}
 
-{% block content %}
+{% block inner %}
 <div class="card">
-  <div class="card-header">
+  <div class="card-header" v-pre>
     <h4>{% trans "Sign Up" %}</h4>
   </div>
   <div class="card-body">
@@ -24,4 +24,4 @@
     </form>
   </div>
 </div>
-{% endblock %}
+{% endblock inner %}

@@ -8,7 +8,19 @@ from .walks.models import Walk
 
 WALK_NOT_FOUND_MESSAGE = "The requested walk could not be found"
 
-def index(request, walk_id=None):
+def index(request, walk_id=None, path=None):
+    """Main view that serves the Vue.js SPA or delegates to other views"""
+    # Don't handle /accounts/ paths - let Django handle those
+    if path and (path.startswith('accounts/') or request.path.startswith('/accounts/')):
+        raise Http404("Not found")
+        
+    # Don't handle /_allauth/ paths - let Django handle those
+    if path and (path.startswith('_allauth/') or request.path.startswith('/_allauth/')):
+        raise Http404("Not found")
+        
+    return render_spa(request, walk_id)
+
+def render_spa(request, walk_id=None):
     """Main view that serves the Vue.js SPA"""
     context = {
         "MAPBOX_TOKEN": settings.MAPBOX_TOKEN,

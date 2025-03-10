@@ -223,7 +223,7 @@ const activateSearch = () => {
           const handlePositionChange = (event) => {
             if (!mobileBottomSheet.value) return;
             bottomSheetHeight.value = event.detail.currentHeight;
-          });
+          };
         }
       }, 200);
     }
@@ -253,7 +253,7 @@ const deactivateSearch = () => {
     }
     
     isSearchActive.value = false;
-    if (uiStore.isMobile) {
+    if (stores.ui.isMobile) {
       document.body.classList.remove('overflow-hidden');
     }
   }
@@ -264,23 +264,23 @@ const searchQuery = computed({
   set: (value) => stores.search.setSearchQuery(value)
 });
 
-const searchMode = computed(() => searchStore.searchMode);
+const searchMode = computed(() => stores.search.searchMode);
 
 const showNavigationRail = computed(() => {
-  return !uiStore.isMobile && 
-         uiStore.showSidebar && 
-         !uiStore.fullscreen;
+  return !stores.ui.isMobile && 
+         stores.ui.showSidebar && 
+         !stores.ui.fullscreen;
 });
 
 const searchContainerClass = computed(() => {
   if (isSearchActive.value) {
-    if (uiStore.isMobile || windowWidth.value < BREAKPOINTS.SMALL) {
+    if (stores.ui.isMobile || windowWidth.value < BREAKPOINTS.SMALL) {
       return 'search-container-modal-mobile';
     }
     return 'search-container-modal';
   }
 
-  if (uiStore.isMobile || windowWidth.value < BREAKPOINTS.SMALL) {
+  if (stores.ui.isMobile || windowWidth.value < BREAKPOINTS.SMALL) {
     return 'search-container-mobile';
   }
   

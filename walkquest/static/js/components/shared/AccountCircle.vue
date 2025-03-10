@@ -52,7 +52,7 @@
     />
     
     <!-- Auth menu for unauthenticated users -->
-    <Teleport to="#portal-root">
+    <div class="auth-menu-wrapper">
       <Transition name="fade">
         <div 
           v-if="showAuthMenu && !isAuthenticatedComputed" 
@@ -69,26 +69,25 @@
           <div class="auth-menu-content">
             <p class="auth-menu-text">Sign in to save your favorite walks, track your adventures and more.</p>
             <div class="auth-links">
-              <RouterLink to="/login" class="auth-link auth-link-primary" @click="showAuthMenu = false">
+              <a href="#" class="auth-link auth-link-primary" @click.prevent="goToLogin">
                 <Icon icon="mdi:login" class="auth-icon" />
                 <span>Sign In</span>
-              </RouterLink>
-              <RouterLink to="/signup" class="auth-link auth-link-secondary" @click="showAuthMenu = false">
+              </a>
+              <a href="#" class="auth-link auth-link-secondary" @click.prevent="goToSignup">
                 <Icon icon="mdi:account-plus" class="auth-icon" />
                 <span>Create Account</span>
-              </RouterLink>
+              </a>
             </div>
           </div>
         </div>
       </Transition>
-    </Teleport>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { Icon } from '@iconify/vue';
-import { useRouter } from 'vue-router';
 import { useAuthStore } from '../../stores/auth';
 import { useUiStore } from '../../stores/ui';
 import AccountMenu from './AccountMenu.vue';
@@ -103,9 +102,6 @@ const props = defineProps({
 
 // Emit events
 const emit = defineEmits(['click']);
-
-// Router instance
-const router = useRouter();
 
 // State for interactive feedback
 const isHovered = ref(false);
@@ -184,7 +180,7 @@ const handleMenuAction = async (action) => {
       isPressed.value = true;
       await authStore.logout();
       showMenu.value = false;
-      router.push('/');
+      window.location.href = '/';
     } catch (error) {
       console.error('Logout failed:', error);
     } finally {
@@ -192,7 +188,7 @@ const handleMenuAction = async (action) => {
     }
   } else if (action === 'profile') {
     showMenu.value = false;
-    router.push('/profile');
+    window.location.href = '/profile';
   }
 };
 
@@ -204,6 +200,17 @@ const handleClickOutside = (event) => {
       showAuthMenu.value = false;
     }
   }
+};
+
+// Navigation functions for direct HTML navigation
+const goToLogin = () => {
+  window.location.href = '/accounts/login/';
+  showAuthMenu.value = false;
+};
+
+const goToSignup = () => {
+  window.location.href = '/accounts/signup/';
+  showAuthMenu.value = false;
 };
 
 // Lifecycle hooks with proper cleanup
@@ -379,6 +386,12 @@ onUnmounted(() => {
 }
 
 /* Auth Menu for unauthenticated users */
+.auth-menu-wrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
 .auth-menu {
   position: absolute;
   background-color: rgb(var(--md-sys-color-surface));

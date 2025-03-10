@@ -1,11 +1,14 @@
 // Utility functions for interacting with django-allauth API
 
-// Base URL for allauth API
+// Base URLs for allauth API
 const BASE_URL = '';
+
+// Response status codes
+const STATUS_OK = 200;
+const STATUS_CREATED = 201;
 
 // URLs for different endpoints
 export const URLs = Object.freeze({
-  CONFIG: '/accounts/config/',
   LOGIN: '/accounts/login/',
   LOGOUT: '/accounts/logout/',
   SIGNUP: '/accounts/signup/',
@@ -14,32 +17,97 @@ export const URLs = Object.freeze({
   PASSWORD_RESET: '/accounts/password/reset/',
   CHANGE_PASSWORD: '/accounts/password/change/',
   EMAIL: '/accounts/email/',
-  PROVIDERS: '/accounts/social/providers/',
 });
 
 // Get CSRF token from cookies or meta tag
-function getCsrfToken() {
+export function getCsrfToken() {
+  // Try to get from cookie (if it's not httpOnly)
   const name = 'csrftoken=';
-  let token = document.cookie.split(';').find(c => c.trim().startsWith(name));
-  if (token) {
-    return token.substring(name.length + 1);
+  const decodedCookie = decodeURIComponent(document.cookie);
+  const cookieArray = decodedCookie.split(';');
+  
+  for (let cookie of cookieArray) {
+    let trimmedCookie = cookie.trim();
+    if (trimmedCookie.startsWith(name)) {
+      return trimmedCookie.substring(name.length);
+    }
   }
+  
+  // Try to get from meta tag
   const metaToken = document.querySelector('meta[name="csrf-token"]');
-  return metaToken ? metaToken.getAttribute('content') : null;
+  if (metaToken) {
+    return metaToken.getAttribute('content');
+  }
+  
+  // Try to get from the hidden input field
+  const xcsrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]');
+  if (xcsrfToken) {
+    return xcsrfToken.value;
+  }
+  
+  return null;
+}
+
+// Extract error messages from HTML response
+function extractErrorsFromHtml(html) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  const errors = {};
+  
+  // Look for error list items with data-field attribute
+  doc.querySelectorAll('.errorlist li[data-field]').forEach(li => {
+    const field = li.getAttribute('data-field');
+    if (!errors[field]) errors[field] = [];
+    errors[field].push(li.textContent.trim());
+  });
+  
+  // Look for non-field errors
+  const nonFieldErrors = doc.querySelector('.alert-error, .alert-danger');
+  if (nonFieldErrors) {
+    errors.non_field_errors = [nonFieldErrors.textContent.trim()];
+  }
+  
+  // Look for regular errorlist items without data-field
+  doc.querySelectorAll('.errorlist li:not([data-field])').forEach(li => {
+    if (!errors.non_field_errors) errors.non_field_errors = [];
+    errors.non_field_errors.push(li.textContent.trim());
+  });
+  
+  // Look for form errors by field
+  doc.querySelectorAll('.form-group .errorlist li').forEach(li => {
+    const fieldGroup = li.closest('.form-group');
+    if (fieldGroup) {
+      const input = fieldGroup.querySelector('input');
+      if (input && input.name) {
+        const field = input.name;
+        if (!errors[field]) errors[field] = [];
+        errors[field].push(li.textContent.trim());
+      }
+    }
+  });
+  
+  return errors;
 }
 
 // Make a request to the allauth API
 async function request(method, path, data) {
   const options = {
-    method,
+    method: method,
     headers: {
       'Accept': 'application/json',
-      'X-CSRFToken': getCsrfToken(),
+      'X-Requested-With': 'XMLHttpRequest',
+      'Content-Type': 'application/json',
       'X-Requested-With': 'XMLHttpRequest'
     },
     credentials: 'same-origin'
   };
 
+  // Add CSRF token to headers for non-GET requests
+  const csrfToken = getCsrfToken();
+  if (csrfToken && method !== 'GET') {
+    options.headers['X-CSRFToken'] = csrfToken;
+  }
+  
   if (data) {
     if (method === 'GET') {
       // Add query params for GET requests
@@ -48,73 +116,85 @@ async function request(method, path, data) {
     } else {
       // Add body for non-GET requests
       options.body = JSON.stringify(data);
-      options.headers['Content-Type'] = 'application/json';
     }
   }
-
+  
   try {
-    // First, get a CSRF token if we don't have one
-    if (!getCsrfToken() && method !== 'GET') {
-      await fetch(path, { 
+    // If we don't have a CSRF token yet and this is not a GET request,
+    // make a GET request first to get the CSRF cookie
+    if (!csrfToken && method !== 'GET') {
+      const csrfResponse = await fetch(path, { 
         method: 'GET',
-        credentials: 'same-origin'
+        credentials: 'same-origin',
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        }
       });
-      // Now we should have a CSRF token in the cookies
-      options.headers['X-CSRFToken'] = getCsrfToken();
+      await csrfResponse.text(); // Ensure the response is consumed
+      
+      const newToken = getCsrfToken();
+      if (newToken) {
+        options.headers['X-CSRFToken'] = newToken;
+      }
     }
-
+    
+    // Make request
     const response = await fetch(`${BASE_URL}${path}`, options);
     
-    // Check if response is JSON
+    // First try to parse as JSON
     const contentType = response.headers.get('content-type');
     if (contentType && contentType.includes('application/json')) {
-      const result = await response.json();
-      
-      // If there are messages, they will be in window.djangoMessages
-      // The auth store will handle showing them via snackbar
-
-      // Dispatch auth change event if authentication state changed
-      if (response.status === 401 || 
-          response.status === 410 || 
-          (response.status === 200 && result.meta?.is_authenticated !== undefined)) {
-        const event = new CustomEvent('allauth.auth.change', { 
-          detail: {
-            ...result,
-            statusCode: response.status
-          }
-        });
-        document.dispatchEvent(event);
+      try {
+        const data = await response.json();
+        
+        // Handle successful response
+        if (response.ok) {
+          return {
+            status: response.status,
+            ...data
+          };
+        }
+        
+        // Handle error response
+        return {
+          status: response.status,
+          error: true,
+          errors: data.errors || data,
+          message: data.message || 'Please correct the errors below'
+        };
+      } catch (parseError) {
+        console.error('JSON parse error:', parseError);
       }
-      
-      return {
-        ...result,
-        status: response.status
-      };
-    } else {
-      // For non-JSON responses, check for Django messages in the HTML
-      const text = await response.text();
-      
-      // Simple success response with status
-      return {
-        status: response.status,
-        message: response.ok ? 'Operation successful' : 'Operation failed',
-        html: text
-      };
     }
+    
+    // If not JSON or JSON parsing failed, try to extract errors from HTML
+    const html = await response.text();
+    const errors = extractErrorsFromHtml(html);
+    
+    return {
+      status: response.status,
+      error: !response.ok,
+      errors: errors,
+      message: errors.non_field_errors?.[0] || 'Please correct the errors below',
+      html: html
+    };
+    
   } catch (error) {
-    console.error('API request error:', error);
-    // Ensure errors are also shown in snackbar via auth store
+    console.error('[allauth] API request error:', error);
     return {
       status: 500,
-      message: error.message || 'Failed to connect to server',
-      error: true
+      error: true,
+      message: 'Failed to connect to server',
+      errors: {
+        non_field_errors: [error.message || 'Network error']
+      }
     };
   }
 }
 
 // Login with email and password
 export async function login(data) {
-  // Django's default login form expects 'login' for the email/username field
   const loginData = {
     login: data.email,
     password: data.password
@@ -124,13 +204,16 @@ export async function login(data) {
 
 // Signup with email and password
 export async function signUp(data) {
-  // Django's default signup form expects 'email', 'password1', and 'password2'
-  const signupData = {
-    email: data.email,
-    password1: data.password,
-    password2: data.password
-  };
-  return await request('POST', URLs.SIGNUP, signupData);
+  try {
+    const signupData = {
+      email: data.email,
+      password1: data.password1,
+      password2: data.password2
+    };
+    return await request('POST', URLs.SIGNUP, signupData);
+  } catch (error) {
+    throw new Error('Signup request failed: ' + error.message);
+  }
 }
 
 // Logout the current user
@@ -143,9 +226,9 @@ export async function getAuth() {
   return await request('GET', URLs.SESSION);
 }
 
-// Get configuration information
+// Get configuration (including social providers)
 export async function getConfig() {
-  return await request('GET', URLs.CONFIG);
+  return await request('GET', '/_allauth/config/');
 }
 
 // Change password
@@ -191,9 +274,4 @@ export async function requestEmailVerification(email) {
 // Verify email with key
 export async function verifyEmail(key) {
   return await request('POST', URLs.VERIFY_EMAIL, { key });
-}
-
-// Get available social providers
-export async function getProviders() {
-  return await request('GET', URLs.PROVIDERS);
 }

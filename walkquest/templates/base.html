@@ -58,13 +58,14 @@
       href="https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.css"
       rel="stylesheet"
     />
-    {% if request.path|slice:":9" == '/accounts' %}
     <link href="{% static 'css/auth.css' %}" rel="stylesheet" />
-    {% endif %}
     {% if debug %}
     {% vite_hmr_client %}
     {% endif %}
+    {% if request.path != '/accounts/signup/' %}
+    {% vite_hmr_client %}
     {% vite_asset 'walkquest/static/js/main.js' %}
+    {% endif %}
     {% block extra_head %}{% endblock %}
   </head>
   <body

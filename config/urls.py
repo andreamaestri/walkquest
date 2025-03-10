@@ -9,35 +9,25 @@ from walkquest.walks.views import HomePageView
 from walkquest.views import index, legacy_walk_view
 
 urlpatterns = [
-    path("", HomePageView.as_view(), name="home"),
-    path(
-        "about/",
-        TemplateView.as_view(template_name="pages/about.html"),
-        name="about",
-    ),
-    # Django Admin, use {% url 'admin:index' %}
+    # Django Admin
     path(settings.ADMIN_URL, admin.site.urls),
+    
+    # Authentication URLs (keep at top to take precedence)
+    path("accounts/", include("allauth.urls")),
+    path("_allauth/", include("allauth.headless.urls")),
     
     # User management
     path("users/", include("walkquest.users.urls", namespace="users")),
     
-    # Standard Django allauth URLs for authentication
-    path("accounts/", include("allauth.urls")),
-    path("_allauth/", include("allauth.headless.urls")),  # Headless endpoints
-    
-    # Include walkquest URLs for all API routes
+    # Application URLs
     path("", include("walkquest.urls")),
     
-    # Add a URL pattern for /walk/<slug> format to match Vue router - using walk_id parameter
+    # Specific walk routes
     path("walk/<slug:walk_id>/", index, name="walk-detail"),
-    
-    # Direct walk slugs at root URL level
     path("<slug:walk_id>/", index, name="walk-detail-by-slug"),
-    
-    # Legacy UUID walk pages with redirect
     path("walk/<uuid:id>/", legacy_walk_view, name="walk-detail-legacy"),
     
-    # Media files
+    # Media and static files
     *static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT),
     path("__reload__/", include("django_browser_reload.urls")),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
@@ -46,8 +36,7 @@ if settings.DEBUG:
     # Static file serving when using Vite
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
-    # This allows the error pages to be debugged during development, just visit
-    # these url in browser to see how these error pages look like.
+    # This allows the error pages to be debugged during development
     urlpatterns += [
         path(
             "400/",
@@ -68,5 +57,10 @@ if settings.DEBUG:
     ]
     if "debug_toolbar" in settings.INSTALLED_APPS:
         import debug_toolbar
-
         urlpatterns = [path("__debug__/", include(debug_toolbar.urls))] + urlpatterns
+
+# Add catch-all routes last
+urlpatterns += [
+    path("<path:path>", index, name="vue-paths"),
+    path("", HomePageView.as_view(), name="home"),  # Keep home page last
+]
