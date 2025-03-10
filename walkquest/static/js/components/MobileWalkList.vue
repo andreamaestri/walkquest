@@ -498,18 +498,24 @@ watch(() => router.currentRoute.value.name, (routeName) => {
   console.log("Route changed to:", routeName)
   if (routeName === 'home' && !props.selectedWalkId && bottomSheetRef.value) {
     console.log("Opening sheet due to home route")
+    console.log("Opening bottom sheet to show search results");
     bottomSheetRef.value.open();
+    
+    // Force update the scroller to ensure results are properly displayed
+    nextTick(() => {
+      const walkListElement = document.querySelector('.walk-list-content');
+      if (walkListElement) {
+        const event = new CustomEvent('force-update-scroller');
+        walkListElement.dispatchEvent(event);
+      }
+    });
   }
 })
 
-// Watch for selected walk changes
+// Clean up events on unmount
 watch(() => props.selectedWalkId, (newId) => {
-  console.log("Selected walk ID changed:", newId)
   if (newId) {
-    if (bottomSheetRef.value && isOpen.value) {
-      console.log("Closing sheet due to walk selection")
-      bottomSheetRef.value.close();
-    }
+    bottomSheetRef.value.close();
   } else {
     if (router.currentRoute.value.name === 'home' && bottomSheetRef.value) {
       console.log("Opening sheet due to no walk selected")

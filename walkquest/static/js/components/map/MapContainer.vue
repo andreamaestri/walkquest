@@ -910,8 +910,11 @@ defineExpose({
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   margin-top: 0 !important; /* Override any existing margins */
   padding-top: env(safe-area-inset-top, 0px);
-  height: calc(100vh + env(safe-area-inset-top, 0px)) !important;
+  height: 100dvh !important; /* Use dynamic viewport height */
   width: 100vw;
+  overflow: hidden; /* Prevent scrollbars */
+  padding-bottom: env(safe-area-inset-bottom, 0px); /* Add bottom safe area */
+  margin-top: -env(safe-area-inset-top, 0px) !important;
 }
 
 /* Update to adjust map when drawer is open but keep sidebar visible */
@@ -1209,6 +1212,18 @@ defineExpose({
   padding-right: env(safe-area-inset-right, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
   padding-left: env(safe-area-inset-left, 0px);
+}
+
+/* Map container adjustments */
+:deep(.mapboxgl-canvas-container) {
+  height: 100% !important;
+  width: 100% !important;
+  touch-action: none; /* Prevent default touch behaviors */
+}
+
+/* Remove scrollbar track */
+:deep(.mapboxgl-canvas)::-webkit-scrollbar {
+  display: none;
 }
 
 /* Position other map elements correctly */
