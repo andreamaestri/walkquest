@@ -7,7 +7,7 @@
 
 {% block head_title %}{% trans "Sign In" %}{% endblock %}
 
-{% block content %}
+{% block inner %}
 <div class="auth-header">
   <h1 class="auth-title">{% trans "Welcome Back" %}</h1>
   <p class="auth-subtitle">{% blocktrans %}New to WalkQuest? <a href="{{ signup_url }}" class="auth-link">Create an account</a>{% endblocktrans %}</p>
@@ -106,6 +106,86 @@
   color: rgb(var(--md-sys-color-error)) !important;
   font-size: 0.875rem !important;
   margin-top: 0.5rem !important;
+}
+
+.checkbox-field {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin-bottom: 1.25rem !important;
+  cursor: pointer !important;
+}
+
+.checkbox-field input[type="checkbox"] {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  width: 18px !important;
+  height: 18px !important;
+  border: 2px solid rgb(var(--md-sys-color-outline)) !important;
+  border-radius: 2px !important;
+  background-color: transparent !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.checkbox-field input[type="checkbox"]:checked {
+  background-color: rgb(var(--md-sys-color-primary)) !important;
+  border-color: rgb(var(--md-sys-color-primary)) !important;
+}
+
+.checkbox-field input[type="checkbox"]:checked::after {
+  content: "" !important;
+  display: block !important;
+  width: 10px !important;
+  height: 10px !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z'/%3E%3C/svg%3E") !important;
+  background-size: contain !important;
+  background-repeat: no-repeat !important;
+}
+
+.checkbox-field label {
+  font-size: 0.875rem !important;
+  color: rgb(var(--md-sys-color-on-surface-variant)) !important;
+  cursor: pointer !important;
+}
+
+.auth-button {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  padding: 0.75rem 1.5rem !important;
+  background-color: rgb(var(--md-sys-color-primary)) !important;
+  color: rgb(var(--md-sys-color-on-primary)) !important;
+  border: none !important;
+  border-radius: var(--auth-border-radius-medium) !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.1px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  box-shadow: var(--md-sys-elevation-1) !important;
+}
+
+.auth-button:hover {
+  background-color: rgb(var(--md-sys-color-primary-container)) !important;
+  color: rgb(var(--md-sys-color-on-primary-container)) !important;
+  box-shadow: var(--md-sys-elevation-2) !important;
+}
+
+.auth-button:active {
+  background-color: rgb(var(--md-sys-color-primary-container)) !important;
+  box-shadow: var(--md-sys-elevation-1) !important;
+}
+
+.auth-footer {
+  margin-top: 1.5rem !important;
+  display: flex !important;
+  justify-content: center !important;
 }
 </style>
 {% endblock %}

@@ -6,6 +6,14 @@
   box-sizing: border-box !important;
 }
 
+:root {
+  --auth-transition-timing: var(--md-sys-motion-easing-emphasized);
+  --auth-transition-duration: var(--md-sys-motion-duration-medium1);
+  --auth-border-radius-large: 28px;
+  --auth-border-radius-medium: 20px;
+  --auth-border-radius-small: 12px;
+}
+
 /* Form fields and floating label */
 .form-field {
   margin-bottom: 1.75rem !important;
@@ -35,13 +43,14 @@
   box-sizing: border-box !important;
   padding: 1.25rem 1rem 0.75rem !important;
   border: 1px solid rgb(var(--md-sys-color-outline)) !important;
-  border-radius: 0.75rem !important;
+  border-radius: var(--auth-border-radius-small) !important;
   background: rgb(var(--md-sys-color-surface-container-highest)) !important;
   color: rgb(var(--md-sys-color-on-surface)) !important;
   font-size: 1rem !important;
   line-height: 1.5rem !important;
   min-height: 56px !important;
-  transition: all var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-emphasized) !important;
+  transition: all var(--auth-transition-duration) var(--auth-transition-timing) !important;
+  -webkit-tap-highlight-color: transparent !important;
 }
 
 .auth-input:focus,
@@ -91,10 +100,10 @@
   right: 0 !important;
   bottom: 0 !important;
   background: rgba(var(--md-sys-color-primary), var(--md-sys-state-pressed-state-layer-opacity)) !important;
-  border-radius: 0.75rem !important;
+  border-radius: var(--auth-border-radius-small) !important;
   opacity: 0 !important;
   transform: scale(0.8) !important;
-  transition: all var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized) !important;
+  transition: all var(--auth-transition-duration) var(--auth-transition-timing) !important;
   pointer-events: none !important;
   z-index: 0 !important;
 }
@@ -119,14 +128,16 @@
 .auth-card {
   width: 100% !important;
   max-width: 448px !important;
-  padding: 1.5rem !important;
+  padding: 2rem !important;
   background: rgb(var(--md-sys-color-surface-container)) !important;
-  border-radius: 28px !important;
+  border-radius: var(--auth-border-radius-large) !important;
   box-shadow: var(--md-sys-elevation-3) !important;
   position: relative !important;
   overflow: hidden !important;
-  animation: card-appear var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized) !important;
+  animation: card-appear var(--auth-transition-duration) var(--auth-transition-timing) !important;
   z-index: 1 !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
 }
 
 .auth-card form {
@@ -185,15 +196,15 @@
   min-height: 40px !important;
   padding: 0 24px !important;
   background: rgb(var(--md-sys-color-primary)) !important;
-  color: #FFFF !important;
+  color: rgb(var(--md-sys-color-on-primary)) !important;
   border: none !important;
-  border-radius: 20px !important;
+  border-radius: var(--auth-border-radius-medium) !important;
   font-weight: 500 !important;
   font-size: 0.875rem !important;
   line-height: 1.25rem !important;
   letter-spacing: 0.1px !important;
   cursor: pointer !important;
-  transition: box-shadow var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard) !important;
+  transition: all var(--auth-transition-duration) var(--auth-transition-timing) !important;
   position: relative !important;
   overflow: hidden !important;
   display: flex !important;
@@ -201,14 +212,18 @@
   justify-content: center !important;
   box-shadow: var(--md-sys-elevation-1) !important;
   box-sizing: border-box !important;
+  transform: translateZ(0) !important;
+  will-change: transform, box-shadow !important;
 }
 
 .auth-button:hover {
   box-shadow: var(--md-sys-elevation-2) !important;
+  transform: translateY(-1px) !important;
 }
 
 .auth-button:active {
   box-shadow: var(--md-sys-elevation-1) !important;
+  transform: translateY(0) !important;
 }
 
 .auth-button::before {
@@ -249,17 +264,20 @@
 .auth-link {
   color: rgb(var(--md-sys-color-primary)) !important;
   text-decoration: none !important;
-  transition: all var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard) !important;
+  transition: all var(--auth-transition-duration) var(--auth-transition-timing) !important;
   font-weight: 500 !important;
   position: relative !important;
   display: inline-block !important;
   font-size: 0.875rem !important;
   line-height: 1.25rem !important;
+  padding: 0.25rem 0.5rem !important;
+  margin: -0.25rem -0.5rem !important;
+  border-radius: 4px !important;
 }
 
 .auth-link:hover {
   color: rgb(var(--md-sys-color-primary)) !important;
-  opacity: 0.8 !important;
+  background-color: rgba(var(--md-sys-color-primary), var(--md-sys-state-hover-state-layer-opacity)) !important;
 }
 
 .auth-link:after {
@@ -282,27 +300,30 @@
 
 .errorlist {
   list-style: none !important;
-  padding: 0.5rem 0.75rem !important;
+  padding: 0.75rem 1rem !important;
   margin: 0.5rem 0 1rem 0 !important;
-  color: rgb(var(--md-sys-color-error)) !important;
+  color: rgb(var(--md-sys-color-on-error-container)) !important;
   font-size: 0.875rem !important;
-  border-radius: 0.5rem !important;
+  border-radius: var(--auth-border-radius-small) !important;
   background-color: rgb(var(--md-sys-color-error-container)) !important;
   width: 100% !important;
   box-sizing: border-box !important;
+  box-shadow: var(--md-sys-elevation-1) !important;
+  animation: error-appear var(--auth-transition-duration) var(--auth-transition-timing) forwards !important;
 }
 
 .alert {
   padding: 1rem 1.25rem !important;
   margin-bottom: 1.5rem !important;
-  border-radius: 16px !important;
+  border-radius: var(--auth-border-radius-small) !important;
   font-size: 0.875rem !important;
   display: flex !important;
   align-items: center !important;
   line-height: 1.25rem !important;
-  animation: alert-appear var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized) !important;
+  animation: alert-appear var(--auth-transition-duration) var(--auth-transition-timing) !important;
   width: 100% !important;
   box-sizing: border-box !important;
+  box-shadow: var(--md-sys-elevation-1) !important;
 }
 
 @keyframes alert-appear {
@@ -353,15 +374,16 @@ iconify-icon.mr-2 {
 .checkbox-field input[type="checkbox"] {
   appearance: none !important;
   -webkit-appearance: none !important;
-  width: 18px !important;
-  height: 18px !important;
+  width: 20px !important;
+  height: 20px !important;
   border: 2px solid rgb(var(--md-sys-color-outline)) !important;
-  border-radius: 2px !important;
+  border-radius: 4px !important;
   position: relative !important;
   cursor: pointer !important;
-  transition: all var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard) !important;
+  transition: all var(--auth-transition-duration) var(--auth-transition-timing) !important;
   flex-shrink: 0 !important;
   box-sizing: border-box !important;
+  background-color: transparent !important;
 }
 
 .checkbox-field input[type="checkbox"]:checked {
@@ -372,13 +394,25 @@ iconify-icon.mr-2 {
 .checkbox-field input[type="checkbox"]:checked:after {
   content: '' !important;
   position: absolute !important;
-  left: 5px !important;
+  left: 6px !important;
   top: 2px !important;
-  width: 4px !important;
-  height: 8px !important;
+  width: 5px !important;
+  height: 10px !important;
   border: solid rgb(var(--md-sys-color-on-primary)) !important;
   border-width: 0 2px 2px 0 !important;
   transform: rotate(45deg) !important;
+  animation: checkbox-check 0.2s var(--auth-transition-timing) forwards !important;
+}
+
+@keyframes checkbox-check {
+  0% { 
+    opacity: 0;
+    transform: rotate(45deg) scale(0.8); 
+  }
+  100% { 
+    opacity: 1;
+    transform: rotate(45deg) scale(1); 
+  }
 }
 
 .checkbox-field label {
@@ -429,7 +463,7 @@ iconify-icon.mr-2 {
   justify-content: center !important;
   min-height: 40px !important;
   padding: 0 24px !important;
-  border-radius: 20px !important;
+  border-radius: var(--auth-border-radius-medium) !important;
   background: rgb(var(--md-sys-color-surface-container)) !important;
   border: 1px solid rgb(var(--md-sys-color-outline)) !important;
   color: rgb(var(--md-sys-color-on-surface)) !important;
@@ -437,11 +471,14 @@ iconify-icon.mr-2 {
   font-size: 0.875rem !important;
   line-height: 1.25rem !important;
   letter-spacing: 0.1px !important;
-  transition: all 0.2s var(--md-sys-motion-easing-standard) !important;
+  transition: all var(--auth-transition-duration) var(--auth-transition-timing) !important;
   text-decoration: none !important;
   position: relative !important;
   width: 100% !important;
   box-sizing: border-box !important;
+  box-shadow: var(--md-sys-elevation-0) !important;
+  transform: translateZ(0) !important;
+  will-change: transform, box-shadow !important;
 }
 
 .social-button::before {
@@ -457,16 +494,24 @@ iconify-icon.mr-2 {
   border-radius: inherit !important;
 }
 
+.social-button:hover {
+  box-shadow: var(--md-sys-elevation-1) !important;
+}
+
 .social-button:hover::before {
-  opacity: 0.08 !important;
+  opacity: var(--md-sys-state-hover-state-layer-opacity) !important;
+}
+
+.social-button:focus {
+  outline: none !important;
 }
 
 .social-button:focus::before {
-  opacity: 0.12 !important;
+  opacity: var(--md-sys-state-focus-state-layer-opacity) !important;
 }
 
 .social-button:active::before {
-  opacity: 0.12 !important;
+  opacity: var(--md-sys-state-pressed-state-layer-opacity) !important;
 }
 
 /* Form footer */
@@ -480,14 +525,56 @@ iconify-icon.mr-2 {
   box-sizing: border-box !important;
 }
 
+.auth-input-wrapper {
+  position: relative !important;
+  width: 100% !important;
+}
+
 .auth-input-icon {
-  padding-top: 8px!important;
+  position: absolute !important;
+  left: 1rem !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  color: rgb(var(--md-sys-color-on-surface-variant)) !important;
+  pointer-events: none !important;
+  transition: all var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-emphasized) !important;
+}
+
+.auth-input {
+  padding-left: 2.75rem !important;
+}
+
+.auth-input:focus ~ .auth-input-icon,
+.auth-input:not(:placeholder-shown) ~ .auth-input-icon {
+  color: rgb(var(--md-sys-color-primary)) !important;
+  transform: translateY(-50%) scale(0.9) !important;
+}
+
+.auth-input-error {
+  color: rgb(var(--md-sys-color-error)) !important;
+  font-size: 0.875rem !important;
+  margin-top: 0.5rem !important;
+  animation: error-appear var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-emphasized) !important;
+}
+
+@keyframes error-appear {
+  0% { 
+    opacity: 0;
+    transform: translateY(-2px); 
+  }
+  100% { 
+    opacity: 1;
+    transform: translateY(0); 
+  }
 }
 
 /* Responsive adjustments */
 @media (max-width: 640px) {
   .auth-card {
-    padding: 1.25rem !important;
+    padding: 1.5rem !important;
+    border-radius: 24px !important;
+    margin: 1rem !important;
+    width: calc(100% - 2rem) !important;
   }
   
   .auth-header {
@@ -496,7 +583,20 @@ iconify-icon.mr-2 {
   
   .social-button,
   .auth-button {
-    min-height: 36px !important;
+    min-height: 48px !important; /* Increased touch target size */
+  }
+
+  .auth-container {
+    padding: 1rem !important;
+    padding-bottom: calc(1rem + var(--safe-area-inset-bottom)) !important;
+  }
+  
+  .form-field {
+    margin-bottom: 1.5rem !important;
+  }
+  
+  .auth-input {
+    font-size: 16px !important; /* Prevent zoom on iOS */
   }
 }
 
@@ -504,5 +604,23 @@ iconify-icon.mr-2 {
 @media (prefers-color-scheme: dark) {  
   .social-button {
     background: rgb(var(--md-sys-color-surface-container-low)) !important;
+  }
+
+  .auth-card {
+    background: rgba(var(--md-sys-color-surface-container), 0.9) !important;
+  }
+
+  .auth-input:focus + .field-label,
+  .auth-input:not(:placeholder-shown) + .field-label {
+    background-color: rgba(var(--md-sys-color-surface), 0.8) !important;
+  }
+
+  .errorlist {
+    background-color: rgba(var(--md-sys-color-error-container), 0.8) !important;
+  }
+
+  .alert {
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
   }
 }
