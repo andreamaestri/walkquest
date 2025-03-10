@@ -1,90 +1,330 @@
 /* Base styles for auth pages */
 @import 'material3.css';
 
-.auth-container {
-  min-height: 100vh !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  padding: 1rem !important;
-  background: rgb(var(--md-sys-color-background)) !important;
+/* Reset box-sizing */
+*, *::before, *::after {
+  box-sizing: border-box !important;
 }
 
-.auth-card {
-  width: 100% !important;
-  max-width: 24rem !important;
-  padding: 2rem !important;
-  background: rgb(var(--md-sys-color-surface)) !important;
-  border-radius: 1.5rem !important;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important;
-}
-
-/* Form field styles */
-.field-label {
-  margin-bottom: 0.5rem !important;
-  color: rgb(var(--md-sys-color-on-surface-variant)) !important;
-  font-size: 0.875rem !important;
-}
-
+/* Form fields and floating label */
 .form-field {
-  margin-bottom: 1.5rem !important;
+  margin-bottom: 1.75rem !important;
+  position: relative !important;
+  width: 100% !important;
+  padding-top: 16px !important; /* Add padding to accommodate the floating label */
+}
+
+.field-label {
+  position: absolute !important;
+  left: 1rem !important;
+  top: 50% !important; /* Center in the input initially */
+  transform: translateY(-50%) !important;
+  padding: 0 0.25rem !important;
+  color: rgb(var(--md-sys-color-on-surface-variant)) !important;
+  font-size: 1rem !important;
+  line-height: 1.5rem !important;
+  pointer-events: none !important;
+  transition: all 0.2s var(--md-sys-motion-easing-emphasized) !important;
+  background-color: transparent !important;
+  transform-origin: left top !important;
+  z-index: 1 !important;
 }
 
 .auth-input {
   width: 100% !important;
-  padding: 1rem !important;
+  box-sizing: border-box !important;
+  padding: 1.25rem 1rem 0.75rem !important;
   border: 1px solid rgb(var(--md-sys-color-outline)) !important;
   border-radius: 0.75rem !important;
-  background: rgb(var(--md-sys-color-surface-container-highest)) !important;
+  background: rgb(var(--md-sys-color-surface-container)) !important;
   color: rgb(var(--md-sys-color-on-surface)) !important;
-  transition: border-color 0.2s ease !important;
+  font-size: 1rem !important;
+  line-height: 1.5rem !important;
+  min-height: 56px !important;
+  transition: all 0.2s var(--md-sys-motion-easing-emphasized) !important;
+}
+
+/* Floating label animation with improved MD3 state handling */
+.auth-input:focus,
+.auth-input:not(:placeholder-shown) {
+  padding-top: 1.5rem !important;
+  padding-bottom: 0.5rem !important;
+  border-color: rgb(var(--md-sys-color-primary)) !important;
+  border-width: 2px !important;
+}
+
+/* Hover state for input field */
+.auth-input:hover:not(:focus):not(:disabled) {
+  border-color: rgb(var(--md-sys-color-on-surface)) !important;
+  background-color: rgba(var(--md-sys-color-on-surface), 0.05) !important;
+}
+
+/* Updated floating label animation - moves outside the input when active */
+.auth-input:focus + .field-label,
+.auth-input:not(:placeholder-shown) + .field-label {
+  top: 0 !important; /* Move to the top outside of the input */
+  transform: translateY(-50%) scale(0.75) !important;
+  background-color: rgb(var(--md-sys-color-surface)) !important; /* Match the background */
+  color: rgb(var(--md-sys-color-primary)) !important;
+  font-weight: 500 !important;
+  padding: 0 4px !important;
+  left: 12px !important;
+}
+
+/* Active/pressed state handling */
+.auth-input:active:not(:focus) {
+  background-color: rgba(var(--md-sys-color-primary), 0.05) !important;
+}
+
+.auth-input:not(:focus):not(:placeholder-shown) + .field-label {
+  color: rgb(var(--md-sys-color-on-surface-variant)) !important;
 }
 
 .auth-input:focus {
-  outline: none !important;
   border-color: rgb(var(--md-sys-color-primary)) !important;
+  border-width: 2px !important;
+  outline: none !important;
+  background-color: rgb(var(--md-sys-color-surface-container)) !important;
 }
 
+/* Add ripple effect for pressed state */
+.form-field::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 16px !important; /* Adjust to match the new padding-top */
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background: rgba(var(--md-sys-color-primary), 0.1) !important;
+  border-radius: 0.75rem !important;
+  opacity: 0 !important;
+  transform: scale(0.8) !important;
+  transition: all 0.3s var(--md-sys-motion-easing-emphasized) !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+}
+
+.auth-input:active + .field-label + .form-field::after {
+  opacity: 1 !important;
+  transform: scale(1) !important;
+}
+
+/* Rest of the styles remain the same */
+.auth-container {
+  min-height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 1.5rem !important;
+  background: rgb(var(--md-sys-color-background)) !important;
+  position: relative !important;
+  overflow-x: hidden !important;
+}
+
+.auth-card {
+  width: 100% !important;
+  max-width: 448px !important;
+  padding: 1.5rem !important;
+  background: rgb(var(--md-sys-color-surface-container)) !important;
+  border-radius: 28px !important;
+  box-shadow: var(--md-sys-elevation-level3) !important;
+  position: relative !important;
+  overflow: hidden !important;
+  animation: card-appear 0.4s var(--md-sys-motion-easing-emphasized) !important;
+  z-index: 1 !important;
+}
+
+/* Dialog/Card styles */
+.auth-card form {
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.auth-card input[type="hidden"] {
+  width: auto !important;
+}
+
+@keyframes card-appear {
+  0% { 
+    opacity: 0;
+    transform: translateY(10px); 
+  }
+  100% { 
+    opacity: 1;
+    transform: translateY(0); 
+  }
+}
+
+/* Scrim overlay for dialog effect */
+.auth-container::before {
+  content: '' !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background: rgba(var(--md-sys-color-scrim), 0.32) !important;
+  z-index: 0 !important;
+}
+
+.auth-header {
+  margin-bottom: 1.5rem !important;
+  text-align: center !important;
+}
+
+.auth-title {
+  font-size: 1.5rem !important;
+  font-weight: 500 !important;
+  color: rgb(var(--md-sys-color-on-surface)) !important;
+  margin-bottom: 0.5rem !important;
+  line-height: 1.2 !important;
+}
+
+.auth-subtitle {
+  font-size: 0.875rem !important;
+  color: rgb(var(--md-sys-color-on-surface-variant)) !important;
+  margin-top: 0.5rem !important;
+  line-height: 1.25rem !important;
+}
+
+/* Button styles */
 .auth-button {
   width: 100% !important;
-  padding: 1rem !important;
+  min-height: 40px !important;
+  padding: 0 24px !important;
   background: rgb(var(--md-sys-color-primary)) !important;
   color: rgb(var(--md-sys-color-on-primary)) !important;
   border: none !important;
-  border-radius: 1rem !important;
+  border-radius: 20px !important;
   font-weight: 500 !important;
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+  letter-spacing: 0.1px !important;
   cursor: pointer !important;
-  transition: background 0.2s ease !important;
+  transition: box-shadow 0.2s var(--md-sys-motion-easing-standard) !important;
+  position: relative !important;
+  overflow: hidden !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: var(--md-sys-elevation-level0) !important;
+  box-sizing: border-box !important;
 }
 
 .auth-button:hover {
-  background: rgb(var(--md-sys-color-primary-container)) !important;
-  color: rgb(var(--md-sys-color-on-primary-container)) !important;
+  box-shadow: var(--md-sys-elevation-level1) !important;
 }
 
+.auth-button:active {
+  box-shadow: var(--md-sys-elevation-level0) !important;
+}
+
+.auth-button::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background: rgb(var(--md-sys-color-on-primary)) !important;
+  opacity: 0 !important;
+  transition: opacity 0.2s var(--md-sys-motion-easing-standard) !important;
+}
+
+.auth-button:hover::before {
+  opacity: 0.08 !important;
+}
+
+.auth-button:focus::before {
+  opacity: 0.12 !important;
+}
+
+.auth-button:active::before {
+  opacity: 0.12 !important;
+}
+
+.auth-button:disabled {
+  background: rgba(var(--md-sys-color-on-surface), 0.12) !important;
+  color: rgba(var(--md-sys-color-on-surface), 0.38) !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+}
+
+.auth-button:disabled::before {
+  display: none !important;
+}
+
+/* Links */
 .auth-link {
   color: rgb(var(--md-sys-color-primary)) !important;
   text-decoration: none !important;
-  transition: color 0.2s ease !important;
+  transition: all 0.2s ease !important;
+  font-weight: 500 !important;
+  position: relative !important;
+  display: inline-block !important;
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
 }
 
 .auth-link:hover {
-  color: rgb(var(--md-sys-color-primary-container)) !important;
+  color: rgb(var(--md-sys-color-primary)) !important;
+  opacity: 0.8 !important;
 }
 
+.auth-link:after {
+  content: '' !important;
+  position: absolute !important;
+  width: 100% !important;
+  height: 2px !important;
+  bottom: -2px !important;
+  left: 0 !important;
+  background-color: rgb(var(--md-sys-color-primary)) !important;
+  transform: scaleX(0) !important;
+  transform-origin: bottom right !important;
+  transition: transform 0.3s !important;
+}
+
+.auth-link:hover:after {
+  transform: scaleX(1) !important;
+  transform-origin: bottom left !important;
+}
+
+/* Form errors and messages */
 .errorlist {
   list-style: none !important;
-  padding: 0 !important;
-  margin: 0 0 1rem 0 !important;
+  padding: 0.5rem 0.75rem !important;
+  margin: 0.5rem 0 1rem 0 !important;
   color: rgb(var(--md-sys-color-error)) !important;
   font-size: 0.875rem !important;
+  border-radius: 0.5rem !important;
+  background-color: rgba(var(--md-sys-color-error), 0.08) !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 .alert {
-  padding: 1rem !important;
-  margin-bottom: 1rem !important;
-  border-radius: 0.75rem !important;
+  padding: 1rem 1.25rem !important;
+  margin-bottom: 1.5rem !important;
+  border-radius: 16px !important;
   font-size: 0.875rem !important;
+  display: flex !important;
+  align-items: center !important;
+  line-height: 1.25rem !important;
+  animation: alert-appear 0.3s var(--md-sys-motion-easing-emphasized) !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+@keyframes alert-appear {
+  0% { 
+    opacity: 0;
+    transform: translateY(-5px); 
+  }
+  100% { 
+    opacity: 1;
+    transform: translateY(0); 
+  }
 }
 
 .alert-error {
@@ -93,11 +333,174 @@
 }
 
 .alert-success {
-  background: rgb(var(--md-sys-color-success-container)) !important;
-  color: rgb(var(--md-sys-color-on-success-container)) !important;
+  background: rgb(var(--md-sys-color-tertiary-container)) !important;
+  color: rgb(var(--md-sys-color-on-tertiary-container)) !important;
 }
 
 .alert-info {
   background: rgb(var(--md-sys-color-secondary-container)) !important;
   color: rgb(var(--md-sys-color-on-secondary-container)) !important;
+}
+
+/* Checkbox styling */
+.checkbox-field {
+  display: flex !important;
+  align-items: center !important;
+  margin-bottom: 1.25rem !important;
+  gap: 0.75rem !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.checkbox-field input[type="checkbox"] {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  width: 18px !important;
+  height: 18px !important;
+  border: 2px solid rgb(var(--md-sys-color-outline)) !important;
+  border-radius: 2px !important;
+  position: relative !important;
+  cursor: pointer !important;
+  transition: all 0.2s var(--md-sys-motion-easing-standard) !important;
+  flex-shrink: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.checkbox-field input[type="checkbox"]:checked {
+  background-color: rgb(var(--md-sys-color-primary)) !important;
+  border-color: rgb(var(--md-sys-color-primary)) !important;
+}
+
+.checkbox-field input[type="checkbox"]:checked:after {
+  content: '' !important;
+  position: absolute !important;
+  left: 5px !important;
+  top: 2px !important;
+  width: 4px !important;
+  height: 8px !important;
+  border: solid rgb(var(--md-sys-color-on-primary)) !important;
+  border-width: 0 2px 2px 0 !important;
+  transform: rotate(45deg) !important;
+}
+
+.checkbox-field label {
+  color: rgb(var(--md-sys-color-on-surface)) !important;
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+  cursor: pointer !important;
+}
+
+/* Dividers */
+.auth-divider {
+  display: flex !important;
+  align-items: center !important;
+  text-align: center !important;
+  margin: 1.5rem 0 !important;
+  gap: 0.75rem !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.auth-divider:before,
+.auth-divider:after {
+  content: '' !important;
+  flex: 1 !important;
+  border-bottom: 1px solid rgb(var(--md-sys-color-outline-variant)) !important;
+}
+
+.auth-divider span {
+  color: rgb(var(--md-sys-color-on-surface-variant)) !important;
+  font-size: 0.75rem !important;
+  line-height: 1rem !important;
+  letter-spacing: 0.4px !important;
+}
+
+/* Social login buttons */
+.social-login-container {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.75rem !important;
+  margin-top: 1.5rem !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.social-button {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 40px !important;
+  padding: 0 24px !important;
+  border-radius: 20px !important;
+  background: rgb(var(--md-sys-color-surface-container)) !important;
+  border: 1px solid rgb(var(--md-sys-color-outline)) !important;
+  color: rgb(var(--md-sys-color-on-surface)) !important;
+  font-weight: 500 !important;
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+  letter-spacing: 0.1px !important;
+  transition: all 0.2s var(--md-sys-motion-easing-standard) !important;
+  text-decoration: none !important;
+  position: relative !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.social-button::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background: currentColor !important;
+  opacity: 0 !important;
+  transition: opacity 0.2s var(--md-sys-motion-easing-standard) !important;
+  border-radius: inherit !important;
+}
+
+.social-button:hover::before {
+  opacity: 0.08 !important;
+}
+
+.social-button:focus::before {
+  opacity: 0.12 !important;
+}
+
+.social-button:active::before {
+  opacity: 0.12 !important;
+}
+
+/* Form footer */
+.auth-footer {
+  margin-top: 1.5rem !important;
+  text-align: center !important;
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+  color: rgb(var(--md-sys-color-on-surface-variant)) !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .auth-card {
+    padding: 1.25rem !important;
+  }
+  
+  .auth-header {
+    margin-bottom: 1.25rem !important;
+  }
+  
+  .social-button,
+  .auth-button {
+    min-height: 36px !important;
+  }
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {  
+  .social-button {
+    background: rgb(var(--md-sys-color-surface-container-low)) !important;
+  }
 }

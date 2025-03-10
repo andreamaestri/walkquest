@@ -1,27 +1,150 @@
 {% extends "account/base.html" %}
 {% load i18n %}
-{% load crispy_forms_tags %}
+{% load account socialaccount %}
 
-{% block head_title %}{% trans "Signup" %}{% endblock %}
+{% block head_title %}{% trans "Sign Up" %}{% endblock %}
 
 {% block inner %}
-<div class="card">
-  <div class="card-header" v-pre>
-    <h4>{% trans "Sign Up" %}</h4>
-  </div>
-  <div class="card-body">
-    <p>{% blocktrans %}Already have an account? Then please <a href="{{ login_url }}">sign in</a>.{% endblocktrans %}</p>
+<div class="auth-header">
+  <h1 class="auth-title">{% trans "Create Account" %}</h1>
+  <p class="auth-subtitle">{% blocktrans %}Already have an account? <a href="{{ login_url }}" class="auth-link">Sign in</a>{% endblocktrans %}</p>
+</div>
 
-    <form class="signup" id="signup_form" method="post" action="{% url 'account_signup' %}">
-      {% csrf_token %}
-      {{ form|crispy }}
-      {% if redirect_field_value %}
-      <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}" />
-      {% endif %}
-      <div class="d-grid gap-2 mt-3">
-        <button class="btn btn-primary" type="submit">{% trans "Sign Up" %}</button>
-      </div>
-    </form>
+{% get_providers as socialaccount_providers %}
+
+{% if socialaccount_providers %}
+<div class="social-login-container">
+  {% for provider in socialaccount_providers %}
+    <a href="{% provider_login_url provider.id %}" class="social-button">
+      <iconify-icon icon="mdi:{{ provider.id }}" width="24" height="24" class="mr-3"></iconify-icon>
+      {% blocktrans with provider.name as provider %}Continue with {{ provider }}{% endblocktrans %}
+    </a>
+  {% endfor %}
+  
+  <div class="auth-divider">
+    <span>{% trans "or sign up with email" %}</span>
   </div>
 </div>
-{% endblock inner %}
+{% endif %}
+
+<form class="signup" id="signup_form" method="post" action="{% url 'account_signup' %}">
+  {% csrf_token %}
+  
+  {% if form.non_field_errors %}
+    <div class="alert alert-error">
+      <iconify-icon icon="material-symbols:error-outline" width="20" height="20" class="mr-2"></iconify-icon>
+      {{ form.non_field_errors }}
+    </div>
+  {% endif %}
+
+  <div class="form-field">
+    <div class="auth-input-wrapper">
+      <input type="email" name="email" placeholder=" " id="id_email" class="auth-input" required>
+      <iconify-icon icon="material-symbols:mail-outline" class="auth-input-icon"></iconify-icon>
+    </div>
+    <label for="id_email" class="field-label">{% trans "Email Address" %}</label>
+    {% if form.email.errors %}
+      <div class="auth-input-error">{{ form.email.errors }}</div>
+    {% endif %}
+  </div>
+
+  <div class="form-field">
+    <div class="auth-input-wrapper">
+      <input type="password" name="password1" placeholder=" " id="id_password1" class="auth-input" required>
+      <iconify-icon icon="material-symbols:lock-outline" class="auth-input-icon"></iconify-icon>
+    </div>
+    <label for="id_password1" class="field-label">{% trans "Password" %}</label>
+    {% if form.password1.errors %}
+      <div class="auth-input-error">{{ form.password1.errors }}</div>
+    {% endif %}
+    <div class="auth-field__help">
+      <ul>
+        <li>
+          <iconify-icon icon="material-symbols:check-small" class="mr-1" width="16" height="16"></iconify-icon>
+          {% trans "Your password must contain at least 8 characters" %}
+        </li>
+        <li>
+          <iconify-icon icon="material-symbols:check-small" class="mr-1" width="16" height="16"></iconify-icon>
+          {% trans "Your password can't be too similar to your other personal information" %}
+        </li>
+        <li>
+          <iconify-icon icon="material-symbols:check-small" class="mr-1" width="16" height="16"></iconify-icon>
+          {% trans "Your password can't be a commonly used password" %}
+        </li>
+        <li>
+          <iconify-icon icon="material-symbols:check-small" class="mr-1" width="16" height="16"></iconify-icon>
+          {% trans "Your password can't be entirely numeric" %}
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="form-field">
+    <div class="auth-input-wrapper">
+      <input type="password" name="password2" placeholder=" " id="id_password2" class="auth-input" required>
+      <iconify-icon icon="material-symbols:lock-outline" class="auth-input-icon"></iconify-icon>
+    </div>
+    <label for="id_password2" class="field-label">{% trans "Confirm Password" %}</label>
+    {% if form.password2.errors %}
+      <div class="auth-input-error">{{ form.password2.errors }}</div>
+    {% endif %}
+  </div>
+
+  {% if redirect_field_value %}
+    <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}" />
+  {% endif %}
+
+  <button class="auth-button" type="submit">
+    <iconify-icon icon="material-symbols:person-add" class="mr-2" width="20" height="20"></iconify-icon>
+    {% trans "Create Account" %}
+  </button>
+</form>
+
+<style>
+.auth-input-wrapper {
+  position: relative !important;
+}
+
+.auth-input-icon {
+  position: absolute !important;
+  left: 1rem !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  color: rgb(var(--md-sys-color-on-surface-variant)) !important;
+  pointer-events: none !important;
+}
+
+.auth-input {
+  padding-left: 2.75rem !important;
+}
+
+.auth-input-error {
+  color: rgb(var(--md-sys-color-error)) !important;
+  font-size: 0.875rem !important;
+  margin-top: 0.5rem !important;
+}
+
+.auth-field__help {
+  font-size: 0.875rem !important;
+  color: rgb(var(--md-sys-color-on-surface-variant)) !important;
+  margin-top: 0.5rem !important;
+}
+
+.auth-field__help ul {
+  list-style-type: none !important;
+  padding-left: 0 !important;
+  margin: 0.5rem 0 !important;
+}
+
+.auth-field__help li {
+  display: flex !important;
+  align-items: center !important;
+  margin-bottom: 0.25rem !important;
+}
+
+.auth-field__help li iconify-icon {
+  color: rgb(var(--md-sys-color-primary)) !important;
+  flex-shrink: 0 !important;
+}
+</style>
+{% endblock %}

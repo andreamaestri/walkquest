@@ -3,23 +3,58 @@
 {% load i18n %}
 {% load account %}
 
-{% block head_title %}{% trans "Verify Your Email Address" %}{% endblock %}
+{% block head_title %}{% trans "Confirm Email Address" %}{% endblock %}
 
 {% block inner %}
-    <h2 class="text-2xl font-bold mb-4">{% trans "Verify Your Email Address" %}</h2>
-    
-    {% if confirmation %}
-        {% user_display confirmation.email_address.user as user_display %}
-        
-        <p class="mb-4">{% blocktrans with confirmation.email_address.email as email %}Please confirm that <a href="mailto:{{ email }}" class="text-blue-600 hover:underline">{{ email }}</a> is an email address for user {{ user_display }}.{% endblocktrans %}</p>
+<div class="auth-header">
+  <h1 class="auth-title">{% trans "Confirm Email" %}</h1>
+  
+  {% if confirmation %}
+    <p class="auth-subtitle">
+      {% blocktrans with confirmation.email_address.email as email %}Please confirm that <strong>{{ email }}</strong> is your email address.{% endblocktrans %}
+    </p>
+  {% else %}
+    <p class="auth-subtitle">{% trans "This confirmation link has expired or is invalid. Please request a new verification email." %}</p>
+  {% endif %}
+</div>
 
-        <form method="post" action="{% url 'account_confirm_email' confirmation.key %}">
-            {% csrf_token %}
-            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">{% trans 'Confirm' %}</button>
-        </form>
-        
-    {% else %}
-        {% url 'account_email' as email_url %}
-        
-        <p class="mb-4">{% blocktrans %}This email confirmation link has expired or is invalid. Please <a href="{{ email_url }}" class="text-blue-600 hover:underline">request a new email confirmation</a>.{% endblocktrans %}</p>
-    {% endif %}
+{% if confirmation %}
+  <form method="post" action="{% url 'account_confirm_email' confirmation.key %}">
+    {% csrf_token %}
+    <button class="auth-button" type="submit">
+      <iconify-icon icon="material-symbols:check" class="mr-2" width="20" height="20"></iconify-icon>
+      {% trans "Confirm Email Address" %}
+    </button>
+  </form>
+{% else %}
+  <div class="auth-message auth-message--error">
+    <div class="auth-message__icon">
+      <iconify-icon icon="material-symbols:error-outline" width="48" height="48"></iconify-icon>
+    </div>
+    <p class="auth-message__text">
+      {% trans "This confirmation link has expired or is invalid." %}
+    </p>
+  </div>
+
+  <div class="auth-footer">
+    <a href="{% url 'account_email' %}" class="auth-button">
+      <iconify-icon icon="material-symbols:mail-outline" class="mr-2" width="20" height="20"></iconify-icon>
+      {% trans "Request New Verification Email" %}
+    </a>
+  </div>
+{% endif %}
+
+<style>
+.auth-message--error {
+  background: rgb(var(--md-sys-color-error-container)) !important;
+}
+
+.auth-message--error .auth-message__icon {
+  color: rgb(var(--md-sys-color-error)) !important;
+}
+
+.auth-message--error .auth-message__text {
+  color: rgb(var(--md-sys-color-on-error-container)) !important;
+}
+</style>
+{% endblock %}

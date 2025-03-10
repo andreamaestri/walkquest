@@ -237,7 +237,7 @@ const handleFabAction = (action) => {
   switch (action) {
     case 'explore':
       activeTab.value = 'explore';
-      searchStore.setSearchMode('walks');
+      stores.search.setSearchMode('walks');
       showWalksBottomSheet.value = true;
       // Ensure the bottom sheet is opened after it's mounted
       nextTick(() => {
@@ -248,7 +248,7 @@ const handleFabAction = (action) => {
       break;
     case 'nearby':
       activeTab.value = 'nearby';
-      searchStore.setSearchMode('locations');
+      stores.search.setSearchMode('locations');
       showWalksBottomSheet.value = true;
       nextTick(() => {
         if (mobileWalkListRef.value) {
@@ -258,7 +258,7 @@ const handleFabAction = (action) => {
       break;
     case 'categories':
       activeTab.value = 'categories';
-      searchStore.setSearchMode('categories');
+      stores.search.setSearchMode('categories');
       showWalksBottomSheet.value = true;
       nextTick(() => {
         if (mobileWalkListRef.value) {

@@ -1,46 +1,111 @@
 {% extends "account/base.html" %}
 {% load i18n %}
 {% load account %}
+{% load static %}
 {% load crispy_forms_tags %}
+{% load socialaccount %}
 
 {% block head_title %}{% trans "Sign In" %}{% endblock %}
 
 {% block content %}
-<div class="card">
-  <div class="card-header">
-    <h4>{% trans "Sign In" %}</h4>
-  </div>
-  <div class="card-body">
-    {% if socialaccount_providers %}
-    <p>{% blocktrans with site.name as site_name %}Please sign in with one
-    of your existing third party accounts. Or, <a href="{{ signup_url }}">sign up</a>
-    for a {{ site_name }} account and sign in below:{% endblocktrans %}</p>
+<div class="auth-header">
+  <h1 class="auth-title">{% trans "Welcome Back" %}</h1>
+  <p class="auth-subtitle">{% blocktrans %}New to WalkQuest? <a href="{{ signup_url }}" class="auth-link">Create an account</a>{% endblocktrans %}</p>
+</div>
 
-    <div class="socialaccount_ballot">
-      <ul class="socialaccount_providers">
-        {% include "socialaccount/snippets/provider_list.html" with process="login" %}
-      </ul>
-      <div class="login-or">{% trans 'or' %}</div>
-    </div>
-    {% include "socialaccount/snippets/login_extra.html" %}
-    {% else %}
-    <p>{% blocktrans %}If you have not created an account yet, then please
-    <a href="{{ signup_url }}">sign up</a> first.{% endblocktrans %}</p>
-    {% endif %}
+{% get_providers as socialaccount_providers %}
 
-    <form class="login" method="POST" action="{% url 'account_login' %}">
-      {% csrf_token %}
-      {{ form|crispy }}
-      {% if redirect_field_value %}
-      <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}" />
-      {% endif %}
-      <div class="d-grid gap-2 mt-3">
-        <button class="btn btn-primary" type="submit">{% trans "Sign In" %}</button>
-      </div>
-      <div class="mt-3 text-center">
-        <a class="button secondaryAction" href="{% url 'account_reset_password' %}">{% trans "Forgot Password?" %}</a>
-      </div>
-    </form>
+{% if socialaccount_providers %}
+<div class="social-login-container">
+  {% for provider in socialaccount_providers %}
+    <a href="{% provider_login_url provider.id %}" class="social-button">
+      <iconify-icon icon="mdi:{{ provider.id }}" width="24" height="24" class="mr-3"></iconify-icon>
+      {% blocktrans with provider.name as provider %}Continue with {{ provider }}{% endblocktrans %}
+    </a>
+  {% endfor %}
+  
+  <div class="auth-divider">
+    <span>{% trans "or continue with email" %}</span>
   </div>
 </div>
+{% endif %}
+
+<form class="login" method="POST" action="{% url 'account_login' %}">
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+    <div class="alert alert-error">
+      <iconify-icon icon="material-symbols:error-outline" width="20" height="20" class="mr-2"></iconify-icon>
+      {{ form.non_field_errors }}
+    </div>
+  {% endif %}
+  
+  <div class="form-field">
+    <div class="auth-input-wrapper">
+      <input type="email" name="login" placeholder=" " id="id_login" class="auth-input" required>
+      <iconify-icon icon="material-symbols:mail-outline" class="auth-input-icon"></iconify-icon>
+    </div>
+    <label for="id_login" class="field-label">{% trans "Email Address" %}</label>
+    {% if form.login.errors %}
+      <div class="auth-input-error">{{ form.login.errors }}</div>
+    {% endif %}
+  </div>
+
+  <div class="form-field">
+    <div class="auth-input-wrapper">
+      <input type="password" name="password" placeholder=" " id="id_password" class="auth-input" required>
+      <iconify-icon icon="material-symbols:lock-outline" class="auth-input-icon"></iconify-icon>
+    </div>
+    <label for="id_password" class="field-label">{% trans "Password" %}</label>
+    {% if form.password.errors %}
+      <div class="auth-input-error">{{ form.password.errors }}</div>
+    {% endif %}
+  </div>
+
+  <div class="checkbox-field">
+    <input type="checkbox" name="remember" id="id_remember">
+    <label for="id_remember">{% trans "Remember me" %}</label>
+  </div>
+
+  {% if redirect_field_value %}
+    <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}" />
+  {% endif %}
+
+  <button class="auth-button" type="submit">
+    <iconify-icon icon="material-symbols:login" class="mr-2" width="20" height="20"></iconify-icon>
+    {% trans "Sign In" %}
+  </button>
+</form>
+
+<div class="auth-footer">
+  <a href="{% url 'account_reset_password' %}" class="auth-link">
+    <iconify-icon icon="material-symbols:key-outline" class="mr-1" width="16" height="16"></iconify-icon>
+    {% trans "Forgot your password?" %}
+  </a>
+</div>
+
+<style>
+.auth-input-wrapper {
+  position: relative !important;
+}
+
+.auth-input-icon {
+  position: absolute !important;
+  left: 1rem !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  color: rgb(var(--md-sys-color-on-surface-variant)) !important;
+  pointer-events: none !important;
+}
+
+.auth-input {
+  padding-left: 2.75rem !important;
+}
+
+.auth-input-error {
+  color: rgb(var(--md-sys-color-error)) !important;
+  font-size: 0.875rem !important;
+  margin-top: 0.5rem !important;
+}
+</style>
 {% endblock %}

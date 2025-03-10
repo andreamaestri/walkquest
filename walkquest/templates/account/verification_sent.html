@@ -1,0 +1,47 @@
+{% extends "account/base.html" %}
+
+{% load i18n %}
+
+{% block head_title %}{% trans "Verify Your Email" %}{% endblock %}
+
+{% block inner %}
+<div class="auth-header">
+  <h1 class="auth-title">{% trans "Verify Your Email" %}</h1>
+  <p class="auth-subtitle">{% trans "We've sent you an email to verify your address." %}</p>
+</div>
+
+<div class="auth-message">
+  <div class="auth-message__icon">
+    <iconify-icon icon="material-symbols:mark-email-read-outline" width="48" height="48"></iconify-icon>
+  </div>
+  <p class="auth-message__text">
+    {% blocktrans %}We have sent you a verification email. Please click the link in the email to verify your address. If you do not see the email in your inbox, please check your spam folder.{% endblocktrans %}
+  </p>
+</div>
+
+<div class="auth-footer">
+  <a href="{% url 'account_email' %}" class="auth-link">{% trans "Change email address" %}</a>
+</div>
+
+<style>
+.auth-message {
+  text-align: center !important;
+  padding: 2rem !important;
+  background: rgb(var(--md-sys-color-surface-container)) !important;
+  border-radius: 16px !important;
+  margin: 1.5rem 0 !important;
+}
+
+.auth-message__icon {
+  color: rgb(var(--md-sys-color-primary)) !important;
+  margin-bottom: 1rem !important;
+}
+
+.auth-message__text {
+  color: rgb(var(--md-sys-color-on-surface-variant)) !important;
+  font-size: 0.9375rem !important;
+  line-height: 1.5 !important;
+  margin: 0 !important;
+}
+</style>
+{% endblock %}
