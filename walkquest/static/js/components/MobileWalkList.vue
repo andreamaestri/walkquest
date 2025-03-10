@@ -290,6 +290,11 @@ function openSearch() {
     searchStore.setSearchMode('locations');
   }
   
+  // Close bottom sheet when opening search to prevent z-index conflicts
+  if (bottomSheetRef.value) {
+    bottomSheetRef.value.close(); // Close instead of trying to snap to smallest height
+  }
+  
   isSearchOpen.value = true;
   
   // Focus the right input based on search mode
@@ -304,6 +309,29 @@ function openSearch() {
 
 function closeSearch() {
   isSearchOpen.value = false
+  
+  // Emit a custom event that search has been closed with results
+  // This helps other components know when to update their state
+  const searchClosedEvent = new CustomEvent('search-results-ready');
+  window.dispatchEvent(searchClosedEvent);
+  
+  // Ensure the bottom sheet is properly displayed after search is closed
+  // with a slight delay to allow for UI transitions
+  setTimeout(() => {
+    if (bottomSheetRef.value && !props.selectedWalkId) {
+      console.log('Reopening bottom sheet to show search results');
+      bottomSheetRef.value.open()
+      
+      // Force update the scroller to ensure results are properly displayed
+      nextTick(() => {
+        const walkListElement = document.querySelector('.walk-list-content');
+        if (walkListElement) {
+          const event = new CustomEvent('force-update-scroller');
+          walkListElement.dispatchEvent(event);
+        }
+      });
+    }
+  }, 150) // Short delay for smoother transition
 }
 
 function clearSearch() {
@@ -320,21 +348,44 @@ function clearLocationResults() {
   locationStore.clearLocationSearch();
   searchStore.setSearchMode('default');
   
-  // Reset the header title
-  if (bottomSheetRef.value) {
-    bottomSheetRef.value.open();
-  }
+  // Reset the header title and ensure bottom sheet is open
+  nextTick(() => {
+    if (bottomSheetRef.value) {
+      bottomSheetRef.value.open();
+    }
+  });
 }
 
 // Handle location selection from the LocationSearch component
 function handleLocationSelected(location) {
   if (!location) return
   
+  // Update search mode to ensure proper UI state
+  searchStore.setSearchMode('locations')
+  
   // Close search modal after location selection
   closeSearch()
   
   // Forward location selection to parent
   emit('location-selected', location)
+  
+  // Ensure the bottom sheet opens with the right content
+  // with a slight delay to allow for UI transitions
+  setTimeout(() => {
+    if (bottomSheetRef.value) {
+      console.log('Opening bottom sheet to show location search results');
+      bottomSheetRef.value.open()
+      
+      // Force update the scroller to ensure results are properly displayed
+      nextTick(() => {
+        const walkListElement = document.querySelector('.walk-list-content');
+        if (walkListElement) {
+          const event = new CustomEvent('force-update-scroller');
+          walkListElement.dispatchEvent(event);
+        }
+      });
+    }
+  }, 150) // Short delay for smoother transition
 }
 
 function performSearch() {
@@ -351,6 +402,24 @@ function performSearch() {
   
   // Close search modal after search
   closeSearch()
+  
+  // Ensure the bottom sheet opens with the search results
+  // with a slight delay to allow for UI transitions
+  setTimeout(() => {
+    if (bottomSheetRef.value && !props.selectedWalkId) {
+      console.log('Opening bottom sheet to show search results');
+      bottomSheetRef.value.open()
+      
+      // Force update the scroller to ensure results are properly displayed
+      nextTick(() => {
+        const walkListElement = document.querySelector('.walk-list-content');
+        if (walkListElement) {
+          const event = new CustomEvent('force-update-scroller');
+          walkListElement.dispatchEvent(event);
+        }
+      });
+    }
+  }, 150) // Short delay for smoother transition
 }
 
 // Filter toggle
@@ -364,6 +433,12 @@ onMounted(() => {
   
   // Add window resize listener
   window.addEventListener('resize', windowResizeHandler);
+  
+  // Add custom event listener for search closed events
+  window.addEventListener('search-closed', handleSearchClosed);
+  
+  // Add custom event listener for search results ready events
+  window.addEventListener('search-results-ready', handleSearchResultsReady);
   
   // Force open the bottom sheet after it's mounted
   setTimeout(() => {
@@ -383,9 +458,39 @@ onMounted(() => {
   }, 100);
 });
 
+// Handle search closed event from SearchView
+function handleSearchClosed() {
+  console.log("Search closed event received");
+  // Only reopen bottom sheet if we're not showing a selected walk
+  if (!props.selectedWalkId && bottomSheetRef.value) {
+    bottomSheetRef.value.open();
+  }
+}
+
+// Handle search results ready event
+function handleSearchResultsReady() {
+  console.log("Search results ready event received");
+  // Ensure the bottom sheet is open to display search results
+  if (!props.selectedWalkId && bottomSheetRef.value) {
+    console.log("Opening bottom sheet to show search results");
+    bottomSheetRef.value.open();
+    
+    // Force update the scroller to ensure results are properly displayed
+    nextTick(() => {
+      const walkListElement = document.querySelector('.walk-list-content');
+      if (walkListElement) {
+        const event = new CustomEvent('force-update-scroller');
+        walkListElement.dispatchEvent(event);
+      }
+    });
+  }
+}
+
 // Clean up events on unmount
 onBeforeUnmount(() => {
   window.removeEventListener('resize', windowResizeHandler);
+  window.removeEventListener('search-closed', handleSearchClosed);
+  window.removeEventListener('search-results-ready', handleSearchResultsReady);
 });
 
 // Watch for route changes
@@ -610,7 +715,7 @@ defineExpose({
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  z-index: 1000;
+  z-index: 1500;
   overflow: hidden;
 }
 
@@ -621,7 +726,7 @@ defineExpose({
   right: 0;
   bottom: 0;
   background-color: rgb(var(--md-sys-color-surface));
-  z-index: 1000;
+  z-index: 1500;
   display: flex;
   flex-direction: column;
 }
@@ -632,7 +737,7 @@ defineExpose({
     width: 150%;
     right: 0px;
     left: -60px !important;
-    z-index: 10001;
+    z-index: 1600;
   }
 }
 .md3-search-container {
@@ -641,6 +746,10 @@ defineExpose({
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
+  background-color: rgb(var(--md-sys-color-surface));
+  border-radius: 0;
+  box-shadow: var(--md-sys-elevation-3);
 }
 
 .md3-search-header {
@@ -711,12 +820,19 @@ defineExpose({
 /* Transition animations */
 .md3-modal-enter-active,
 .md3-modal-leave-active {
-  transition: opacity 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .md3-modal-enter-from,
 .md3-modal-leave-to {
   opacity: 0;
+  transform: translateY(20px);
+}
+
+.md3-modal-enter-to,
+.md3-modal-leave-from {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* Empty state styles */

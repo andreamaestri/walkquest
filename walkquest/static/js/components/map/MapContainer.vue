@@ -66,7 +66,7 @@
             <template v-else>
               <MapboxNavigationControl 
                 key="nav-control-mobile"
-                position="top-right" 
+                position="top-left" 
                 :show-compass="true" 
                 :show-zoom="true" 
                 :visualize-pitch="true"
@@ -74,7 +74,7 @@
                 
               <MapboxGeolocateControl
                 key="geo-control-mobile"
-                position="top-right"
+                position="top-left"
                 :positionOptions="{
                   enableHighAccuracy: true,
                   timeout: 6000
@@ -1337,9 +1337,11 @@ defineExpose({
     bottom: calc(env(safe-area-inset-bottom, 0px) + 12px) !important;
   }
 
-  .has-mobile-nav :deep(.mapboxgl-ctrl-bottom-left),
+  .has-mobile-nav :deep(.mapboxgl-ctrl-bottom-left) {
+    bottom: 20px!important;
+  }
   .has-mobile-nav :deep(.mapboxgl-ctrl-bottom-right) {
-    bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 12px) !important;
+    bottom: 80px!important;
   }
 }
 

@@ -106,7 +106,8 @@
       >
         <div v-if="showSuggestions && (isFocused || isActive) && props.searchMode === 'walks'" 
              class="m3-suggestions-menu"
-             :class="{ 'mobile-suggestions': isOnMobileBottomSheet }">
+             :class="{ 'mobile-suggestions': isOnMobileBottomSheet }"
+             :style="isOnMobileBottomSheet ? { 'padding-top': 'env(safe-area-inset-top, 0)' } : {}">  
           <template v-if="suggestions?.length > 0">
             <button
               v-for="(suggestion, index) in suggestions"
@@ -131,7 +132,7 @@
       </Transition>
       
       <!-- Mobile Results for Bottom Sheet with better categorization and progressive loading -->
-      <div v-if="isOnMobileBottomSheet && props.isActive" class="mobile-results-container">
+      <div v-if="isOnMobileBottomSheet && props.isActive" class="mobile-results-container" style="z-index: 1300; position: relative;">
         <!-- Location results in bottom sheet -->
         <div v-if="props.searchMode === 'locations' && hasLocationSearched" class="sheet-results">
           <!-- Results count with quick filter options -->
@@ -418,7 +419,8 @@ const handleInput = (event) => {
     
     // Clear any pending debounce
     clearTimeout(inputDebounceTimer)
-  } else if (!showSuggestions.value) {
+  } else {
+    // Always show suggestions when typing on mobile
     showSuggestions.value = true
   }
   
@@ -764,6 +766,16 @@ const closeSearch = () => {
   selectedIndex.value = -1
   isFocused.value = false
   
+  // Ensure mobile-specific cleanup
+  if (window.innerWidth < 768) {
+    // Allow time for animation to complete
+    setTimeout(() => {
+      // Ensure bottom sheet is properly displayed
+      const event = new CustomEvent('search-closed');
+      window.dispatchEvent(event);
+    }, 300);
+  }
+  
   // Emit close event for parent component
   emit('close')
 }
@@ -785,6 +797,8 @@ const closeSearch = () => {
   @media (max-width: 599px) {
     background-color: rgb(var(--md-sys-color-surface));
     padding: 8px 16px;
+    padding-top: env(safe-area-inset-top, 8px); /* Use safe area for top padding */
+    z-index: 1400;
   }
 }
 
@@ -937,8 +951,19 @@ const closeSearch = () => {
   border-radius: 12px;
   overflow: hidden;
   box-shadow: var(--md-sys-elevation-2);
-  z-index: 1000;
+  z-index: 1200;
   animation: m3-slide-down var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized-decelerate);
+  
+  /* Ensure suggestions are visible on mobile */
+  @media (max-width: 599px) {
+    position: fixed;
+    top: calc(56px + env(safe-area-inset-top, 8px) + 8px); /* Position below search bar with safe area */
+    left: 16px;
+    right: 16px;
+    max-height: 60vh;
+    overflow-y: auto;
+    z-index: 1500;
+  }
 }
 
 .m3-suggestion-item {
@@ -1059,6 +1084,10 @@ const closeSearch = () => {
   overflow: hidden;
   box-shadow: var(--md-sys-elevation-0);
   border: 1px solid rgb(var(--md-sys-color-outline-variant) / 0.2);
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 1200;
 }
 
 .m3-results-count {
@@ -1111,9 +1140,16 @@ const closeSearch = () => {
 .mobile-results-container {
   padding: 0;
   width: 100%;
+  padding-top: env(safe-area-inset-top, 0); /* Use safe area inset for top padding */
 }
 
-.mobile-suggestions,
+.mobile-suggestions {
+  /* Show suggestions on mobile */
+  display: block;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
 .mobile-results {
   display: none; /* Hide regular results when using bottom sheet */
 }

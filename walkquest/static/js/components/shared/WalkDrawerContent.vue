@@ -57,7 +57,7 @@
       </button>
 
       <div class="secondary-buttons">
-        <button class="m3-button m3-tonal-button" @click="$emit('directions', walk)">
+        <button class="m3-button m3-tonal-button" @click="handleDirections">
           <Icon icon="mdi:navigation" class="button-icon" />
           <span>Directions</span>
         </button>
@@ -415,6 +415,36 @@ function handleStartWalk() {
   adventureDialogStore.openDialog(props.walk);
 }
 
+// Function to handle the "Directions" button click
+function handleDirections() {
+  if (!props.walk.latitude || !props.walk.longitude) {
+    console.warn('Cannot get directions: missing coordinates');
+    return;
+  }
+  
+  const latitude = props.walk.latitude;
+  const longitude = props.walk.longitude;
+  const destination = `${latitude},${longitude}`;
+  const walkName = encodeURIComponent(props.walk.title || props.walk.walk_name || 'Walk');
+  
+  // Base Google Maps URL with API parameter
+  let mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}&destination_place_id=${walkName}`;
+  
+  // Check if running as PWA on iOS
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+               window.navigator.standalone || 
+               document.referrer.includes('android-app://');
+  
+  if (isIOS && isPWA) {
+    // Use maps:// URL scheme for iOS PWA
+    mapsUrl = `maps://?daddr=${destination}&q=${walkName}`;
+  }
+  
+  // Open in new tab
+  window.open(mapsUrl, '_blank');
+}
+
 onMounted(() => {
   // Initialize with details closed
   detailsOpen.value = false;
@@ -433,7 +463,10 @@ onMounted(() => {
 }
 
 .content.mobile {
-  padding: 0 16px;
+  padding-top: 16px!important;
+  gap: 1rem;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 /* Add new interactive styles for category chips */

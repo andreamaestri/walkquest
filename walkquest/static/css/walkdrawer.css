@@ -271,6 +271,10 @@
   justify-content: center;
 }
 
+.icon-button .button-icon {
+  margin-right: 0; /* Remove margin for icon buttons */
+}
+
 /* Sections Styles */
 .sections-container {
   display: flex;
