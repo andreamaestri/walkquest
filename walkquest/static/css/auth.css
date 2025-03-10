@@ -11,23 +11,23 @@
   margin-bottom: 1.75rem !important;
   position: relative !important;
   width: 100% !important;
-  padding-top: 16px !important; /* Add padding to accommodate the floating label */
+  padding-top: 16px !important;
 }
 
 .field-label {
   position: absolute !important;
   left: 1rem !important;
-  top: 50% !important; /* Center in the input initially */
-  transform: translateY(-50%) !important;
+  top: 1.25rem !important;
+  transform: translateY(0) scale(1) !important;
   padding: 0 0.25rem !important;
   color: rgb(var(--md-sys-color-on-surface-variant)) !important;
   font-size: 1rem !important;
   line-height: 1.5rem !important;
   pointer-events: none !important;
-  transition: all 0.2s var(--md-sys-motion-easing-emphasized) !important;
+  transition: all var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-emphasized) !important;
   background-color: transparent !important;
   transform-origin: left top !important;
-  z-index: 1 !important;
+  z-index: 2 !important;
 }
 
 .auth-input {
@@ -36,15 +36,14 @@
   padding: 1.25rem 1rem 0.75rem !important;
   border: 1px solid rgb(var(--md-sys-color-outline)) !important;
   border-radius: 0.75rem !important;
-  background: rgb(var(--md-sys-color-surface-container)) !important;
+  background: rgb(var(--md-sys-color-surface-container-highest)) !important;
   color: rgb(var(--md-sys-color-on-surface)) !important;
   font-size: 1rem !important;
   line-height: 1.5rem !important;
   min-height: 56px !important;
-  transition: all 0.2s var(--md-sys-motion-easing-emphasized) !important;
+  transition: all var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-emphasized) !important;
 }
 
-/* Floating label animation with improved MD3 state handling */
 .auth-input:focus,
 .auth-input:not(:placeholder-shown) {
   padding-top: 1.5rem !important;
@@ -53,27 +52,24 @@
   border-width: 2px !important;
 }
 
-/* Hover state for input field */
 .auth-input:hover:not(:focus):not(:disabled) {
   border-color: rgb(var(--md-sys-color-on-surface)) !important;
-  background-color: rgba(var(--md-sys-color-on-surface), 0.05) !important;
+  background-color: rgb(var(--md-sys-color-surface-container-highest)) !important;
 }
 
-/* Updated floating label animation - moves outside the input when active */
 .auth-input:focus + .field-label,
 .auth-input:not(:placeholder-shown) + .field-label {
-  top: 0 !important; /* Move to the top outside of the input */
+  top: 0.5rem !important;
   transform: translateY(-50%) scale(0.75) !important;
-  background-color: rgb(var(--md-sys-color-surface)) !important; /* Match the background */
+  background-color: rgb(var(--md-sys-color-surface)) !important;
   color: rgb(var(--md-sys-color-primary)) !important;
   font-weight: 500 !important;
   padding: 0 4px !important;
   left: 12px !important;
 }
 
-/* Active/pressed state handling */
 .auth-input:active:not(:focus) {
-  background-color: rgba(var(--md-sys-color-primary), 0.05) !important;
+  background-color: rgba(var(--md-sys-color-primary), var(--md-sys-state-pressed-state-layer-opacity)) !important;
 }
 
 .auth-input:not(:focus):not(:placeholder-shown) + .field-label {
@@ -84,22 +80,21 @@
   border-color: rgb(var(--md-sys-color-primary)) !important;
   border-width: 2px !important;
   outline: none !important;
-  background-color: rgb(var(--md-sys-color-surface-container)) !important;
+  background-color: rgb(var(--md-sys-color-surface-container-highest)) !important;
 }
 
-/* Add ripple effect for pressed state */
 .form-field::after {
   content: '' !important;
   position: absolute !important;
-  top: 16px !important; /* Adjust to match the new padding-top */
+  top: 16px !important;
   left: 0 !important;
   right: 0 !important;
   bottom: 0 !important;
-  background: rgba(var(--md-sys-color-primary), 0.1) !important;
+  background: rgba(var(--md-sys-color-primary), var(--md-sys-state-pressed-state-layer-opacity)) !important;
   border-radius: 0.75rem !important;
   opacity: 0 !important;
   transform: scale(0.8) !important;
-  transition: all 0.3s var(--md-sys-motion-easing-emphasized) !important;
+  transition: all var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized) !important;
   pointer-events: none !important;
   z-index: 0 !important;
 }
@@ -109,7 +104,6 @@
   transform: scale(1) !important;
 }
 
-/* Rest of the styles remain the same */
 .auth-container {
   min-height: 100vh !important;
   display: flex !important;
@@ -128,14 +122,13 @@
   padding: 1.5rem !important;
   background: rgb(var(--md-sys-color-surface-container)) !important;
   border-radius: 28px !important;
-  box-shadow: var(--md-sys-elevation-level3) !important;
+  box-shadow: var(--md-sys-elevation-3) !important;
   position: relative !important;
   overflow: hidden !important;
-  animation: card-appear 0.4s var(--md-sys-motion-easing-emphasized) !important;
+  animation: card-appear var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized) !important;
   z-index: 1 !important;
 }
 
-/* Dialog/Card styles */
 .auth-card form {
   width: 100% !important;
   box-sizing: border-box !important;
@@ -156,7 +149,6 @@
   }
 }
 
-/* Scrim overlay for dialog effect */
 .auth-container::before {
   content: '' !important;
   position: fixed !important;
@@ -188,13 +180,12 @@
   line-height: 1.25rem !important;
 }
 
-/* Button styles */
 .auth-button {
   width: 100% !important;
   min-height: 40px !important;
   padding: 0 24px !important;
   background: rgb(var(--md-sys-color-primary)) !important;
-  color: rgb(var(--md-sys-color-on-primary)) !important;
+  color: #FFFF !important;
   border: none !important;
   border-radius: 20px !important;
   font-weight: 500 !important;
@@ -202,22 +193,22 @@
   line-height: 1.25rem !important;
   letter-spacing: 0.1px !important;
   cursor: pointer !important;
-  transition: box-shadow 0.2s var(--md-sys-motion-easing-standard) !important;
+  transition: box-shadow var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard) !important;
   position: relative !important;
   overflow: hidden !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  box-shadow: var(--md-sys-elevation-level0) !important;
+  box-shadow: var(--md-sys-elevation-1) !important;
   box-sizing: border-box !important;
 }
 
 .auth-button:hover {
-  box-shadow: var(--md-sys-elevation-level1) !important;
+  box-shadow: var(--md-sys-elevation-2) !important;
 }
 
 .auth-button:active {
-  box-shadow: var(--md-sys-elevation-level0) !important;
+  box-shadow: var(--md-sys-elevation-1) !important;
 }
 
 .auth-button::before {
@@ -229,19 +220,19 @@
   bottom: 0 !important;
   background: rgb(var(--md-sys-color-on-primary)) !important;
   opacity: 0 !important;
-  transition: opacity 0.2s var(--md-sys-motion-easing-standard) !important;
+  transition: opacity var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard) !important;
 }
 
 .auth-button:hover::before {
-  opacity: 0.08 !important;
+  opacity: var(--md-sys-state-hover-state-layer-opacity) !important;
 }
 
 .auth-button:focus::before {
-  opacity: 0.12 !important;
+  opacity: var(--md-sys-state-focus-state-layer-opacity) !important;
 }
 
 .auth-button:active::before {
-  opacity: 0.12 !important;
+  opacity: var(--md-sys-state-pressed-state-layer-opacity) !important;
 }
 
 .auth-button:disabled {
@@ -255,11 +246,10 @@
   display: none !important;
 }
 
-/* Links */
 .auth-link {
   color: rgb(var(--md-sys-color-primary)) !important;
   text-decoration: none !important;
-  transition: all 0.2s ease !important;
+  transition: all var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard) !important;
   font-weight: 500 !important;
   position: relative !important;
   display: inline-block !important;
@@ -282,7 +272,7 @@
   background-color: rgb(var(--md-sys-color-primary)) !important;
   transform: scaleX(0) !important;
   transform-origin: bottom right !important;
-  transition: transform 0.3s !important;
+  transition: transform var(--md-sys-motion-duration-medium1) !important;
 }
 
 .auth-link:hover:after {
@@ -290,7 +280,6 @@
   transform-origin: bottom left !important;
 }
 
-/* Form errors and messages */
 .errorlist {
   list-style: none !important;
   padding: 0.5rem 0.75rem !important;
@@ -298,7 +287,7 @@
   color: rgb(var(--md-sys-color-error)) !important;
   font-size: 0.875rem !important;
   border-radius: 0.5rem !important;
-  background-color: rgba(var(--md-sys-color-error), 0.08) !important;
+  background-color: rgb(var(--md-sys-color-error-container)) !important;
   width: 100% !important;
   box-sizing: border-box !important;
 }
@@ -311,7 +300,7 @@
   display: flex !important;
   align-items: center !important;
   line-height: 1.25rem !important;
-  animation: alert-appear 0.3s var(--md-sys-motion-easing-emphasized) !important;
+  animation: alert-appear var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized) !important;
   width: 100% !important;
   box-sizing: border-box !important;
 }
@@ -325,6 +314,16 @@
     opacity: 1;
     transform: translateY(0); 
   }
+}
+
+iconify-icon.mr-2 {
+  width: 20px;
+  height: 20px;
+  margin-right: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
 }
 
 .alert-error {
@@ -342,7 +341,6 @@
   color: rgb(var(--md-sys-color-on-secondary-container)) !important;
 }
 
-/* Checkbox styling */
 .checkbox-field {
   display: flex !important;
   align-items: center !important;
@@ -361,7 +359,7 @@
   border-radius: 2px !important;
   position: relative !important;
   cursor: pointer !important;
-  transition: all 0.2s var(--md-sys-motion-easing-standard) !important;
+  transition: all var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard) !important;
   flex-shrink: 0 !important;
   box-sizing: border-box !important;
 }
@@ -480,6 +478,10 @@
   color: rgb(var(--md-sys-color-on-surface-variant)) !important;
   width: 100% !important;
   box-sizing: border-box !important;
+}
+
+.auth-input-icon {
+  padding-top: 8px!important;
 }
 
 /* Responsive adjustments */
