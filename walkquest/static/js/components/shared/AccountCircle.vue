@@ -10,7 +10,7 @@
         :class="{ 
           'desktop': !isMobileComputed, 
           'mobile': isMobileComputed,
-          'authenticated': isAuthenticatedComputed
+          'user-active': isAuthenticatedComputed
         }"
         aria-label="Account menu"
         @click="handleClick"
@@ -51,30 +51,30 @@
       @action="handleMenuAction"
     />
     
-    <!-- Auth menu for unauthenticated users -->
-    <div class="auth-menu-wrapper">
+    <!-- Account menu for guests -->
+    <div class="account-menu-wrapper">
       <Transition name="fade">
         <div 
-          v-if="showAuthMenu && !isAuthenticatedComputed" 
-          class="auth-menu" 
+          v-if="showAccountMenu && !isAuthenticatedComputed" 
+          class="account-menu" 
           :class="{ 'mobile': isMobileComputed }"
           :style="menuPosition"
         >
-          <div class="auth-menu-header">
-            <h3 class="auth-menu-title">Account</h3>
-            <button class="close-button" @click="showAuthMenu = false">
+          <div class="account-menu-header">
+            <h3 class="account-menu-title">Account</h3>
+            <button class="close-button" @click="showAccountMenu = false">
               <Icon icon="mdi:close" />
             </button>
           </div>
-          <div class="auth-menu-content">
-            <p class="auth-menu-text">Sign in to save your favorite walks, track your adventures and more.</p>
-            <div class="auth-links">
-              <a href="#" class="auth-link auth-link-primary" @click.prevent="goToLogin">
-                <Icon icon="mdi:login" class="auth-icon" />
+          <div class="account-menu-content">
+            <p class="account-menu-text">Sign in to save your favorite walks, track your adventures and more.</p>
+            <div class="account-links">
+              <a href="#" class="account-link account-link-primary" @click.prevent="goToLogin">
+                <Icon icon="mdi:login" class="account-icon" />
                 <span>Sign In</span>
               </a>
-              <a href="#" class="auth-link auth-link-secondary" @click.prevent="goToSignup">
-                <Icon icon="mdi:account-plus" class="auth-icon" />
+              <a href="#" class="account-link account-link-secondary" @click.prevent="goToSignup">
+                <Icon icon="mdi:account-plus" class="account-icon" />
                 <span>Create Account</span>
               </a>
             </div>
@@ -107,7 +107,7 @@ const emit = defineEmits(['click']);
 const isHovered = ref(false);
 const isFocused = ref(false);
 const isPressed = ref(false);
-const showAuthMenu = ref(false);
+const showAccountMenu = ref(false);
 const showMenu = ref(false);
 const buttonRef = ref(null);
 
@@ -141,19 +141,19 @@ const avatarBgColor = computed(() => {
 
 // Add menuPosition computed property
 const menuPosition = computed(() => {
-  if (!buttonRef.value || isMobileComputed.value) return {};
+  if (!buttonRef.value) return {};
   
-  try {
-    const rect = buttonRef.value.getBoundingClientRect();
-    return {
-      position: 'absolute',
-      top: `${rect.bottom + 15}px`,
-      right: `${window.innerWidth - rect.right}px`
-    };
-  } catch (error) {
-    console.error('Error computing menu position:', error);
-    return {};
-  }
+  if (isMobileComputed.value) return {};
+  
+  const rect = buttonRef.value.getBoundingClientRect();
+  const spacing = 8; // Space between button and menu
+  
+  return {
+    position: 'relative',
+    top: `${rect.bottom + spacing}px`,
+    left: 'calc(100% - 280px)',
+    maxWidth: 'calc(100vw - 32px)' // Prevent horizontal overflow
+  };
 });
 
 // Handle click with authentication flow
@@ -162,7 +162,7 @@ const handleClick = (event) => {
   emit('click', event);
   
   if (!isAuthenticatedComputed.value) {
-    showAuthMenu.value = !showAuthMenu.value;
+    showAccountMenu.value = !showAccountMenu.value;
   } else if (buttonRef.value) {
     showMenu.value = !showMenu.value;
   }
@@ -194,10 +194,10 @@ const handleMenuAction = async (action) => {
 
 // Add click outside handler
 const handleClickOutside = (event) => {
-  if (showAuthMenu.value && !isAuthenticatedComputed.value) {
+  if (showAccountMenu.value && !isAuthenticatedComputed.value) {
     const target = event.target;
     if (buttonRef.value && !buttonRef.value.contains(target)) {
-      showAuthMenu.value = false;
+      showAccountMenu.value = false;
     }
   }
 };
@@ -205,12 +205,12 @@ const handleClickOutside = (event) => {
 // Navigation functions for direct HTML navigation
 const goToLogin = () => {
   window.location.href = '/accounts/login/';
-  showAuthMenu.value = false;
+  showAccountMenu.value = false;
 };
 
 const goToSignup = () => {
   window.location.href = '/accounts/signup/';
-  showAuthMenu.value = false;
+  showAccountMenu.value = false;
 };
 
 // Lifecycle hooks with proper cleanup
@@ -260,9 +260,9 @@ onUnmounted(() => {
 
 /* Mobile version (standalone) - Moved to left side on mobile */
 .account-circle-container.mobile {
-  position: absolute;
-  top: calc(4 + env(safe-area-inset-top, 0px)); 
-  left: calc(4px + env(safe-area-inset-left, 0px)); /* Moved to left side */
+  position: fixed;
+  top: max(16px, env(safe-area-inset-top, 16px));
+  right: max(16px, env(safe-area-inset-right, 16px));
   z-index: 50;
   pointer-events: auto;
 }
@@ -289,11 +289,12 @@ onUnmounted(() => {
 
 /* Mobile version styling */
 .account-circle-button.mobile {
-  width: 52px;
-  height: 52px;
-  padding: 0!important;
-  background-color: transparent;
-  color: rgb(var(--md-sys-color-surface));
+  width: 48px;
+  height: 48px;
+  padding: 0 !important;
+  background-color: rgba(var(--md-sys-color-surface-container-highest), 0.9);
+  color: rgb(var(--md-sys-color-on-surface));
+  box-shadow: var(--md-sys-elevation-2);
 }
 
 .account-circle-button.mobile:hover,
@@ -302,11 +303,17 @@ onUnmounted(() => {
 }
 
 .account-icon {
-  font-size: 52px!important;
-  width: 52px;
-  height: 52px;
+  font-size: 28px;
+  width: 28px;
+  height: 28px;
   transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 1;
+}
+
+.account-circle-button.mobile .account-icon {
+  font-size: 24px;
+  width: 24px;
+  height: 24px;
 }
 
 .account-icon.active {
@@ -386,13 +393,13 @@ onUnmounted(() => {
 }
 
 /* Auth Menu for unauthenticated users */
-.auth-menu-wrapper {
+.account-menu-wrapper {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
 }
-.auth-menu {
+.account-menu {
   position: absolute;
   background-color: rgb(var(--md-sys-color-surface));
   border-radius: 16px;
@@ -403,7 +410,7 @@ onUnmounted(() => {
   transform-origin: top right;
 }
 
-.auth-menu.mobile {
+.account-menu.mobile {
   position: fixed;
   bottom: 0;
   left: 0;
@@ -413,8 +420,9 @@ onUnmounted(() => {
   width: 100%;
   max-width: 100%;
   transform-origin: bottom center;
-  padding-bottom: env(safe-area-inset-bottom, 16px);
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
   animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1001;
 }
 
 @keyframes slideUp {
@@ -438,7 +446,7 @@ onUnmounted(() => {
   transform: scale(0.95);
 }
 
-.auth-menu-header {
+.account-menu-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -447,7 +455,7 @@ onUnmounted(() => {
   border-bottom: 1px solid rgb(var(--md-sys-color-outline));
 }
 
-.auth-menu-title {
+.account-menu-title {
   margin: 0;
   font-size: 18px;
   font-weight: 500;
@@ -478,23 +486,23 @@ onUnmounted(() => {
   transform: scale(0.96);
 }
 
-.auth-menu-content {
+.account-menu-content {
   padding: 16px;
 }
 
-.auth-menu-text {
+.account-menu-text {
   margin-bottom: 16px;
   font-size: 14px;
   color: rgb(var(--md-sys-color-on-surface-variant));
 }
 
-.auth-links {
+.account-links {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.auth-link {
+.account-link {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -507,37 +515,37 @@ onUnmounted(() => {
   background-color: rgb(var(--md-sys-color-surface-container));
 }
 
-.auth-link:hover {
+.account-link:hover {
   background-color: rgb(var(--md-sys-color-surface-container-high));
   transform: translateY(-1px);
 }
 
-.auth-link:active {
+.account-link:active {
   transform: translateY(1px);
 }
 
-.auth-link-primary {
+.account-link-primary {
   background-color: rgb(var(--md-sys-color-primary));
   color: #FFFFFF;
 }
 
-.auth-link-primary:hover {
+.account-link-primary:hover {
   background-color: #19093bec;
   box-shadow: var(--md-sys-elevation-1);
 }
 
-.auth-link-secondary {
+.account-link-secondary {
   background-color: rgb(var(--md-sys-color-secondary-container));
   color: #4A4458;
 }
 
-.auth-link-secondary:hover {
+.account-link-secondary:hover {
   background-color: #8474a8ec;
   color: #FFFFFF;
   box-shadow: var(--md-sys-elevation-1);
 }
 
-.auth-icon {
+.account-icon {
   font-size: 20px;
 }
 
