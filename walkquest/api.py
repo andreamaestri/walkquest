@@ -1,14 +1,17 @@
-from typing import List, Optional, Dict, Any
+from typing import Any
 
-from django.http import HttpRequest, JsonResponse
-from django.views import View
-from ninja import Router, NinjaAPI, Schema, Swagger
 from allauth.headless.contrib.ninja.security import x_session_token_auth
+from django.http import HttpRequest
+from django.http import JsonResponse
+from django.views import View
+from ninja import NinjaAPI
+from ninja import Router
+from ninja import Schema
 
-from walkquest.walks.models import Walk
-from walkquest.walks.api import api as walks_router, ORJSONParser, ORJSONRenderer
 from walkquest.adventures.api import router as adventures_router
-from .schemas import ConfigOut, TagOut, WalkOut
+from walkquest.walks.api import ORJSONParser
+from walkquest.walks.api import ORJSONRenderer
+from walkquest.walks.api import api as walks_router
 
 # Create a router for the main API
 router = Router()
@@ -23,7 +26,7 @@ api_instance = NinjaAPI(
     title="Main API",
     version="1.0.0",
     parser=ORJSONParser(),
-    renderer=ORJSONRenderer()
+    renderer=ORJSONRenderer(),
 )
 
 # Add the main router
@@ -36,7 +39,7 @@ api_instance.add_router("", walks_router)
 api_instance.add_router("/adventures", adventures_router)
 
 class UserSchema(Schema):
-    id: Optional[int] = None
+    id: int | None = None
     email: str
     username: str
     is_authenticated: bool
@@ -46,55 +49,55 @@ class PreferencesSchema(Schema):
     map_style: str = "streets-v11"
 
 class PreferenceUpdateSchema(Schema):
-    dark_mode: Optional[bool] = None
-    map_style: Optional[str] = None
+    dark_mode: bool | None = None
+    map_style: str | None = None
 
 
 @api_instance.get("/user", response=UserSchema, auth=[x_session_token_auth])
-def get_current_user(request: HttpRequest) -> Dict[str, Any]:
+def get_current_user(request: HttpRequest) -> dict[str, Any]:
     """Get current user information"""
     if request.user.is_authenticated:
         return {
             "id": request.user.id,
             "email": request.user.email,
             "username": request.user.username,
-            "is_authenticated": True
+            "is_authenticated": True,
         }
     return {
         "id": None,
         "email": "",
         "username": "",
-        "is_authenticated": False
+        "is_authenticated": False,
     }
 
 @api_instance.get("/preferences", response=PreferencesSchema, auth=[x_session_token_auth])
-def get_preferences(request: HttpRequest) -> Dict[str, Any]:
+def get_preferences(request: HttpRequest) -> dict[str, Any]:
     """Get user preferences"""
     if not request.user.is_authenticated:
-        return PreferencesSchema().dict() 
-    
+        return PreferencesSchema().dict()
+
     # Replace with actual preference retrieval logic
     return {
         "dark_mode": False,  # Replace with user preference
-        "map_style": "streets-v11"  # Replace with user preference
+        "map_style": "streets-v11",  # Replace with user preference
     }
 
 @api_instance.patch("/preferences", response=PreferencesSchema, auth=[x_session_token_auth])
-def update_preferences(request: HttpRequest, data: PreferenceUpdateSchema) -> Dict[str, Any]:
+def update_preferences(request: HttpRequest, data: PreferenceUpdateSchema) -> dict[str, Any]:
     """Update user preferences"""
     if not request.user.is_authenticated:
         return PreferencesSchema().dict()
-    
+
     # Replace with actual preference update logic
     return {
         "dark_mode": data.dark_mode if data.dark_mode is not None else False,
-        "map_style": data.map_style if data.map_style is not None else "streets-v11"
+        "map_style": data.map_style if data.map_style is not None else "streets-v11",
     }
 
 # Add UserAPI class for direct API endpoint
 class UserAPI(View):
     """API endpoint for user information"""
-    
+
     def get(self, request):
         """Get current user information"""
         if request.user.is_authenticated:
@@ -102,11 +105,11 @@ class UserAPI(View):
                 "id": request.user.id,
                 "email": request.user.email,
                 "username": request.user.username,
-                "is_authenticated": True
+                "is_authenticated": True,
             })
         return JsonResponse({
             "id": None,
             "email": "",
             "username": "",
-            "is_authenticated": False
+            "is_authenticated": False,
         })

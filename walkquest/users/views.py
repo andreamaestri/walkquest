@@ -1,21 +1,16 @@
-import json
 
-from allauth.account import app_settings
-from allauth.account.utils import complete_signup
 from allauth.account.utils import user_display
-from allauth.account.views import EmailVerificationSentView
 from allauth.account.views import ConfirmEmailView
+from allauth.account.views import EmailVerificationSentView
 from allauth.account.views import LoginView
 from allauth.account.views import SignupView
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
-from django.db.models import QuerySet
 from django.http import JsonResponse
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
-from django.views import View
 from django.views.decorators.http import require_GET
 from django.views.generic import DetailView
 from django.views.generic import RedirectView
@@ -67,7 +62,7 @@ class CustomEmailVerificationSentView(EmailVerificationSentView):
         messages.success(
             request,
             "Verification email sent! Please check your inbox.",
-            extra_tags='md-snackbar'
+            extra_tags="md-snackbar",
         )
         return super().get(request, *args, **kwargs)
 
@@ -78,7 +73,7 @@ class CustomEmailVerificationView(ConfirmEmailView):
         messages.success(
             request,
             "Email verified successfully!",
-            extra_tags='md-snackbar'
+            extra_tags="md-snackbar",
         )
         return super().get(request, *args, **kwargs)
 
@@ -89,22 +84,22 @@ class JSONSignupView(SignupView):
         self.user = form.save(self.request)
         messages.success(
             self.request,
-            f"Welcome to WalkQuest! Please check your email to verify your account.",
-            extra_tags='md-snackbar'
+            "Welcome to WalkQuest! Please check your email to verify your account.",
+            extra_tags="md-snackbar",
         )
         return JsonResponse({
-            'success': True,
-            'message': 'Account created successfully',
-            'user': {
-                'email': self.user.email,
-                'username': self.user.username
-            }
+            "success": True,
+            "message": "Account created successfully",
+            "user": {
+                "email": self.user.email,
+                "username": self.user.username,
+            },
         })
 
     def form_invalid(self, form):
         return JsonResponse({
-            'success': False,
-            'errors': form.errors
+            "success": False,
+            "errors": form.errors,
         }, status=400)
 
 
@@ -116,21 +111,21 @@ class JSONLoginView(LoginView):
         messages.success(
             self.request,
             f"Welcome back, {user_display(self.user)}!",
-            extra_tags='md-snackbar'
+            extra_tags="md-snackbar",
         )
         return JsonResponse({
-            'success': True,
-            'message': 'Logged in successfully',
-            'user': {
-                'email': self.user.email,
-                'username': self.user.username
-            }
+            "success": True,
+            "message": "Logged in successfully",
+            "user": {
+                "email": self.user.email,
+                "username": self.user.username,
+            },
         })
 
     def form_invalid(self, form):
         return JsonResponse({
-            'success': False,
-            'errors': form.errors
+            "success": False,
+            "errors": form.errors,
         }, status=400)
 
 
@@ -141,18 +136,18 @@ def auth_events(request):
     API endpoint to check for authentication events.
     Vue components can poll this endpoint to know when auth state changes.
     """
-    events = request.session.get('auth_events', [])
-    
+    events = request.session.get("auth_events", [])
+
     # Clear the events after reading them
-    request.session['auth_events'] = []
+    request.session["auth_events"] = []
     request.session.modified = True
-    
+
     return JsonResponse({
-        'events': events,
-        'is_authenticated': request.user.is_authenticated,
-        'user': {
-            'email': request.user.email,
-            'username': getattr(request.user, 'username', ''),
-            'name': getattr(request.user, 'name', ''),
-        } if request.user.is_authenticated else None
+        "events": events,
+        "is_authenticated": request.user.is_authenticated,
+        "user": {
+            "email": request.user.email,
+            "username": getattr(request.user, "username", ""),
+            "name": getattr(request.user, "name", ""),
+        } if request.user.is_authenticated else None,
     })

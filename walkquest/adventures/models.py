@@ -1,7 +1,8 @@
 from django.conf import settings
-from django.db import models, transaction
+from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+
 
 class Achievement(models.Model):
     VISIBILITY_CHOICES = [
@@ -45,9 +46,9 @@ class Achievement(models.Model):
         min_time = self.user.achievements.filter(
             adventure=self.adventure,
         ).exclude(
-            id=self.id
+            id=self.id,
         ).aggregate(
-            min_time=models.Min("best_time")
+            min_time=models.Min("best_time"),
         )["min_time"]
         return not min_time or self.best_time <= min_time
 

@@ -1,17 +1,15 @@
+from allauth.account.signals import email_added
+from allauth.account.signals import email_changed
+from allauth.account.signals import email_confirmed
+from allauth.account.signals import email_removed
+from allauth.account.signals import password_changed
+from allauth.account.signals import password_reset
+from allauth.account.signals import user_logged_in
+from allauth.account.signals import user_logged_out
+from allauth.account.signals import user_signed_up
 from django.conf import settings
-from django.dispatch import receiver
 from django.contrib import messages
-from allauth.account.signals import (
-    user_logged_in,
-    user_logged_out,
-    user_signed_up,
-    password_changed,
-    password_reset,
-    email_confirmed,
-    email_changed,
-    email_added,
-    email_removed,
-)
+from django.dispatch import receiver
 
 
 def push_auth_state_to_frontend(request, event_type, user=None, message=None, **kwargs):
@@ -22,13 +20,13 @@ def push_auth_state_to_frontend(request, event_type, user=None, message=None, **
     # Store auth event in session
     if not request.session.get("auth_events"):
         request.session["auth_events"] = []
-    
+
     # Build event data
     event_data = {
         "event": event_type,
         "timestamp": str(kwargs.get("timestamp", "")),
     }
-    
+
     # Add user info if available
     if user:
         event_data["user"] = {
@@ -53,7 +51,7 @@ def user_logged_in_handler(sender, request, user, **kwargs):
     user_display = settings.ACCOUNT_USER_DISPLAY(user)
     new_user = not getattr(user, "has_visited", False)
     message = f"Welcome to WalkQuest! {user_display}" if new_user else f"Welcome back, {user_display}!"
-    
+
     push_auth_state_to_frontend(
         request,
         "login",

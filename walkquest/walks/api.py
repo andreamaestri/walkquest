@@ -1,6 +1,4 @@
 import math
-from typing import List
-from typing import Optional
 from uuid import UUID
 
 import orjson
@@ -8,22 +6,16 @@ from django.conf import settings
 from django.db.models import Count
 from django.db.models import Exists
 from django.db.models import OuterRef
-from django.db.models import Q
 from django.db.models import Value
 from django.http import HttpRequest
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
-from ninja import Path
 from ninja import Query
 from ninja import Router
 from ninja import Schema
 from ninja.parser import Parser
 from ninja.renderers import BaseRenderer
 
-from walkquest.adventures.api import router as adventures_router
-
-from .models import Adventure
-from .models import Companion
 from .models import Walk
 from .models import WalkCategoryTag
 from .models import WalkFeatureTag
@@ -67,28 +59,28 @@ def api_root(request):
     }
 
 
-@api.get("/walks", response=List[WalkOutSchema])
+@api.get("/walks", response=list[WalkOutSchema])
 def list_walks(
     request: HttpRequest,
-    search: Optional[str] = None,
-    categories: Optional[str] = None,
-    features: Optional[str] = None,
-    difficulty: Optional[str] = None,
-    has_bus_access: Optional[bool] = None,  # renamed parameter
-    has_stiles: Optional[bool] = None,
+    search: str | None = None,
+    categories: str | None = None,
+    features: str | None = None,
+    difficulty: str | None = None,
+    has_bus_access: bool | None = None,  # renamed parameter
+    has_stiles: bool | None = None,
 ):
     """List walks with optional filtering"""
     try:
         walks = Walk.objects.prefetch_related(
-            "features", "categories", "related_categories"
+            "features", "categories", "related_categories",
         ).annotate(
             is_favorite=Exists(
                 Walk.favorites.through.objects.filter(
-                    walk_id=OuterRef("pk"), user=request.user
-                )
+                    walk_id=OuterRef("pk"), user=request.user,
+                ),
             )
             if request.user.is_authenticated
-            else Value(False)
+            else Value(False),
         )
         if search:
             walks = walks.filter(walk_name__icontains=search)
@@ -106,7 +98,6 @@ def list_walks(
         walk_list = []
         for walk in walks:
             # Format points_of_interest as a list by splitting on semicolons and stripping whitespace
-            formatted_pubs = []
             # ...existing code for walk conversion...
             walk_list.append(
                 WalkOutSchema(
@@ -130,7 +121,7 @@ def list_walks(
                         for rc in walk.related_categories.all()
                     ],
                     highlights=walk.highlights,
-                    points_of_interest=[poi.strip() for poi in walk.points_of_interest.split(';')] if walk.points_of_interest else [],
+                    points_of_interest=[poi.strip() for poi in walk.points_of_interest.split(";")] if walk.points_of_interest else [],
                     os_explorer_reference=walk.os_explorer_reference,
                     steepness_level=walk.steepness_level,
                     footwear_category=walk.footwear_category,
@@ -146,15 +137,14 @@ def list_walks(
                     has_bus_access=walk.has_bus_access,
                     created_at=walk.created_at.isoformat(),
                     updated_at=walk.updated_at.isoformat(),
-                )
+                ),
             )
         return walk_list
-    except Exception as e:
-        print(f"Error in list_walks: {e}")
+    except Exception:
         return []
 
 
-@api.get("/walks/nearby", response=List[WalkOutSchema])
+@api.get("/walks/nearby", response=list[WalkOutSchema])
 def find_nearby_walks(
     request,
     latitude: float = Query(..., description="Latitude of the center point"),
@@ -188,11 +178,11 @@ def find_nearby_walks(
             .annotate(
                 is_favorite=Exists(
                     Walk.favorites.through.objects.filter(
-                        walk_id=OuterRef("pk"), user=request.user
-                    )
+                        walk_id=OuterRef("pk"), user=request.user,
+                    ),
                 )
                 if request.user.is_authenticated
-                else Value(False)
+                else Value(False),
             )
         )
 
@@ -201,7 +191,7 @@ def find_nearby_walks(
         for walk in walks:
             try:
                 distance = haversine(
-                    latitude, longitude, float(walk.latitude), float(walk.longitude)
+                    latitude, longitude, float(walk.latitude), float(walk.longitude),
                 )
 
                 if distance <= radius:
@@ -228,7 +218,7 @@ def find_nearby_walks(
                             for rc in walk.related_categories.all()
                         ],
                         highlights=walk.highlights,
-                        points_of_interest=[poi.strip() for poi in walk.points_of_interest.split(';')] if walk.points_of_interest else [],
+                        points_of_interest=[poi.strip() for poi in walk.points_of_interest.split(";")] if walk.points_of_interest else [],
                         os_explorer_reference=walk.os_explorer_reference,
                         steepness_level=walk.steepness_level,
                         footwear_category=walk.footwear_category,
@@ -246,16 +236,14 @@ def find_nearby_walks(
                         updated_at=walk.updated_at.isoformat(),
                     )
                     results.append(walk_out)
-            except (ValueError, TypeError) as e:
-                print(f"Error processing walk {walk.id}: {e}")
+            except (ValueError, TypeError):
                 continue
 
         # Sort by distance and limit results
         results.sort(key=lambda x: float(x.distance) if x.distance else float("inf"))
         return results[:limit]
 
-    except Exception as e:
-        print(f"Error finding nearby walks: {e}")
+    except Exception:
         return []
 
 
@@ -273,16 +261,16 @@ def get_walk(request: HttpRequest, identifier: str):
 
         walk = (
             Walk.objects.prefetch_related(
-                "features", "categories", "related_categories"
+                "features", "categories", "related_categories",
             )
             .annotate(
                 is_favorite=Exists(
                     Walk.favorites.through.objects.filter(
-                        walk_id=OuterRef("pk"), user=request.user
-                    )
+                        walk_id=OuterRef("pk"), user=request.user,
+                    ),
                 )
                 if request.user.is_authenticated
-                else Value(False)
+                else Value(False),
             )
             .get(id=walk.id)  # Use get() again to get annotated version
         )
@@ -304,7 +292,7 @@ def get_walk(request: HttpRequest, identifier: str):
                 for rc in walk.related_categories.all()
             ],
             highlights=walk.highlights,
-            points_of_interest=[poi.strip() for poi in walk.points_of_interest.split(';')] if walk.points_of_interest else [],
+            points_of_interest=[poi.strip() for poi in walk.points_of_interest.split(";")] if walk.points_of_interest else [],
             os_explorer_reference=walk.os_explorer_reference,
             steepness_level=walk.steepness_level,
             footwear_category=walk.footwear_category,
@@ -321,14 +309,13 @@ def get_walk(request: HttpRequest, identifier: str):
         )
     except Walk.DoesNotExist:
         return JsonResponse(
-            {"error": "Walk not found"}, 
-            status=404
+            {"error": "Walk not found"},
+            status=404,
         )
-    except Exception as e:
-        print(f"Error getting walk details: {e}")
+    except Exception:
         return JsonResponse(
-            {"error": "Internal server error"}, 
-            status=500
+            {"error": "Internal server error"},
+            status=500,
         )
 
 
@@ -364,7 +351,7 @@ class MarkerSchema(Schema):
 
 
 # List tags
-@api.get("/tags", response=List[TagResponseSchema])
+@api.get("/tags", response=list[TagResponseSchema])
 def list_tags(request):
     """Get all walk tags with usage counts"""
     tags = []
@@ -373,7 +360,7 @@ def list_tags(request):
     category_tags = (
         WalkCategoryTag.objects.annotate(
             usage_count=Count("categorized_walks", distinct=True)
-            + Count("related_walks", distinct=True)
+            + Count("related_walks", distinct=True),
         )
         .filter(usage_count__gt=0)
         .values("name", "slug", "usage_count")
@@ -387,7 +374,7 @@ def list_tags(request):
                 "slug": tag["slug"],
                 "usage_count": tag["usage_count"],
                 "type": "category",
-            }
+            },
         )
 
     # Get feature tags with counts
@@ -405,7 +392,7 @@ def list_tags(request):
                 "slug": tag["slug"],
                 "usage_count": tag["usage_count"],
                 "type": "feature",
-            }
+            },
         )
 
     return tags
@@ -452,7 +439,7 @@ def get_walk_geometry(request: HttpRequest, id: UUID):
     """Get GeoJSON geometry for a walk route"""
     try:
         walk = get_object_or_404(
-            Walk.objects.only("id", "walk_name", "distance", "route_geometry"), id=id
+            Walk.objects.only("id", "walk_name", "distance", "route_geometry"), id=id,
         )
 
         # Convert the geometry to GeoJSON
@@ -460,7 +447,7 @@ def get_walk_geometry(request: HttpRequest, id: UUID):
             geojson = orjson.loads(walk.route_geometry.geojson)
 
             # Create a GeoJSON Feature
-            feature = {
+            return {
                 "type": "Feature",
                 "geometry": geojson,
                 "properties": {
@@ -470,24 +457,22 @@ def get_walk_geometry(request: HttpRequest, id: UUID):
                 },
             }
 
-            return feature
 
-    except Exception as e:
-        print(f"Error fetching geometry for walk {id}: {e}")
+    except Exception:
         return JsonResponse({"error": "Failed to fetch route geometry"}, status=404)
 
 
 def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Calculate distance in meters using Haversine formula"""
     R = 6371000  # Radius of Earth in meters
-    
+
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
     dphi = math.radians(lat2 - lat1)
     dlambda = math.radians(lon2 - lon1)
 
     a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    
+
     return R * c
 
 

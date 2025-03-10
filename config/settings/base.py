@@ -1,5 +1,5 @@
 # ruff: noqa: ERA001, E501
-\"\"\"Base settings to build other settings files upon.\"\"\"
+"""Base settings to build other settings files upon."""
 
 import re
 import ssl
@@ -15,10 +15,10 @@ environ.Env.read_env(str(BASE_DIR / ".env"))
 
 # User display configuration - This determines how the user is displayed in messages
 def get_user_display(user):
-    \"\"\"Return a user-friendly display name\"\"\"
-    if hasattr(user, 'name') and user.name:
+    """Return a user-friendly display name"""
+    if hasattr(user, "name") and user.name:
         return user.name
-    return user.email.split('@')[0]
+    return user.email.split("@")[0]
 
 ACCOUNT_USER_DISPLAY = get_user_display
 
@@ -217,13 +217,6 @@ DJANGO_VITE = {
     "static_url_prefix": "dist/",
 }
 
-
-STATICFILES_FINDERS = [
-    "django.contrib.staticfiles.finders.FileSystemFinder",
-    "django.contrib.staticfiles.finders.AppDirectoriesFinder",
-    "compressor.finders.CompressorFinder",
-]
-
 # Disable Django's static file handling in development
 DEBUG_PROPAGATE_EXCEPTIONS = True
 
@@ -279,14 +272,14 @@ FIXTURE_DIRS = (str(APPS_DIR / "fixtures"),)
 # https://docs.djangoproject.com/en/dev/ref/settings/#session-cookie-httponly
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SECURE = True  # Requires HTTPS
-SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SAMESITE = "Lax"
 # https://docs.djangoproject.com/en/dev/ref/settings/#csrf-cookie-httponly
 CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SECURE = True  # Requires HTTPS
-CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = "Lax"
 CSRF_TRUSTED_ORIGINS = [
-    'http://localhost:8000',
-    'http://127.0.0.1:8000',
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#x-frame-options
 X_FRAME_OPTIONS = "DENY"
@@ -300,7 +293,7 @@ EMAIL_BACKEND = env(
 )
 
 EMAIL_HOST = env("EMAIL_HOST", cast=str, default=None)
-EMAIL_PORT = env("EMAIL_PORT", cast=str, default='587') # Recommended
+EMAIL_PORT = env("EMAIL_PORT", cast=str, default="587") # Recommended
 EMAIL_HOST_USER = env("EMAIL_HOST_USER", cast=str, default=None)
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", cast=str, default=None)
 EMAIL_USE_TLS = True
@@ -407,7 +400,7 @@ ACCOUNT_ADAPTER = "walkquest.users.adapters.AccountAdapter"
 # https://docs.allauth.org/en/latest/account/forms.html
 ACCOUNT_FORMS = {
     "signup": "walkquest.users.forms.UserSignupForm",
-    "change_password": "walkquest.users.forms.CustomPasswordChangeForm"
+    "change_password": "walkquest.users.forms.CustomPasswordChangeForm",
 }
 # https://docs.allauth.org/en/latest/socialaccount/configuration.html
 SOCIALACCOUNT_ADAPTER = "walkquest.users.adapters.SocialAccountAdapter"
@@ -427,7 +420,7 @@ HEADLESS_API_PREFIX = "_allauth/"  # This matches our URL configuration
 
 # Django Ninja API settings
 NINJA_JWT = {
-    'AUTH_HEADER_TYPES': ('Bearer',),
+    "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
 # django-compressor
@@ -456,12 +449,12 @@ ICONIFY_COLLECTIONS = {
 
 # Whitenoise configuration
 def immutable_file_test(_path, url):
-    \"\"\"Test if a file should be treated as immutable.\"\"\"
+    """Test if a file should be treated as immutable."""
     return bool(re.match(r"^.+[.-][0-9a-zA-Z_-]{8,12}\\..+$", url))
 
 
 WHITENOISE_IMMUTABLE_FILE_TEST = immutable_file_test
 
 ACCOUNT_FORMS = {
-    'login': 'walkquest.users.forms.UserLoginForm',
+    "login": "walkquest.users.forms.UserLoginForm",
 }

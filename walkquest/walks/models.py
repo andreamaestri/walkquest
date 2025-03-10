@@ -1,8 +1,11 @@
 import uuid
+
 from django.contrib.auth import get_user_model
 from django.contrib.gis.db import models
 from django.utils.translation import gettext_lazy as _
-from tagulous.models import TagField, TagModel
+from tagulous.models import TagField
+from tagulous.models import TagModel
+
 
 class WalkCategoryTag(TagModel):
     class TagMeta:
@@ -21,8 +24,8 @@ class WalkCategoryTag(TagModel):
 
     def to_dict(self):
         return {
-            'name': self.name,
-            'slug': self.slug
+            "name": self.name,
+            "slug": self.slug,
         }
 
 class WalkFeatureTag(TagModel):
@@ -54,8 +57,8 @@ class WalkFeatureTag(TagModel):
 
     def to_dict(self):
         return {
-            'name': self.name,
-            'slug': self.slug
+            "name": self.name,
+            "slug": self.slug,
         }
 
 class Companion(models.Model):
@@ -68,23 +71,23 @@ class Companion(models.Model):
     user = models.ForeignKey(
         get_user_model(),
         on_delete=models.CASCADE,
-        related_name='companions',
+        related_name="companions",
     )
     name = models.CharField(
         _("Name"),
         max_length=100,
-        help_text=_("Name of your walking companion")
+        help_text=_("Name of your walking companion"),
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['name']
-        verbose_name = _('companion')
-        verbose_name_plural = _('companions')
+        ordering = ["name"]
+        verbose_name = _("companion")
+        verbose_name_plural = _("companions")
         indexes = [
-            models.Index(fields=['user']),
-            models.Index(fields=['created_at']),
+            models.Index(fields=["user"]),
+            models.Index(fields=["created_at"]),
         ]
 
     def __str__(self):
@@ -106,8 +109,8 @@ class Adventure(models.Model):
         db_index=True,
     )
     title = models.CharField(
-        _("Title"), 
-        max_length=255, 
+        _("Title"),
+        max_length=255,
         help_text=_("Name of your epic quest"),
     )
     description = models.TextField(
@@ -115,12 +118,12 @@ class Adventure(models.Model):
         help_text=_("Chronicle your adventure's tale"),
     )
     start_date = models.DateField(
-        _("Start Date"), 
-        help_text=_("When the walk begins")
+        _("Start Date"),
+        help_text=_("When the walk begins"),
     )
     end_date = models.DateField(
-        _("End Date"), 
-        help_text=_("When the walk concludes")
+        _("End Date"),
+        help_text=_("When the walk concludes"),
     )
     start_time = models.TimeField(
         _("Start Time"),
@@ -142,10 +145,10 @@ class Adventure(models.Model):
         db_index=True,
     )
     companions = models.ManyToManyField(
-        'Companion',
-        related_name='adventures',
+        "Companion",
+        related_name="adventures",
         blank=True,
-        help_text=_("Companions that joined this adventure")
+        help_text=_("Companions that joined this adventure"),
     )
     related_categories = TagField(
         to=WalkCategoryTag,
@@ -174,7 +177,7 @@ class Adventure(models.Model):
     @property
     def duration(self):
         if self.start_time and self.end_time:
-            from datetime import datetime, timedelta
+            from datetime import datetime
             today = datetime.today()
             start = datetime.combine(today, self.start_time)
             end = datetime.combine(today, self.end_time)
@@ -310,28 +313,28 @@ class Walk(models.Model):
         blank=True,
     )
     related_categories = models.ManyToManyField(
-        'WalkCategoryTag',
-        related_name='related_walks',
+        "WalkCategoryTag",
+        related_name="related_walks",
         blank=True,
-        help_text=_("Categories associated with this walk")
+        help_text=_("Categories associated with this walk"),
     )
     features = models.ManyToManyField(
-        'WalkFeatureTag',
-        related_name='walks',
+        "WalkFeatureTag",
+        related_name="walks",
         blank=True,
-        help_text=_("Features present on this walk")
+        help_text=_("Features present on this walk"),
     )
     categories = models.ManyToManyField(
-        'WalkCategoryTag',
-        related_name='categorized_walks',
+        "WalkCategoryTag",
+        related_name="categorized_walks",
         blank=True,
-        help_text=_("Primary categories for this walk")
+        help_text=_("Primary categories for this walk"),
     )
     favorites = models.ManyToManyField(
         get_user_model(),
-        related_name='favorite_walks',
+        related_name="favorite_walks",
         blank=True,
-        help_text=_("Users who have favorited this walk")
+        help_text=_("Users who have favorited this walk"),
     )
     has_stiles = models.BooleanField(default=False)
     has_cafe = models.BooleanField(default=False)
@@ -396,8 +399,8 @@ class WalkFavorite(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('user', 'walk')
+        unique_together = ("user", "walk")
         indexes = [
-            models.Index(fields=['user', 'walk']),
-            models.Index(fields=['created_at']),
+            models.Index(fields=["user", "walk"]),
+            models.Index(fields=["created_at"]),
         ]

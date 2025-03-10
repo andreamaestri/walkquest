@@ -1,8 +1,9 @@
 import pytest
-from django.urls import reverse
-from rest_framework.test import APIClient
 from django.test import Client
+from rest_framework.test import APIClient
+
 from walkquest.users.models import User
+
 
 @pytest.mark.django_db
 class TestUserAPI:
@@ -11,7 +12,7 @@ class TestUserAPI:
         self.test_user = User.objects.create_user(
             username="testuser",
             email="test@example.com",
-            password="testpass123"
+            password="testpass123",
         )
         self.client.force_authenticate(user=self.test_user)
 
@@ -58,7 +59,7 @@ class TestAuthentication:
             "username": "newuser",
             "password1": "TestPass123!",
             "password2": "TestPass123!",
-            "name": "New User"
+            "name": "New User",
         }
         response = self.client.post(self.signup_url, data)
         assert response.status_code == 302  # Redirect after successful signup
@@ -69,13 +70,13 @@ class TestAuthentication:
         User.objects.create_user(
             username="testuser",
             email="test@example.com",
-            password="TestPass123!"
+            password="TestPass123!",
         )
 
         # Test login
         response = self.client.post(self.login_url, {
             "login": "test@example.com",
-            "password": "TestPass123!"
+            "password": "TestPass123!",
         })
         assert response.status_code == 302  # Redirect after successful login
 
@@ -84,7 +85,7 @@ class TestAuthentication:
         user = User.objects.create_user(
             username="testuser",
             email="test@example.com",
-            password="TestPass123!"
+            password="TestPass123!",
         )
         self.client.force_login(user)
 

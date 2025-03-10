@@ -24,15 +24,17 @@ Last Updated: After a satisfying lunch break
 import json
 import logging
 from typing import Any
+
 from django.conf import settings
+from django.contrib.gis.geos import GEOSGeometry
 from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.core.serializers.json import DjangoJSONEncoder
-from django.contrib.gis.geos import GEOSGeometry
 from django.db.models import Count
 from django.db.models import QuerySet
-from django.http import HttpResponse, Http404, JsonResponse
-from django.http import HttpRequest
+from django.http import Http404
+from django.http import HttpResponse
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
 from django.views import View
@@ -40,7 +42,6 @@ from django.views.decorators.cache import cache_page
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_POST
 from django.views.generic import ListView
-from tagulous.models.tagged import TaggedManager
 from tagulous.views import autocomplete
 
 from walkquest.walks.models import Walk
@@ -177,10 +178,10 @@ class HomePageView(ListView):
                 "has_bus_access": bool(walk.has_bus_access),
                 "has_stiles": bool(walk.has_stiles),
                 "created_at": walk.created_at.isoformat() if walk.created_at else None,
-                "is_favorite": walk.is_favorite_of(self.request.user)
+                "is_favorite": walk.is_favorite_of(self.request.user),
             }
         except Exception as e:
-            logger.exception(f"Walk serialization error for walk ID {walk.id}: {str(e)}")
+            logger.exception(f"Walk serialization error for walk ID {walk.id}: {e!s}")
             return {}
 
     def get_initial_walks(self) -> list[dict[str, Any]]:
@@ -206,24 +207,24 @@ class HomePageView(ListView):
 
             # Handle tag counts with proper Tagulous integration
             tags_with_counts = []
-            
+
             # Process category tags
             category_tags = (
                 WalkCategoryTag.objects
                 .annotate(
-                    usage_count=Count('categorized_walks', distinct=True) +
-                               Count('related_walks', distinct=True)
+                    usage_count=Count("categorized_walks", distinct=True) +
+                               Count("related_walks", distinct=True),
                 )
                 .filter(usage_count__gt=0)
-                .values('name', 'slug', 'usage_count')
+                .values("name", "slug", "usage_count")
             )
-            
+
             # Process feature tags
             feature_tags = (
                 WalkFeatureTag.objects
-                .annotate(usage_count=Count('walks', distinct=True))
+                .annotate(usage_count=Count("walks", distinct=True))
                 .filter(usage_count__gt=0)
-                .values('name', 'slug', 'usage_count')
+                .values("name", "slug", "usage_count")
             )
 
             # Combine tags with proper type identification
@@ -232,17 +233,17 @@ class HomePageView(ListView):
                     "name": tag["name"],
                     "slug": tag["slug"],
                     "usage_count": tag["usage_count"],
-                    "type": "category"
+                    "type": "category",
                 }
                 for tag in category_tags
             ])
-            
+
             tags_with_counts.extend([
                 {
                     "name": tag["name"],
                     "slug": tag["slug"],
                     "usage_count": tag["usage_count"],
-                    "type": "feature"
+                    "type": "feature",
                 }
                 for tag in feature_tags
             ])
@@ -250,7 +251,7 @@ class HomePageView(ListView):
             context["tags_data"] = tags_with_counts
 
         except Exception as e:
-            logger.exception(f"Error preparing context data: {str(e)}")
+            logger.exception(f"Error preparing context data: {e!s}")
             context.update({
                 "config": {},
                 "initial_walks": [],
@@ -375,7 +376,7 @@ class WalkListView(ListView):
     def get(self, request, *args, **kwargs):
         """Handle GET requests with pagination and error handling."""
         try:
-            page = request.GET.get('page', 1)
+            page = request.GET.get("page", 1)
             queryset = self.get_queryset()
             paginator = Paginator(queryset, self.paginate_by)
             walks = paginator.get_page(page)
@@ -384,7 +385,7 @@ class WalkListView(ListView):
                 "walks": [self.serialize_walk(walk) for walk in walks],
                 "has_next": walks.has_next(),
                 "next_page": walks.next_page_number() if walks.has_next() else None,
-                "total_pages": paginator.num_pages
+                "total_pages": paginator.num_pages,
             }
 
             if request.headers.get("HX-Request"):
@@ -422,11 +423,12 @@ class WalkDetailView(View):
     template_name = "walks/detail.html"
 
     def get_walk(self, **kwargs):
-        if 'id' in kwargs:
-            return Walk.objects.get(id=kwargs['id'])
-        elif 'slug' in kwargs:
-            return Walk.objects.get(slug=kwargs['slug'])
-        raise Http404("Walk not found")
+        if "id" in kwargs:
+            return Walk.objects.get(id=kwargs["id"])
+        if "slug" in kwargs:
+            return Walk.objects.get(slug=kwargs["slug"])
+        msg = "Walk not found"
+        raise Http404(msg)
 
     def get(self, request, **kwargs):
         """Handle GET request for walk details."""
@@ -442,9 +444,9 @@ class WalkDetailView(View):
                 "steepness_level": walk.steepness_level,
                 "latitude": float(walk.latitude),
                 "longitude": float(walk.longitude),
-                "features": [{'name': f.name, 'slug': f.slug} for f in walk.features.all()],
-                "categories": [{'name': c.name, 'slug': c.slug} for c in walk.categories.all()],
-                "related_categories": [{'name': rc.name, 'slug': rc.slug} for rc in walk.related_categories.all()],
+                "features": [{"name": f.name, "slug": f.slug} for f in walk.features.all()],
+                "categories": [{"name": c.name, "slug": c.slug} for c in walk.categories.all()],
+                "related_categories": [{"name": rc.name, "slug": rc.slug} for rc in walk.related_categories.all()],
                 "has_pub": bool(walk.has_pub),
                 "has_cafe": bool(walk.has_cafe),
                 "has_bus_access": bool(walk.has_bus_access),
@@ -456,7 +458,7 @@ class WalkDetailView(View):
                 "footwear_category": walk.footwear_category,
                 "recommended_footwear": walk.recommended_footwear,
                 "created_at": walk.created_at.isoformat() if walk.created_at else None,
-                "updated_at": walk.updated_at.isoformat() if walk.updated_at else None
+                "updated_at": walk.updated_at.isoformat() if walk.updated_at else None,
             }
 
             if request.headers.get("HX-Request"):
@@ -465,10 +467,10 @@ class WalkDetailView(View):
             return JsonResponse(walk_data)
 
         except Exception as e:
-            logger.exception(f"Error fetching walk details for ID {id}: {str(e)}")
+            logger.exception(f"Error fetching walk details for ID {id}: {e!s}")
             return JsonResponse(
                 {"error": "Failed to fetch walk details"},
-                status=500
+                status=500,
             )
 
 
@@ -496,11 +498,12 @@ class WalkGeometryView(View):
     CACHE_TIMEOUT = 60 * 30  # 30 minutes
 
     def get_walk(self, **kwargs):
-        if 'id' in kwargs:
-            return Walk.objects.get(id=kwargs['id'])
-        elif 'slug' in kwargs:
-            return Walk.objects.get(slug=kwargs['slug'])
-        raise Http404("Walk not found")
+        if "id" in kwargs:
+            return Walk.objects.get(id=kwargs["id"])
+        if "slug" in kwargs:
+            return Walk.objects.get(slug=kwargs["slug"])
+        msg = "Walk not found"
+        raise Http404(msg)
 
     def get(self, request, **kwargs):
         """Handle GET request for walk geometry."""
@@ -536,7 +539,7 @@ class WalkGeometryView(View):
                 status=404,
             )
         except Exception as e:
-            logger.exception("Error fetching geometry for walk %s: %s", kwargs.get('id') or kwargs.get('slug'), str(e))
+            logger.exception("Error fetching geometry for walk %s: %s", kwargs.get("id") or kwargs.get("slug"), str(e))
             return HttpResponse(
                 '{"error": "Internal server error"}',
                 content_type=self.CONTENT_TYPE,
@@ -550,12 +553,12 @@ def toggle_favorite(request, walk_id):
     """Toggle a walk as favorite for the current user."""
     if not request.user.is_authenticated:
         return JsonResponse({"error": "Authentication required"}, status=401)
-    
+
     walk = get_object_or_404(Walk, id=walk_id)
-    
+
     # Check if the walk is already favorited
     is_favorite = walk.is_favorite_of(request.user)
-    
+
     # Toggle the favorite status
     if is_favorite:
         walk.favorites.remove(request.user)
@@ -563,11 +566,11 @@ def toggle_favorite(request, walk_id):
     else:
         walk.favorites.add(request.user)
         is_favorite = True
-    
+
     # Return updated walk data
     return JsonResponse({
         "id": str(walk.id),
         "walk_id": walk.walk_id,
         "walk_name": walk.walk_name,
-        "is_favorite": is_favorite
+        "is_favorite": is_favorite,
     })

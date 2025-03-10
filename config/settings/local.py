@@ -1,10 +1,10 @@
 # ruff: noqa: E501
+
 from .base import *  # noqa: F403
 from .base import INSTALLED_APPS
 from .base import MIDDLEWARE
 from .base import STATICFILES_FINDERS
 from .base import env
-from pathlib import Path
 
 # GENERAL
 # ------------------------------------------------------------------------------
@@ -16,7 +16,7 @@ SECRET_KEY = env(
     default="USfCDpMV0G1ctas6WbqsnNsnkLR8j4AQtucBUTDJ0kWlnciSd4adBJwQYTFP1GjB",
 )
 # https://docs.djangoproject.com/en/dev/ref/settings/#allowed-hosts
-ALLOWED_HOSTS = ["*"]  # noqa: S104
+ALLOWED_HOSTS = ["*"]
 
 # DATABASES
 # ------------------------------------------------------------------------------
@@ -134,13 +134,13 @@ STATICFILES_FINDERS = [
 # ------------------------------------------------------------------------------
 DJANGO_VITE = {
     "default": {
-        "dev_mode": True  # Same as DEBUG in development
-    }
+        "dev_mode": True,  # Same as DEBUG in development
+    },
 }
 
 # STATICFILES_DIRS needs to include Vite's build output directory
 STATICFILES_DIRS = [
-    BASE_DIR / "walkquest/static/dist"  # Match Vite's outDir
+    BASE_DIR / "walkquest/static/dist",  # Match Vite's outDir
 ]
 
 # Use Vite's dev server for static files in development

@@ -1,9 +1,13 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from django.conf import settings
-from django.http import Http404
-from django.core.serializers.json import DjangoJSONEncoder
 import json
+
+from django.conf import settings
+from django.core.serializers.json import DjangoJSONEncoder
+from django.http import Http404
+from django.shortcuts import get_object_or_404
+from django.shortcuts import redirect
+from django.shortcuts import render
 from django.utils.html import escapejs
+
 from .walks.models import Walk
 
 WALK_NOT_FOUND_MESSAGE = "The requested walk could not be found"
@@ -11,13 +15,15 @@ WALK_NOT_FOUND_MESSAGE = "The requested walk could not be found"
 def index(request, walk_id=None, path=None):
     """Main view that serves the Vue.js SPA or delegates to other views"""
     # Don't handle /accounts/ paths - let Django handle those
-    if path and (path.startswith('accounts/') or request.path.startswith('/accounts/')):
-        raise Http404("Not found")
-        
+    if path and (path.startswith("accounts/") or request.path.startswith("/accounts/")):
+        msg = "Not found"
+        raise Http404(msg)
+
     # Don't handle /_allauth/ paths - let Django handle those
-    if path and (path.startswith('_allauth/') or request.path.startswith('/_allauth/')):
-        raise Http404("Not found")
-        
+    if path and (path.startswith("_allauth/") or request.path.startswith("/_allauth/")):
+        msg = "Not found"
+        raise Http404(msg)
+
     return render_spa(request, walk_id)
 
 def render_spa(request, walk_id=None):
@@ -26,7 +32,7 @@ def render_spa(request, walk_id=None):
         "MAPBOX_TOKEN": settings.MAPBOX_TOKEN,
         "initial_walks": "[]",
     }
-    
+
     # If a walk_id slug is provided, try to find the walk
     if walk_id:
         try:
@@ -53,10 +59,10 @@ def render_spa(request, walk_id=None):
                     for rc in walk.related_categories.all()
                 ],
             }
-            
+
             # Serialize and escape the walk data
             context["initial_walk"] = escapejs(
-                json.dumps(walk_data, cls=DjangoJSONEncoder)
+                json.dumps(walk_data, cls=DjangoJSONEncoder),
             )
             context["walk_id"] = walk_id
         except Walk.DoesNotExist as err:

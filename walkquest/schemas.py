@@ -1,6 +1,7 @@
-from typing import List, Optional
-from ninja import Schema
 from datetime import datetime
+
+from ninja import Schema
+
 
 class TagOut(Schema):
     id: int
@@ -9,7 +10,7 @@ class TagOut(Schema):
 
 class ConfigOut(Schema):
     map_style: str = "streets"
-    start_location: Optional[List[float]] = None
+    start_location: list[float] | None = None
     zoom_level: float = 12.0
 
 class WalkOut(Schema):
@@ -21,10 +22,10 @@ class WalkOut(Schema):
     duration: int | None = None
     difficulty: str | None = None
     steepness: str | None = None
-    tags: List[TagOut] = []
+    tags: list[TagOut] = []
     is_favorite: bool = False
     created_at: datetime
     updated_at: datetime | None = None
-    coordinates: List[List[float]] = []
-    start_point: List[float] | None = None
-    end_point: List[float] | None = None
+    coordinates: list[list[float]] = []
+    start_point: list[float] | None = None
+    end_point: list[float] | None = None

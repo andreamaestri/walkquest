@@ -1,28 +1,27 @@
-from typing import List
 from uuid import UUID
 
 from django.shortcuts import get_object_or_404
 from ninja import Router
-from ninja.errors import HttpError
 from ninja.security import django_auth
 
-from walkquest.walks.models import Walk, Adventure
+from walkquest.walks.models import Adventure
+from walkquest.walks.models import Companion
+from walkquest.walks.models import Walk
+from walkquest.walks.models import WalkCategoryTag
+
 from .models import Achievement
-from walkquest.walks.models import Companion, WalkCategoryTag
-from .schemas import (
-    AdventureIn,
-    AdventureOut,
-    CompanionCreate,
-    CompanionOut, 
-    CompanionList,
-    ErrorResponse,
-)
+from .schemas import AdventureIn
+from .schemas import AdventureOut
+from .schemas import CompanionCreate
+from .schemas import CompanionList
+from .schemas import CompanionOut
+from .schemas import ErrorResponse
 
 # Create router with authentication
 router = Router(auth=django_auth)
 
 @router.post(
-    "/adventures/log", 
+    "/adventures/log",
     response={201: AdventureOut, 422: ErrorResponse},
     tags=["adventures"],
     summary="Log a new adventure")
@@ -30,8 +29,8 @@ def create_adventure(request, data: AdventureIn):
     """Create a new adventure log."""
     try:
         # Get the walk
-        walk = get_object_or_404(Walk, id=data.walk_id)
-        
+        get_object_or_404(Walk, id=data.walk_id)
+
         # Create the adventure
         adventure = Adventure.objects.create(
             title=data.title,
@@ -52,7 +51,7 @@ def create_adventure(request, data: AdventureIn):
         if data.companion_ids:
             companions = Companion.objects.filter(
                 id__in=data.companion_ids,
-                user=request.user
+                user=request.user,
             )
             adventure.companions.add(*companions)
 
@@ -62,7 +61,7 @@ def create_adventure(request, data: AdventureIn):
             adventure=adventure,
             conquered_date=data.end_date,
             status="COMPLETED",
-            visibility="PUBLIC"
+            visibility="PUBLIC",
         )
 
         # Format response
@@ -88,7 +87,7 @@ def create_adventure(request, data: AdventureIn):
         return 422, ErrorResponse(message=str(e))
 
 @router.get(
-    "/companions/", 
+    "/companions/",
     response=CompanionList,
     tags=["companions"],
     summary="List all companions")
@@ -99,11 +98,11 @@ def list_companions(request):
         companions=[
             CompanionOut(id=c.id, name=c.name)
             for c in companions
-        ]
+        ],
     )
 
 @router.post(
-    "/companions/", 
+    "/companions/",
     response={201: CompanionOut, 422: ErrorResponse},
     tags=["companions"],
     summary="Create a new companion")
@@ -112,15 +111,15 @@ def create_companion(request, data: CompanionCreate):
     try:
         companion = Companion.objects.create(
             user=request.user,
-            name=data.name
+            name=data.name,
         )
         return 201, CompanionOut(id=companion.id, name=companion.name)
     except Exception as e:
         return 422, ErrorResponse(message=str(e))
 
 @router.delete(
-    "/companions/{companion_id}", 
-    response={204: None, 404: ErrorResponse}, 
+    "/companions/{companion_id}",
+    response={204: None, 404: ErrorResponse},
     tags=["companions"],
     summary="Delete a companion")
 def delete_companion(request, companion_id: UUID):
@@ -129,7 +128,7 @@ def delete_companion(request, companion_id: UUID):
         companion = get_object_or_404(
             Companion,
             id=companion_id,
-            user=request.user
+            user=request.user,
         )
         companion.delete()
         return 204, None

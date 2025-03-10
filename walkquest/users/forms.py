@@ -1,8 +1,9 @@
-from allauth.account.forms import SignupForm, ResetPasswordForm, LoginForm
+from allauth.account.forms import LoginForm
+from allauth.account.forms import SignupForm
 from allauth.socialaccount.forms import SignupForm as SocialSignupForm
+from django import forms
 from django.contrib.auth import forms as admin_forms
 from django.utils.translation import gettext_lazy as _
-from django import forms
 
 from .models import User
 
@@ -36,15 +37,15 @@ class UserSignupForm(SignupForm):
         required=False,
         widget=forms.TextInput(
             attrs={
-                'placeholder': 'Full Name (optional)',
-                'class': 'md3-input'
-            }
-        )
+                "placeholder": "Full Name (optional)",
+                "class": "md3-input",
+            },
+        ),
     )
-    
+
     def save(self, request):
         user = super().save(request)
-        user.name = self.cleaned_data.get('name', '')
+        user.name = self.cleaned_data.get("name", "")
         user.save()
         return user
 
@@ -56,13 +57,13 @@ class UserLoginForm(LoginForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Customize form fields
-        for field_name, field in self.fields.items():
-            field.widget.attrs.update({'class': 'md3-input'})
-    
+        for field in self.fields.values():
+            field.widget.attrs.update({"class": "md3-input"})
+
     def login(self, request, redirect_url=None):
         # Custom login processing if needed
         # You have access to self.user here
-        
+
         # Return the original result from parent's login method
         return super().login(request, redirect_url)
 
@@ -78,17 +79,17 @@ class UserSocialSignupForm(SocialSignupForm):
         required=False,
         widget=forms.TextInput(
             attrs={
-                'placeholder': 'Full Name (optional)',
-                'class': 'md3-input'
-            }
-        )
+                "placeholder": "Full Name (optional)",
+                "class": "md3-input",
+            },
+        ),
     )
-    
+
     def save(self, request):
         user = super().save(request)
-        user.name = self.cleaned_data.get('name', '')
+        user.name = self.cleaned_data.get("name", "")
         # Try to get name from social account if not provided
-        if not user.name and hasattr(self, 'sociallogin'):
-            user.name = self.sociallogin.account.extra_data.get('name', '')
+        if not user.name and hasattr(self, "sociallogin"):
+            user.name = self.sociallogin.account.extra_data.get("name", "")
         user.save()
         return user

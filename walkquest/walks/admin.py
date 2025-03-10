@@ -112,29 +112,29 @@ class WalkAdmin(GISModelAdmin, TagModelAdmin):
         "steepness_level",
         "amenities_summary",
     )
-    
+
     # Using search_fields with the correct field names
     search_fields = ("walk_name", "walk_id", "highlights")
-    
+
     # Make sure these list_filter fields actually exist in your model
     list_filter = (
         ("steepness_level", ChoicesDropdownFilter),
         ("footwear_category", ChoicesDropdownFilter),
     )
-    
+
     # Make sure these fields exist in your model
     readonly_fields = ()
-    
+
     # Make sure the adventure field exists in your model
     raw_id_fields = ("adventure",)
-    
+
     # Make sure these fields exist in your model
     prepopulated_fields = {"walk_id": ("walk_name",)}
-    
+
     # In the get_form method, simply return super()'s result directly
     def get_form(self, request, obj=None, **kwargs):
         return super().get_form(request, obj, **kwargs)
-    
+
     # Update references in amenities_summary to use the correct field names
     @admin.display(description="Amenities")
     def amenities_summary(self, obj):

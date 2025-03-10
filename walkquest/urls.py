@@ -1,10 +1,11 @@
 from django.conf import settings
-from django.urls import include, path
-from django.views.generic import TemplateView
 from django.conf.urls.static import static
-from django.shortcuts import redirect
+from django.urls import include
+from django.urls import path
+
 from . import views
-from .api import UserAPI, api_instance
+from .api import UserAPI
+from .api import api_instance
 
 app_name = "walkquest"
 
@@ -14,30 +15,30 @@ app_name = "walkquest"
 urlpatterns = [
     # Main API at /api/ - already includes walks endpoints from its initialization
     path("api/", api_instance.urls),
-    
+
     # API routes - user-specific endpoints
     path("api/users/", include("walkquest.users.urls", namespace="users")),
-    path('api/user/', UserAPI.as_view(), name='user_api'),
-    
+    path("api/user/", UserAPI.as_view(), name="user_api"),
+
     # Walks app URLs
     path("", include("walkquest.walks.urls", namespace="walks")),
 
     # Authentication URLs - for login, logout, signup
     path("accounts/", include("allauth.urls")),
-    
+
     # Primary route using slug
     path("<slug:walk_id>/", views.index, name="walk-detail-by-slug"),
-    
+
     # Legacy UUID route with redirect
     path("walk/<uuid:id>/", views.legacy_walk_view, name="walk-detail-legacy"),
-    
+
     # Default route - handled by Vue router
     path("", views.index, name="home"),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 if settings.DEBUG:
     from django.views import defaults as default_views
-    
+
     urlpatterns += [
         path(
             "400/",

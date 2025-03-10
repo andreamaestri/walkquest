@@ -29,7 +29,7 @@ class User(AbstractUser):
         default=dict,
         encoder=DjangoJSONEncoder,
         blank=True,
-        help_text="User preferences stored as JSON"
+        help_text="User preferences stored as JSON",
     )
 
     class Meta:

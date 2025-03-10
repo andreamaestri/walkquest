@@ -1,18 +1,14 @@
 from datetime import datetime
-from typing import Dict
-from typing import List
-from typing import Optional
 from uuid import UUID
 
-from ninja import Field
 from ninja import Schema
 
 
 class TagSchema(Schema):
     name: str
     slug: str
-    usage_count: Optional[int] = None
-    type: Optional[str] = None
+    usage_count: int | None = None
+    type: str | None = None
 
 class TagBaseSchema(Schema):
     name: str

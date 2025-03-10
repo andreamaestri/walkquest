@@ -1,15 +1,14 @@
 from django.urls import path
-from allauth.account.views import email_verification_sent
 
-from walkquest.users.views import (
-    user_detail_view,
-    user_redirect_view,
-    user_update_view,
-    CustomEmailVerificationSentView,
-    CustomEmailVerificationView,
-    auth_events,
-)
-from .api import handle_login, handle_signup
+from walkquest.users.views import CustomEmailVerificationSentView
+from walkquest.users.views import CustomEmailVerificationView
+from walkquest.users.views import auth_events
+from walkquest.users.views import user_detail_view
+from walkquest.users.views import user_redirect_view
+from walkquest.users.views import user_update_view
+
+from .api import handle_login
+from .api import handle_signup
 
 app_name = "users"
 urlpatterns = [
