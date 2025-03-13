@@ -100,8 +100,18 @@ onMounted(() => {
   // Initialize auth store
   authStore.initAuth();
   
-  // Initialize UI responsive state
+  // Initialize UI responsive state and store cleanup function
   const cleanup = uiStore.initializeResponsiveState();
+  
+  onBeforeUnmount(() => {
+    // Call cleanup function when component unmounts
+    cleanup();
+    
+    // Remove beforeunload handler
+    if (beforeUnloadHandler) {
+      window.removeEventListener('beforeunload', beforeUnloadHandler);
+    }
+  });
   
   // Setup beforeunload handler
   beforeUnloadHandler = () => {
