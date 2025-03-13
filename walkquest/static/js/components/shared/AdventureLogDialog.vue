@@ -189,21 +189,6 @@ const {
   getToday
 } = useDateTimeUtils()
 
-// Initialize these methods if they don't exist in the composable
-function setToNextMonth() {
-  const date = new Date(currentDate.value)
-  date.setMonth(date.getMonth() + 1)
-  currentDate.value = date
-  updateCalendarDays()
-}
-
-function setToPreviousMonth() {
-  const date = new Date(currentDate.value)
-  date.setMonth(date.getMonth() - 1)
-  currentDate.value = date
-  updateCalendarDays()
-}
-
 // Helper function to update calendar days
 function updateCalendarDays() {
   const year = currentDate.value.getFullYear()
