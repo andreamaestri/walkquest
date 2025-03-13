@@ -104,12 +104,49 @@ export const useAdventureStore = defineStore('adventure', {
             'X-Requested-With': 'XMLHttpRequest'
           },
           credentials: 'include',
-          body: JSON.stringify(payload)
+          body: JSON.stringify({
+            title: adventureData.title,
+            description: adventureData.description,
+            start_date: adventureData.startDate,
+            end_date: adventureData.endDate,
+            start_time: adventureData.startTime || null,
+            end_time: adventureData.endTime || null,
+            difficulty_level: adventureData.difficultyLevel,
+            categories: Array.isArray(adventureData.categories) ? adventureData.categories : [],
+            companion_ids: Array.isArray(adventureData.companion_ids) ? adventureData.companion_ids : [],
+            walk_id: adventureData.walkId
+          })
         })
 
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Failed to create adventure');
+          let errorMessage = 'Failed to create adventure';
+          try {
+            const errorData = await response.json();
+            if (errorData.message) {
+              errorMessage = errorData.message;
+            } else if (errorData.detail) {
+              errorMessage = errorData.detail;
+            } else if (typeof errorData === 'object') {
+              // Handle validation errors which might be returned as an object with field names as keys
+              const errors = [];
+              for (const [field, fieldErrors] of Object.entries(errorData)) {
+                if (Array.isArray(fieldErrors)) {
+                  errors.push(`${field}: ${fieldErrors.join(', ')}`);
+                } else if (typeof fieldErrors === 'string') {
+                  errors.push(`${field}: ${fieldErrors}`);
+                } else if (typeof fieldErrors === 'object') {
+                  errors.push(`${field}: ${JSON.stringify(fieldErrors)}`);
+                }
+              }
+              if (errors.length > 0) {
+                errorMessage = errors.join('\n');
+              }
+            }
+            throw new Error(errorMessage, { cause: errorData });
+          } catch (parseError) {
+            // If we can't parse the error as JSON, just throw with status text
+            throw new Error(`${errorMessage}: ${response.statusText}`);
+          }
         }
 
         const data = await response.json()
