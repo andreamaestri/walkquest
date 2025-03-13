@@ -19,6 +19,9 @@ export const useUiStore = defineStore('ui', {
 			type: 'info' // 'info', 'success', 'error'
 		},
 		toastTimeout: null,
+		// New state properties for loading and error handling
+		loadingState: false,
+		error: null,
 		// New modal state
 		modal: {
 			isOpen: false,
@@ -27,6 +30,7 @@ export const useUiStore = defineStore('ui', {
 		},
 		// New dark mode state
 		isDarkMode: localStorage.getItem('darkMode') === 'true'
+
 	}),
 
 	getters: {
@@ -102,6 +106,13 @@ export const useUiStore = defineStore('ui', {
 			this.isDarkMode = !this.isDarkMode
 			localStorage.setItem('darkMode', this.isDarkMode)
 			document.documentElement.classList.toggle('dark', this.isDarkMode)
+		},
+
+		setLoadingState(value) {
+			this.loadingState = value
+		},
+		setError(error) {
+			this.error = error
 		}
 	}
 })
