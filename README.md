@@ -1,17 +1,11 @@
-# WalkQuest
+# ![material-symbols--hiking](https://github.com/user-attachments/assets/85beb384-d086-44d3-8e94-3cbf58fafd83) WalkQuest
 
-<div align="center">
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="120" height="120">
-    <title>WalkQuest</title>
-    <path fill="#4CAF50" d="m7 23l3.075-15.55q.15-.725.675-1.088T11.85 6t1.063.25t.787.75l1 1.6q.45.725 1.163 1.313t1.637.862V9H19v14h-1.5V12.85q-1.2-.275-2.225-.875T13.5 10.5l-.6 3l2.1 2V23h-2v-6l-2.1-2l-1.8 8zm.425-9.875l-2.125-.4q-.4-.075-.625-.413t-.15-.762l.75-3.925q.15-.8.85-1.263t1.5-.312l1.15.225zM13.5 5.5q-.825 0-1.412-.587T11.5 3.5t.588-1.412T13.5 1.5t1.413.588T15.5 3.5t-.587 1.413T13.5 5.5" />
-  </svg>
-</div>
 
 [![Built with Cookiecutter Django](https://img.shields.io/badge/built%20with-Cookiecutter%20Django-ff69b4.svg?logo=cookiecutter)](https://github.com/cookiecutter/cookiecutter-django/)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.9+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/yourusername/walkquest/ci.yml?branch=main)](https://github.com/yourusername/walkquest/actions)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/andreamaestri/walkquest/ci.yml?branch=main)](https://github.com/andreamaestri/walkquest/actions)
 
 ## Table of Contents
 - [Description](#description)
@@ -62,28 +56,23 @@
 <details>
 <summary>Mobile Design</summary>
 
-![Mobile Wireframes](path/to/mobile-wireframes.png)
+![Mobile Wireframe 1](https://github.com/user-attachments/assets/43cea466-16aa-4379-a580-7f79c582e9d9)
+![Mobile Wireframe 2](https://github.com/user-attachments/assets/85fb1b0c-75ad-438e-9377-e8c658bcffc1)
 - Navigation optimized for touch
-- Bottom action bar
+- SpeedDial FAB
 - Collapsible content
+
 </details>
-
-<details>
-<summary>Tablet Design</summary>
-
-![Tablet Wireframes](path/to/tablet-wireframes.png)
-- Split view layout
-- Map integration
-- Sidebar navigation
-</details>
-
 <details>
 <summary>Desktop Design</summary>
 
-![Desktop Wireframes](path/to/desktop-wireframes.png)
+![Desktop Wireframe](https://github.com/user-attachments/assets/a24ea427-496d-46d3-a582-aa3d63ab787b)
+
 - Full-screen map view
 - Advanced filtering
-- Multi-column layout
+- Navigation Rail/Material Design 3 Canonical layout
+
+  
 </details>
 
 ### Accessibility
