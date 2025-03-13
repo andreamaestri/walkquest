@@ -53,6 +53,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { Icon } from '@iconify/vue'
 import { useDateTimeUtils } from '../../../composables/useDateTimeUtils'
 import { useAnimations } from '../../../composables/useAnimations'
+const { animateModalEntry, animateModalExit } = useAnimations()
 
 const props = defineProps({
   title: {
@@ -73,7 +74,6 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'close'])
 
 const datePickerModal = ref(null)
-const { slideInModal, slideOutModal } = useAnimations()
 const {
   currentMonth,
   currentYear,
@@ -104,8 +104,8 @@ onMounted(() => {
     currentYear.value = year
   }
   
-  // Show the modal with animation
-  slideInModal(datePickerModal)
+  // Show the modal with animation using the actual element
+  animateModalEntry(datePickerModal.value)
 })
 
 // Check if a date is selected
@@ -126,7 +126,7 @@ async function confirm() {
 
 // Close modal
 async function close() {
-  await slideOutModal(datePickerModal)
+  await animateModalExit(datePickerModal.value)
   emit('close')
 }
 
