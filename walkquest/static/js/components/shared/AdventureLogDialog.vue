@@ -307,7 +307,7 @@ const handleSubmit = async () => {
     const adventureData = await adventureStore.createAdventure({
       ...formData,
       walkId: props.walk.id,
-      companion_ids: companions
+      companion_ids: companions.map(companion => companion.id)
     })
 
     // Show success toast message

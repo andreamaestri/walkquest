@@ -68,6 +68,32 @@ export const useAdventureStore = defineStore('adventure', {
           throw new Error('CSRF token not found');
         }
 
+        // Prepare data, ensuring optional fields are handled properly
+        const payload = {
+          title: adventureData.title,
+          description: adventureData.description,
+          start_date: adventureData.startDate,
+          end_date: adventureData.endDate,
+          difficulty_level: adventureData.difficultyLevel,
+          walk_id: adventureData.walkId
+        };
+
+        // Only add non-null values for optional fields
+        if (adventureData.startTime) payload.start_time = adventureData.startTime;
+        if (adventureData.endTime) payload.end_time = adventureData.endTime;
+        
+        // Only add non-empty arrays
+        if (adventureData.categories && adventureData.categories.length > 0) {
+          payload.categories = adventureData.categories;
+        } else {
+          // Send default category if none provided
+          payload.categories = ['circular'];
+        }
+        
+        if (adventureData.companion_ids && adventureData.companion_ids.length > 0) {
+          payload.companion_ids = adventureData.companion_ids;
+        }
+
         const response = await fetch('/api/adventures/log', {
           method: 'POST',
           headers: {
@@ -78,18 +104,7 @@ export const useAdventureStore = defineStore('adventure', {
             'X-Requested-With': 'XMLHttpRequest'
           },
           credentials: 'include',
-          body: JSON.stringify({
-            title: adventureData.title,
-            description: adventureData.description,
-            start_date: adventureData.startDate,
-            end_date: adventureData.endDate,
-            start_time: adventureData.startTime || null,
-            end_time: adventureData.endTime || null,
-            difficulty_level: adventureData.difficultyLevel,
-            categories: adventureData.categories || [],
-            companion_ids: adventureData.companion_ids || [],
-            walk_id: adventureData.walkId
-          })
+          body: JSON.stringify(payload)
         })
 
         if (!response.ok) {
