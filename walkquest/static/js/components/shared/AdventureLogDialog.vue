@@ -684,11 +684,14 @@ onUnmounted(() => {
   flex-direction: column;
   overflow: hidden;
   will-change: transform, opacity;
+  /* Fixed height to enable proper scrolling */
+  height: 85vh;
 }
 
 .adventure-log-dialog.mobile {
   max-width: 100%;
   max-height: 98vh;
+  height: 90vh;
 }
 
 /* Dialog Content */
@@ -698,19 +701,28 @@ onUnmounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
+  /* Ensure the content takes full height */
+  height: 100%;
 }
 
 .form-scroll-container {
   width: 100%;
   flex: 1;
   overflow-y: auto;
+  /* Ensure proper padding and spacing */
+  padding: 0 24px 24px;
+  /* Remove any margin to maximize space */
+  margin: 0;
+  /* Ensure this container grows to fill available space */
+  height: 100%;
 }
 
 /* Form Styling */
 .adventure-form {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  /* Changed from height: 100% to min-height to allow content to determine size */
+  min-height: 100%;
   gap: 24px;
 }
 
@@ -755,6 +767,8 @@ onUnmounted(() => {
   .form-scroll-container {
     padding: 16px;
     gap: 16px;
+    /* Maintain height for mobile */
+    height: 100%;
   }
 }
 </style>
