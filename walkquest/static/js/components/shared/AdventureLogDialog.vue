@@ -297,59 +297,46 @@ watch(() => adventureDialogStore.isOpen, async (isOpen) => {
 
 // Dialog submission handler
 const handleSubmit = async () => {
-  if (!validateForm()) return
+  if (!validateForm()) return;
 
-  isSubmitting.value = true
-  errors.value = {} // Clear previous errors
+  isSubmitting.value = true;
+  errors.value = {}; // Clear previous errors
 
   try {
-    // Prepare the data for submission
-    const { companions, ...formData } = adventureForm.value
-    
-    // Ensure categories is always an array of strings
-    if (!Array.isArray(formData.categories)) {
-      formData.categories = []
-    }
-    
-    // Map companions array to companion_ids
-    const adventureData = {
+    const { companions, ...formData } = adventureForm.value;
+    const adventureData = await adventureStore.createAdventure({
       ...formData,
       walkId: props.walk.id,
       companion_ids: companions.map(companion => companion.id)
-    })
+    });
 
     // Show success toast message
-    showToast('Adventure logged successfully!')
+    showToast('Adventure logged successfully!');
     
     // Emit the submit event with the adventure data
-    emit('submit', result)
+    emit('submit', adventureData);
     
     // Close the dialog after successful submission
-    handleClose()
+    handleClose();
   } catch (error) {
-    console.error('Adventure creation error:', error)
+    console.error('Adventure creation error:', error);
     
     // Set specific error messages based on error type if possible
-    if (error.cause && typeof error.cause === 'object') {
+    if (error.response && error.response.data) {
       // Handle API error responses
-      const apiErrors = error.cause
+      const apiErrors = error.response.data;
       Object.entries(apiErrors).forEach(([key, message]) => {
-        // Special handling for companion_ids errors
-        if (key === 'companion_ids') {
-          errors.value.companions = Array.isArray(message) ? message[0] : message
-        } else {
-          errors.value[key] = Array.isArray(message) ? message[0] : message
-        }
-      })
+        errors.value[key] = Array.isArray(message) ? message[0] : message;
+      });
     } else {
       // Generic error fallback
-      errors.value.submit = error.message || 'Failed to create adventure. Please try again.'
+      errors.value.submit = error.message || 'Failed to create adventure. Please try again.';
     }
     
     // Show error toast
-    showToast('Failed to create adventure')
+    showToast('Failed to create adventure');
   } finally {
-    isSubmitting.value = false
+    isSubmitting.value = false;
   }
 }
 
