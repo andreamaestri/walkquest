@@ -38,8 +38,9 @@ export const useUiStore = defineStore('ui', {
       props: {}
     },
     // New dark mode state
-    isDarkMode: localStorage.getItem('darkMode') === 'true'
-
+    isDarkMode: localStorage.getItem('darkMode') === 'true',
+    showDrawer: false,
+    sidebarExpanded: localStorage.getItem('sidebarExpanded') === 'true'
   }),
 
   getters: {
@@ -146,6 +147,23 @@ export const useUiStore = defineStore('ui', {
 
     cleanupResponsiveState() {
       // This method is now handled by the cleanup function returned from initializeResponsiveState
+    },
+
+    handleWalkSelected() {
+      this.showDrawer = true
+      this.sidebarExpanded = false
+      localStorage.setItem('sidebarExpanded', 'false')
+    },
+
+    handleWalkClosed() {
+      this.showDrawer = false
+      this.sidebarExpanded = true
+      localStorage.setItem('sidebarExpanded', 'true')
+    },
+
+    setSidebarVisibility(visible) {
+      this.sidebarExpanded = visible
+      localStorage.setItem('sidebarExpanded', visible.toString())
     }
   }
 })
