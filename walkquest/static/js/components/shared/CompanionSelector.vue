@@ -111,17 +111,18 @@ function cancelNewCompanion() {
 }
 
 function isSelected(companion) {
-  return props.modelValue.includes(companion.id)
+  // Compare by string value to ensure consistent comparison
+  return props.modelValue.some(id => id.toString() === companion.id.toString())
 }
 
 function toggleCompanion(companion) {
   const newValue = isSelected(companion)
-    ? props.modelValue.filter(id => id !== companion.id)
+    ? props.modelValue.filter(id => id.toString() !== companion.id.toString())
     : [...props.modelValue, companion.id]
   emit('update:modelValue', newValue)
 }
 
 function removeCompanion(companion) {
-  emit('update:modelValue', props.modelValue.filter(id => id !== companion.id))
+  emit('update:modelValue', props.modelValue.filter(id => id.toString() !== companion.id.toString()))
 }
 </script>

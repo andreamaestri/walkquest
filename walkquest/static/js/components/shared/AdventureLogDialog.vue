@@ -303,6 +303,7 @@ const handleSubmit = async () => {
   errors.value = {} // Clear previous errors
 
   try {
+    // Prepare the data for submission
     const { companions, ...formData } = adventureForm.value
     
     // Ensure categories is always an array of strings
@@ -310,13 +311,11 @@ const handleSubmit = async () => {
       formData.categories = []
     }
     
-    // Ensure companion_ids is properly formatted
-    const companion_ids = Array.isArray(companions) ? companions.map(id => id.toString()) : []
-    
+    // Map companions array to companion_ids
     const adventureData = {
       ...formData,
       walkId: props.walk.id,
-      companion_ids
+      companion_ids: companions || []
     }
     
     console.log('Submitting adventure data:', adventureData)
@@ -339,7 +338,12 @@ const handleSubmit = async () => {
       // Handle API error responses
       const apiErrors = error.cause
       Object.entries(apiErrors).forEach(([key, message]) => {
-        errors.value[key] = Array.isArray(message) ? message[0] : message
+        // Special handling for companion_ids errors
+        if (key === 'companion_ids') {
+          errors.value.companions = Array.isArray(message) ? message[0] : message
+        } else {
+          errors.value[key] = Array.isArray(message) ? message[0] : message
+        }
       })
     } else {
       // Generic error fallback
