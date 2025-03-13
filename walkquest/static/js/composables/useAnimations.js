@@ -1,292 +1,135 @@
-import { animate, spring } from 'motion';
+import { ref, nextTick } from 'vue'
 
-/**
- * Composable for managing animations
- * Provides consistent animation patterns across components
- */
 export function useAnimations() {
-  // Animation configurations for different types of animations
-  const animationConfigs = {
-    fluid: {
-      duration: 0.3,
-      easing: [0.2, 0, 0.2, 1]
-    },
-    spring: {
-      type: 'spring',
-      stiffness: 300,
-      damping: 30
-    }
-  };
-
+  const isAnimating = ref(false)
+  
   /**
-   * Animate an interface element with consistent behavior
-   * @param {HTMLElement} el - Element to animate
-   * @param {Object} options - Animation options
-   * @param {Function} onComplete - Callback when animation completes
-   * @returns {Promise} - Animation promise
+   * Slide a modal in from the bottom
    */
-  const animateInterfaceElement = async (el, options = {}, onComplete) => {
-    const {
-      type = "entry", // entry or exit
-      direction = "vertical", // vertical or horizontal
-      duration = 0.3,
-      easing = type === "entry" ? [0.2, 0, 0.2, 1] : [0.4, 0, 1, 1],
-      reverseDirection = false,
-    } = options;
-
-    if (!el) {
-      if (onComplete) onComplete();
-      return;
-    }
-
-    const animation = {
-      opacity: type === "entry" ? [0, 1] : [1, 0],
-      scale: type === "entry" ? [0.95, 1] : [1, 0.95],
-    };
-
-    if (direction === "horizontal") {
-      animation.x = type === "entry"
-        ? [reverseDirection ? 100 : -100, 0]
-        : [0, reverseDirection ? -100 : 100];
-    } else {
-      animation.y = type === "entry" ? [10, 0] : [0, 10];
-    }
-
-    try {
-      await animate(el, animation, {
-        duration,
-        easing,
-      }).finished;
-    } catch (error) {
-      console.error("Animation error:", error);
-    }
+  async function slideInModal(elementRef) {
+    if (!elementRef.value || isAnimating.value) return
     
-    if (onComplete) onComplete();
-  };
-
+    isAnimating.value = true
+    
+    // Set initial position
+    elementRef.value.style.transform = 'translateY(100%)'
+    elementRef.value.style.opacity = '0'
+    elementRef.value.style.display = 'flex'
+    
+    // Force reflow to ensure the initial state is applied
+    elementRef.value.offsetHeight
+    
+    // Set transition properties
+    elementRef.value.style.transition = 'transform 0.3s ease-out, opacity 0.3s ease-out'
+    
+    await nextTick()
+    
+    // Animate in
+    elementRef.value.style.transform = 'translateY(0)'
+    elementRef.value.style.opacity = '1'
+    
+    // Wait for animation to complete
+    await new Promise(resolve => setTimeout(resolve, 300))
+    isAnimating.value = false
+  }
+  
   /**
-   * Animate a drawer element with enhanced behavior
-   * @param {HTMLElement} el - Element to animate
-   * @param {Object} animation - Animation keyframes
-   * @param {Object} config - Animation configuration
-   * @returns {Promise} - Animation promise
+   * Slide a modal out to the bottom
    */
-  const animateDrawerElement = async (el, animation, config = {}) => {
-    if (!el) return;
-    return animate(el, animation, {
-      ...animationConfigs.fluid,
-      ...config
-    }).finished;
-  };
-
+  async function slideOutModal(elementRef) {
+    if (!elementRef.value || isAnimating.value) return
+    
+    isAnimating.value = true
+    
+    // Set transition properties
+    elementRef.value.style.transition = 'transform 0.3s ease-in, opacity 0.3s ease-in'
+    
+    // Animate out
+    elementRef.value.style.transform = 'translateY(100%)'
+    elementRef.value.style.opacity = '0'
+    
+    // Wait for animation to complete
+    await new Promise(resolve => setTimeout(resolve, 300))
+    
+    // Hide element after animation completes
+    elementRef.value.style.display = 'none'
+    isAnimating.value = false
+  }
+  
   /**
-   * Run a sequence of animations on multiple elements
-   * @param {Array<HTMLElement>} elements - Elements to animate
-   * @param {Array<Object>} animations - Animation configurations
-   * @param {Function} onComplete - Callback when all animations complete
-   * @returns {Promise} - Animation promise
+   * Fade in an element
    */
-  const runAnimationSequence = async (elements, animations, onComplete) => {
-    const promises = elements.map((el, i) => {
-      if (!el) return Promise.resolve();
-      return animate(
-        el,
-        animations[i].keyframes,
-        {
-          ...animationConfigs.fluid,
-          ...animations[i].options,
-          delay: (animations[i].options?.delay || 0) + (i * 0.05)
-        }
-      ).finished;
-    });
+  async function fadeIn(elementRef, duration = 300) {
+    if (!elementRef.value || isAnimating.value) return
     
-    await Promise.all(promises);
-    onComplete?.();
-  };
-
+    isAnimating.value = true
+    
+    // Set initial state
+    elementRef.value.style.opacity = '0'
+    elementRef.value.style.display = 'block'
+    
+    // Force reflow
+    elementRef.value.offsetHeight
+    
+    // Set transition
+    elementRef.value.style.transition = `opacity ${duration}ms ease-out`
+    
+    await nextTick()
+    
+    // Animate in
+    elementRef.value.style.opacity = '1'
+    
+    // Wait for animation to complete
+    await new Promise(resolve => setTimeout(resolve, duration))
+    isAnimating.value = false
+  }
+  
   /**
-   * Animate typography elements with special effects
-   * @param {HTMLElement} container - Container with typography elements
+   * Fade out an element
    */
-  const animateTypography = (container) => {
-    if (!container) return;
+  async function fadeOut(elementRef, duration = 300) {
+    if (!elementRef.value || isAnimating.value) return
     
-    const typographyElements = container.querySelectorAll(
-      '.m3-headline-small, .m3-title-medium, .m3-title-small'
-    );
+    isAnimating.value = true
     
-    typographyElements.forEach(el => {
-      el.style.opacity = '0';
-      animateDrawerElement(el, {
-        letterSpacing: ['-2px', '0px'],
-        opacity: [0, 1]
-      }, {
-        duration: 0.4,
-        easing: 'ease-out'
-      });
-    });
-  };
-
+    // Set transition
+    elementRef.value.style.transition = `opacity ${duration}ms ease-in`
+    
+    // Animate out
+    elementRef.value.style.opacity = '0'
+    
+    // Wait for animation to complete
+    await new Promise(resolve => setTimeout(resolve, duration))
+    
+    // Hide element after animation completes
+    elementRef.value.style.display = 'none'
+    isAnimating.value = false
+  }
+  
   /**
-   * Animate content transition with fade and scale
-   * @param {HTMLElement} el - Element to animate
-   * @param {Function} done - Vue transition done callback
+   * Show a temporary toast notification
    */
-  const animateContentTransition = async (el, done) => {
-    await animate(
-      el,
-      {
-        opacity: [0, 1],
-        scale: [0.98, 1],
-        y: [-10, 0],
-      },
-      {
-        duration: 0.3,
-        easing: [0.22, 1, 0.36, 1],
-        onComplete: done,
-      }
-    ).finished;
-  };
-
-  /**
-   * Animate details element open/close
-   * @param {Event} event - Toggle event
-   */
-  const animateDetailsToggle = (event) => {
-    const detail = event.target;
-    const content = detail.querySelector('.details-content');
+  async function showToast(toastRef, message, duration = 3000) {
+    if (!toastRef.value) return
     
-    if (!content) return;
+    // Set message
+    toastRef.value.message = message
     
-    if (detail.open) {
-      // Expand: Animate from 0 to content scrollHeight then clear explicit height
-      content.style.height = '0px';
-      content.style.overflow = 'hidden';
-      const targetHeight = content.scrollHeight;
-      
-      animate(content, 
-        { height: [0, targetHeight + 'px'] }, 
-        { duration: 0.3, easing: 'ease-out' }
-      ).then(() => {
-        content.style.height = '';
-        content.style.overflow = 'visible';
-      });
-    } else {
-      // Collapse: Animate from current height to 0
-      content.style.height = content.offsetHeight + 'px';
-      content.style.overflow = 'hidden';
-      
-      animate(content, 
-        { height: [content.offsetHeight + 'px', '0px'] },
-        { duration: 0.3, easing: 'ease-in' }
-      );
-    }
-  };
-
-  /**
-   * Animate a form element selection
-   * @param {HTMLElement} element - Element to animate
-   * @param {Boolean} wasSelected - Whether the element was previously selected
-   * @returns {Object} - Animation instance
-   */
-  const animateSelection = (element, wasSelected) => {
-    if (!element) return null;
+    // Show toast
+    await fadeIn(toastRef)
     
-    if (wasSelected) {
-      // Deselected animation
-      return animate(element, { 
-        scale: [1],
-        backgroundColor: [
-          'rgb(var(--md-sys-color-secondary-container))',
-          'rgb(var(--md-sys-color-surface-container))'
-        ]
-      }, animationConfigs.fluid);
-    } else {
-      // Selected animation
-      return animate(element, { 
-        scale: [1],
-        backgroundColor: [
-          'rgb(var(--md-sys-color-surface-container))',
-          'rgb(var(--md-sys-color-secondary-container))'
-        ]
-      }, animationConfigs.fluid);
-    }
-  };
-
-  /**
-   * Animate modal dialog entry
-   * @param {HTMLElement} element - Element to animate
-   * @returns {Object} - Animation instance
-   */
-  const animateModalEntry = (element) => {
-    if (!element) return null;
-    
-    return animate(element, {
-      opacity: [0, 1],
-      y: ['100%', '0%']
-    }, animationConfigs.fluid);
-  };
-
-  /**
-   * Animate modal dialog exit
-   * @param {HTMLElement} element - Element to animate
-   * @param {Function} onComplete - Callback when animation completes
-   * @returns {Object} - Animation instance
-   */
-  const animateModalExit = (element, onComplete) => {
-    if (!element) return null;
-    
-    return animate(element, {
-      opacity: [1, 0],
-      y: ['0%', '100%']
-    }, {
-      ...animationConfigs.fluid,
-      onComplete
-    });
-  };
-
-  /**
-   * Animate calendar month change
-   * @param {HTMLElement} element - Calendar element
-   * @param {String} direction - 'prev' or 'next'
-   * @returns {Object} - Animation instance
-   */
-  const animateCalendarChange = (element, direction) => {
-    if (!element) return null;
-    
-    return animate(element, {
-      x: [direction === 'prev' ? '-20px' : '20px', '0px'],
-      opacity: [0.8, 1]
-    }, animationConfigs.fluid);
-  };
-
-  /**
-   * Animate time unit change in time picker
-   * @param {HTMLElement} element - Time unit element
-   * @param {String} direction - 'up' or 'down'
-   * @returns {Object} - Animation instance
-   */
-  const animateTimeUnitChange = (element, direction) => {
-    if (!element) return null;
-    
-    return animate(element, {
-      y: [direction === 'up' ? '10px' : '-10px', '0px'],
-      opacity: [0.5, 1]
-    }, animationConfigs.fluid);
-  };
+    // Auto-hide after duration
+    setTimeout(async () => {
+      await fadeOut(toastRef)
+    }, duration)
+  }
 
   return {
-    animationConfigs,
-    animateInterfaceElement,
-    animateDrawerElement,
-    runAnimationSequence,
-    animateTypography,
-    animateContentTransition,
-    animateDetailsToggle,
-    animateSelection,
-    animateModalEntry,
-    animateModalExit,
-    animateCalendarChange,
-    animateTimeUnitChange
-  };
+    isAnimating,
+    slideInModal,
+    slideOutModal,
+    fadeIn,
+    fadeOut,
+    showToast
+  }
 }
