@@ -90,8 +90,13 @@ export const useAdventureStore = defineStore('adventure', {
           payload.categories = ['circular'];
         }
         
+        // Ensure companion_ids has no null values
         if (adventureData.companion_ids && adventureData.companion_ids.length > 0) {
-          payload.companion_ids = adventureData.companion_ids;
+          payload.companion_ids = adventureData.companion_ids.filter(id => id !== null && id !== undefined);
+          // If filtering removed all entries, don't include the empty array
+          if (payload.companion_ids.length === 0) {
+            delete payload.companion_ids;
+          }
         }
 
         const response = await fetch('/api/adventures/log', {
@@ -104,18 +109,7 @@ export const useAdventureStore = defineStore('adventure', {
             'X-Requested-With': 'XMLHttpRequest'
           },
           credentials: 'include',
-          body: JSON.stringify({
-            title: adventureData.title,
-            description: adventureData.description,
-            start_date: adventureData.startDate,
-            end_date: adventureData.endDate,
-            start_time: adventureData.startTime || null,
-            end_time: adventureData.endTime || null,
-            difficulty_level: adventureData.difficultyLevel,
-            categories: Array.isArray(adventureData.categories) ? adventureData.categories : [],
-            companion_ids: Array.isArray(adventureData.companion_ids) ? adventureData.companion_ids : [],
-            walk_id: adventureData.walkId
-          })
+          body: JSON.stringify(payload)
         })
 
         if (!response.ok) {

@@ -304,10 +304,16 @@ const handleSubmit = async () => {
 
   try {
     const { companions, ...formData } = adventureForm.value;
+    
+    // Extract companion IDs and filter out any null values
+    const companionIds = companions
+      .map(companion => companion?.id)
+      .filter(id => id !== null && id !== undefined);
+    
     const adventureData = await adventureStore.createAdventure({
       ...formData,
       walkId: props.walk.id,
-      companion_ids: companions.map(companion => companion.id)
+      companion_ids: companionIds
     });
 
     // Show success toast message
