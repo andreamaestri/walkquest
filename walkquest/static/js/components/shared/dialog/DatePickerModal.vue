@@ -66,7 +66,7 @@ const props = defineProps({
   },
   field: {
     type: String,
-    required: true,
+    default: 'startDate', // <-- added default value
     validator: value => ['startDate', 'endDate'].includes(value)
   }
 })

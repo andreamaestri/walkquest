@@ -138,6 +138,7 @@ import { useAdventureDialogStore } from '../../stores/adventureDialog'
 import { useAdventureFormUtils } from '../../composables/useAdventureFormUtils'
 import { useDateTimeUtils } from '../../composables/useDateTimeUtils'
 import { useAnimations } from '../../composables/useAnimations'
+const { animateModalEntry, animateModalExit, animateCalendarChange, animateDrawerElement } = useAnimations()
 
 // Import extracted components
 import DialogHeader from './dialog/DialogHeader.vue'
