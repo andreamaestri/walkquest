@@ -22,7 +22,7 @@ export const useAdventureStore = defineStore('adventure', {
       this.error = null
       
       try {
-        const response = await fetch('/api/adventures/', {
+        const response = await fetch('/api/adventures/log', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -36,8 +36,8 @@ export const useAdventureStore = defineStore('adventure', {
             start_time: adventureData.startTime || null,
             end_time: adventureData.endTime || null,
             difficulty_level: adventureData.difficultyLevel,
-            related_categories: adventureData.categories,
-            companions: adventureData.companions || [],
+            categories: adventureData.categories,
+            companion_ids: adventureData.companion_ids || [],
             walk_id: adventureData.walkId
           })
         })
