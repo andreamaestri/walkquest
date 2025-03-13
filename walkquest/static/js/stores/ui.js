@@ -12,6 +12,7 @@ function debounce(fn, delay) {
 
 export const useUiStore = defineStore('ui', {
   state: () => ({
+    // Window and breakpoints
     windowWidth: window.innerWidth,
     windowHeight: window.innerHeight,
     breakpoints: {
@@ -21,26 +22,43 @@ export const useUiStore = defineStore('ui', {
       xl: 1280
     },
     scrollY: 0,
-    // Toast notification state
+
+    // Toast/snackbar notification state
     toast: {
       message: '',
       visible: false,
       type: 'info' // 'info', 'success', 'error'
     },
     toastTimeout: null,
-    // New state properties for loading and error handling
+
+    // Loading and error states
     loadingState: false,
     error: null,
-    // New modal state
+
+    // Modal state
     modal: {
       isOpen: false,
       component: null,
       props: {}
     },
-    // New dark mode state
+
+    // Theme state
     isDarkMode: localStorage.getItem('darkMode') === 'true',
+
+    // Navigation and layout states
     showDrawer: false,
-    sidebarExpanded: localStorage.getItem('sidebarExpanded') === 'true'
+    sidebarExpanded: localStorage.getItem('sidebarExpanded') === 'true',
+    mobileMenuOpen: false,
+    fullscreen: false,
+    showSidebar: localStorage.getItem('showSidebar') === 'true',
+
+    // Loading states
+    loadingStates: {
+      walks: false,
+      location: false,
+      map: false,
+      search: false
+    }
   }),
 
   getters: {
@@ -48,7 +66,10 @@ export const useUiStore = defineStore('ui', {
     isTablet: (state) => state.windowWidth >= state.breakpoints.medium && state.windowWidth < state.breakpoints.large,
     isDesktop: (state) => state.windowWidth >= state.breakpoints.large,
     isWideScreen: (state) => state.windowWidth >= state.breakpoints.xl,
-    isScrolled: (state) => state.scrollY > 0
+    isScrolled: (state) => state.scrollY > 0,
+
+    isAnyLoading: (state) => 
+      Object.values(state.loadingStates).some(value => value === true),
   },
 
   actions: {
@@ -61,7 +82,7 @@ export const useUiStore = defineStore('ui', {
       this.scrollY = window.scrollY
     },
 
-    // Show a toast notification
+    // Show a toast/snackbar notification
     showToast(message, type = 'info', duration = 3000) {
       // Clear any existing timeout
       if (this.toastTimeout) {
@@ -77,6 +98,11 @@ export const useUiStore = defineStore('ui', {
       this.toastTimeout = setTimeout(() => {
         this.toast.visible = false
       }, duration)
+    },
+
+    // Alias for showToast to maintain compatibility
+    showSnackbar(message, type = 'info', duration = 3000) {
+      this.showToast(message, type, duration)
     },
 
     // Manually hide the toast
@@ -102,6 +128,37 @@ export const useUiStore = defineStore('ui', {
       this.showToast(message, 'info', duration)
     },
 
+    // Mobile menu controls
+    setMobileMenuOpen(isOpen) {
+      this.mobileMenuOpen = isOpen
+      // If closing mobile menu, also close any open drawer
+      if (!isOpen && this.showDrawer) {
+        this.showDrawer = false
+      }
+    },
+
+    toggleMobileMenu() {
+      this.setMobileMenuOpen(!this.mobileMenuOpen)
+    },
+
+    // View state controls
+    setFullscreen(isFullscreen) {
+      this.fullscreen = isFullscreen
+    },
+
+    toggleFullscreen() {
+      this.fullscreen = !this.fullscreen
+    },
+
+    setSidebarVisible(isVisible) {
+      this.showSidebar = isVisible
+      localStorage.setItem('showSidebar', isVisible.toString())
+    },
+
+    toggleSidebar() {
+      this.setSidebarVisible(!this.showSidebar)
+    },
+
     openModal(component, props = {}) {
       this.modal.component = component
       this.modal.props = props
@@ -118,8 +175,10 @@ export const useUiStore = defineStore('ui', {
       document.documentElement.classList.toggle('dark', this.isDarkMode)
     },
 
-    setLoadingState(value) {
-      this.loadingState = value
+    setLoadingState(key, value) {
+      if (key in this.loadingStates) {
+        this.loadingStates[key] = value
+      }
     },
 
     setError(error) {
