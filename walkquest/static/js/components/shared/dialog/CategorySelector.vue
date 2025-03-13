@@ -26,6 +26,7 @@
 import { Icon } from '@iconify/vue'
 import { watch, nextTick } from 'vue'
 import { useAnimations } from '../../../composables/useAnimations'
+const { animateDrawerElement } = useAnimations()
 
 const props = defineProps({
   modelValue: {
@@ -43,8 +44,6 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue'])
-
-const { animateDrawerElement } = useAnimations()
 
 // Toggle category selection with animation
 function toggleCategory(slug) {

@@ -131,7 +131,7 @@ defineEmits([
 ])
 
 function formatDate(dateString) {
-  return formatDateForDisplay(dateString)
+  return dateString ? formatDateForDisplay(new Date(dateString)) : ''
 }
 
 function formatTime(timeString) {

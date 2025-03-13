@@ -28,7 +28,6 @@
 import { Icon } from '@iconify/vue'
 import { nextTick, watch } from 'vue'
 import { useAnimations } from '../../../composables/useAnimations'
-
 const { animateDrawerElement } = useAnimations()
 
 const props = defineProps({
