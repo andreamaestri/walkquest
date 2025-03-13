@@ -310,9 +310,17 @@ const handleSubmit = async () => {
       companion_ids: companions
     })
 
+    // Show success toast message
+    showToast('Adventure logged successfully!')
+    
+    // Emit the submit event with the adventure data
     emit('submit', adventureData)
+    
+    // Close the dialog after successful submission
     handleClose()
   } catch (error) {
+    console.error('Adventure creation error:', error)
+    
     // Set specific error messages based on error type if possible
     if (error.response && error.response.data) {
       // Handle API error responses
@@ -322,8 +330,11 @@ const handleSubmit = async () => {
       })
     } else {
       // Generic error fallback
-      errors.value.submit = 'Failed to create adventure. Please try again.'
+      errors.value.submit = error.message || 'Failed to create adventure. Please try again.'
     }
+    
+    // Show error toast
+    showToast('Failed to create adventure')
   } finally {
     isSubmitting.value = false
   }
