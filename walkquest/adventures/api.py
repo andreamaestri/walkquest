@@ -116,10 +116,7 @@ def list_adventures(request):
 def create_adventure(request, data: AdventureIn):
     """Create a new adventure log."""
     try:
-        # Get the walk if one is specified
-        walk = get_object_or_404(Walk, id=data.walk_id) if data.walk_id else None
-        
-        # Create the adventure
+        # Create the adventure first
         adventure = Adventure.objects.create(
             title=data.title,
             description=data.description,
@@ -128,7 +125,6 @@ def create_adventure(request, data: AdventureIn):
             start_time=data.start_time,
             end_time=data.end_time,
             difficulty_level=data.difficulty_level,
-            walk=walk,  # Link the walk to the adventure
         )
 
         # Add categories
@@ -149,6 +145,12 @@ def create_adventure(request, data: AdventureIn):
             user=request.user,
             adventure=adventure,
         )
+
+        # If walk_id is provided, update the walk to link to this adventure
+        if data.walk_id:
+            walk = get_object_or_404(Walk, id=data.walk_id)
+            walk.adventure = adventure
+            walk.save()
 
         return 201, AdventureOut(
             id=adventure.id,
