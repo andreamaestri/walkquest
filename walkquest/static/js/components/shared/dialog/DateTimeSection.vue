@@ -107,7 +107,6 @@
 <script setup>
 import { Icon } from '@iconify/vue'
 import { useDateTimeUtils } from '../../../composables/useDateTimeUtils'
-
 const { formatDateForDisplay, formatTimeForDisplay } = useDateTimeUtils()
 
 const props = defineProps({
@@ -131,7 +130,7 @@ defineEmits([
 ])
 
 function formatDate(dateString) {
-  return dateString ? formatDateForDisplay(new Date(dateString)) : ''
+  return formatDateForDisplay(dateString)
 }
 
 function formatTime(timeString) {

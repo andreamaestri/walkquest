@@ -9,10 +9,23 @@ export function useDateTimeUtils() {
    * Format a date string (YYYY-MM-DD) for display
    */
   function formatDateForDisplay(dateString) {
-    if (!dateString) return ''
+    if (!dateString || typeof dateString !== 'string') return ''
+    
+    // Handle Date object input
+    if (dateString instanceof Date) {
+      return new Intl.DateTimeFormat('en-US', { 
+        weekday: 'short',
+        month: 'short', 
+        day: 'numeric',
+        year: 'numeric' 
+      }).format(dateString)
+    }
     
     const [year, month, day] = dateString.split('-').map(Number)
+    if (!year || !month || !day) return ''
+    
     const date = new Date(year, month - 1, day)
+    if (isNaN(date.getTime())) return ''
     
     return new Intl.DateTimeFormat('en-US', { 
       weekday: 'short',
@@ -139,6 +152,13 @@ export function useDateTimeUtils() {
            date.getDate() === day
   }
 
+  /**
+   * Get the current month label (e.g. "March 2024")
+   */
+  function getCurrentMonthLabel() {
+    return `${getMonthName()} ${currentYear.value}`
+  }
+
   return {
     currentMonth,
     currentYear,
@@ -149,6 +169,7 @@ export function useDateTimeUtils() {
     getDayNames,
     setToPreviousMonth,
     setToNextMonth,
-    isValidDate
+    isValidDate,
+    getCurrentMonthLabel
   }
 }

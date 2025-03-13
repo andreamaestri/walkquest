@@ -183,14 +183,17 @@ const {
 } = useAdventureFormUtils()
 
 const {
-  weekDays,
-  currentMonthLabel,
+  getDayNames,
+  getCurrentMonthLabel,
   formatDateForDisplay,
   formatTimeForDisplay,
   setToNextMonth,
-  setToPreviousMonth,
-  getToday
+  setToPreviousMonth
 } = useDateTimeUtils()
+
+// Add missing computed properties
+const weekDays = computed(() => getDayNames())
+const currentMonthLabel = computed(() => getCurrentMonthLabel())
 
 // Helper function to update calendar days
 function updateCalendarDays() {
