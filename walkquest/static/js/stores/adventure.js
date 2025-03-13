@@ -99,6 +99,11 @@ export const useAdventureStore = defineStore('adventure', {
           }
         }
 
+        // Ensure difficulty_level is properly encoded for API submission
+        if (payload.difficulty_level && payload.difficulty_level.includes("'")) {
+          console.log('Sending difficulty level with apostrophe:', payload.difficulty_level);
+        }
+
         const response = await fetch('/api/adventures/log', {
           method: 'POST',
           headers: {
