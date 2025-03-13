@@ -138,7 +138,9 @@ import { useAdventureDialogStore } from '../../stores/adventureDialog'
 import { useAdventureFormUtils } from '../../composables/useAdventureFormUtils'
 import { useDateTimeUtils } from '../../composables/useDateTimeUtils'
 import { useAnimations } from '../../composables/useAnimations'
-const { animateModalEntry, animateModalExit, animateCalendarChange, animateDrawerElement } = useAnimations()
+
+// Get animation functions from composable
+const { animateModalEntry, animateModalExit, animateCalendarChange } = useAnimations()
 
 // Import extracted components
 import DialogHeader from './dialog/DialogHeader.vue'
@@ -280,25 +282,12 @@ watch(() => adventureDialogStore.isOpen, async (isOpen) => {
 
   if (isOpen) {
     // Entry animation
-    currentAnimation = animate(dialogRef.value, {
-      opacity: [0, 1],
-      scale: [0.95, 1]
-    }, { 
-      duration: 0.3,
-      easing: [0.2, 0, 0, 1] // M3 emphasized easing
-    })
+    currentAnimation = animateModalEntry(dialogRef.value)
   } else {
     // Exit animation
-    currentAnimation = animate(dialogRef.value, {
-      opacity: [1, 0],
-      scale: [1, 0.95]
-    }, { 
-      duration: 0.2,
-      easing: [0.3, 0, 0.8, 0.15], // M3 emphasized-accelerate
-      onComplete: () => {
-        // Clear the animation reference once complete
-        currentAnimation = null
-      }
+    currentAnimation = animateModalExit(dialogRef.value, () => {
+      // Clear the animation reference once complete
+      currentAnimation = null
     })
   }
 })
@@ -378,7 +367,8 @@ function closeDatePicker() {
 
 function prevMonth() {
   // Move to previous month
-  setToPreviousMonth()
+  setToPreviousMonth(currentDate)
+  updateCalendarDays()
   
   // Animate the calendar change
   const calendar = document.querySelector('.md3-calendar-grid')
@@ -389,7 +379,8 @@ function prevMonth() {
 
 function nextMonth() {
   // Move to next month
-  setToNextMonth()
+  setToNextMonth(currentDate)
+  updateCalendarDays()
   
   // Animate the calendar change
   const calendar = document.querySelector('.md3-calendar-grid')
@@ -590,20 +581,12 @@ const handleClose = () => {
 
   // Animate dialog exit
   if (dialogRef.value) {
-    animateDrawerElement(dialogRef.value, {
-      scale: [1, 0.95],
-      opacity: [1, 0]
-    }, {
-      duration: 0.2,
-      easing: [0.2, 0, 0, 1],
-      onComplete: () => {
-        // Reset form state
-        resetForm()
-      }
+    animateModalExit(dialogRef.value, () => {
+      // Reset form state
+      resetForm()
     })
   } else {
     resetForm()
-    adventureDialogStore.closeDialog()
   }
 }
 
