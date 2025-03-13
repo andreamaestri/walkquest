@@ -22,12 +22,14 @@ export const useAdventureStore = defineStore('adventure', {
       this.error = null
       
       try {
-        const response = await fetch('/api/adventures/log', {
+        const response = await fetch('/api/adventures/adventures/log', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value
           },
+          credentials: 'same-origin',
           body: JSON.stringify({
             title: adventureData.title,
             description: adventureData.description,
@@ -43,7 +45,8 @@ export const useAdventureStore = defineStore('adventure', {
         })
 
         if (!response.ok) {
-          throw new Error('Failed to create adventure')
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Failed to create adventure');
         }
 
         const data = await response.json()
