@@ -163,6 +163,10 @@ const uiStore = useUiStore()
 const adventureStore = useAdventureStore()
 const adventureDialogStore = useAdventureDialogStore()
 
+// Initialize missing refs
+const currentDate = ref(new Date())
+const calendarDays = ref([])
+
 // Pull in composables
 const { 
   form: adventureForm, 
@@ -176,10 +180,8 @@ const {
 } = useAdventureFormUtils()
 
 const {
-  currentDate,
   weekDays,
   currentMonthLabel,
-  calendarDays,
   formatDateForDisplay,
   formatTimeForDisplay,
   setToNextMonth,
@@ -187,12 +189,76 @@ const {
   getToday
 } = useDateTimeUtils()
 
-const {
-  animateModalEntry,
-  animateModalExit,
-  animateCalendarChange,
-  animateDrawerElement
-} = useAnimations()
+// Initialize these methods if they don't exist in the composable
+function setToNextMonth() {
+  const date = new Date(currentDate.value)
+  date.setMonth(date.getMonth() + 1)
+  currentDate.value = date
+  updateCalendarDays()
+}
+
+function setToPreviousMonth() {
+  const date = new Date(currentDate.value)
+  date.setMonth(date.getMonth() - 1)
+  currentDate.value = date
+  updateCalendarDays()
+}
+
+// Helper function to update calendar days
+function updateCalendarDays() {
+  const year = currentDate.value.getFullYear()
+  const month = currentDate.value.getMonth()
+  
+  // Create an array of calendar days for the current month
+  const firstDay = new Date(year, month, 1)
+  const lastDay = new Date(year, month + 1, 0)
+  const daysInMonth = lastDay.getDate()
+  
+  const days = []
+  const startOffset = firstDay.getDay()
+  
+  // Add previous month's days
+  for (let i = 0; i < startOffset; i++) {
+    const prevDate = new Date(year, month, -i)
+    days.unshift({
+      date: prevDate.getDate(),
+      fullDate: prevDate.toISOString().split('T')[0],
+      isCurrentMonth: false,
+      isToday: false
+    })
+  }
+  
+  // Add current month's days
+  const today = new Date()
+  const isCurrentMonthAndYear = today.getFullYear() === year && today.getMonth() === month
+  
+  for (let i = 1; i <= daysInMonth; i++) {
+    const currentDate = new Date(year, month, i)
+    days.push({
+      date: i,
+      fullDate: currentDate.toISOString().split('T')[0],
+      isCurrentMonth: true,
+      isToday: isCurrentMonthAndYear && today.getDate() === i
+    })
+  }
+  
+  // Add next month's days to complete the calendar grid
+  const totalDaysNeeded = 42 // 6 rows of 7 days
+  while (days.length < totalDaysNeeded) {
+    const nextDate = new Date(year, month, days.length - startOffset + 1)
+    days.push({
+      date: nextDate.getDate(),
+      fullDate: nextDate.toISOString().split('T')[0],
+      isCurrentMonth: false,
+      isToday: false
+    })
+  }
+  
+  calendarDays.value = days
+}
+
+// Initialize calendar days on component load
+updateCalendarDays()
 
 // UI state
 const isOpen = computed(() => adventureDialogStore.isOpen)
@@ -288,18 +354,22 @@ const handleSubmit = async () => {
 // Date picker functions
 function openDatePicker(type) {
   datePickerType.value = type
-  const existingDate = type === 'start' ? adventureForm.value.startDate : adventureForm.value.endDate
   
   // Set the current date to the month of the selected date (if any)
+  const existingDate = type === 'start' ? adventureForm.value.startDate : adventureForm.value.endDate
+  
   if (existingDate) {
     currentDate.value = new Date(existingDate)
   } else {
     currentDate.value = new Date()
   }
   
+  updateCalendarDays() // Update calendar days after changing currentDate
+  
   tempDateValue.value = existingDate || null
   showDatePicker.value = true
 
+  // Animate modal entry
   nextTick(() => {
     if (datePickerRef.value?.$el) {
       animateModalEntry(datePickerRef.value.$el)
@@ -624,7 +694,7 @@ function showToast(message) {
 }
 
 // Use memoization for calendar days to improve performance
-const calendarDaysCache = ref({})
+const calendarDaysCache = {}
 
 const memoizedCalendarDays = computed(() => {
   const key = `${currentDate.value.getFullYear()}-${currentDate.value.getMonth()}`
