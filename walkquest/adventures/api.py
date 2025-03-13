@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
 from ninja import Router
 from ninja.security import django_auth
@@ -106,3 +107,68 @@ def list_adventures(request):
         )
         for adventure in adventures
     ]
+
+@router.post(
+    "/log",
+    response={201: AdventureOut, 422: ErrorResponse},
+    summary="Create an adventure log",
+)
+def create_adventure(request, data: AdventureIn):
+    """Create a new adventure log."""
+    try:
+        # Get the walk if one is specified
+        walk = get_object_or_404(Walk, id=data.walk_id) if data.walk_id else None
+        
+        # Create the adventure
+        adventure = Adventure.objects.create(
+            title=data.title,
+            description=data.description,
+            start_date=data.start_date,
+            end_date=data.end_date,
+            start_time=data.start_time,
+            end_time=data.end_time,
+            difficulty_level=data.difficulty_level,
+            walk=walk,  # Link the walk to the adventure
+        )
+
+        # Add categories
+        if data.categories:
+            categories = WalkCategoryTag.objects.filter(slug__in=data.categories)
+            adventure.related_categories.set(categories)
+
+        # Add companions
+        if data.companion_ids:
+            companions = Companion.objects.filter(
+                id__in=data.companion_ids,
+                user=request.user,
+            )
+            adventure.companions.set(companions)
+
+        # Create achievement to link adventure to user
+        Achievement.objects.create(
+            user=request.user,
+            adventure=adventure,
+        )
+
+        return 201, AdventureOut(
+            id=adventure.id,
+            title=adventure.title,
+            description=adventure.description,
+            start_date=adventure.start_date,
+            end_date=adventure.end_date,
+            start_time=adventure.start_time,
+            end_time=adventure.end_time,
+            difficulty_level=adventure.difficulty_level,
+            categories=[cat.slug for cat in adventure.related_categories.all()],
+            companions=[
+                CompanionOut(id=c.id, name=c.name)
+                for c in adventure.companions.all()
+            ],
+            created_at=adventure.created_at.isoformat(),
+            updated_at=adventure.updated_at.isoformat(),
+        )
+
+    except (Walk.DoesNotExist, Adventure.DoesNotExist) as e:
+        return 404, ErrorResponse(message=str(e))
+    except (ValueError, ValidationError) as e:
+        return 422, ErrorResponse(message=str(e))
