@@ -278,18 +278,38 @@ FIXTURE_DIRS = (str(APPS_DIR / "fixtures"),)
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#session-cookie-httponly
 SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SECURE = True  # Requires HTTPS
 SESSION_COOKIE_SAMESITE = 'Lax'
 # https://docs.djangoproject.com/en/dev/ref/settings/#csrf-cookie-httponly
-CSRF_COOKIE_HTTPONLY = True
-CSRF_COOKIE_SECURE = True  # Requires HTTPS
+CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript to access the CSRF token
 CSRF_COOKIE_SAMESITE = 'Lax'
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:8000',
     'http://127.0.0.1:8000',
+    'http://localhost:5173',  # Vite dev server
+    'http://127.0.0.1:5173',
 ]
-# https://docs.djangoproject.com/en/dev/ref/settings/#x-frame-options
-X_FRAME_OPTIONS = "DENY"
+
+# CORS settings
+# ------------------------------------------------------------------------------
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",  # Vite dev server
+    "http://127.0.0.1:5173",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+]
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+    "x-session-token",  # Required for allauth headless
+]
 
 # EMAIL
 # ------------------------------------------------------------------------------
@@ -323,7 +343,7 @@ LOGGING = {
     "disable_existing_loggers": False,
     "formatters": {
         "verbose": {
-            "format": "%(levelname)s %(asctime)s %(module)s %(process%d %(thread)d %(message)s %(name)s %(funcName)s %(pathname)s:%(lineno)d",
+            "format": "%(levelname)s %(asctime)s %(module)s %(process)d %(thread)d %(message)s",
         },
     },
     "handlers": {

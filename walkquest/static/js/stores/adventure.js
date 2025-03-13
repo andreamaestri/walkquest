@@ -73,9 +73,11 @@ export const useAdventureStore = defineStore('adventure', {
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-            'X-CSRFToken': csrfToken
+            // Django CSRF protection
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
           },
-          credentials: 'same-origin',
+          credentials: 'include',
           body: JSON.stringify({
             title: adventureData.title,
             description: adventureData.description,
@@ -84,14 +86,14 @@ export const useAdventureStore = defineStore('adventure', {
             start_time: adventureData.startTime || null,
             end_time: adventureData.endTime || null,
             difficulty_level: adventureData.difficultyLevel,
-            categories: adventureData.categories,
+            categories: adventureData.categories || [],
             companion_ids: adventureData.companion_ids || [],
             walk_id: adventureData.walkId
           })
         })
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
+          const errorData = await response.json();
           throw new Error(errorData.message || 'Failed to create adventure');
         }
 
