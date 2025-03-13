@@ -9,34 +9,35 @@
     
     <div class="date-picker-calendar">
       <div class="calendar-header">
-        <button class="month-nav-btn" @click="setToPreviousMonth">
+        <button class="month-nav-btn" @click="$emit('prev-month')">
           <Icon icon="mdi:chevron-left" />
         </button>
-        <div class="month-year">{{ getMonthName() }} {{ currentYear }}</div>
-        <button class="month-nav-btn" @click="setToNextMonth">
+        <div class="month-year">{{ currentMonthLabel }}</div>
+        <button class="month-nav-btn" @click="$emit('next-month')">
           <Icon icon="mdi:chevron-right" />
         </button>
       </div>
       
       <div class="calendar-days-header">
-        <div v-for="day in getDayNames()" :key="day" class="day-name">
+        <div v-for="day in weekDays" :key="day" class="day-name">
           {{ day }}
         </div>
       </div>
       
-      <div class="calendar-days-grid">
+      <div class="calendar-days-grid md3-calendar-grid">
         <div 
-          v-for="(dayObj, index) in days" 
+          v-for="(dayObj, index) in calendarDays" 
           :key="index"
-          class="calendar-day"
+          class="calendar-day md3-calendar-day"
           :class="{
-            'calendar-day-empty': !dayObj.day,
+            'calendar-day-empty': !dayObj.isCurrentMonth,
             'calendar-day-today': dayObj.isToday,
-            'calendar-day-selected': isSelected(dayObj.date)
+            'calendar-day-selected': isSelected(dayObj.fullDate)
           }"
-          @click="dayObj.day && selectDate(dayObj.date)"
+          :data-date="dayObj.fullDate"
+          @click="dayObj.isCurrentMonth && selectDate(dayObj.fullDate)"
         >
-          {{ dayObj.day }}
+          {{ dayObj.date }}
         </div>
       </div>
     </div>
@@ -49,93 +50,64 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { Icon } from '@iconify/vue'
-import { useDateTimeUtils } from '../../../composables/useDateTimeUtils'
-import { useAnimations } from '../../../composables/useAnimations'
-const { animateModalEntry, animateModalExit } = useAnimations()
 
 const props = defineProps({
   title: {
     type: String,
     default: 'Select Date'
   },
-  modelValue: {
+  type: {
+    type: String,
+    default: 'start'
+  },
+  currentDate: {
+    type: Object,
+    required: true
+  },
+  selectedDate: {
     type: String,
     default: ''
   },
-  field: {
+  weekDays: {
+    type: Array,
+    required: true
+  },
+  calendarDays: {
+    type: Array,
+    required: true
+  },
+  currentMonthLabel: {
     type: String,
-    default: 'startDate', // <-- added default value
-    validator: value => ['startDate', 'endDate'].includes(value)
+    required: true
   }
 })
 
-const emit = defineEmits(['update:modelValue', 'close'])
-
+const emit = defineEmits(['select', 'confirm', 'close', 'prev-month', 'next-month'])
 const datePickerModal = ref(null)
-const {
-  currentMonth,
-  currentYear,
-  getDaysInMonth,
-  getMonthName,
-  getDayNames,
-  setToPreviousMonth,
-  setToNextMonth
-} = useDateTimeUtils()
-
-const selectedDate = ref(props.modelValue)
-const days = computed(() => getDaysInMonth())
-
-// If no date is selected, default to today
-if (!selectedDate.value) {
-  const today = new Date()
-  const year = today.getFullYear()
-  const month = (today.getMonth() + 1).toString().padStart(2, '0')
-  const day = today.getDate().toString().padStart(2, '0')
-  selectedDate.value = `${year}-${month}-${day}`
-}
-
-// Set the calendar to show the month of the selected date
-onMounted(() => {
-  if (props.modelValue) {
-    const [year, month] = props.modelValue.split('-').map(Number)
-    currentMonth.value = month - 1
-    currentYear.value = year
-  }
-  
-  // Show the modal with animation using the actual element
-  animateModalEntry(datePickerModal.value)
-})
+const selectedDateValue = ref(props.selectedDate)
 
 // Check if a date is selected
 function isSelected(date) {
-  return date === selectedDate.value
+  return date === selectedDateValue.value
 }
 
 // Handle date selection
 function selectDate(date) {
-  selectedDate.value = date
+  selectedDateValue.value = date
+  emit('select', date)
 }
 
 // Confirm selection and close
-async function confirm() {
-  emit('update:modelValue', selectedDate.value)
-  await close()
+function confirm() {
+  emit('confirm')
 }
 
 // Close modal
-async function close() {
-  await animateModalExit(datePickerModal.value)
+function close() {
   emit('close')
 }
-
-// Watch for prop changes
-watch(() => props.modelValue, (newVal) => {
-  if (newVal !== selectedDate.value) {
-    selectedDate.value = newVal
-  }
-})
 </script>
 
 <style scoped>
@@ -153,8 +125,6 @@ watch(() => props.modelValue, (newVal) => {
   flex-direction: column;
   max-height: 90vh;
   overflow-y: auto;
-  transform: translateY(100%);
-  opacity: 0;
 }
 
 .date-picker-header {
@@ -248,6 +218,7 @@ watch(() => props.modelValue, (newVal) => {
 
 .calendar-day-empty {
   cursor: default;
+  color: rgba(var(--md-sys-color-on-surface), 0.38);
 }
 
 .calendar-day-today {
@@ -294,5 +265,22 @@ watch(() => props.modelValue, (newVal) => {
 
 .confirm-btn:hover {
   background-color: rgba(var(--md-sys-color-primary-container), 0.8);
+}
+
+/* Calendar day with in-range state */
+.calendar-day.in-range {
+  background-color: rgba(var(--md-sys-color-primary), 0.1);
+}
+
+/* Mobile adaptations */
+@media (max-width: 600px) {
+  .date-picker-modal {
+    max-height: 90vh;
+    padding: 16px;
+  }
+  
+  .calendar-day {
+    height: 36px;
+  }
 }
 </style>
