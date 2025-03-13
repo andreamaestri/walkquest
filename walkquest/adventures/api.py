@@ -1,5 +1,9 @@
 from uuid import UUID
-
+from datetime import datetime, time
+import logging
+import json
+import threading
+import os
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
 from ninja import Router
@@ -16,6 +20,9 @@ from .schemas import (
     CompanionList,
     ErrorResponse,
 )
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 # Create companions router
 companions_router = Router(tags=["companions"])
@@ -115,22 +122,63 @@ def list_adventures(request):
 )
 def create_adventure(request, data: AdventureIn):
     """Create a new adventure log."""
+    process_id = os.getpid()
+    thread_id = threading.get_ident()
+    
+    logger.info(f"[PID:{process_id}|TID:{thread_id}] Received adventure log request: {json.dumps({
+        'title': data.title,
+        'difficulty_level': data.difficulty_level,
+        'start_date': str(data.start_date),
+        'end_date': str(data.end_date),
+        'start_time': str(data.start_time),
+        'end_time': str(data.end_time),
+        'categories': data.categories,
+        'walk_id': str(data.walk_id) if data.walk_id else None,
+    }, default=str)}")
+    
     try:
+        # Parse time strings if they are provided as strings
+        start_time = data.start_time
+        end_time = data.end_time
+        
+        # Handle string-formatted times (like "20:57")
+        if isinstance(start_time, str):
+            try:
+                hours, minutes = map(int, start_time.split(':'))
+                start_time = time(hour=hours, minute=minutes)
+                logger.debug(f"[PID:{process_id}|TID:{thread_id}] Parsed start_time string '{data.start_time}' to time object {start_time}")
+            except (ValueError, TypeError) as e:
+                error_msg = f"Invalid start_time format: {data.start_time}. Expected format: HH:MM"
+                logger.error(f"[PID:{process_id}|TID:{thread_id}] {error_msg}. Error: {str(e)}")
+                return 422, ErrorResponse(message=error_msg)
+        
+        if isinstance(end_time, str):
+            try:
+                hours, minutes = map(int, end_time.split(':'))
+                end_time = time(hour=hours, minute=minutes)
+                logger.debug(f"[PID:{process_id}|TID:{thread_id}] Parsed end_time string '{data.end_time}' to time object {end_time}")
+            except (ValueError, TypeError) as e:
+                error_msg = f"Invalid end_time format: {data.end_time}. Expected format: HH:MM"
+                logger.error(f"[PID:{process_id}|TID:{thread_id}] {error_msg}. Error: {str(e)}")
+                return 422, ErrorResponse(message=error_msg)
+        
         # Create the adventure first
         adventure = Adventure.objects.create(
             title=data.title,
             description=data.description,
             start_date=data.start_date,
             end_date=data.end_date,
-            start_time=data.start_time,
-            end_time=data.end_time,
+            start_time=start_time,
+            end_time=end_time,
             difficulty_level=data.difficulty_level,
         )
+        logger.info(f"[PID:{process_id}|TID:{thread_id}] Created adventure: {adventure.id}")
 
         # Add categories
         if data.categories:
             categories = WalkCategoryTag.objects.filter(slug__in=data.categories)
             adventure.related_categories.set(categories)
+            logger.debug(f"[PID:{process_id}|TID:{thread_id}] Added categories: {[c.slug for c in categories]}")
 
         # Add companions
         if data.companion_ids:
@@ -139,20 +187,23 @@ def create_adventure(request, data: AdventureIn):
                 user=request.user,
             )
             adventure.companions.set(companions)
+            logger.debug(f"[PID:{process_id}|TID:{thread_id}] Added companions: {[str(c.id) for c in companions]}")
 
         # Create achievement to link adventure to user
-        Achievement.objects.create(
+        achievement = Achievement.objects.create(
             user=request.user,
             adventure=adventure,
         )
+        logger.info(f"[PID:{process_id}|TID:{thread_id}] Created achievement: {achievement.id}")
 
         # If walk_id is provided, update the walk to link to this adventure
         if data.walk_id:
             walk = get_object_or_404(Walk, id=data.walk_id)
             walk.adventure = adventure
             walk.save()
+            logger.info(f"[PID:{process_id}|TID:{thread_id}] Linked walk {walk.id} to adventure {adventure.id}")
 
-        return 201, AdventureOut(
+        response_data = AdventureOut(
             id=adventure.id,
             title=adventure.title,
             description=adventure.description,
@@ -169,8 +220,20 @@ def create_adventure(request, data: AdventureIn):
             created_at=adventure.created_at.isoformat(),
             updated_at=adventure.updated_at.isoformat(),
         )
+        
+        logger.info(f"[PID:{process_id}|TID:{thread_id}] Adventure log created successfully: {adventure.id}")
+        return 201, response_data
 
     except (Walk.DoesNotExist, Adventure.DoesNotExist) as e:
-        return 404, ErrorResponse(message=str(e))
+        error_msg = str(e)
+        logger.error(f"[PID:{process_id}|TID:{thread_id}] Not found error: {error_msg}")
+        return 404, ErrorResponse(message=error_msg)
     except (ValueError, ValidationError) as e:
-        return 422, ErrorResponse(message=str(e))
+        error_msg = str(e)
+        logger.error(f"[PID:{process_id}|TID:{thread_id}] Validation error: {error_msg}")
+        return 422, ErrorResponse(message=error_msg)
+    except Exception as e:
+        # Catch-all for unexpected errors
+        error_msg = f"Unexpected error: {str(e)}"
+        logger.exception(f"[PID:{process_id}|TID:{thread_id}] {error_msg}")
+        return 500, ErrorResponse(message="Server error occurred. Please try again later.")
