@@ -430,6 +430,8 @@ onMounted(() => {
   padding: 0;
   display: flex;
   flex-direction: column;
+  overflow-y: auto; /* Add scroll behavior */
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
 }
 
 .content.mobile {
