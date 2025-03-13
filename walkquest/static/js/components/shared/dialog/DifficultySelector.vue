@@ -27,8 +27,7 @@
 <script setup>
 import { Icon } from '@iconify/vue'
 import { nextTick, watch } from 'vue'
-import { useAnimations } from '../../../composables/useAnimations'
-const { animateDrawerElement } = useAnimations()
+import { animate } from 'motion'
 
 const props = defineProps({
   modelValue: {
@@ -55,7 +54,7 @@ watch(() => props.modelValue, (newVal) => {
   nextTick(() => {
     const element = document.querySelector(`.md3-difficulty-card.selected`)
     if (element) {
-      animateDrawerElement(element, { 
+      animate(element, { 
         scale: [1, 1.05, 1],
         backgroundColor: [
           'rgb(var(--md-sys-color-surface-container))',

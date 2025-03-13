@@ -24,9 +24,10 @@
 
 <script setup>
 import { Icon } from '@iconify/vue'
-import { watch, nextTick } from 'vue'
+import { nextTick } from 'vue'
 import { useAnimations } from '../../../composables/useAnimations'
-const { animateDrawerElement } = useAnimations()
+import { animate } from 'motion'  // Add this import for the animate function
+const { } = useAnimations()
 
 const props = defineProps({
   modelValue: {
@@ -48,6 +49,7 @@ const emit = defineEmits(['update:modelValue'])
 // Toggle category selection with animation
 function toggleCategory(slug) {
   const wasSelected = props.modelValue.includes(slug)
+  
   const newValue = wasSelected 
     ? props.modelValue.filter(s => s !== slug) 
     : [...props.modelValue, slug]
@@ -60,7 +62,7 @@ function toggleCategory(slug) {
     if (chip) {
       if (wasSelected) {
         // Animate deselection
-        animateDrawerElement(chip, { 
+        animate(chip, { 
           scale: [1, 0.95, 1],
           backgroundColor: [
             'rgb(var(--md-sys-color-secondary-container))',
@@ -69,7 +71,7 @@ function toggleCategory(slug) {
         }, { duration: 0.25, easing: [0.2, 0, 0, 1] })
       } else {
         // Animate selection
-        animateDrawerElement(chip, { 
+        animate(chip, { 
           scale: [1, 1.05, 1],
           backgroundColor: [
             'rgb(var(--md-sys-color-surface-container))',
