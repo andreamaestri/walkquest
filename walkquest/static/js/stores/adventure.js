@@ -22,7 +22,7 @@ export const useAdventureStore = defineStore('adventure', {
       this.error = null
       
       try {
-        const response = await fetch('/api/adventures/adventures/log', {
+        const response = await fetch('/api/adventures/log', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
