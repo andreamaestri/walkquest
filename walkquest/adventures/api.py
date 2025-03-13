@@ -13,18 +13,69 @@ from .schemas import (
     AdventureIn,
     AdventureOut,
     CompanionCreate,
-    CompanionOut, 
+    CompanionOut,
     CompanionList,
     ErrorResponse,
 )
 
-# Create router with authentication
-router = Router(auth=django_auth)
+# Create companions router
+companions_router = Router(tags=["companions"])
+
+@companions_router.get(
+    "/",
+    response=CompanionList,
+    summary="List all companions")
+def list_companions(request):
+    """List all companions for the current user."""
+    companions = Companion.objects.filter(user=request.user)
+    return CompanionList(
+        companions=[
+            CompanionOut(id=c.id, name=c.name)
+            for c in companions
+        ]
+    )
+
+@companions_router.post(
+    "/",
+    response={201: CompanionOut, 422: ErrorResponse},
+    summary="Create a new companion")
+def create_companion(request, data: CompanionCreate):
+    """Create a new companion."""
+    try:
+        companion = Companion.objects.create(
+            user=request.user,
+            name=data.name
+        )
+        return 201, CompanionOut(id=companion.id, name=companion.name)
+    except Exception as e:
+        return 422, ErrorResponse(message=str(e))
+
+@companions_router.delete(
+    "/{companion_id}",
+    response={204: None, 404: ErrorResponse},
+    summary="Delete a companion")
+def delete_companion(request, companion_id: UUID):
+    """Delete a companion."""
+    try:
+        companion = get_object_or_404(
+            Companion,
+            id=companion_id,
+            user=request.user
+        )
+        companion.delete()
+        return 204, None
+    except Companion.DoesNotExist:
+        return 404, ErrorResponse(message="Companion not found")
+
+# Create main adventures router with authentication
+router = Router(auth=django_auth, tags=["adventures"])
+
+# Add companions as nested router
+router.add_router("/companions", companions_router)
 
 @router.post(
-    "/adventures/log", 
+    "/log",
     response={201: AdventureOut, 422: ErrorResponse},
-    tags=["adventures"],
     summary="Log a new adventure")
 def create_adventure(request, data: AdventureIn):
     """Create a new adventure log."""
@@ -86,52 +137,3 @@ def create_adventure(request, data: AdventureIn):
 
     except Exception as e:
         return 422, ErrorResponse(message=str(e))
-
-@router.get(
-    "/companions/", 
-    response=CompanionList,
-    tags=["companions"],
-    summary="List all companions")
-def list_companions(request):
-    """List all companions for the current user."""
-    companions = Companion.objects.filter(user=request.user)
-    return CompanionList(
-        companions=[
-            CompanionOut(id=c.id, name=c.name)
-            for c in companions
-        ]
-    )
-
-@router.post(
-    "/companions/", 
-    response={201: CompanionOut, 422: ErrorResponse},
-    tags=["companions"],
-    summary="Create a new companion")
-def create_companion(request, data: CompanionCreate):
-    """Create a new companion."""
-    try:
-        companion = Companion.objects.create(
-            user=request.user,
-            name=data.name
-        )
-        return 201, CompanionOut(id=companion.id, name=companion.name)
-    except Exception as e:
-        return 422, ErrorResponse(message=str(e))
-
-@router.delete(
-    "/companions/{companion_id}", 
-    response={204: None, 404: ErrorResponse}, 
-    tags=["companions"],
-    summary="Delete a companion")
-def delete_companion(request, companion_id: UUID):
-    """Delete a companion."""
-    try:
-        companion = get_object_or_404(
-            Companion,
-            id=companion_id,
-            user=request.user
-        )
-        companion.delete()
-        return 204, None
-    except Companion.DoesNotExist:
-        return 404, ErrorResponse(message="Companion not found")
