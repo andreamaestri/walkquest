@@ -304,17 +304,30 @@ const handleSubmit = async () => {
 
   try {
     const { companions, ...formData } = adventureForm.value
-    const adventureData = await adventureStore.createAdventure({
+    
+    // Ensure categories is always an array of strings
+    if (!Array.isArray(formData.categories)) {
+      formData.categories = []
+    }
+    
+    // Ensure companion_ids is properly formatted
+    const companion_ids = Array.isArray(companions) ? companions.map(id => id.toString()) : []
+    
+    const adventureData = {
       ...formData,
       walkId: props.walk.id,
-      companion_ids: companions
-    })
+      companion_ids
+    }
+    
+    console.log('Submitting adventure data:', adventureData)
+    
+    const result = await adventureStore.createAdventure(adventureData)
 
     // Show success toast message
     showToast('Adventure logged successfully!')
     
     // Emit the submit event with the adventure data
-    emit('submit', adventureData)
+    emit('submit', result)
     
     // Close the dialog after successful submission
     handleClose()
@@ -322,9 +335,9 @@ const handleSubmit = async () => {
     console.error('Adventure creation error:', error)
     
     // Set specific error messages based on error type if possible
-    if (error.response && error.response.data) {
+    if (error.cause && typeof error.cause === 'object') {
       // Handle API error responses
-      const apiErrors = error.response.data
+      const apiErrors = error.cause
       Object.entries(apiErrors).forEach(([key, message]) => {
         errors.value[key] = Array.isArray(message) ? message[0] : message
       })

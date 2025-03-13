@@ -32,11 +32,17 @@ const { } = useAnimations()
 const props = defineProps({
   modelValue: {
     type: Array,
-    default: () => []
+    default: () => [],
+    validator: (value) => {
+      return Array.isArray(value) && value.every(item => typeof item === 'string')
+    }
   },
   availableCategories: {
     type: Array,
-    required: true
+    required: true,
+    validator: (value) => {
+      return Array.isArray(value) && value.every(cat => 'slug' in cat && 'name' in cat)
+    }
   },
   errors: {
     type: String,
