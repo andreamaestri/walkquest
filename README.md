@@ -53,6 +53,9 @@
 ### Design Process
 
 #### Wireframes
+
+The wireframe designs below illustrate the user interface for both mobile and desktop experiences, following Material Design principles for a consistent, intuitive user experience.
+
 <details>
 <summary>Mobile Design</summary>
 

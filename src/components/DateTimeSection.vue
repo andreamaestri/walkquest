@@ -2,28 +2,28 @@
   <div class="datetime-section">
     <input
       type="date"
-      :value="modelValue.startDate"
-      @input="$emit('update:modelValue', { ...modelValue, startDate: $event.target.value })"
+      :value="startDate"
+      @input="$emit('update:startDate', $event.target.value)"
     />
     <input
       type="time"
-      :value="modelValue.startTime"
-      @input="$emit('update:modelValue', { ...modelValue, startTime: $event.target.value })"
+      :value="startTime"
+      @input="$emit('update:startTime', $event.target.value)"
     />
   </div>
 </template>
 
 <script setup>
 defineProps({
-  modelValue: {
-    type: Object,
-    required: true,
-    default: () => ({
-      startDate: '',
-      startTime: ''
-    })
+  startDate: {
+    type: String,
+    default: ''
+  },
+  startTime: {
+    type: String,
+    default: ''
   }
 });
 
-defineEmits(['update:modelValue']);
+defineEmits(['update:startDate', 'update:startTime']);
 </script>

@@ -2,7 +2,10 @@
   <div class="adventure-log-dialog">
     // ...existing code...
     <DateTimeSection
-      v-model="dateTimeData"
+      :start-date="dateTimeData.startDate"
+      :start-time="dateTimeData.startTime"
+      @update:start-date="dateTimeData.startDate = $event"
+      @update:start-time="dateTimeData.startTime = $event"
     />
     // ...existing code...
   </div>
@@ -10,6 +13,7 @@
 
 <script setup>
 import { ref } from 'vue';
+import DateTimeSection from './DateTimeSection.vue';
 // ...existing code...
 
 const dateTimeData = ref({
