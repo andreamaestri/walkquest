@@ -15,8 +15,8 @@
           </div>
           <div class="md3-date-field-content">
             <label class="md3-date-field-label">Start Date*</label>
-            <div v-if="modelValue.startDate" class="md3-date-field-value">
-              {{ formatDate(modelValue.startDate) }}
+            <div v-if="startDate" class="md3-date-field-value">
+              {{ formatDate(startDate) }}
             </div>
             <div v-else class="md3-date-field-placeholder">
               Select date
@@ -39,8 +39,8 @@
           </div>
           <div class="md3-time-field-content">
             <label class="md3-time-field-label">Start Time</label>
-            <div v-if="modelValue.startTime" class="md3-time-field-value">
-              {{ formatTime(modelValue.startTime) }}
+            <div v-if="startTime" class="md3-time-field-value">
+              {{ formatTime(startTime) }}
             </div>
             <div v-else class="md3-time-field-placeholder">
               Select time
@@ -64,8 +64,8 @@
           </div>
           <div class="md3-date-field-content">
             <label class="md3-date-field-label">End Date</label>
-            <div v-if="modelValue.endDate" class="md3-date-field-value">
-              {{ formatDate(modelValue.endDate) }}
+            <div v-if="endDate" class="md3-date-field-value">
+              {{ formatDate(endDate) }}
             </div>
             <div v-else class="md3-date-field-placeholder">
               Select date
@@ -88,8 +88,8 @@
           </div>
           <div class="md3-time-field-content">
             <label class="md3-time-field-label">End Time</label>
-            <div v-if="modelValue.endTime" class="md3-time-field-value">
-              {{ formatTime(modelValue.endTime) }}
+            <div v-if="endTime" class="md3-time-field-value">
+              {{ formatTime(endTime) }}
             </div>
             <div v-else class="md3-time-field-placeholder">
               Select time
@@ -110,21 +110,25 @@ import { useDateTimeUtils } from '../../../composables/useDateTimeUtils'
 
 const { formatDateForDisplay, formatTimeForDisplay } = useDateTimeUtils()
 
-defineProps({
-  modelValue: {
-    type: Object,
-    required: true,
-    validator: value => {
-      return ['startDate', 'startTime', 'endDate', 'endTime'].every(prop => prop in value)
-    }
-  },
+const props = defineProps({
+  startDate: String,
+  startTime: String,
+  endDate: String,
+  endTime: String,
   errors: {
     type: Object,
     default: () => ({})
   }
 })
 
-defineEmits(['open-date-picker', 'open-time-picker'])
+defineEmits([
+  'update:startDate', 
+  'update:startTime', 
+  'update:endDate', 
+  'update:endTime',
+  'open-date-picker', 
+  'open-time-picker'
+])
 
 function formatDate(dateString) {
   return formatDateForDisplay(dateString)

@@ -38,10 +38,14 @@
 
                 <!-- Date Selector Section -->
                 <DateTimeSection
-                  v-model:start-date="adventureForm.startDate"
-                  v-model:start-time="adventureForm.startTime"
-                  v-model:end-date="adventureForm.endDate"
-                  v-model:end-time="adventureForm.endTime"
+                  :start-date="adventureForm.startDate"
+                  :start-time="adventureForm.startTime"
+                  :end-date="adventureForm.endDate"
+                  :end-time="adventureForm.endTime"
+                  @update:start-date="adventureForm.startDate = $event"
+                  @update:start-time="adventureForm.startTime = $event"
+                  @update:end-date="adventureForm.endDate = $event"
+                  @update:end-time="adventureForm.endTime = $event"
                   :errors="errors"
                   @open-date-picker="openDatePicker"
                   @open-time-picker="openTimePicker"
@@ -127,6 +131,7 @@
 <script setup>
 import { ref, computed, onUnmounted, watch, nextTick, onMounted } from 'vue'
 import { Icon } from '@iconify/vue'
+import { animate } from 'motion'
 import { useAdventureStore } from '../../stores/adventure'
 import { useUiStore } from '../../stores/ui'
 import { useAdventureDialogStore } from '../../stores/adventureDialog'
@@ -213,7 +218,7 @@ let currentAnimation
 // Dialog animations
 watch(() => adventureDialogStore.isOpen, async (isOpen) => {
   // Stop any existing animation before starting a new one
-  if (currentAnimation) {
+  if (currentAnimation && currentAnimation?.stop) {
     currentAnimation.stop()
     currentAnimation = null
   }
@@ -223,44 +228,36 @@ watch(() => adventureDialogStore.isOpen, async (isOpen) => {
 
   if (isOpen) {
     // Entry animation
-    currentAnimation = animateDrawerElement(
-      dialogRef.value,
-      { 
-        opacity: [0, 1],
-        scale: [0.95, 1]
-      },
-      { 
-        duration: 0.3,
-        easing: [0.2, 0, 0, 1] // M3 emphasized easing
-      }
-    )
+    currentAnimation = animate(dialogRef.value, {
+      opacity: [0, 1],
+      scale: [0.95, 1]
+    }, { 
+      duration: 0.3,
+      easing: [0.2, 0, 0, 1] // M3 emphasized easing
+    })
   } else {
     // Exit animation
-    currentAnimation = animateDrawerElement(
-      dialogRef.value,
-      { 
-        opacity: [1, 0],
-        scale: [1, 0.95]
-      },
-      { 
-        duration: 0.2,
-        easing: [0.3, 0, 0.8, 0.15], // M3 emphasized-accelerate
-        onComplete: () => {
-          // Clear the animation reference once complete
-          currentAnimation = null
-        }
+    currentAnimation = animate(dialogRef.value, {
+      opacity: [1, 0],
+      scale: [1, 0.95]
+    }, { 
+      duration: 0.2,
+      easing: [0.3, 0, 0.8, 0.15], // M3 emphasized-accelerate
+      onComplete: () => {
+        // Clear the animation reference once complete
+        currentAnimation = null
       }
-    )
+    })
   }
 })
 
-// Form submission handler
+// Dialog submission handler
 const handleSubmit = async () => {
   if (!validateForm()) return
 
   isSubmitting.value = true
   errors.value = {} // Clear previous errors
-  
+
   try {
     const { companions, ...formData } = adventureForm.value
     const adventureData = await adventureStore.createAdventure({
@@ -268,6 +265,7 @@ const handleSubmit = async () => {
       walkId: props.walk.id,
       companion_ids: companions
     })
+
     emit('submit', adventureData)
     handleClose()
   } catch (error) {
@@ -290,9 +288,9 @@ const handleSubmit = async () => {
 // Date picker functions
 function openDatePicker(type) {
   datePickerType.value = type
+  const existingDate = type === 'start' ? adventureForm.value.startDate : adventureForm.value.endDate
   
   // Set the current date to the month of the selected date (if any)
-  const existingDate = type === 'start' ? adventureForm.value.startDate : adventureForm.value.endDate
   if (existingDate) {
     currentDate.value = new Date(existingDate)
   } else {
@@ -301,8 +299,7 @@ function openDatePicker(type) {
   
   tempDateValue.value = existingDate || null
   showDatePicker.value = true
-  
-  // Animate the modal entrance
+
   nextTick(() => {
     if (datePickerRef.value?.$el) {
       animateModalEntry(datePickerRef.value.$el)
@@ -352,59 +349,47 @@ function selectDate(dateString) {
   if (datePickerType.value === 'start') {
     // If end date is empty or before the newly selected start date, update it
     if (!adventureForm.value.endDate || dateString > adventureForm.value.endDate) {
-      // Set temp end date value so it's ready when confirming
       adventureForm.value.endDate = dateString
     }
   } else if (datePickerType.value === 'end') {
     // When selecting end date, ensure it's not before start date
     if (adventureForm.value.startDate && dateString < adventureForm.value.startDate) {
-      // Show validation message
       errors.value.endDate = 'End date cannot be before start date'
       setTimeout(() => {
         errors.value.endDate = null
       }, 2000)
-      return
     }
   }
-  
-  // Highlight date range if both start and end dates are selected
-  highlightDateRange()
 }
 
-// New function to highlight date range between start and end dates
 function highlightDateRange() {
-  // Only highlight if we have both dates and are in end date picker
-  if (datePickerType.value === 'end' && adventureForm.value.startDate && tempDateValue.value) {
+    if (datePickerType.value === 'end' && adventureForm.value.startDate && tempDateValue.value) {
     // Clear previous highlights
     document.querySelectorAll('.md3-calendar-day.in-range').forEach(el => {
       el.classList.remove('in-range')
     })
-    
-    // Get all days between start and end dates
+
     const startDate = new Date(adventureForm.value.startDate)
     const endDate = new Date(tempDateValue.value)
-    
+
     // Skip if dates are the same or invalid
     if (startDate >= endDate) return
-    
+
     // Add one day to start date to avoid highlighting the start date itself
     startDate.setDate(startDate.getDate() + 1)
-    
+
     // Highlight all days in range
     while (startDate < endDate) {
       const dateStr = startDate.toISOString().split('T')[0]
       const dayEl = document.querySelector(`.md3-calendar-day[data-date="${dateStr}"]`)
-      
       if (dayEl) {
         dayEl.classList.add('in-range')
       }
-      
       startDate.setDate(startDate.getDate() + 1)
     }
   }
 }
 
-// Enhance date selection with validation and suggestions
 function confirmDateSelection() {
   if (tempDateValue.value) {
     if (datePickerType.value === 'start') {
@@ -415,21 +400,18 @@ function confirmDateSelection() {
         adventureForm.value.endDate = tempDateValue.value
         showToast('End date adjusted to match start date')
       } else if (!adventureForm.value.endDate) {
-        // If no end date set, auto-set it to start date
         adventureForm.value.endDate = tempDateValue.value
         showToast('End date set to match start date')
       }
     } else {
       adventureForm.value.endDate = tempDateValue.value
-      
-      // Calculate duration after date selection
-      calculateDuration()
     }
+
+    calculateDuration()
+    closeDatePicker()
   }
-  closeDatePicker()
 }
 
-// Time picker functions
 function openTimePicker(type) {
   timePickerType.value = type
   
@@ -450,8 +432,7 @@ function openTimePicker(type) {
   }
   
   showTimePicker.value = true
-  
-  // Animate the modal entrance
+
   nextTick(() => {
     if (timePickerRef.value?.$el) {
       animateModalEntry(timePickerRef.value.$el)
@@ -490,19 +471,20 @@ function adjustMinute(step) {
 
 function updateTempTime() {
   let hour = parseInt(selectedHour.value, 10)
+  const minute = parseInt(selectedMinute.value, 10)
+  
   if (selectedPeriod.value === 'PM' && hour !== 12) {
     hour += 12
   } else if (selectedPeriod.value === 'AM' && hour === 12) {
     hour = 0
   }
-  
-  const minute = parseInt(selectedMinute.value, 10)
+
   tempTimeValue.value = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
 }
 
 function confirmTimeSelection() {
   updateTempTime()
-  
+
   if (tempTimeValue.value) {
     if (timePickerType.value === 'start') {
       adventureForm.value.startTime = tempTimeValue.value
@@ -510,18 +492,11 @@ function confirmTimeSelection() {
       // If we have end time on same day, validate it
       if (adventureForm.value.endTime && adventureForm.value.startDate === adventureForm.value.endDate) {
         if (adventureForm.value.endTime <= tempTimeValue.value) {
-          // Auto-adjust end time to be 1 hour after start time
-          const [startHour, startMinute] = tempTimeValue.value.split(':').map(Number)
-          let endHour = startHour + 1
-          let endMinute = startMinute
-          
-          // Handle day overflow
-          if (endHour >= 24) {
-            endHour -= 24
-          }
-          
-          adventureForm.value.endTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`
-          showToast('End time adjusted to be after start time')
+          errors.value.endTime = 'End time must be after start time'
+          setTimeout(() => {
+            errors.value.endTime = null
+          }, 2000)
+          return
         }
       }
     } else {
@@ -535,15 +510,13 @@ function confirmTimeSelection() {
           return
         }
       }
-      
       adventureForm.value.endTime = tempTimeValue.value
     }
-    
+
     // Calculate duration after time selection
     calculateDuration()
+    closeTimePicker()
   }
-  
-  closeTimePicker()
 }
 
 const handleScrimClick = (event) => {
@@ -556,7 +529,9 @@ const handleClose = () => {
   // Close any open pickers
   if (showDatePicker.value) closeDatePicker()
   if (showTimePicker.value) closeTimePicker()
-  
+
+  adventureDialogStore.closeDialog()
+
   // Animate dialog exit
   if (dialogRef.value) {
     animateDrawerElement(dialogRef.value, {
@@ -568,7 +543,6 @@ const handleClose = () => {
       onComplete: () => {
         // Reset form state
         resetForm()
-        adventureDialogStore.closeDialog()
       }
     })
   } else {
@@ -595,20 +569,19 @@ function calculateDuration() {
   // Only calculate if we have all required values
   if (adventureForm.value.startDate && adventureForm.value.endDate && 
       adventureForm.value.startTime && adventureForm.value.endTime) {
-    
+
     // Create DateTime objects for start and end
     const startDateTime = new Date(`${adventureForm.value.startDate}T${adventureForm.value.startTime}`)
     const endDateTime = new Date(`${adventureForm.value.endDate}T${adventureForm.value.endTime}`)
-    
+
     // Skip invalid dates or if end is before start
     if (isNaN(startDateTime) || isNaN(endDateTime) || endDateTime <= startDateTime) {
       return
     }
-    
-    // Calculate the difference in minutes
+
     const diffMs = endDateTime - startDateTime
     const diffMinutes = Math.floor(diffMs / (1000 * 60))
-    
+
     // Show calculated duration in a toast
     showToast(`Duration: ${formatDurationForDisplay(diffMinutes)}`)
   }
@@ -619,14 +592,14 @@ function formatDurationForDisplay(minutes) {
   if (minutes < 60) {
     return `${minutes} minutes`
   }
-  
+
   const hours = Math.floor(minutes / 60)
   const remainingMinutes = minutes % 60
-  
+
   if (remainingMinutes === 0) {
     return hours === 1 ? `1 hour` : `${hours} hours`
   }
-  
+
   return `${hours}h ${remainingMinutes}m`
 }
 
@@ -638,12 +611,12 @@ let toastTimeout = null
 function showToast(message) {
   toastMessage.value = message
   isToastVisible.value = true
-  
+
   // Clear any existing timeout
   if (toastTimeout) {
     clearTimeout(toastTimeout)
   }
-  
+
   // Hide toast after 3 seconds
   toastTimeout = setTimeout(() => {
     isToastVisible.value = false
@@ -651,6 +624,8 @@ function showToast(message) {
 }
 
 // Use memoization for calendar days to improve performance
+const calendarDaysCache = ref({})
+
 const memoizedCalendarDays = computed(() => {
   const key = `${currentDate.value.getFullYear()}-${currentDate.value.getMonth()}`
   if (!calendarDaysCache[key]) {
@@ -658,9 +633,6 @@ const memoizedCalendarDays = computed(() => {
   }
   return calendarDaysCache[key]
 })
-
-// Calendar days cache
-const calendarDaysCache = ref({})
 
 // Lifecycle hooks
 onMounted(() => {
@@ -675,7 +647,7 @@ onUnmounted(() => {
     currentAnimation.stop()
     currentAnimation = null
   }
-  
+
   // Clear toast timeout
   if (toastTimeout) {
     clearTimeout(toastTimeout)
@@ -697,9 +669,6 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  padding: 16px;
-  overflow: hidden;
-  backdrop-filter: blur(3px);
 }
 
 /* Dialog Container */
@@ -720,18 +689,21 @@ onUnmounted(() => {
 .adventure-log-dialog.mobile {
   max-width: 100%;
   max-height: 98vh;
-  width: 100%;
-  border-radius: 28px;
 }
 
 /* Dialog Content */
 .dialog-content {
-  padding: 0;
-  overflow-y: hidden;
+  padding: 16px;
+  overflow: hidden;
+  flex: 1;
   display: flex;
   flex-direction: column;
-  height: 100%;
+}
+
+.form-scroll-container {
+  width: 100%;
   flex: 1;
+  overflow-y: auto;
 }
 
 /* Form Styling */
@@ -739,14 +711,6 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   height: 100%;
-}
-
-.form-scroll-container {
-  padding: 24px;
-  overflow-y: auto;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
   gap: 24px;
 }
 
@@ -776,20 +740,21 @@ onUnmounted(() => {
   opacity: 0;
 }
 
+/* Mobile Styles */
 @media (max-width: 600px) {
-  .form-scroll-container {
-    padding: 16px;
-    gap: 16px;
-  }
-  
-  .dialog-content {
-    padding: 0;
-  }
-  
   .adventure-log-dialog {
     border-radius: 24px 24px 0 0;
     max-height: 100vh;
     height: 90vh;
+  }
+
+  .dialog-content {
+    padding: 0;
+  }
+
+  .form-scroll-container {
+    padding: 16px;
+    gap: 16px;
   }
 }
 </style>
