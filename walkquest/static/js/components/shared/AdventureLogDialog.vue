@@ -312,8 +312,6 @@ const handleSubmit = async () => {
           .filter(id => id !== null && id !== undefined)
       : [];
     
-    // Ensure all required fields are included in the payload
-    // The server expects: start_date, end_date, start_time, end_time, difficulty_level, walk_id
     const adventureData = await adventureStore.createAdventure({
       ...formData,
       walkId: props.walk.id,
