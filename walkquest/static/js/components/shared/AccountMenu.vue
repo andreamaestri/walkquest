@@ -25,6 +25,11 @@
             <span>Profile Settings</span>
           </button>
           
+          <button class="menu-item" @click="handleAdventuresClick">
+            <Icon icon="mdi:map-marker-path" class="menu-icon" />
+            <span>My Adventures</span>
+          </button>
+          
           <a :href="authUrls.emailUrl" class="menu-item">
             <Icon icon="mdi:email" class="menu-icon" />
             <span>Manage Email</span>
@@ -141,6 +146,13 @@ const handleProfileClick = () => {
   router.push('/profile');
   emit('close');
   emit('action', 'profile');
+};
+
+// Handle adventures click navigation
+const handleAdventuresClick = () => {
+  router.push('/adventures');
+  emit('close');
+  emit('action', 'adventures');
 };
 
 // Handle overlay click

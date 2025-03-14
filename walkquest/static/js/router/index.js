@@ -40,6 +40,12 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/adventures',
+    name: 'adventures',
+    component: () => import('../components/adventures/AdventureManager.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/walk/:walk_id',
     name: 'walk',
     component: () => import('../components/WalkInterface.vue'),

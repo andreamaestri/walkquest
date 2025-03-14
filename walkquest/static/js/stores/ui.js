@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { useToastStore } from './toast'
 
 // Debounce helper function
 function debounce(fn, delay) {
@@ -23,7 +24,7 @@ export const useUiStore = defineStore('ui', {
     },
     scrollY: 0,
 
-    // Toast/snackbar notification state
+    // Toast/snackbar notification state - keeping for backward compatibility
     toast: {
       message: '',
       visible: false,
@@ -82,22 +83,10 @@ export const useUiStore = defineStore('ui', {
       this.scrollY = window.scrollY
     },
 
-    // Show a toast/snackbar notification
+    // Show a toast/snackbar notification - now using unified toast store
     showToast(message, type = 'info', duration = 3000) {
-      // Clear any existing timeout
-      if (this.toastTimeout) {
-        clearTimeout(this.toastTimeout)
-      }
-
-      // Update toast state
-      this.toast.message = message
-      this.toast.type = type
-      this.toast.visible = true
-
-      // Auto-hide after duration
-      this.toastTimeout = setTimeout(() => {
-        this.toast.visible = false
-      }, duration)
+      const toastStore = useToastStore()
+      toastStore.show(message, type, duration)
     },
 
     // Alias for showToast to maintain compatibility
@@ -107,6 +96,8 @@ export const useUiStore = defineStore('ui', {
 
     // Manually hide the toast
     hideToast() {
+      // This is no longer needed since the toast store handles dismissal,
+      // but kept for backward compatibility
       if (this.toastTimeout) {
         clearTimeout(this.toastTimeout)
       }
