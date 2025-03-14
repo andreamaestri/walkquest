@@ -52,6 +52,7 @@
                 required
               />
               <p v-if="validationErrors.start_location" class="error-text">{{ validationErrors.start_location }}</p>
+              <p v-else class="help-text">Where did your adventure begin?</p>
             </div>
             
             <div class="form-group">
@@ -195,7 +196,7 @@ const form = ref({
   distance: null,
   duration: null,
   difficulty: '',
-  is_public: false
+  is_public: true
 });
 
 // Validation errors state
@@ -212,7 +213,7 @@ watch(() => props.adventure, (newVal) => {
       distance: newVal.distance || null,
       duration: newVal.duration || null,
       difficulty: newVal.difficulty || '',
-      is_public: newVal.is_public || false
+      is_public: newVal.is_public !== undefined ? newVal.is_public : true
     };
   }
 }, { immediate: true });

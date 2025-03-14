@@ -111,6 +111,9 @@ def list_adventures(request):
             ],
             created_at=adventure.created_at.isoformat(),
             updated_at=adventure.updated_at.isoformat(),
+            is_public=getattr(adventure, 'is_public', True),
+            start_location=getattr(adventure, 'start_location', None),
+            end_location=getattr(adventure, 'end_location', None),
         )
         for adventure in adventures
     ]
@@ -134,6 +137,9 @@ def create_adventure(request, data: AdventureIn):
         'end_time': str(data.end_time),
         'categories': data.categories,
         'walk_id': str(data.walk_id) if data.walk_id else None,
+        'is_public': data.is_public,
+        'start_location': data.start_location,
+        'end_location': data.end_location,
     }, default=str)}")
     
     try:
@@ -171,6 +177,9 @@ def create_adventure(request, data: AdventureIn):
             start_time=start_time,
             end_time=end_time,
             difficulty_level=data.difficulty_level,
+            is_public=data.is_public,
+            start_location=data.start_location or "",
+            end_location=data.end_location or "",
         )
         logger.info(f"[PID:{process_id}|TID:{thread_id}] Created adventure: {adventure.id}")
 
@@ -193,6 +202,7 @@ def create_adventure(request, data: AdventureIn):
         achievement = Achievement.objects.create(
             user=request.user,
             adventure=adventure,
+            visibility="PUBLIC" if data.is_public else "PRIVATE",
         )
         logger.info(f"[PID:{process_id}|TID:{thread_id}] Created achievement: {achievement.id}")
 
@@ -219,6 +229,9 @@ def create_adventure(request, data: AdventureIn):
             ],
             created_at=adventure.created_at.isoformat(),
             updated_at=adventure.updated_at.isoformat(),
+            is_public=adventure.is_public,
+            start_location=adventure.start_location,
+            end_location=adventure.end_location,
         )
         
         logger.info(f"[PID:{process_id}|TID:{thread_id}] Adventure log created successfully: {adventure.id}")

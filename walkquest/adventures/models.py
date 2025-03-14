@@ -29,6 +29,7 @@ class Achievement(models.Model):
         max_length=10,
         choices=VISIBILITY_CHOICES,
         default="PUBLIC",
+        help_text=_("Control who can see this achievement"),
     )
     status = models.CharField(
         _("Status"),

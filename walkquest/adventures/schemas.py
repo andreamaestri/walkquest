@@ -18,6 +18,9 @@ class AdventureIn(Schema):
     categories: List[str]
     companion_ids: Optional[List[UUID]]
     walk_id: UUID
+    is_public: bool = True
+    start_location: Optional[str] = None
+    end_location: Optional[str] = None
 
 class AdventureOut(Schema):
     id: UUID
@@ -32,6 +35,9 @@ class AdventureOut(Schema):
     companions: List[CompanionOut]
     created_at: str
     updated_at: str
+    is_public: bool
+    start_location: Optional[str] = None
+    end_location: Optional[str] = None
 
 class ErrorResponse(Schema):
     message: str

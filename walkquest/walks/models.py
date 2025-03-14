@@ -152,6 +152,11 @@ class Adventure(models.Model):
         blank=True,
         help_text=_("Categories related to this adventure"),
     )
+    is_public = models.BooleanField(
+        _("Public"),
+        default=True,
+        help_text=_("Whether this adventure is visible to other users"),
+    )
     created_at = models.DateTimeField(_("Created"), auto_now_add=True)
     updated_at = models.DateTimeField(_("Updated"), auto_now=True)
 
