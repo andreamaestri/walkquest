@@ -5,7 +5,7 @@
         v-if="message" 
         class="snackbar-container"
       >
-        <div class="snackbar" :class="[`snackbar-${currentType}`]" :class="{ 'show': show }">
+        <div class="snackbar" :class="[`snackbar-${currentType}`, { 'show': show }]">
           <span class="snackbar-icon" v-if="currentType !== 'default'">
             <Icon :icon="getIconForType(currentType)" />
           </span>
