@@ -68,65 +68,85 @@ export const useAdventureStore = defineStore('adventure', {
           throw new Error('CSRF token not found');
         }
 
-        // Prepare data, ensuring optional fields are handled properly
+        // Validate required fields before sending
+        const requiredFields = ['title', 'startDate', 'endDate', 'startTime', 'endTime', 'difficultyLevel', 'walkId'];
+        const missingFields = requiredFields.filter(field => !adventureData[field]);
+        
+        if (missingFields.length > 0) {
+          throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+        }
+
+        // Prepare data with ALL required fields - ensure none are null/undefined
         const payload = {
           title: adventureData.title,
-          description: adventureData.description,
-          start_date: adventureData.startDate,
-          end_date: adventureData.endDate,
-          difficulty_level: adventureData.difficultyLevel,
-          walk_id: adventureData.walkId
+          description: adventureData.description || "",
+          // Convert dates to ISO format strings if they're Date objects
+          start_date: typeof adventureData.startDate === 'object' 
+            ? adventureData.startDate.toISOString().split('T')[0] 
+            : adventureData.startDate,
+          end_date: typeof adventureData.endDate === 'object'
+            ? adventureData.endDate.toISOString().split('T')[0]
+            : adventureData.endDate,
+          start_time: adventureData.startTime,
+          end_time: adventureData.endTime,
+          walk_id: adventureData.walkId,
+          difficulty_level: adventureData.difficultyLevel.replace(/'/g, "'"),
+          // Always include companion_ids as an array (even if empty)
+          companion_ids: [],
+          // Always include categories with at least a default value
+          categories: (adventureData.categories && adventureData.categories.length > 0) 
+            ? adventureData.categories 
+            : ['circular']
         };
-
-        // Only add non-null values for optional fields
-        if (adventureData.startTime) payload.start_time = adventureData.startTime;
-        if (adventureData.endTime) payload.end_time = adventureData.endTime;
         
-        // Only add non-empty arrays
-        if (adventureData.categories && adventureData.categories.length > 0) {
-          payload.categories = adventureData.categories;
-        } else {
-          // Send default category if none provided
-          payload.categories = ['circular'];
-        }
-        
-        // Ensure companion_ids has no null values
-        if (adventureData.companion_ids && adventureData.companion_ids.length > 0) {
+        // Handle companions properly - convert from objects to IDs if needed
+        if (adventureData.companions && adventureData.companions.length > 0) {
+          // Extract IDs from companion objects if they're objects
+          payload.companion_ids = adventureData.companions.map(companion => 
+            typeof companion === 'object' ? companion.id : companion
+          ).filter(id => id !== null && id !== undefined);
+        } else if (adventureData.companion_ids && adventureData.companion_ids.length > 0) {
+          // If companion_ids is directly provided, filter out null values
           payload.companion_ids = adventureData.companion_ids.filter(id => id !== null && id !== undefined);
-          // If filtering removed all entries, don't include the empty array
-          if (payload.companion_ids.length === 0) {
-            delete payload.companion_ids;
-          }
         }
 
-        // Ensure difficulty_level is properly encoded for API submission
-        if (payload.difficulty_level && payload.difficulty_level.includes("'")) {
-          console.log('Sending difficulty level with apostrophe:', payload.difficulty_level);
-        }
+        console.log('Sending adventure payload:', JSON.stringify(payload));
 
         const response = await fetch('/api/adventures/log', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-            // Django CSRF protection
             'X-CSRFToken': csrfToken,
             'X-Requested-With': 'XMLHttpRequest'
           },
           credentials: 'include',
           body: JSON.stringify(payload)
-        })
+        });
 
         if (!response.ok) {
           let errorMessage = 'Failed to create adventure';
+          
+          // Enhanced error handling
           try {
             const errorData = await response.json();
+            console.log('Server error response:', errorData);
+            
             if (errorData.message) {
               errorMessage = errorData.message;
             } else if (errorData.detail) {
-              errorMessage = errorData.detail;
+              // Handle detailed validation errors from FastAPI/Pydantic
+              if (Array.isArray(errorData.detail)) {
+                const errors = errorData.detail.map(err => {
+                  const field = err.loc[err.loc.length - 1];
+                  return `${field}: ${err.msg}`;
+                });
+                errorMessage = errors.join(', ');
+              } else {
+                errorMessage = errorData.detail;
+              }
             } else if (typeof errorData === 'object') {
-              // Handle validation errors which might be returned as an object with field names as keys
+              // Handle other validation errors
               const errors = [];
               for (const [field, fieldErrors] of Object.entries(errorData)) {
                 if (Array.isArray(fieldErrors)) {
@@ -138,7 +158,7 @@ export const useAdventureStore = defineStore('adventure', {
                 }
               }
               if (errors.length > 0) {
-                errorMessage = errors.join('\n');
+                errorMessage = errors.join(', ');
               }
             }
             throw new Error(errorMessage, { cause: errorData });
@@ -148,16 +168,15 @@ export const useAdventureStore = defineStore('adventure', {
           }
         }
 
-        const data = await response.json()
-        this.adventures.push(data)
-        return data
+        const data = await response.json();
+        this.adventures.push(data);
+        return data;
 
       } catch (error) {
-        this.error = error.message
-        throw error
-
+        this.error = error.message;
+        throw error;
       } finally {
-        this.isLoading = false
+        this.isLoading = false;
       }
     },
 

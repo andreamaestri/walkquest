@@ -305,11 +305,15 @@ const handleSubmit = async () => {
   try {
     const { companions, ...formData } = adventureForm.value;
     
-    // Extract companion IDs and filter out any null values
-    const companionIds = companions
-      .map(companion => companion?.id)
-      .filter(id => id !== null && id !== undefined);
+    // Always provide companion_ids even if empty
+    const companionIds = companions && Array.isArray(companions)
+      ? companions
+          .map(companion => companion?.id)
+          .filter(id => id !== null && id !== undefined)
+      : [];
     
+    // Ensure all required fields are included in the payload
+    // The server expects: start_date, end_date, start_time, end_time, difficulty_level, walk_id
     const adventureData = await adventureStore.createAdventure({
       ...formData,
       walkId: props.walk.id,
@@ -328,12 +332,21 @@ const handleSubmit = async () => {
     console.error('Adventure creation error:', error);
     
     // Set specific error messages based on error type if possible
-    if (error.response && error.response.data) {
-      // Handle API error responses
-      const apiErrors = error.response.data;
-      Object.entries(apiErrors).forEach(([key, message]) => {
-        errors.value[key] = Array.isArray(message) ? message[0] : message;
-      });
+    if (error?.cause) {
+      // Handle structured validation errors
+      const apiErrors = error.cause;
+      
+      if (apiErrors.detail && Array.isArray(apiErrors.detail)) {
+        // Handle FastAPI-style validation errors
+        apiErrors.detail.forEach(err => {
+          const field = err.loc[err.loc.length - 1];
+          errors.value[field] = err.msg;
+        });
+      } else if (typeof apiErrors === 'object') {
+        Object.entries(apiErrors).forEach(([key, message]) => {
+          errors.value[key] = Array.isArray(message) ? message[0] : message;
+        });
+      }
     } else {
       // Generic error fallback
       errors.value.submit = error.message || 'Failed to create adventure. Please try again.';
