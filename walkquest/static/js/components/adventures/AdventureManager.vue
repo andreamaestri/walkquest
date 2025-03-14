@@ -1,7 +1,16 @@
 <template>
   <div class="adventure-manager">
     <div class="adventure-header">
-      <h1 class="title">My Adventures</h1>
+      <div class="header-left">
+        <button 
+          class="back-btn" 
+          @click="goBack"
+          aria-label="Go back"
+        >
+          <Icon icon="mdi:arrow-left" />
+        </button>
+        <h1 class="title">My Adventures</h1>
+      </div>
       <button 
         class="create-btn" 
         @click="openCreateModal"
@@ -113,6 +122,7 @@ import { ref, onMounted } from 'vue';
 import { Icon } from '@iconify/vue';
 import { useAuthStore } from '../../stores/auth';
 import { useToastStore } from '../../stores/toast';
+import { useRouter } from 'vue-router';
 import AdventureCard from './AdventureCard.vue';
 import AdventureListItem from './AdventureListItem.vue';
 import AdventureFormModal from './AdventureFormModal.vue';
@@ -122,6 +132,7 @@ import ConfirmationModal from '../shared/ConfirmationModal.vue';
 // Store access
 const authStore = useAuthStore();
 const toastStore = useToastStore();
+const router = useRouter();
 
 // Component state
 const adventures = ref([]);
@@ -136,6 +147,16 @@ const showDetailModal = ref(false);
 const showDeleteModal = ref(false);
 const formMode = ref('create');
 const currentAdventure = ref(null);
+
+// Navigation function to go back
+const goBack = () => {
+  if (window.history.length > 1) {
+    router.back();
+  } else {
+    // If no history, navigate to home or another appropriate route
+    router.push({ name: 'home' });
+  }
+};
 
 // Fetch adventures from API
 const fetchAdventures = async () => {
@@ -329,6 +350,34 @@ onMounted(() => {
   margin-bottom: 1.5rem;
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: transparent;
+  border: none;
+  color: rgb(var(--md-sys-color-on-surface));
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.back-btn:hover {
+  background-color: rgba(var(--md-sys-color-on-surface), 0.08);
+}
+
+.back-btn:active {
+  background-color: rgba(var(--md-sys-color-on-surface), 0.12);
+}
+
 .title {
   font-size: 1.8rem;
   color: rgb(var(--md-sys-color-on-surface));
@@ -442,14 +491,27 @@ onMounted(() => {
 
 @media (max-width: 768px) {
   .adventure-header {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    align-items: center;
     gap: 1rem;
   }
   
+  .header-left {
+    flex: 1;
+  }
+  
+  .title {
+    font-size: 1.5rem;
+  }
+  
+  .create-btn span {
+    display: none;
+  }
+  
   .create-btn {
-    width: 100%;
-    justify-content: center;
+    width: auto;
+    padding: 0.75rem;
+    border-radius: 50%;
   }
   
   .view-toggle {
