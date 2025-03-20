@@ -33,6 +33,8 @@
               @focus="activeField = 'email'"
               @blur="activeField = null"
               placeholder=" "
+              autocomplete="email"
+              name="email"
             />
             <label for="email" class="md3-label">Email</label>
             <div class="md3-outline"></div>
@@ -60,6 +62,7 @@
               @blur="activeField = null"
               placeholder=" "
               autocomplete="new-password"
+              name="password1"
             />
             <label for="password1" class="md3-label">Password</label>
             <button 
@@ -94,6 +97,7 @@
               @blur="activeField = null"
               placeholder=" "
               autocomplete="new-password"
+              name="password2"
             />
             <label for="password2" class="md3-label">Confirm Password</label>
             <button 
@@ -255,17 +259,19 @@ async function handleSubmit() {
       throw new Error('CSRF token not available. Please try again.')
     }
     
-    // Create the form data for Django
-    const formData = new FormData();
+    console.log('Submitting form with email:', email.value);
+    
+    // Try using URLSearchParams instead of FormData
+    const formData = new URLSearchParams();
     formData.append('email', email.value);
     formData.append('password1', password1.value);
     formData.append('password2', password2.value);
-    formData.append('csrfmiddlewaretoken', csrfToken.value);
     
     // Make a direct fetch request
     const res = await fetch('/accounts/signup/', {
       method: 'POST',
       headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
         'X-CSRFToken': csrfToken.value,
         'X-Requested-With': 'XMLHttpRequest'
       },
@@ -273,24 +279,38 @@ async function handleSubmit() {
       body: formData
     });
     
+    console.log('Response status:', res.status);
+    
     const contentType = res.headers.get('content-type');
     
     if (!res.ok) {
-      if (contentType && contentType.includes('application/json')) {
-        const errorData = await res.json();
-        if (errorData.errors) {
-          errors.value = errorData.errors;
+      try {
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await res.json();
+          console.log('Server error response:', errorData);
+          
+          if (errorData.errors) {
+            errors.value = errorData.errors;
+          } else {
+            error.value = errorData.message || 'Signup failed. Please try again.';
+          }
         } else {
-          error.value = errorData.message || 'Signup failed. Please try again.';
+          const errorText = await res.text();
+          console.log('Error response text (first 200 chars):', errorText.substring(0, 200));
+          error.value = `Signup failed (${res.status}). Please try again.`;
         }
-      } else {
-        error.value = `Signup failed (${res.status}). Please try again.`;
+      } catch (e) {
+        console.error('Error parsing server response:', e);
+        error.value = 'Failed to process server response';
       }
+      
       throw new Error('Signup failed');
     }
     
     if (contentType && contentType.includes('application/json')) {
       const data = await res.json();
+      console.log('Success response:', data);
+      
       if (data.success) {
         // Show success message
         authStore.showSnackbar('Account created successfully!');
@@ -301,6 +321,7 @@ async function handleSubmit() {
       }
     } else {
       // Assume success if no JSON response but status was ok
+      console.log('Non-JSON success response received');
       authStore.showSnackbar('Account created successfully!');
       await authStore.checkAuth();
       router.push('/');
