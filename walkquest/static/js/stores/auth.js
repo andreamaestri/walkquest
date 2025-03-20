@@ -23,7 +23,8 @@ export const useAuthStore = defineStore('auth', {
     authChangeListener: null,
     hasShownWelcome: false,
     processedMessages: new Set(),
-    idleTimeoutCleanup: null
+    idleTimeoutCleanup: null,
+    needsEmailVerification: false
   }),
   
   getters: {
@@ -107,27 +108,80 @@ export const useAuthStore = defineStore('auth', {
           }
         }
         
+        // Handle JSON response
         if (contentType && contentType.includes("application/json")) {
           const data = await response.json();
+          
           if (data.user) {
+            // User data provided directly in response
             this.user = data.user;
             this.isAuthenticated = true;
             this.userDataLoaded = true;
             this.setupIdleTimeout();
+          } else if (data.email_verification_needed) {
+            // Email verification is required
+            this.needsEmailVerification = true;
+            this.showSnackbar('Please verify your email address to continue.');
+            return { success: true, needsEmailVerification: true };
           } else {
-            await this.checkAuth();
+            // No user data in response, check auth status
+            await this.forceAuthCheck();
           }
         } else {
-          await this.checkAuth();
+          // Non-JSON response, check auth status
+          await this.forceAuthCheck();
         }
         
-        return true;
+        return { success: true };
       } catch (error) {
         const errorMessage = this.handleError(error, 'login');
         this.loginError = errorMessage;
         throw error;
       } finally {
         this.isLoading = false;
+      }
+    },
+    
+    // Force a fresh authentication check - different from checkAuth to avoid race conditions
+    async forceAuthCheck() {
+      try {
+        // Clear any cached state about authentication
+        const response = await fetch('/users/api/auth-events/', {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            // Add cache busting parameter
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          },
+          credentials: 'same-origin'
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to verify authentication status');
+        }
+        
+        const data = await response.json();
+        
+        if (data.is_authenticated && data.user) {
+          this.user = data.user;
+          this.isAuthenticated = true;
+          this.userDataLoaded = true;
+          this.setupIdleTimeout();
+          
+          if (data.email_verification_needed) {
+            this.needsEmailVerification = true;
+          }
+          
+          return true;
+        }
+        
+        return false;
+      } catch (error) {
+        console.error('Force auth check failed:', error);
+        return false;
       }
     },
 
@@ -219,11 +273,17 @@ export const useAuthStore = defineStore('auth', {
               this.user = data.user;
               this.isAuthenticated = true;
               this.userDataLoaded = true;
-
+              
+              if (data.email_verification_needed) {
+                this.needsEmailVerification = true;
+              } else {
+                this.needsEmailVerification = false;
+              }
+              
               if (!wasAuthenticated) {
                 this.setupIdleTimeout();
               }
-
+              
               if (!this.hasShownWelcome) {
                 const username = this.user.username || '';
                 const welcomeMessage = username 
@@ -232,7 +292,7 @@ export const useAuthStore = defineStore('auth', {
                 this.showSnackbar(welcomeMessage);
                 this.hasShownWelcome = true;
               }
-
+              
               this.processDjangoMessages();
               return true;
             }
@@ -241,6 +301,7 @@ export const useAuthStore = defineStore('auth', {
             this.user = null;
             this.isAuthenticated = false;
             this.userDataLoaded = false;
+            this.needsEmailVerification = false;
             
             if (wasAuthenticated) {
               this.clearIdleTimeout();
@@ -260,12 +321,14 @@ export const useAuthStore = defineStore('auth', {
         this.user = null;
         this.isAuthenticated = false;
         this.userDataLoaded = false;
+        this.needsEmailVerification = false;
         return false;
       } catch (error) {
         this.handleError(error, 'checkAuth');
         this.user = null;
         this.isAuthenticated = false;
         this.userDataLoaded = false;
+        this.needsEmailVerification = false;
         return false;
       } finally {
         this.isLoading = false;

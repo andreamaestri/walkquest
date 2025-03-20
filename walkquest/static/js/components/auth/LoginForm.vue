@@ -176,11 +176,36 @@ async function handleSubmit() {
   
   try {
     // Call login and handle success
-    await authStore.login(login.value, password.value, remember.value)
+    const result = await authStore.login(login.value, password.value, remember.value)
     
-    // If we get here, login was successful
-    const redirectTo = router.currentRoute.value.query.next || '/'
-    router.push(redirectTo)
+    // Handle email verification if needed
+    if (result && result.needsEmailVerification) {
+      // Redirect to email verification page
+      router.push('/verify-email')
+      return
+    }
+    
+    // Check if user is authenticated
+    if (authStore.isAuthenticated) {
+      // If we get here, login was successful
+      const redirectTo = router.currentRoute.value.query.next || '/'
+      router.push(redirectTo)
+    } else {
+      // Login succeeded but user isn't authenticated yet (might need other verification)
+      console.warn('Login succeeded but user not authenticated')
+      // Force a fresh auth check to make sure we have the latest state
+      await authStore.forceAuthCheck()
+      
+      if (authStore.needsEmailVerification) {
+        router.push('/verify-email')
+      } else if (authStore.isAuthenticated) {
+        const redirectTo = router.currentRoute.value.query.next || '/'
+        router.push(redirectTo)
+      } else {
+        // Something is wrong, possibly server-side issue
+        error.value = 'Login was successful but unable to confirm authentication state'
+      }
+    }
   } catch (err) {
     if (err.errors) {
       errors.value = err.errors
