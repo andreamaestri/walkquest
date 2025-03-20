@@ -19,13 +19,42 @@ export const URLs = Object.freeze({
 
 // Get CSRF token from cookies or meta tag
 function getCsrfToken() {
-  const name = 'csrftoken=';
-  let token = document.cookie.split(';').find(c => c.trim().startsWith(name));
-  if (token) {
-    return token.substring(name.length + 1);
+  // More reliable method to get CSRF token from cookie
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
   }
-  const metaToken = document.querySelector('meta[name="csrf-token"]');
-  return metaToken ? metaToken.getAttribute('content') : null;
+  
+  // Try to get token from cookie
+  let csrfToken = getCookie('csrftoken');
+  
+  // If not found in cookie, check meta tag
+  if (!csrfToken) {
+    const metaToken = document.querySelector('meta[name="csrf-token"]');
+    if (metaToken) {
+      csrfToken = metaToken.getAttribute('content');
+    }
+  }
+  
+  // As last resort, check for input field
+  if (!csrfToken) {
+    const inputToken = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    if (inputToken) {
+      csrfToken = inputToken.value;
+    }
+  }
+  
+  return csrfToken;
 }
 
 // Make a request to the allauth API
@@ -34,12 +63,17 @@ async function request(method, path, data) {
     method,
     headers: {
       'Accept': 'application/json',
-      'X-CSRFToken': getCsrfToken(),
       'X-Requested-With': 'XMLHttpRequest'
     },
     credentials: 'same-origin'
   };
-
+  
+  // Get CSRF token and add it to headers if available
+  const csrfToken = getCsrfToken();
+  if (csrfToken) {
+    options.headers['X-CSRFToken'] = csrfToken;
+  }
+  
   if (data) {
     if (method === 'GET') {
       // Add query params for GET requests
@@ -51,16 +85,19 @@ async function request(method, path, data) {
       options.headers['Content-Type'] = 'application/json';
     }
   }
-
+  
   try {
     // First, get a CSRF token if we don't have one
-    if (!getCsrfToken() && method !== 'GET') {
+    if (!csrfToken && method !== 'GET') {
       await fetch(path, { 
         method: 'GET',
         credentials: 'same-origin'
       });
       // Now we should have a CSRF token in the cookies
-      options.headers['X-CSRFToken'] = getCsrfToken();
+      const newToken = getCsrfToken();
+      if (newToken) {
+        options.headers['X-CSRFToken'] = newToken;
+      }
     }
 
     const response = await fetch(`${BASE_URL}${path}`, options);
