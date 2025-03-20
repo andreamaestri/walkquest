@@ -151,46 +151,49 @@ const response = reactive({ fetching: false, content: null })
 // Add a CSRF token ref and a function to get the token
 const csrfToken = ref('')
 
-onMounted(() => {
+onMounted(async () => {
+  // First fetch a fresh CSRF token
+  await refreshCSRFToken()
+  // Then get it from the cookie
   getCsrfToken()
-  
-  // Ensure we fetch a fresh CSRF token before rendering the form
-  refreshCSRFToken()
 })
 
 async function refreshCSRFToken() {
   try {
-    // Make a quick GET request to the signup endpoint to refresh the CSRF token
+    // Fetch the CSRF token with a non-caching request
     const response = await fetch('/accounts/signup/', {
       method: 'GET',
       credentials: 'same-origin',
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
     });
     
-    // After the request, the CSRF token cookie should be refreshed
-    getCsrfToken();
+    // Extract the CSRF token from the Set-Cookie header if available
+    const cookies = document.cookie.split(';');
+    for (const cookie of cookies) {
+      if (cookie.trim().startsWith('csrftoken=')) {
+        csrfToken.value = cookie.trim().substring('csrftoken='.length);
+        break;
+      }
+    }
   } catch (err) {
-    console.warn("Failed to refresh CSRF token:", err)
+    console.error("Failed to refresh CSRF token:", err)
   }
 }
 
 function getCsrfToken() {
-  // Try to get from meta tag
-  const metaToken = document.querySelector('meta[name="csrf-token"]')
-  if (metaToken) {
-    csrfToken.value = metaToken.getAttribute('content')
-    return
-  }
-  
-  // Try to get from cookie (if not httpOnly)
+  // Try to get from cookie
   function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
       const cookies = document.cookie.split(';');
       for (let i = 0; i < cookies.length; i++) {
         const cookie = cookies[i].trim();
-        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        if (cookie.startsWith(name + '=')) {
           cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-          break;
+          return cookieValue;
         }
       }
     }
@@ -203,6 +206,13 @@ function getCsrfToken() {
     return;
   }
   
+  // Try to get from meta tag
+  const metaToken = document.querySelector('meta[name="csrf-token"]')
+  if (metaToken) {
+    csrfToken.value = metaToken.getAttribute('content')
+    return
+  }
+  
   // Try to get from a hidden input (if present)
   const inputToken = document.querySelector('input[name="csrfmiddlewaretoken"]')
   if (inputToken) {
@@ -210,7 +220,7 @@ function getCsrfToken() {
     return
   }
   
-  console.warn("CSRF token not found from meta, cookie, or hidden input.")
+  console.warn("CSRF token not found from cookie, meta, or hidden input.")
 }
 
 // Handle form submission
@@ -234,19 +244,25 @@ async function handleSubmit() {
     return
   }
   
+  // Get a fresh token before submitting
+  await refreshCSRFToken()
+  getCsrfToken()
+  
   response.fetching = true
   
   try {
-    // Make sure we have the latest CSRF token
-    getCsrfToken()
+    if (!csrfToken.value) {
+      throw new Error('CSRF token not available. Please try again.')
+    }
     
     // Create the form data for Django
     const formData = new FormData();
     formData.append('email', email.value);
     formData.append('password1', password1.value);
     formData.append('password2', password2.value);
+    formData.append('csrfmiddlewaretoken', csrfToken.value);
     
-    // Make a direct fetch request instead of using signUp function
+    // Make a direct fetch request
     const res = await fetch('/accounts/signup/', {
       method: 'POST',
       headers: {
@@ -268,7 +284,7 @@ async function handleSubmit() {
           error.value = errorData.message || 'Signup failed. Please try again.';
         }
       } else {
-        error.value = 'Signup failed. Please try again.';
+        error.value = `Signup failed (${res.status}). Please try again.`;
       }
       throw new Error('Signup failed');
     }
@@ -276,19 +292,23 @@ async function handleSubmit() {
     if (contentType && contentType.includes('application/json')) {
       const data = await res.json();
       if (data.success) {
+        // Show success message
+        authStore.showSnackbar('Account created successfully!');
+        
         // Redirect to the next page after successful registration
         await authStore.checkAuth();
         router.push('/');
       }
     } else {
       // Assume success if no JSON response but status was ok
+      authStore.showSnackbar('Account created successfully!');
       await authStore.checkAuth();
       router.push('/');
     }
   } catch (err) {
     console.error('Signup error:', err);
     if (!error.value && !Object.keys(errors.value).length) {
-      error.value = 'Registration failed. Please try again.';
+      error.value = err.message || 'Registration failed. Please try again.';
     }
   } finally {
     response.fetching = false;
