@@ -23,9 +23,30 @@ class AccountAdapter(DefaultAccountAdapter):
         """Override to redirect to home page after email confirmation"""
         return "/"
     
+    def save_user(self, request, user, form, commit=True):
+        """
+        Override save_user to ensure the username is properly set before saving
+        """
+        # Get the data from the form
+        data = form.cleaned_data
+        email = data.get('email')
+        
+        # Set the username from email if it's not set
+        if not user.username and email:
+            user.username = self.generate_unique_username([
+                email.split('@')[0],
+                'user',
+                'walkquester'
+            ])
+        
+        # Continue with the default save_user process
+        return super().save_user(request, user, form, commit)
+    
     def format_username(self, username, email):
         """Format username from email if username is not provided"""
-        return username if username else email.split("@")[0]
+        if not username and email:
+            return email.split("@")[0]
+        return username
     
     def login(self, request, user):
         """Just handle the login without adding message since signals handle it"""
