@@ -136,48 +136,19 @@ export const useAuthStore = defineStore('auth', {
       this.signupError = null;
       
       try {
-        const csrfToken = this.getCSRFToken();
+        // Use the signUp utility function from allauth.js instead of direct fetch
+        const data = await signUp({ email, password1, password2 });
         
-        const response = await fetch('/accounts/signup/', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'X-CSRFToken': csrfToken
-          },
-          credentials: 'same-origin',
-          body: JSON.stringify({
-            email,
-            password1,
-            password2
-          })
-        });
-
-        const contentType = response.headers.get("content-type");
-        
-        if (!response.ok) {
-          if (contentType && contentType.includes("application/json")) {
-            const errorData = await response.json();
-            throw { errors: errorData };
+        if (!data || data.status >= 400) {
+          if (data && data.errors) {
+            throw { errors: data.errors };
           } else {
-            throw new Error('Signup failed. Please try again.');
+            throw new Error(data?.message || 'Signup failed. Please try again.');
           }
         }
         
-        if (contentType && contentType.includes("application/json")) {
-          const data = await response.json();
-          if (data.user) {
-            this.user = data.user;
-            this.isAuthenticated = true;
-            this.userDataLoaded = true;
-            this.setupIdleTimeout();
-          } else {
-            await this.checkAuth();
-          }
-        } else {
-          await this.checkAuth();
-        }
-        
+        // Check authentication state after signup
+        await this.checkAuth();
         this.showSnackbar('Account created successfully!');
         return true;
       } catch (error) {
