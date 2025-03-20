@@ -72,6 +72,34 @@
           </div>
         </div>
 
+        <!-- Username Field -->
+        <div class="md3-field-container">
+          <div class="md3-text-field" :class="{
+            'focused': activeField === 'username',
+            'filled': username,
+            'error': errors.username
+          }">
+            <input 
+              id="username"
+              v-model="username"
+              type="text"
+              class="md3-input"
+              required
+              @focus="activeField = 'username'"
+              @blur="activeField = null"
+              placeholder=" "
+              autocomplete="username"
+              name="username"
+            />
+            <label for="username" class="md3-label">Username</label>
+            <div class="md3-outline"></div>
+          </div>
+          <div v-if="errors.username" class="md3-error-message">
+            <Icon icon="mdi:alert-circle" class="md3-error-icon" />
+            <span>{{ typeof errors.username === 'string' ? errors.username : errors.username[0] }}</span>
+          </div>
+        </div>
+
         <!-- Password Field -->
         <div class="md3-field-container">
           <div class="md3-text-field" :class="{
@@ -170,7 +198,8 @@ const authStore = useAuthStore()
 
 // Form state
 const email = ref('')
-const name = ref('')  // Added name field ref
+const name = ref('')  
+const username = ref('')  
 const password1 = ref('')
 const password2 = ref('')
 const activeField = ref(null)
@@ -293,6 +322,7 @@ async function handleSubmit() {
     const formData = new FormData();
     formData.append('email', email.value);
     formData.append('name', name.value);
+    formData.append('username', username.value);
     formData.append('password1', password1.value);
     formData.append('password2', password2.value);
     
