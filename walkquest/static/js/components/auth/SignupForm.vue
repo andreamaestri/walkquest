@@ -8,7 +8,7 @@
       </p>
 
       <!-- Error display -->
-      <div v-if="error" class="md3-error-message">
+      <div v-if="error" class="md3-error-message error-container">
         <Icon icon="mdi:alert-circle" class="md3-error-icon" />
         <span>{{ error }}</span>
       </div>
@@ -16,6 +16,7 @@
       <form @submit.prevent="handleSubmit" class="auth-form">
         <!-- Added hidden CSRF field -->
         <input type="hidden" name="csrfmiddlewaretoken" :value="csrfToken" />
+        
         <!-- Email Field -->
         <div class="md3-field-container">
           <div class="md3-text-field" :class="{
@@ -36,7 +37,10 @@
             <label for="email" class="md3-label">Email</label>
             <div class="md3-outline"></div>
           </div>
-          <div v-if="errors.email" class="md3-error-message">{{ errors.email }}</div>
+          <div v-if="errors.email" class="md3-error-message">
+            <Icon icon="mdi:alert-circle" class="md3-error-icon" />
+            <span>{{ typeof errors.email === 'string' ? errors.email : errors.email[0] }}</span>
+          </div>
         </div>
 
         <!-- Password Field -->
@@ -67,7 +71,10 @@
             </button>
             <div class="md3-outline"></div>
           </div>
-          <div v-if="errors.password1" class="md3-error-message">{{ errors.password1 }}</div>
+          <div v-if="errors.password1" class="md3-error-message">
+            <Icon icon="mdi:alert-circle" class="md3-error-icon" />
+            <span>{{ typeof errors.password1 === 'string' ? errors.password1 : errors.password1[0] }}</span>
+          </div>
         </div>
 
         <!-- Confirm Password Field -->
@@ -98,7 +105,10 @@
             </button>
             <div class="md3-outline"></div>
           </div>
-          <div v-if="errors.password2" class="md3-error-message">{{ errors.password2 }}</div>
+          <div v-if="errors.password2" class="md3-error-message">
+            <Icon icon="mdi:alert-circle" class="md3-error-icon" />
+            <span>{{ typeof errors.password2 === 'string' ? errors.password2 : errors.password2[0] }}</span>
+          </div>
         </div>
 
         <div class="form-actions">
@@ -140,9 +150,29 @@ const response = reactive({ fetching: false, content: null })
 
 // Add a CSRF token ref and a function to get the token
 const csrfToken = ref('')
+
 onMounted(() => {
   getCsrfToken()
+  
+  // Ensure we fetch a fresh CSRF token before rendering the form
+  refreshCSRFToken()
 })
+
+async function refreshCSRFToken() {
+  try {
+    // Make a quick GET request to the signup endpoint to refresh the CSRF token
+    const response = await fetch('/accounts/signup/', {
+      method: 'GET',
+      credentials: 'same-origin',
+    });
+    
+    // After the request, the CSRF token cookie should be refreshed
+    getCsrfToken();
+  } catch (err) {
+    console.warn("Failed to refresh CSRF token:", err)
+  }
+}
+
 function getCsrfToken() {
   // Try to get from meta tag
   const metaToken = document.querySelector('meta[name="csrf-token"]')
@@ -150,48 +180,118 @@ function getCsrfToken() {
     csrfToken.value = metaToken.getAttribute('content')
     return
   }
+  
   // Try to get from cookie (if not httpOnly)
-  const name = 'csrftoken='
-  const decodedCookie = decodeURIComponent(document.cookie)
-  const cookies = decodedCookie.split(';')
-  for (let cookie of cookies) {
-    cookie = cookie.trim()
-    if (cookie.indexOf(name) === 0) {
-      csrfToken.value = cookie.substring(name.length, cookie.length)
-      return
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
     }
+    return cookieValue;
   }
+  
+  const token = getCookie('csrftoken');
+  if (token) {
+    csrfToken.value = token;
+    return;
+  }
+  
   // Try to get from a hidden input (if present)
   const inputToken = document.querySelector('input[name="csrfmiddlewaretoken"]')
   if (inputToken) {
     csrfToken.value = inputToken.value
     return
   }
+  
   console.warn("CSRF token not found from meta, cookie, or hidden input.")
 }
 
 // Handle form submission
 async function handleSubmit() {
-  if (password2.value !== password1.value) {
-    errors.value.password2 = 'Password does not match.'
+  errors.value = {}
+  error.value = null
+  
+  // Client-side validation
+  if (password1.value !== password2.value) {
+    errors.value.password2 = 'Passwords do not match.'
     return
   }
   
-  errors.value = {}
+  if (password1.value.length < 8) {
+    errors.value.password1 = 'Password must be at least 8 characters.'
+    return
+  }
+  
+  if (!email.value) {
+    errors.value.email = 'Email is required.'
+    return
+  }
+  
   response.fetching = true
   
   try {
-    // Pass both passwords to match Django's expected format
-    await authStore.signup(email.value, password1.value, password2.value, router)
-  } catch (err) {
-    if (err.errors) {
-      errors.value = err.errors
-      response.content = { errors: err.errors }
+    // Make sure we have the latest CSRF token
+    getCsrfToken()
+    
+    // Create the form data for Django
+    const formData = new FormData();
+    formData.append('email', email.value);
+    formData.append('password1', password1.value);
+    formData.append('password2', password2.value);
+    
+    // Make a direct fetch request instead of using signUp function
+    const res = await fetch('/accounts/signup/', {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': csrfToken.value,
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      credentials: 'same-origin',
+      body: formData
+    });
+    
+    const contentType = res.headers.get('content-type');
+    
+    if (!res.ok) {
+      if (contentType && contentType.includes('application/json')) {
+        const errorData = await res.json();
+        if (errorData.errors) {
+          errors.value = errorData.errors;
+        } else {
+          error.value = errorData.message || 'Signup failed. Please try again.';
+        }
+      } else {
+        error.value = 'Signup failed. Please try again.';
+      }
+      throw new Error('Signup failed');
+    }
+    
+    if (contentType && contentType.includes('application/json')) {
+      const data = await res.json();
+      if (data.success) {
+        // Redirect to the next page after successful registration
+        await authStore.checkAuth();
+        router.push('/');
+      }
     } else {
-      error.value = err.message || 'Registration failed. Please try again.'
+      // Assume success if no JSON response but status was ok
+      await authStore.checkAuth();
+      router.push('/');
+    }
+  } catch (err) {
+    console.error('Signup error:', err);
+    if (!error.value && !Object.keys(errors.value).length) {
+      error.value = 'Registration failed. Please try again.';
     }
   } finally {
-    response.fetching = false
+    response.fetching = false;
   }
 }
 </script>
