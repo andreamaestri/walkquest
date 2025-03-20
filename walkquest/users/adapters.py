@@ -25,28 +25,36 @@ class AccountAdapter(DefaultAccountAdapter):
     
     def save_user(self, request, user, form, commit=True):
         """
-        Override save_user to ensure the username is properly set before saving
+        Override save_user to set the username field manually instead of using generate_unique_username
+        which doesn't work when ACCOUNT_USER_MODEL_USERNAME_FIELD is None
         """
-        # Get the data from the form
         data = form.cleaned_data
         email = data.get('email')
         
-        # Set the username from email if it's not set
-        if not user.username and email:
-            user.username = self.generate_unique_username([
-                email.split('@')[0],
-                'user',
-                'walkquester'
-            ])
+        # Handle username manually instead of using generate_unique_username
+        if hasattr(user, 'username') and not user.username and email:
+            # Simple way to derive username from email
+            base_username = email.split('@')[0]
+            
+            # Find a unique username
+            username = base_username
+            counter = 1
+            User = type(user)
+            while User.objects.filter(username=username).exists():
+                username = f"{base_username}{counter}"
+                counter += 1
+                
+            user.username = username
+            
+        # Pass through to the default save_user implementation
+        user = super().save_user(request, user, form, commit=False)
         
-        # Continue with the default save_user process
-        return super().save_user(request, user, form, commit)
-    
-    def format_username(self, username, email):
-        """Format username from email if username is not provided"""
-        if not username and email:
-            return email.split("@")[0]
-        return username
+        # Set any additional fields here
+        
+        if commit:
+            user.save()
+            
+        return user
     
     def login(self, request, user):
         """Just handle the login without adding message since signals handle it"""
