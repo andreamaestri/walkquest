@@ -127,8 +127,8 @@ export async function signUp(data) {
   // Django's default signup form expects 'email', 'password1', and 'password2'
   const signupData = {
     email: data.email,
-    password1: data.password,
-    password2: data.password
+    password1: data.password1,
+    password2: data.password2
   };
   return await request('POST', URLs.SIGNUP, signupData);
 }

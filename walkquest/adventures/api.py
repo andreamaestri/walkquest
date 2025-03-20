@@ -24,8 +24,8 @@ from .schemas import (
 # Set up logging
 logger = logging.getLogger(__name__)
 
-# Create companions router
-companions_router = Router(tags=["companions"])
+# Create companions router with authentication
+companions_router = Router(auth=django_auth, tags=["companions"])
 
 @companions_router.get(
     "/",
