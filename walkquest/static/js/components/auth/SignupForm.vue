@@ -45,6 +45,33 @@
           </div>
         </div>
 
+        <!-- Name Field (Optional) -->
+        <div class="md3-field-container">
+          <div class="md3-text-field" :class="{
+            'focused': activeField === 'name',
+            'filled': name,
+            'error': errors.name
+          }">
+            <input 
+              id="name"
+              v-model="name"
+              type="text"
+              class="md3-input"
+              @focus="activeField = 'name'"
+              @blur="activeField = null"
+              placeholder=" "
+              autocomplete="name"
+              name="name"
+            />
+            <label for="name" class="md3-label">Full Name (Optional)</label>
+            <div class="md3-outline"></div>
+          </div>
+          <div v-if="errors.name" class="md3-error-message">
+            <Icon icon="mdi:alert-circle" class="md3-error-icon" />
+            <span>{{ typeof errors.name === 'string' ? errors.name : errors.name[0] }}</span>
+          </div>
+        </div>
+
         <!-- Password Field -->
         <div class="md3-field-container">
           <div class="md3-text-field" :class="{
@@ -143,6 +170,7 @@ const authStore = useAuthStore()
 
 // Form state
 const email = ref('')
+const name = ref('')  // Added name field ref
 const password1 = ref('')
 const password2 = ref('')
 const activeField = ref(null)
@@ -261,17 +289,25 @@ async function handleSubmit() {
     
     console.log('Submitting form with email:', email.value);
     
-    // Try using URLSearchParams instead of FormData
-    const formData = new URLSearchParams();
+    // Use FormData which is more robust for form submissions
+    const formData = new FormData();
     formData.append('email', email.value);
+    formData.append('name', name.value);
     formData.append('password1', password1.value);
     formData.append('password2', password2.value);
     
-    // Make a direct fetch request
+    // Add redirect field if needed by Django allauth
+    if (window.location.search.includes('next=')) {
+      const nextUrl = new URLSearchParams(window.location.search).get('next');
+      if (nextUrl) {
+        formData.append('next', nextUrl);
+      }
+    }
+    
+    // Make a direct fetch request - use multipart/form-data which Django expects
     const res = await fetch('/accounts/signup/', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
         'X-CSRFToken': csrfToken.value,
         'X-Requested-With': 'XMLHttpRequest'
       },
@@ -289,15 +325,53 @@ async function handleSubmit() {
           const errorData = await res.json();
           console.log('Server error response:', errorData);
           
+          // Handle different error response formats
           if (errorData.errors) {
             errors.value = errorData.errors;
+          } else if (errorData.form && errorData.form.errors) {
+            // Handle Django form errors format
+            errors.value = errorData.form.errors;
+          } else if (typeof errorData === 'object') {
+            // Handle direct error object from Django
+            errors.value = errorData;
           } else {
             error.value = errorData.message || 'Signup failed. Please try again.';
           }
         } else {
+          // For HTML responses, we need to extract possible error messages
           const errorText = await res.text();
           console.log('Error response text (first 200 chars):', errorText.substring(0, 200));
-          error.value = `Signup failed (${res.status}). Please try again.`;
+          
+          try {
+            // Try to extract error messages from Django's HTML response
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(errorText, 'text/html');
+            
+            // Look for error elements - Django typically puts these in .errorlist elements
+            const errorLists = doc.querySelectorAll('.errorlist li');
+            if (errorLists && errorLists.length > 0) {
+              // Group errors by field
+              Array.from(errorLists).forEach(item => {
+                // Try to determine which field this error belongs to
+                const fieldName = item.closest('[id^="div_id_"]')?.id.replace('div_id_', '') || 'unknown';
+                if (!errors.value[fieldName]) errors.value[fieldName] = [];
+                if (Array.isArray(errors.value[fieldName])) {
+                  errors.value[fieldName].push(item.textContent);
+                } else {
+                  errors.value[fieldName] = [item.textContent];
+                }
+              });
+              
+              if (Object.keys(errors.value).length === 0) {
+                error.value = 'Please correct the errors in the form.';
+              }
+            } else {
+              error.value = `Signup failed (${res.status}). Please try again.`;
+            }
+          } catch (parseError) {
+            console.error('Error parsing HTML response:', parseError);
+            error.value = `Signup failed (${res.status}). Please try again.`;
+          }
         }
       } catch (e) {
         console.error('Error parsing server response:', e);
