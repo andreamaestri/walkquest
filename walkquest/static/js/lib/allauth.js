@@ -221,7 +221,11 @@ export async function getConfig() {
 
 // Change password
 export async function changePassword(data) {
-  return await request('POST', URLs.CHANGE_PASSWORD, data);
+  return await request('POST', URLs.CHANGE_PASSWORD, {
+    oldpassword: data.oldPassword,
+    password1: data.newPassword,
+    password2: data.newPassword
+  });
 }
 
 // Request password reset
@@ -231,7 +235,10 @@ export async function requestPasswordReset(email) {
 
 // Reset password with token
 export async function resetPassword(data) {
-  return await request('POST', URLs.PASSWORD_RESET, data);
+  return await request('POST', `${URLs.PASSWORD_RESET}${data.uidb36}/${data.key}/`, {
+    password1: data.password,
+    password2: data.password
+  });
 }
 
 // Get email addresses for current user
@@ -246,17 +253,17 @@ export async function addEmail(email) {
 
 // Delete an email address
 export async function deleteEmail(email) {
-  return await request('DELETE', URLs.EMAIL, { email });
+  return await request('POST', URLs.EMAIL, { email, action: 'remove' });
 }
 
 // Mark an email as primary
 export async function markEmailAsPrimary(email) {
-  return await request('PATCH', URLs.EMAIL, { email, primary: true });
+  return await request('POST', URLs.EMAIL, { email, action: 'primary' });
 }
 
 // Request email verification
 export async function requestEmailVerification(email) {
-  return await request('PUT', URLs.EMAIL, { email });
+  return await request('POST', URLs.EMAIL, { email, action: 're-send-verification' });
 }
 
 // Verify email with key
