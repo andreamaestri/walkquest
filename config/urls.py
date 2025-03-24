@@ -21,11 +21,10 @@ urlpatterns = [
     # User management
     path("users/", include("walkquest.users.urls", namespace="users")),
     
-    # Standard Django allauth URLs for authentication
+    # Standard Django allauth URLs for authentication (including OAuth providers)
     path("accounts/", include("allauth.urls")),
     
-    # Headless API endpoints - updated pattern with namespace
-    path("_allauth/api/", include("allauth.headless.api.urls")),
+    # Headless API endpoints
     path("_allauth/", include("allauth.headless.urls")),
     
     # Include walkquest URLs for all API routes
