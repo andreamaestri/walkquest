@@ -24,8 +24,8 @@ urlpatterns = [
     # Standard Django allauth URLs for authentication (including OAuth providers)
     path("accounts/", include("allauth.urls")),
     
-    # Headless API endpoints
-    path("_allauth/", include("allauth.headless.urls")),
+    # Headless API endpoints - Updated to match the correct pattern
+    path("_allauth/api/v1/", include("allauth.headless.urls")),
     
     # Include walkquest URLs for all API routes
     path("", include("walkquest.urls")),

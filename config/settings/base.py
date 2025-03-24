@@ -430,7 +430,7 @@ HEADLESS_FRONTEND_URLS = {
 }
 
 # Allauth Headless Configuration
-HEADLESS_ONLY = False  # Set to True if you want to disable traditional views completely
+HEADLESS_ONLY = True  # Set to True if you want to disable traditional views completely
 HEADLESS_API_PREFIX = "_allauth/api/"  # Updated to match our URL configuration
 HEADLESS_API_URL_VERSION = "v1"  # Explicitly set the API version
 
