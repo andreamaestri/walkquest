@@ -7,7 +7,6 @@ from django.views import defaults as default_views
 from django.views.generic import TemplateView
 from walkquest.walks.views import HomePageView 
 from walkquest.views import index, legacy_walk_view
-from allauth.headless.urls import app_urlpatterns, browser_urlpatterns
 
 urlpatterns = [
     path("", HomePageView.as_view(), name="home"),
@@ -26,8 +25,8 @@ urlpatterns = [
     path("accounts/", include("allauth.urls")),
     
     # Headless API endpoints - client-specific routes with unique namespaces
-    path("_allauth/browser/v1/", include((browser_urlpatterns, "headless_browser"))),
-    path("_allauth/api/v1/", include((app_urlpatterns, "headless_api"))),
+    path("_allauth/browser/v1/", include(("allauth.headless.urls", "headless_browser"))),
+    path("_allauth/api/v1/", include(("allauth.headless.urls", "headless_api"))),
     
     # Include walkquest URLs for all API routes
     path("", include("walkquest.urls")),
