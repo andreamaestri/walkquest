@@ -402,23 +402,32 @@ CELERY_TASK_SEND_SENT_EVENT = True
 # django-allauth
 # ------------------------------------------------------------------------------
 ACCOUNT_ALLOW_REGISTRATION = env.bool("DJANGO_ACCOUNT_ALLOW_REGISTRATION", True)
+
+# Update authentication method to use new format (settings.ACCOUNT_LOGIN_METHODS)
 # https://docs.allauth.org/en/latest/account/configuration.html
-ACCOUNT_AUTHENTICATION_METHOD = "email"
+ACCOUNT_LOGIN_METHODS = {'email'}  # Use email login method
+
 # https://docs.allauth.org/en/latest/account/configuration.html
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_USERNAME_REQUIRED = True  # Changed from False to True
 ACCOUNT_USER_MODEL_USERNAME_FIELD = "username"  # Changed from None to "username"
+
 # https://docs.allauth.org/en/latest/account/configuration.html
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+
 # https://docs.allauth.org/en/latest/account/configuration.html
 ACCOUNT_ADAPTER = "walkquest.users.adapters.AccountAdapter"
+
 # https://docs.allauth.org/en/latest/account/forms.html
 ACCOUNT_FORMS = {
     "signup": "walkquest.users.forms.UserSignupForm",
-    "change_password": "walkquest.users.forms.CustomPasswordChangeForm"
+    "change_password": "walkquest.users.forms.CustomPasswordChangeForm",
+    "login": "walkquest.users.forms.UserLoginForm",
 }
+
 # https://docs.allauth.org/en/latest/socialaccount/configuration.html
 SOCIALACCOUNT_ADAPTER = "walkquest.users.adapters.SocialAccountAdapter"
+
 # https://docs.allauth.org/en/latest/socialaccount/configuration.html
 SOCIALACCOUNT_FORMS = {"signup": "walkquest.users.forms.UserSocialSignupForm"}
 
