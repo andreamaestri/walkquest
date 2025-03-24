@@ -83,6 +83,47 @@ async function request(method, path, data) {
   
   // Add session token if available (for app clients)
   const sessionToken = localStorage.getItem('allauth_session_token');
+  if (sessionToken) {
+    options.headers['Authorization'] = `Token ${sessionToken}`;
+  }
+  
+  // Add JSON body for methods that support it
+  if (data && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
+    options.headers['Content-Type'] = 'application/json';
+    options.body = JSON.stringify(data);
+  }
+  
+  try {
+    // Make the actual request
+    const url = `${BASE_URL}${path}`;
+    const response = await fetch(url, options);
+    
+    // Try to parse as JSON, fall back to text if not possible
+    let responseData;
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      responseData = await response.json();
+    } else {
+      responseData = {
+        text: await response.text()
+      };
+    }
+    
+    // Add status and ok properties to the response data
+    responseData.status = response.status;
+    responseData.ok = response.ok;
+    
+    return responseData;
+  } catch (error) {
+    // Handle network errors
+    return {
+      status: 0,
+      ok: false,
+      error: true,
+      message: error.message || 'Network error'
+    };
+  }
+}
 
 // Login with email and password
 export async function login(data) {
