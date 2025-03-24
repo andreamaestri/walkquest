@@ -403,6 +403,36 @@ CELERY_TASK_SEND_SENT_EVENT = True
 # ------------------------------------------------------------------------------
 ACCOUNT_ALLOW_REGISTRATION = env.bool("DJANGO_ACCOUNT_ALLOW_REGISTRATION", True)
 
+# Allauth Headless Configuration
+HEADLESS_FRONTEND_URLS = {
+    "account_confirm_email": env("FRONTEND_URL", default="http://localhost:5173") + "/account/verify-email/{key}",
+    "account_reset_password": env("FRONTEND_URL", default="http://localhost:5173") + "/account/password/reset",
+    "account_reset_password_from_key": env("FRONTEND_URL", default="http://localhost:5173") + "/account/password/reset/key/{key}",
+    "account_signup": env("FRONTEND_URL", default="http://localhost:5173") + "/account/signup"
+}
+
+HEADLESS_ONLY = True  # Disable traditional views completely
+
+# Update the API prefix to match our URL configuration
+HEADLESS_API_PREFIX = "_allauth/api/v1/"
+
+# Update installed apps to ensure correct order and dependencies
+INSTALLED_APPS = [
+    app for app in INSTALLED_APPS if app not in [
+        "allauth.account",
+        "allauth.headless",
+        "allauth.mfa",
+        "allauth.socialaccount",
+    ]
+]
+
+INSTALLED_APPS.extend([
+    "allauth.account",
+    "allauth.headless",
+    "allauth.mfa",
+    "allauth.socialaccount",
+])
+
 # Update authentication method to use new format (settings.ACCOUNT_LOGIN_METHODS)
 # https://docs.allauth.org/en/latest/account/configuration.html
 ACCOUNT_LOGIN_METHODS = {'email'}  # Use email login method

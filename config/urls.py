@@ -21,36 +21,28 @@ urlpatterns = [
     # User management
     path("users/", include("walkquest.users.urls", namespace="users")),
     
-    # Standard Django allauth URLs for authentication (including OAuth providers)
-    path("accounts/", include("allauth.urls")),
+    # Allauth URLs with unique namespaces
+    path("accounts/", include("allauth.urls")),  # Traditional URLs (disabled when HEADLESS_ONLY=True)
     
-    # Headless API endpoints - client-specific routes with unique namespaces
-    path("_allauth/browser/v1/", include(("allauth.headless.urls", "headless_browser"))),
-    path("_allauth/api/v1/", include(("allauth.headless.urls", "headless_api"))),
+    # API endpoints for headless allauth
+    path("_allauth/api/v1/", include(("allauth.headless.urls", "api_v1"))),
     
-    # Include walkquest URLs for all API routes
+    # Include walkquest URLs
     path("", include("walkquest.urls")),
     
-    # Add a URL pattern for /walk/<slug> format to match Vue router - using walk_id parameter
+    # Walk URLs
     path("walk/<slug:walk_id>/", index, name="walk-detail"),
-    
-    # Direct walk slugs at root URL level
     path("<slug:walk_id>/", index, name="walk-detail-by-slug"),
-    
-    # Legacy UUID walk pages with redirect
     path("walk/<uuid:id>/", legacy_walk_view, name="walk-detail-legacy"),
     
-    # Media files
+    # Media and static files
     *static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT),
     path("__reload__/", include("django_browser_reload.urls")),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 if settings.DEBUG:
-    # Static file serving when using Vite
+    # Debug configurations
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
-
-    # This allows the error pages to be debugged during development, just visit
-    # these url in browser to see how these error pages look like.
     urlpatterns += [
         path(
             "400/",
@@ -71,5 +63,4 @@ if settings.DEBUG:
     ]
     if "debug_toolbar" in settings.INSTALLED_APPS:
         import debug_toolbar
-
         urlpatterns = [path("__debug__/", include(debug_toolbar.urls))] + urlpatterns
