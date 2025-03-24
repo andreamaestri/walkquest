@@ -23,7 +23,10 @@ urlpatterns = [
     
     # Standard Django allauth URLs for authentication
     path("accounts/", include("allauth.urls")),
-    path("_allauth/", include("allauth.headless.urls")),  # Headless endpoints
+    
+    # Headless API endpoints - updated pattern with namespace
+    path("_allauth/api/", include("allauth.headless.api.urls")),
+    path("_allauth/", include("allauth.headless.urls")),
     
     # Include walkquest URLs for all API routes
     path("", include("walkquest.urls")),

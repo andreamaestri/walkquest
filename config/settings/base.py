@@ -345,7 +345,7 @@ LOGGING = {
     "disable_existing_loggers": False,
     "formatters": {
         "verbose": {
-            "format": "%(levelname)s %(asctime)s %(module)s %(process)d %(thread)d %(message)s",
+            "format": "%(levelname)s %(asctime)s %(module)s %(process%d %(thread)d %(message)s",
         },
     },
     "handlers": {
@@ -431,7 +431,8 @@ HEADLESS_FRONTEND_URLS = {
 
 # Allauth Headless Configuration
 HEADLESS_ONLY = False  # Set to True if you want to disable traditional views completely
-HEADLESS_API_PREFIX = "_allauth/"  # This matches our URL configuration
+HEADLESS_API_PREFIX = "_allauth/api/"  # Updated to match our URL configuration
+HEADLESS_API_URL_VERSION = "v1"  # Explicitly set the API version
 
 # Django Ninja API settings
 NINJA_JWT = {

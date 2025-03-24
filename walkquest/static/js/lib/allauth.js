@@ -5,17 +5,17 @@ const BASE_URL = '';
 
 // URLs for different endpoints - using the headless API
 export const URLs = Object.freeze({
-  // Browser endpoints (for web applications)
-  CONFIG: '/_allauth/browser/v1/config/',
-  LOGIN: '/_allauth/browser/v1/auth/login/',
-  LOGOUT: '/_allauth/browser/v1/auth/logout/',
-  SIGNUP: '/_allauth/browser/v1/auth/signup/',
-  SESSION: '/_allauth/browser/v1/auth/session/',
-  VERIFY_EMAIL: '/_allauth/browser/v1/auth/verify-email/',
-  PASSWORD_RESET: '/_allauth/browser/v1/auth/password/reset/',
-  CHANGE_PASSWORD: '/_allauth/browser/v1/auth/password/change/',
-  EMAIL: '/_allauth/browser/v1/auth/email/',
-  PROVIDERS: '/_allauth/browser/v1/auth/providers/',
+  // Django Allauth headless API endpoints 
+  CONFIG: '/_allauth/api/v1/config/',
+  LOGIN: '/_allauth/api/v1/auth/login/',
+  LOGOUT: '/_allauth/api/v1/auth/logout/',
+  SIGNUP: '/_allauth/api/v1/auth/signup/',
+  SESSION: '/_allauth/api/v1/auth/session/',
+  VERIFY_EMAIL: '/_allauth/api/v1/auth/verify-email/',
+  PASSWORD_RESET: '/_allauth/api/v1/auth/password/reset/',
+  CHANGE_PASSWORD: '/_allauth/api/v1/auth/password/change/',
+  EMAIL: '/_allauth/api/v1/auth/email/',
+  PROVIDERS: '/_allauth/api/v1/auth/providers/',
   
   // Legacy endpoints as fallback
   LEGACY_LOGIN: '/accounts/login/',
