@@ -11,10 +11,10 @@ export const URLs = Object.freeze({
   LOGOUT: '/_allauth/api/v1/auth/logout/',
   SIGNUP: '/_allauth/api/v1/auth/signup/',
   SESSION: '/_allauth/api/v1/auth/session/',
-  VERIFY_EMAIL: '/_allauth/api/v1/auth/verify-email/',
+  VERIFY_EMAIL: '/_allauth/api/v1/auth/email/verify/',
   PASSWORD_RESET: '/_allauth/api/v1/auth/password/reset/',
   CHANGE_PASSWORD: '/_allauth/api/v1/auth/password/change/',
-  EMAIL: '/_allauth/api/v1/auth/email/',
+  EMAIL: '/_allauth/api/v1/account/email/',
   PROVIDERS: '/_allauth/api/v1/auth/providers/',
   
   // Legacy endpoints as fallback

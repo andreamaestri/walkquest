@@ -42,9 +42,9 @@ export function useAuth() {
       
       if (response.status === 200) {
         // Our endpoint returns is_authenticated and user object
-        if (response.is_authenticated && response.user) {
+        if (response.meta && response.meta.is_authenticated && response.data && response.data.user) {
           user.isAuthenticated = true;
-          user.email = response.user.email;
+          user.email = response.data.user.email;
         } else {
           user.isAuthenticated = false;
           user.email = null;
@@ -89,8 +89,8 @@ export function useAuth() {
         await checkAuthStatus();
         return { success: true };
       } else {
-        if (response.form) {
-          const errors = Object.values(response.form)
+        if (response.data && response.data.form) {
+          const errors = Object.values(response.data.form)
             .filter(field => field.errors?.length)
             .map(field => field.errors[0]);
           user.error = errors.length ? errors[0] : 'Login failed';
@@ -113,14 +113,19 @@ export function useAuth() {
     user.error = null;
     
     try {
-      const response = await allauth.signUp({ email, password });
+      // Format the signup data according to django-allauth requirements
+      const response = await allauth.signUp({ 
+        email, 
+        password1: password, 
+        password2: password 
+      });
       
       if (response.status === 201 || response.status === 200) {
         await checkAuthStatus();
         return { success: true };
       } else {
-        if (response.form) {
-          const errors = Object.values(response.form)
+        if (response.data && response.data.form) {
+          const errors = Object.values(response.data.form)
             .filter(field => field.errors?.length)
             .map(field => field.errors[0]);
           user.error = errors.length ? errors[0] : 'Signup failed';
