@@ -201,6 +201,14 @@ export const useAuthStore = defineStore('auth', {
           }
         }
         
+        // Check if the server requested a redirect
+        if (data.redirect_to) {
+          console.log('Redirecting to:', data.redirect_to);
+          // Perform the redirect
+          window.location.href = data.redirect_to;
+          return true;
+        }
+        
         // Check authentication state after signup
         await this.checkAuth();
         this.showSnackbar('Account created successfully!');

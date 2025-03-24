@@ -3,18 +3,25 @@
 // Base URL for allauth API
 const BASE_URL = '';
 
-// URLs for different endpoints
+// URLs for different endpoints - using the headless API
 export const URLs = Object.freeze({
-  CONFIG: '/accounts/config/',
-  LOGIN: '/accounts/login/',
-  LOGOUT: '/accounts/logout/',
-  SIGNUP: '/accounts/signup/',
-  SESSION: '/users/api/auth-events/',
-  VERIFY_EMAIL: '/accounts/email/verify/',
-  PASSWORD_RESET: '/accounts/password/reset/',
-  CHANGE_PASSWORD: '/accounts/password/change/',
-  EMAIL: '/accounts/email/',
-  PROVIDERS: '/accounts/social/providers/',
+  // Browser endpoints (for web applications)
+  CONFIG: '/_allauth/browser/v1/config/',
+  LOGIN: '/_allauth/browser/v1/auth/login/',
+  LOGOUT: '/_allauth/browser/v1/auth/logout/',
+  SIGNUP: '/_allauth/browser/v1/auth/signup/',
+  SESSION: '/_allauth/browser/v1/auth/session/',
+  VERIFY_EMAIL: '/_allauth/browser/v1/auth/verify-email/',
+  PASSWORD_RESET: '/_allauth/browser/v1/auth/password/reset/',
+  CHANGE_PASSWORD: '/_allauth/browser/v1/auth/password/change/',
+  EMAIL: '/_allauth/browser/v1/auth/email/',
+  PROVIDERS: '/_allauth/browser/v1/auth/providers/',
+  
+  // Legacy endpoints as fallback
+  LEGACY_LOGIN: '/accounts/login/',
+  LEGACY_LOGOUT: '/accounts/logout/',
+  LEGACY_SIGNUP: '/accounts/signup/',
+  LEGACY_SESSION: '/users/api/auth-events/',
 });
 
 // Get CSRF token from cookies or meta tag
@@ -74,100 +81,127 @@ async function request(method, path, data) {
     options.headers['X-CSRFToken'] = csrfToken;
   }
   
-  if (data) {
-    if (method === 'GET') {
-      // Add query params for GET requests
-      const params = new URLSearchParams(data);
-      path = `${path}?${params}`;
-    } else {
-      // Add body for non-GET requests
-      options.body = JSON.stringify(data);
-      options.headers['Content-Type'] = 'application/json';
+  // Add session token if available (for app clients)
+  const sessionToken = localStorage.getItem('allauth_session_token');
+
+// Login with email and password
+export async function login(data) {
+  // Prepare data for JSON submission to headless API
+  const loginData = {
+    login: data.email,
+    password: data.password
+  };
+  
+  // Add remember me if provided
+  if (data.remember) {
+    loginData.remember = data.remember;
+  }
+  
+  // Use the request function which handles CSRF and other headers
+  const result = await request('POST', URLs.LOGIN, loginData);
+  
+  // Handle authentication flows according to the headless API spec
+  if (result.status === 401 || result.status === 410) {
+    // Authentication required or re-authentication required
+    console.log('Authentication flow required:', result.meta?.flows);
+    
+    // Check for specific flows that need to be handled
+    if (result.meta && result.meta.flows) {
+      // Email verification flow
+      if (result.meta.flows.verify_email) {
+        console.log('Email verification required');
+        result.email_verification_needed = true;
+      }
+      
+      // MFA authentication flow
+      if (result.meta.flows.mfa_authenticate) {
+        console.log('MFA authentication required');
+        result.mfa_required = true;
+      }
     }
   }
   
+  return result;
+}
+
+// Signup with email and password
+export async function signUp(data) {
+  // Prepare data for JSON submission to headless API
+  const signupData = {
+    email: data.email,
+    password1: data.password1,
+    password2: data.password2,
+    username: data.username || data.email.split('@')[0] // Use provided username or generate from email
+  };
+  
+  // Add first_name and last_name if provided
+  if (data.first_name) signupData.first_name = data.first_name;
+  if (data.last_name) signupData.last_name = data.last_name;
+  
+  // Add any additional fields that were passed
+  if (data.next) signupData.next = data.next;
+  
+  // Use the request function which handles CSRF and other headers
   try {
-    // First, get a CSRF token if we don't have one
-    if (!csrfToken && method !== 'GET') {
-      await fetch(path, { 
-        method: 'GET',
-        credentials: 'same-origin'
-      });
-      // Now we should have a CSRF token in the cookies
-      const newToken = getCsrfToken();
-      if (newToken) {
-        options.headers['X-CSRFToken'] = newToken;
+    const result = await request('POST', URLs.SIGNUP, signupData);
+    
+    // Handle authentication flows according to the headless API spec
+    if (result.status === 401 || result.status === 410) {
+      // Authentication required or re-authentication required
+      console.log('Authentication flow required:', result.meta?.flows);
+      
+      // Check for specific flows that need to be handled
+      if (result.meta && result.meta.flows) {
+        // Email verification flow
+        if (result.meta.flows.verify_email) {
+          console.log('Email verification required');
+          result.email_verification_needed = true;
+        }
+        
+        // MFA authentication flow
+        if (result.meta.flows.mfa_authenticate) {
+          console.log('MFA authentication required');
+          result.mfa_required = true;
+        }
+        
+        // Provider signup flow
+        if (result.meta.flows.provider_signup) {
+          console.log('Provider signup required');
+          result.provider_signup_required = true;
+        }
       }
     }
-
-    const response = await fetch(`${BASE_URL}${path}`, options);
     
-    // Check if response is JSON
-    const contentType = response.headers.get('content-type');
-    if (contentType && contentType.includes('application/json')) {
-      const result = await response.json();
+    // Handle successful signup
+    if (result.status === 200 || result.status === 201) {
+      // Check if the response contains a location field indicating a redirect
+      if (result.location) {
+        console.log('Server requested redirect to:', result.location);
+        result.redirect_to = result.location;
+      }
       
-      // If there are messages, they will be in window.djangoMessages
-      // The auth store will handle showing them via snackbar
-
-      // Dispatch auth change event if authentication state changed
-      if (response.status === 401 || 
-          response.status === 410 || 
-          (response.status === 200 && result.meta?.is_authenticated !== undefined)) {
+      // Dispatch auth change event if we're authenticated
+      if (result.meta && result.meta.is_authenticated) {
         const event = new CustomEvent('allauth.auth.change', { 
           detail: {
-            ...result,
-            statusCode: response.status
+            is_authenticated: true,
+            user: result.user || { email: data.email },
+            statusCode: result.status
           }
         });
         document.dispatchEvent(event);
       }
-      
-      return {
-        ...result,
-        status: response.status
-      };
-    } else {
-      // For non-JSON responses, check for Django messages in the HTML
-      const text = await response.text();
-      
-      // Simple success response with status
-      return {
-        status: response.status,
-        message: response.ok ? 'Operation successful' : 'Operation failed',
-        html: text
-      };
     }
+    
+    return result;
   } catch (error) {
     console.error('API request error:', error);
-    // Ensure errors are also shown in snackbar via auth store
     return {
       status: 500,
       message: error.message || 'Failed to connect to server',
       error: true
     };
   }
-}
-
-// Login with email and password
-export async function login(data) {
-  // Django's default login form expects 'login' for the email/username field
-  const loginData = {
-    login: data.email,
-    password: data.password
-  };
-  return await request('POST', URLs.LOGIN, loginData);
-}
-
-// Signup with email and password
-export async function signUp(data) {
-  // Django's default signup form expects 'email', 'password1', and 'password2'
-  const signupData = {
-    email: data.email,
-    password1: data.password1,
-    password2: data.password2
-  };
-  return await request('POST', URLs.SIGNUP, signupData);
 }
 
 // Logout the current user

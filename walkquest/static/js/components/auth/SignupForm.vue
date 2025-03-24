@@ -318,117 +318,139 @@ async function handleSubmit() {
     
     console.log('Submitting form with email:', email.value);
     
-    // Use FormData which is more robust for form submissions
-    const formData = new FormData();
-    formData.append('email', email.value);
-    formData.append('name', name.value);
-    formData.append('username', username.value);
-    formData.append('password1', password1.value);
-    formData.append('password2', password2.value);
+    // Prepare data for submission
+    const signupData = {
+      email: email.value,
+      username: username.value || email.value.split('@')[0],
+      password1: password1.value,
+      password2: password2.value
+    };
     
-    // Add redirect field if needed by Django allauth
-    if (window.location.search.includes('next=')) {
-      const nextUrl = new URLSearchParams(window.location.search).get('next');
-      if (nextUrl) {
-        formData.append('next', nextUrl);
+    // Add name if provided
+    if (name.value) {
+      // Split name into first_name and last_name if it contains a space
+      const nameParts = name.value.trim().split(/\s+/);
+      if (nameParts.length > 1) {
+        signupData.first_name = nameParts[0];
+        signupData.last_name = nameParts.slice(1).join(' ');
+      } else {
+        signupData.first_name = name.value;
       }
     }
     
-    // Make a direct fetch request - use multipart/form-data which Django expects
-    const res = await fetch('/accounts/signup/', {
+    // Add redirect field if needed
+    if (window.location.search.includes('next=')) {
+      const nextUrl = new URLSearchParams(window.location.search).get('next');
+      if (nextUrl) {
+        signupData.next = nextUrl;
+      }
+    }
+    
+    // Use the headless API endpoint
+    const res = await fetch('/_allauth/browser/v1/auth/signup/', {
       method: 'POST',
       headers: {
+        'Content-Type': 'application/json',
         'X-CSRFToken': csrfToken.value,
         'X-Requested-With': 'XMLHttpRequest'
       },
       credentials: 'same-origin',
-      body: formData
+      body: JSON.stringify(signupData)
     });
     
     console.log('Response status:', res.status);
     
-    const contentType = res.headers.get('content-type');
+    // Always try to parse as JSON first
+    let data;
+    try {
+      data = await res.json();
+      console.log('Response data:', data);
+    } catch (e) {
+      console.error('Error parsing JSON response:', e);
+      // If not JSON, get the text
+      const text = await res.text();
+      data = { message: text };
+    }
     
-    if (!res.ok) {
-      try {
-        if (contentType && contentType.includes('application/json')) {
-          const errorData = await res.json();
-          console.log('Server error response:', errorData);
-          
-          // Handle different error response formats
-          if (errorData.errors) {
-            errors.value = errorData.errors;
-          } else if (errorData.form && errorData.form.errors) {
-            // Handle Django form errors format
-            errors.value = errorData.form.errors;
-          } else if (typeof errorData === 'object') {
-            // Handle direct error object from Django
-            errors.value = errorData;
-          } else {
-            error.value = errorData.message || 'Signup failed. Please try again.';
-          }
-        } else {
-          // For HTML responses, we need to extract possible error messages
-          const errorText = await res.text();
-          console.log('Error response text (first 200 chars):', errorText.substring(0, 200));
-          
-          try {
-            // Try to extract error messages from Django's HTML response
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(errorText, 'text/html');
-            
-            // Look for error elements - Django typically puts these in .errorlist elements
-            const errorLists = doc.querySelectorAll('.errorlist li');
-            if (errorLists && errorLists.length > 0) {
-              // Group errors by field
-              Array.from(errorLists).forEach(item => {
-                // Try to determine which field this error belongs to
-                const fieldName = item.closest('[id^="div_id_"]')?.id.replace('div_id_', '') || 'unknown';
-                if (!errors.value[fieldName]) errors.value[fieldName] = [];
-                if (Array.isArray(errors.value[fieldName])) {
-                  errors.value[fieldName].push(item.textContent);
-                } else {
-                  errors.value[fieldName] = [item.textContent];
-                }
-              });
-              
-              if (Object.keys(errors.value).length === 0) {
-                error.value = 'Please correct the errors in the form.';
-              }
-            } else {
-              error.value = `Signup failed (${res.status}). Please try again.`;
-            }
-          } catch (parseError) {
-            console.error('Error parsing HTML response:', parseError);
-            error.value = `Signup failed (${res.status}). Please try again.`;
-          }
+    // Handle authentication flow responses according to the headless API spec
+    if (res.status === 401 || res.status === 410) {
+      // Authentication required or re-authentication required
+      if (data.meta && data.meta.flows) {
+        // Handle the authentication flows
+        if (data.meta.flows.verify_email) {
+          // Email verification required
+          authStore.needsEmailVerification = true;
+          authStore.showSnackbar('Please verify your email address to continue.');
+          router.push('/verify-email');
+          return;
         }
-      } catch (e) {
-        console.error('Error parsing server response:', e);
-        error.value = 'Failed to process server response';
+        
+        // Handle other flows as needed
+        if (data.meta.flows.mfa_authenticate) {
+          // MFA required
+          router.push('/mfa');
+          return;
+        }
       }
-      
+    }
+    
+    // Handle error responses
+    if (!res.ok) {
+      if (data.errors) {
+        // Map errors to form fields
+        errors.value = data.errors;
+      } else if (data.form && data.form.errors) {
+        errors.value = data.form.errors;
+      } else if (data.message) {
+        error.value = data.message;
+      } else {
+        error.value = 'Signup failed. Please try again.';
+      }
       throw new Error('Signup failed');
     }
     
-    if (contentType && contentType.includes('application/json')) {
-      const data = await res.json();
-      console.log('Success response:', data);
+    // Handle successful signup
+    if (res.status === 200 || res.status === 201) {
+      // Check if the server wants us to redirect somewhere
+      if (data.location) {
+        console.log('Server requested redirect to:', data.location);
+        // Redirect to the location specified by the server
+        window.location.href = data.location;
+        return;
+      }
       
-      if (data.success) {
+      // Check if we're authenticated now
+      if (data.meta && data.meta.is_authenticated) {
         // Show success message
         authStore.showSnackbar('Account created successfully!');
         
-        // Redirect to the next page after successful registration
-        await authStore.checkAuth();
-        router.push('/');
+        // Update auth store with user data if available
+        if (data.user) {
+          authStore.user = data.user;
+          authStore.isAuthenticated = true;
+          authStore.userDataLoaded = true;
+        } else {
+          // Force a fresh auth check to get user data
+          await authStore.forceAuthCheck();
+        }
+        
+        // Redirect to home or next page
+        router.push(authStore.getRedirectPath());
+      } else {
+        // We're not authenticated yet, might need additional steps
+        // Force a fresh auth check
+        await authStore.forceAuthCheck();
+        
+        if (authStore.needsEmailVerification) {
+          router.push('/verify-email');
+        } else if (authStore.isAuthenticated) {
+          router.push(authStore.getRedirectPath());
+        } else {
+          // Something else is needed, show a generic message
+          authStore.showSnackbar('Account created. Additional steps may be required.');
+          router.push('/login');
+        }
       }
-    } else {
-      // Assume success if no JSON response but status was ok
-      console.log('Non-JSON success response received');
-      authStore.showSnackbar('Account created successfully!');
-      await authStore.checkAuth();
-      router.push('/');
     }
   } catch (err) {
     console.error('Signup error:', err);
