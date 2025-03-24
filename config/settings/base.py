@@ -425,13 +425,15 @@ SOCIALACCOUNT_FORMS = {"signup": "walkquest.users.forms.UserSocialSignupForm"}
 # Allauth Headless Configuration
 HEADLESS_FRONTEND_URLS = {
     "account_confirm_email": "/account/verify-email/{key}",
+    "account_reset_password": "/account/password/reset",
     "account_reset_password_from_key": "/account/password/reset/key/{key}",
-    "account_signup": "/account/signup",
+    "account_signup": "/account/signup"
 }
 
-# Allauth Headless Configuration
-HEADLESS_ONLY = True  # Set to True if you want to disable traditional views completely
-HEADLESS_API_PREFIX = "_allauth/api/"  # Updated to match our URL configuration
+HEADLESS_ONLY = True  # Set to True to disable traditional views completely
+
+HEADLESS_API_PREFIX = "_allauth/"  # Update to match our URL configuration
+
 HEADLESS_API_URL_VERSION = "v1"  # Explicitly set the API version
 
 # Django Ninja API settings
