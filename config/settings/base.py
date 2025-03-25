@@ -293,8 +293,6 @@ CSRF_TRUSTED_ORIGINS = [
 # ------------------------------------------------------------------------------
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
-    "",  # Vite dev server
-    "",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
     "https://solid-trout-4j64vvq9wqxh79vg-8000.app.github.dev",
