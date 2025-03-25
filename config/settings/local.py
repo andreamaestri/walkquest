@@ -35,10 +35,6 @@ SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_SAMESITE = 'Lax'
 
-# django-allauth headless configuration
-ACCOUNT_EMAIL_VERIFICATION = "optional"  # Make email verification optional in development
-ACCOUNT_EMAIL_REQUIRED = True
-
 # CORS settings for local development
 # ------------------------------------------------------------------------------
 CORS_ALLOW_ALL_ORIGINS = False  # Don't allow all origins, be explicit
@@ -107,3 +103,25 @@ if DEBUG:
         def __call__(self, request):
             return self.get_response(request)
     MIDDLEWARE.insert(0, "config.settings.local.ViteFileLoader")
+
+# EMAIL
+# ------------------------------------------------------------------------------
+# https://docs.djangoproject.com/en/dev/ref/settings/#email-backend
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+EMAIL_HOST = "localhost"
+EMAIL_PORT = 1025
+EMAIL_HOST_USER = ""
+EMAIL_HOST_PASSWORD = ""
+EMAIL_USE_TLS = False
+DEFAULT_FROM_EMAIL = "WalkQuest <noreply@walkquest.app>"
+
+# django-allauth
+# ------------------------------------------------------------------------------
+ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_AUTHENTICATION_METHOD = "email"
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 3
+ACCOUNT_CONFIRM_EMAIL_ON_GET = True
+ACCOUNT_EMAIL_CONFIRMATION_AUTHENTICATED_REDIRECT_URL = "/"
+ACCOUNT_EMAIL_CONFIRMATION_ANONYMOUS_REDIRECT_URL = "/login"

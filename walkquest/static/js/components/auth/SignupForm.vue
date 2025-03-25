@@ -365,35 +365,32 @@ async function handleSubmit() {
     
     console.log('Response status:', res.status);
     
-    // Always try to parse as JSON first
+    // Parse response data
     let data;
+    const contentType = res.headers.get('content-type');
+    
     try {
-      data = await res.json();
+      if (contentType && contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        // If not JSON, get text and wrap in object
+        const text = await res.text();
+        data = { message: text, status: res.status };
+      }
       console.log('Response data:', data);
     } catch (e) {
-      console.error('Error parsing JSON response:', e);
-      // If not JSON, get the text
-      const text = await res.text();
-      data = { message: text };
+      console.error('Error parsing response:', e);
+      throw new Error('Failed to parse server response');
     }
     
     // Handle authentication flow responses according to the headless API spec
     if (res.status === 401 || res.status === 410) {
-      // Authentication required or re-authentication required
-      if (data.meta && data.meta.flows) {
-        // Handle the authentication flows
-        if (data.meta.flows.verify_email) {
+      if (data.data?.flows) {
+        if (data.data.flows.some(flow => flow.id === 'verify_email')) {
           // Email verification required
           authStore.needsEmailVerification = true;
-          authStore.showSnackbar('Please verify your email address to continue.');
+          authStore.showSnackbar('Please check your email to verify your account.');
           router.push('/verify-email');
-          return;
-        }
-        
-        // Handle other flows as needed
-        if (data.meta.flows.mfa_authenticate) {
-          // MFA required
-          router.push('/mfa');
           return;
         }
       }
@@ -404,58 +401,30 @@ async function handleSubmit() {
       if (data.errors) {
         // Map errors to form fields
         errors.value = data.errors;
-      } else if (data.form && data.form.errors) {
-        errors.value = data.form.errors;
+      } else if (data.data?.errors) {
+        errors.value = data.data.errors;
       } else if (data.message) {
         error.value = data.message;
       } else {
         error.value = 'Signup failed. Please try again.';
       }
-      throw new Error('Signup failed');
+      return;
     }
     
     // Handle successful signup
     if (res.status === 200 || res.status === 201) {
-      // Check if the server wants us to redirect somewhere
-      if (data.location) {
-        console.log('Server requested redirect to:', data.location);
-        // Redirect to the location specified by the server
-        window.location.href = data.location;
-        return;
+      // Show success message
+      authStore.showSnackbar('Account created successfully! Please check your email to verify your account.');
+      
+      // Update auth store with user data if available
+      if (data.data?.user) {
+        authStore.user = data.data.user;
+        authStore.isAuthenticated = true;
+        authStore.userDataLoaded = true;
       }
       
-      // Check if we're authenticated now
-      if (data.meta && data.meta.is_authenticated) {
-        // Show success message
-        authStore.showSnackbar('Account created successfully!');
-        
-        // Update auth store with user data if available
-        if (data.user) {
-          authStore.user = data.user;
-          authStore.isAuthenticated = true;
-          authStore.userDataLoaded = true;
-        } else {
-          // Force a fresh auth check to get user data
-          await authStore.forceAuthCheck();
-        }
-        
-        // Redirect to home or next page
-        router.push(authStore.getRedirectPath());
-      } else {
-        // We're not authenticated yet, might need additional steps
-        // Force a fresh auth check
-        await authStore.forceAuthCheck();
-        
-        if (authStore.needsEmailVerification) {
-          router.push('/verify-email');
-        } else if (authStore.isAuthenticated) {
-          router.push(authStore.getRedirectPath());
-        } else {
-          // Something else is needed, show a generic message
-          authStore.showSnackbar('Account created. Additional steps may be required.');
-          router.push('/login');
-        }
-      }
+      // Redirect to email verification page
+      router.push('/verify-email');
     }
   } catch (err) {
     console.error('Signup error:', err);
