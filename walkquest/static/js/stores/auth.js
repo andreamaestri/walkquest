@@ -321,8 +321,8 @@ export const useAuthStore = defineStore('auth', {
         
         const csrfToken = this.getCSRFToken();
         
-        // Use the correct URL format with 'browser' client type
-        const response = await fetch('/_allauth/browser/v1/auth/session/refresh/', {
+        // Use the correct URL format with 'app' client type
+        const response = await fetch('/_allauth/app/v1/auth/session/refresh/', {
           method: 'POST',
           headers: {
             'X-CSRFToken': csrfToken,

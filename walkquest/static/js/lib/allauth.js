@@ -27,6 +27,23 @@ export const URLs = Object.freeze({
   LEGACY_SESSION: '/users/api/auth-events/',
 });
 
+// Session token storage for app client
+let sessionToken = localStorage.getItem('allauth_session_token');
+
+// Function to set session token from a response
+export function setSessionToken(token) {
+  if (token) {
+    sessionToken = token;
+    localStorage.setItem('allauth_session_token', token);
+  }
+}
+
+// Function to clear session token (e.g., on 410 response)
+export function clearSessionToken() {
+  sessionToken = null;
+  localStorage.removeItem('allauth_session_token');
+}
+
 // Get CSRF token from cookies or meta tag
 function getCsrfToken() {
   // More reliable method to get CSRF token from cookie
@@ -85,7 +102,6 @@ async function request(method, path, data) {
   }
   
   // Add session token if available (for app clients)
-  const sessionToken = localStorage.getItem('allauth_session_token');
   if (sessionToken) {
     options.headers['Authorization'] = `Token ${sessionToken}`;
   }
