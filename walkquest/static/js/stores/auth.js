@@ -245,69 +245,64 @@ export const useAuthStore = defineStore('auth', {
           console.log('Auth check response:', data);
         }
         
-        if (data) {
-          if (data.status === 200 || (data.is_authenticated !== undefined)) {
-            if (data.is_authenticated && data.user) {
-              const wasAuthenticated = this.isAuthenticated;
-              this.user = data.user;
-              this.isAuthenticated = true;
-              this.userDataLoaded = true;
-              
-              if (data.email_verification_needed) {
-                this.needsEmailVerification = true;
-              } else {
-                this.needsEmailVerification = false;
-              }
-              
-              if (!wasAuthenticated) {
-                this.setupIdleTimeout();
-              }
-              
-              if (!this.hasShownWelcome) {
-                const username = this.user.username || '';
-                const welcomeMessage = username 
-                  ? `Welcome to WalkQuest, ${username}!` 
-                  : "Welcome to WalkQuest!";
-                this.showSnackbar(welcomeMessage);
-                this.hasShownWelcome = true;
-              }
-              
-              this.processDjangoMessages();
-              return true;
-            }
+        // Handle 401 with authentication flows
+        if (data.status === 401 && data.flowInfo) {
+          const { needsAuthentication, isAuthenticated, availableFlows } = data.flowInfo;
+          
+          if (needsAuthentication) {
+            // Store available authentication flows
+            this.availableFlows = availableFlows;
             
-            const wasAuthenticated = this.isAuthenticated;
+            // Reset auth state
             this.user = null;
             this.isAuthenticated = false;
             this.userDataLoaded = false;
             this.needsEmailVerification = false;
             
-            if (wasAuthenticated) {
-              this.clearIdleTimeout();
-              this.showSnackbar('Your session has ended.');
+            // Check if email verification is needed
+            if (availableFlows.includes('verify_email')) {
+              this.needsEmailVerification = true;
             }
             
             return false;
           }
-          
-          if (!IS_PRODUCTION) {
-            console.warn('Auth check returned unexpected response:', data);
-          }
-        } else if (!IS_PRODUCTION) {
-          console.warn('Auth check returned empty response');
         }
         
+        // Handle successful auth check
+        if (data.status === 200 || data.meta?.is_authenticated) {
+          if (data.meta.is_authenticated && data.data?.user) {
+            const wasAuthenticated = this.isAuthenticated;
+            this.user = data.data.user;
+            this.isAuthenticated = true;
+            this.userDataLoaded = true;
+            
+            if (!wasAuthenticated) {
+              this.setupIdleTimeout();
+            }
+            
+            if (!this.hasShownWelcome) {
+              const username = this.user.username || '';
+              const welcomeMessage = username 
+                ? `Welcome to WalkQuest, ${username}!` 
+                : "Welcome to WalkQuest!";
+              this.showSnackbar(welcomeMessage);
+              this.hasShownWelcome = true;
+            }
+            
+            return true;
+          }
+        }
+        
+        // Reset state for unauthenticated user
         this.user = null;
         this.isAuthenticated = false;
         this.userDataLoaded = false;
-        this.needsEmailVerification = false;
         return false;
       } catch (error) {
         this.handleError(error, 'checkAuth');
         this.user = null;
         this.isAuthenticated = false;
         this.userDataLoaded = false;
-        this.needsEmailVerification = false;
         return false;
       } finally {
         this.isLoading = false;

@@ -13,22 +13,41 @@ export const URLs = Object.freeze({
   LOGIN: `/_allauth/${CLIENT_TYPE}/v1/auth/login`,
   LOGOUT: `/_allauth/${CLIENT_TYPE}/v1/auth/logout`,
   SIGNUP: `/_allauth/${CLIENT_TYPE}/v1/auth/signup`,
-  SESSION: `/_allauth/${CLIENT_TYPE}/v1/auth/session`,
+  SESSION: `/_allauth/${CLIENT_TYPE}/v1/auth/session`,  // Auth session endpoint
+  AUTH_SESSION: `/_allauth/${CLIENT_TYPE}/v1/auth/session`,  // For checking auth status
   VERIFY_EMAIL: `/_allauth/${CLIENT_TYPE}/v1/auth/email/verify`,
   PASSWORD_RESET: `/_allauth/${CLIENT_TYPE}/v1/auth/password/reset`,
   CHANGE_PASSWORD: `/_allauth/${CLIENT_TYPE}/v1/account/password/change`,
   EMAIL: `/_allauth/${CLIENT_TYPE}/v1/account/email`,
   PROVIDERS: `/_allauth/${CLIENT_TYPE}/v1/auth/providers`,
-  
-  // Legacy endpoints as fallback
-  LEGACY_LOGIN: '/accounts/login',
-  LEGACY_LOGOUT: '/accounts/logout',
-  LEGACY_SIGNUP: '/accounts/signup',
-  LEGACY_SESSION: '/users/api/auth-events',
 });
 
 // Session token storage for app client
 let sessionToken = localStorage.getItem('allauth_session_token');
+
+// Handle authentication flows
+export function handleAuthFlows(response) {
+  if (response.status === 401 && response.data?.flows) {
+    const flows = response.data.flows;
+    const availableFlows = flows.map(flow => flow.id);
+    
+    // Store available flows in case UI needs to show appropriate options
+    localStorage.setItem('allauth_available_flows', JSON.stringify(availableFlows));
+    
+    return {
+      needsAuthentication: true,
+      isAuthenticated: response.meta?.is_authenticated || false,
+      availableFlows,
+      sessionToken: response.meta?.session_token
+    };
+  }
+  
+  return {
+    needsAuthentication: false,
+    isAuthenticated: response.meta?.is_authenticated || false,
+    sessionToken: response.meta?.session_token
+  };
+}
 
 // Function to set session token from a response
 export function setSessionToken(token) {
@@ -42,6 +61,7 @@ export function setSessionToken(token) {
 export function clearSessionToken() {
   sessionToken = null;
   localStorage.removeItem('allauth_session_token');
+  localStorage.removeItem('allauth_available_flows');
 }
 
 // Get CSRF token from cookies or meta tag
@@ -102,7 +122,6 @@ async function request(method, path, data) {
   }
   
   // Add session token if available (for app clients)
-  // According to the spec, we should use X-Session-Token header
   if (sessionToken) {
     options.headers['X-Session-Token'] = sessionToken;
   }
@@ -134,14 +153,18 @@ async function request(method, path, data) {
     responseData.ok = response.ok;
     
     // Handle session token according to the API spec
-    if (responseData.meta && responseData.meta.session_token) {
-      // Store new session token
+    if (responseData.meta?.session_token) {
       setSessionToken(responseData.meta.session_token);
+    }
+    
+    // Handle 401 responses by checking for authentication flows
+    if (responseData.status === 401) {
+      const flowInfo = handleAuthFlows(responseData);
+      responseData.flowInfo = flowInfo;
     }
     
     // Handle 410 Gone status (invalid session)
     if (responseData.status === 410) {
-      // Clear the session token as it's no longer valid
       clearSessionToken();
     }
     
@@ -284,7 +307,7 @@ export async function logout() {
 
 // Get current authentication state
 export async function getAuth() {
-  return await request('GET', URLs.SESSION);
+  return await request('GET', URLs.AUTH_SESSION);
 }
 
 // Get configuration information

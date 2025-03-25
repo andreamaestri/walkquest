@@ -346,7 +346,7 @@ async function handleSubmit() {
       }
     }
     
-    // Use the headless API endpoint with app client type - without trailing slash
+    // Use the correct API endpoint from allauth.js
     const res = await fetch('/_allauth/app/v1/auth/signup', {
       method: 'POST',
       headers: {
