@@ -183,8 +183,8 @@ MIDDLEWARE = [
 # ------------------------------------------------------------------------------
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # Vite dev server
-    "http://127.0.0.1:5173",
+    "",  # Vite dev server
+    "",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
 ]
@@ -286,8 +286,8 @@ CSRF_COOKIE_SAMESITE = 'Lax'
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:8000',
     'http://127.0.0.1:8000',
-    'http://localhost:5173',  # Vite dev server
-    'http://127.0.0.1:5173',
+    '',  # Vite dev server
+    '',
     'https://solid-trout-4j64vvq9wqxh79vg-8000.app.github.dev',
 ]
 
@@ -295,8 +295,8 @@ CSRF_TRUSTED_ORIGINS = [
 # ------------------------------------------------------------------------------
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # Vite dev server
-    "http://127.0.0.1:5173",
+    "",  # Vite dev server
+    "",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
     "https://solid-trout-4j64vvq9wqxh79vg-8000.app.github.dev",
@@ -422,10 +422,11 @@ SOCIALACCOUNT_FORMS = {"signup": "walkquest.users.forms.UserSocialSignupForm"}
 
 # django-allauth headless configuration
 HEADLESS_FRONTEND_URLS = {
-    "account_confirm_email": env("FRONTEND_URL", default="http://localhost:5173") + "/account/verify-email/{key}",
-    "account_reset_password": env("FRONTEND_URL", default="http://localhost:5173") + "/account/password/reset",
-    "account_reset_password_from_key": env("FRONTEND_URL", default="http://localhost:5173") + "/account/password/reset/key/{key}",
-    "account_signup": env("FRONTEND_URL", default="http://localhost:5173") + "/account/signup",
+    "account_confirm_email": "/account/verify-email/{key}",
+    "account_reset_password": "/account/password/reset",
+    "account_reset_password_from_key": "/account/password/reset/key/{key}",
+    "account_signup": "/account/signup",
+    "socialaccount_login_error": "/account/provider/callback",
 }
 HEADLESS_ONLY = True
 

@@ -24,13 +24,12 @@ urlpatterns = [
     # CSRF token endpoint for frontend apps
     path("accounts/csrf/", csrf_token_view, name="csrf_token"),
     
-    # Django allauth URLs - both traditional and headless API
-    # Even when using headless, the third-party provider endpoints are still
-    # needed for handling e.g. the OAuth handshake
+    # Standard django-allauth URLs (primarily for OAuth providers)
     path("accounts/", include("allauth.urls")),
     
-    # Include the API endpoints for headless allauth
-    path("_allauth/", include("allauth.headless.urls")),
+    # Headless allauth API endpoints - use the standard URL pattern, not a custom prefix
+    path("_allauth/browser/v1/", include("allauth.headless.urls.browser")),
+    path("_allauth/app/v1/", include("allauth.headless.urls.app")),
     
     # Include walkquest URLs
     path("", include("walkquest.urls")),
