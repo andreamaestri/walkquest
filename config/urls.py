@@ -21,8 +21,9 @@ urlpatterns = [
     # User management
     path("users/", include("walkquest.users.urls", namespace="users")),
     
-    # API endpoints for headless allauth
-    path("_allauth/api/v1/", include("allauth.headless.urls")),
+    # API endpoints for headless allauth - fixed to match allauth pattern
+    path("_allauth/browser/v1/", include("allauth.headless.urls")),
+    path("_allauth/app/v1/", include("allauth.headless.urls")),
     
     # Include walkquest URLs
     path("", include("walkquest.urls")),
