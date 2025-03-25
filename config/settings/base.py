@@ -403,77 +403,32 @@ CELERY_TASK_SEND_SENT_EVENT = True
 # ------------------------------------------------------------------------------
 ACCOUNT_ALLOW_REGISTRATION = env.bool("DJANGO_ACCOUNT_ALLOW_REGISTRATION", True)
 
-# Allauth Headless Configuration
-HEADLESS_FRONTEND_URLS = {
-    "account_confirm_email": env("FRONTEND_URL", default="http://localhost:5173") + "/account/verify-email/{key}",
-    "account_reset_password": env("FRONTEND_URL", default="http://localhost:5173") + "/account/password/reset",
-    "account_reset_password_from_key": env("FRONTEND_URL", default="http://localhost:5173") + "/account/password/reset/key/{key}",
-    "account_signup": env("FRONTEND_URL", default="http://localhost:5173") + "/account/signup"
-}
-
-HEADLESS_ONLY = True  # Disable traditional views completely
-
-# Update the API prefix to match our URL configuration
-HEADLESS_API_PREFIX = "_allauth/api/v1/"
-
-# Update installed apps to ensure correct order and dependencies
-INSTALLED_APPS = [
-    app for app in INSTALLED_APPS if app not in [
-        "allauth.account",
-        "allauth.headless",
-        "allauth.mfa",
-        "allauth.socialaccount",
-    ]
-]
-
-INSTALLED_APPS.extend([
-    "allauth.account",
-    "allauth.headless",
-    "allauth.mfa",
-    "allauth.socialaccount",
-])
-
-# Update authentication method to use new format (settings.ACCOUNT_LOGIN_METHODS)
-# https://docs.allauth.org/en/latest/account/configuration.html
-ACCOUNT_LOGIN_METHODS = {'email'}  # Use email login method
-
-# https://docs.allauth.org/en/latest/account/configuration.html
+# django-allauth configuration
 ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_USERNAME_REQUIRED = True  # Changed from False to True
-ACCOUNT_USER_MODEL_USERNAME_FIELD = "username"  # Changed from None to "username"
-
-# https://docs.allauth.org/en/latest/account/configuration.html
+ACCOUNT_USERNAME_REQUIRED = True
+ACCOUNT_USER_MODEL_USERNAME_FIELD = "username"
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
-
-# https://docs.allauth.org/en/latest/account/configuration.html
 ACCOUNT_ADAPTER = "walkquest.users.adapters.AccountAdapter"
-
-# https://docs.allauth.org/en/latest/account/forms.html
 ACCOUNT_FORMS = {
     "signup": "walkquest.users.forms.UserSignupForm",
     "change_password": "walkquest.users.forms.CustomPasswordChangeForm",
     "login": "walkquest.users.forms.UserLoginForm",
 }
 
-# https://docs.allauth.org/en/latest/socialaccount/configuration.html
+# django-allauth social account configuration
 SOCIALACCOUNT_ADAPTER = "walkquest.users.adapters.SocialAccountAdapter"
-
-# https://docs.allauth.org/en/latest/socialaccount/configuration.html
 SOCIALACCOUNT_FORMS = {"signup": "walkquest.users.forms.UserSocialSignupForm"}
 
-# Allauth Headless Configuration
+# django-allauth headless configuration
 HEADLESS_FRONTEND_URLS = {
-    "account_confirm_email": "/account/verify-email/{key}",
-    "account_reset_password": "/account/password/reset",
-    "account_reset_password_from_key": "/account/password/reset/key/{key}",
-    "account_signup": "/account/signup"
+    "account_confirm_email": env("FRONTEND_URL", default="http://localhost:5173") + "/account/verify-email/{key}",
+    "account_reset_password": env("FRONTEND_URL", default="http://localhost:5173") + "/account/password/reset",
+    "account_reset_password_from_key": env("FRONTEND_URL", default="http://localhost:5173") + "/account/password/reset/key/{key}",
+    "account_signup": env("FRONTEND_URL", default="http://localhost:5173") + "/account/signup",
 }
 
-HEADLESS_ONLY = True  # Set to True to disable traditional views completely
-
-HEADLESS_API_PREFIX = "_allauth/"  # Update to match our URL configuration
-
-HEADLESS_API_URL_VERSION = "v1"  # Explicitly set the API version
+HEADLESS_ONLY = True
+HEADLESS_API_PREFIX = "_allauth/api/v1/"
 
 # Django Ninja API settings
 NINJA_JWT = {

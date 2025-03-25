@@ -3,11 +3,11 @@
 <script>
   // Create a global object to store Django AllAuth URLs
   window.djangoAllAuth = {
-    loginUrl: "{% url 'account_login' %}",
-    signupUrl: "{% url 'account_signup' %}",
-    logoutUrl: "{% url 'account_logout' %}",
-    passwordResetUrl: "{% url 'account_reset_password' %}",
-    passwordChangeUrl: "{% url 'account_change_password' %}",
-    emailUrl: "{% url 'account_email' %}"
+    loginUrl: "/_allauth/api/v1/auth/login/",
+    signupUrl: "/_allauth/api/v1/auth/signup/",
+    logoutUrl: "/_allauth/api/v1/auth/logout/",
+    passwordResetUrl: "/_allauth/api/v1/auth/password/reset/",
+    passwordChangeUrl: "/_allauth/api/v1/auth/password/change/",
+    emailUrl: "/_allauth/api/v1/account/email/"
   };
 </script>

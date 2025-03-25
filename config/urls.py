@@ -21,11 +21,8 @@ urlpatterns = [
     # User management
     path("users/", include("walkquest.users.urls", namespace="users")),
     
-    # Allauth URLs with unique namespaces
-    path("accounts/", include("allauth.urls")),  # Traditional URLs (disabled when HEADLESS_ONLY=True)
-    
     # API endpoints for headless allauth
-    path("_allauth/api/v1/", include(("allauth.headless.urls", "api_v1"))),
+    path("_allauth/api/v1/", include("allauth.headless.urls")),
     
     # Include walkquest URLs
     path("", include("walkquest.urls")),

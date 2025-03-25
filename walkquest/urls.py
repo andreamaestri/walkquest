@@ -13,7 +13,7 @@ app_name = "walkquest"
 
 urlpatterns = [
     # Main API at /api/ - already includes walks endpoints from its initialization
-    path("api/", api_instance.urls),
+    path("api/", include(("walkquest.api", "api"))),
     
     # API routes - user-specific endpoints
     path("api/users/", include("walkquest.users.urls", namespace="users")),
@@ -33,6 +33,9 @@ urlpatterns = [
     
     # Default route - handled by Vue router
     path("", views.index, name="home"),
+
+    # Adventures app URLs
+    path("adventures/", include("walkquest.adventures.urls")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 if settings.DEBUG:
