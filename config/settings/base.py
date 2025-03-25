@@ -286,8 +286,6 @@ CSRF_COOKIE_SAMESITE = 'Lax'
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:8000',
     'http://127.0.0.1:8000',
-    '',  # Vite dev server
-    '',
     'https://solid-trout-4j64vvq9wqxh79vg-8000.app.github.dev',
 ]
 
