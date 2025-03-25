@@ -6,25 +6,25 @@ const BASE_URL = '';
 // Use 'app' client type instead of 'browser'
 const CLIENT_TYPE = 'app';
 
-// URLs for different endpoints - using the headless API
+// URLs for different endpoints - using the headless API - without trailing slashes
 export const URLs = Object.freeze({
   // Django Allauth headless API endpoints 
-  CONFIG: `/_allauth/${CLIENT_TYPE}/v1/config/`,
-  LOGIN: `/_allauth/${CLIENT_TYPE}/v1/auth/login/`,
-  LOGOUT: `/_allauth/${CLIENT_TYPE}/v1/auth/logout/`,
-  SIGNUP: `/_allauth/${CLIENT_TYPE}/v1/auth/signup/`,
-  SESSION: `/_allauth/${CLIENT_TYPE}/v1/auth/session/`,
-  VERIFY_EMAIL: `/_allauth/${CLIENT_TYPE}/v1/auth/email/verify/`,
-  PASSWORD_RESET: `/_allauth/${CLIENT_TYPE}/v1/auth/password/reset/`,
-  CHANGE_PASSWORD: `/_allauth/${CLIENT_TYPE}/v1/account/password/change/`,
-  EMAIL: `/_allauth/${CLIENT_TYPE}/v1/account/email/`,
-  PROVIDERS: `/_allauth/${CLIENT_TYPE}/v1/auth/providers/`,
+  CONFIG: `/_allauth/${CLIENT_TYPE}/v1/config`,
+  LOGIN: `/_allauth/${CLIENT_TYPE}/v1/auth/login`,
+  LOGOUT: `/_allauth/${CLIENT_TYPE}/v1/auth/logout`,
+  SIGNUP: `/_allauth/${CLIENT_TYPE}/v1/auth/signup`,
+  SESSION: `/_allauth/${CLIENT_TYPE}/v1/auth/session`,
+  VERIFY_EMAIL: `/_allauth/${CLIENT_TYPE}/v1/auth/email/verify`,
+  PASSWORD_RESET: `/_allauth/${CLIENT_TYPE}/v1/auth/password/reset`,
+  CHANGE_PASSWORD: `/_allauth/${CLIENT_TYPE}/v1/account/password/change`,
+  EMAIL: `/_allauth/${CLIENT_TYPE}/v1/account/email`,
+  PROVIDERS: `/_allauth/${CLIENT_TYPE}/v1/auth/providers`,
   
   // Legacy endpoints as fallback
-  LEGACY_LOGIN: '/accounts/login/',
-  LEGACY_LOGOUT: '/accounts/logout/',
-  LEGACY_SIGNUP: '/accounts/signup/',
-  LEGACY_SESSION: '/users/api/auth-events/',
+  LEGACY_LOGIN: '/accounts/login',
+  LEGACY_LOGOUT: '/accounts/logout',
+  LEGACY_SIGNUP: '/accounts/signup',
+  LEGACY_SESSION: '/users/api/auth-events',
 });
 
 // Session token storage for app client

@@ -346,8 +346,8 @@ async function handleSubmit() {
       }
     }
     
-    // Use the headless API endpoint with app client type
-    const res = await fetch('/_allauth/app/v1/auth/signup/', {
+    // Use the headless API endpoint with app client type - without trailing slash
+    const res = await fetch('/_allauth/app/v1/auth/signup', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
