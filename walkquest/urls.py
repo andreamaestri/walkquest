@@ -12,8 +12,8 @@ app_name = "walkquest"
 # so we don't need to add it again here
 
 urlpatterns = [
-    # Main API at /api/ - already includes walks endpoints from its initialization
-    path("api/", include(("walkquest.api", "api"))),
+    # Main API at /api/ - using api_instance.urls instead of including the module
+    path("api/", api_instance.urls),
     
     # API routes - user-specific endpoints
     path("api/users/", include("walkquest.users.urls", namespace="users")),
