@@ -74,61 +74,32 @@ export const useAuthStore = defineStore('auth', {
     async login(email, password, remember = false) {
       try {
         this.isLoading = true;
-        const csrfToken = this.getCSRFToken();
         
-        if (!csrfToken) {
-          throw new Error("CSRF token not found");
-        }
+        // Use the login function from the allauth library instead of direct fetch
+        const result = await login({ email, password, remember });
         
-        const formData = new FormData();
-        formData.append('login', email);
-        formData.append('password', password);
-        if (remember) {
-          formData.append('remember', 'on');
-        }
-        
-        const response = await fetch('/accounts/login/', {
-          method: 'POST',
-          headers: {
-            'X-CSRFToken': csrfToken,
-            'X-Requested-With': 'XMLHttpRequest'
-          },
-          credentials: 'same-origin',
-          body: formData
-        });
-        
-        const contentType = response.headers.get("content-type");
-        
-        if (!response.ok) {
-          if (contentType && contentType.includes("application/json")) {
-            const errorData = await response.json();
-            throw { errors: errorData };
+        if (!result.ok) {
+          if (result.errors) {
+            throw { errors: result.errors };
           } else {
-            throw new Error('Authentication failed. Please check your credentials.');
+            throw new Error(result.message || 'Authentication failed. Please check your credentials.');
           }
         }
         
-        // Handle JSON response
-        if (contentType && contentType.includes("application/json")) {
-          const data = await response.json();
-          
-          if (data.user) {
-            // User data provided directly in response
-            this.user = data.user;
-            this.isAuthenticated = true;
-            this.userDataLoaded = true;
-            this.setupIdleTimeout();
-          } else if (data.email_verification_needed) {
-            // Email verification is required
-            this.needsEmailVerification = true;
-            this.showSnackbar('Please verify your email address to continue.');
-            return { success: true, needsEmailVerification: true };
-          } else {
-            // No user data in response, check auth status
-            await this.forceAuthCheck();
-          }
+        // Handle response based on its content
+        if (result.user) {
+          // User data provided directly in response
+          this.user = result.user;
+          this.isAuthenticated = true;
+          this.userDataLoaded = true;
+          this.setupIdleTimeout();
+        } else if (result.email_verification_needed) {
+          // Email verification is required
+          this.needsEmailVerification = true;
+          this.showSnackbar('Please verify your email address to continue.');
+          return { success: true, needsEmailVerification: true };
         } else {
-          // Non-JSON response, check auth status
+          // No user data in response, check auth status
           await this.forceAuthCheck();
         }
         
@@ -350,13 +321,16 @@ export const useAuthStore = defineStore('auth', {
         
         const csrfToken = this.getCSRFToken();
         
-        const response = await fetch('/accounts/refresh-token/', {
+        // Use the correct URL format with 'browser' client type
+        const response = await fetch('/_allauth/browser/v1/auth/session/refresh/', {
           method: 'POST',
           headers: {
             'X-CSRFToken': csrfToken,
-            'X-Requested-With': 'XMLHttpRequest'
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/json'
           },
-          credentials: 'same-origin'
+          credentials: 'same-origin',
+          body: JSON.stringify({})
         });
         
         if (response.ok) {
