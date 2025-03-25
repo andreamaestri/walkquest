@@ -299,7 +299,7 @@ async function handleSubmit() {
       throw new Error('CSRF token not available')
     }
 
-    // Submit to django-allauth headless API endpoint
+    // Submit to django-allauth headless API endpoint with the correct password fields
     const res = await fetch('/_allauth/app/v1/auth/signup', {
       method: 'POST',
       headers: {
@@ -308,8 +308,8 @@ async function handleSubmit() {
         'X-CSRFToken': token,
         'X-Requested-With': 'XMLHttpRequest'
       },
-      credentials: 'include', // Important! This ensures cookies are sent
-      mode: 'same-origin', // Ensure CSRF token isn't sent cross-domain
+      credentials: 'include',
+      mode: 'same-origin',
       body: JSON.stringify({
         email: email.value,
         username: username.value,
@@ -322,14 +322,13 @@ async function handleSubmit() {
     const data = await res.json()
     
     if (!res.ok) {
-      // Handle validation errors from Django
-      if (data.data?.errors) {
-        // Handle structured validation errors from headless API
-        errors.value = data.data.errors
-      } else if (data.form) {
-        // Handle legacy form errors
-        Object.entries(data.form).forEach(([field, error]) => {
-          errors.value[field] = Array.isArray(error) ? error[0] : error
+      // Handle validation errors from API
+      if (data.errors) {
+        // Map API error format to form fields
+        data.errors.forEach(error => {
+          if (error.param) {
+            errors.value[error.param] = error.message
+          }
         })
       } else {
         error.value = data.message || 'Signup failed. Please try again.'
