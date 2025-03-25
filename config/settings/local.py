@@ -31,69 +31,24 @@ DATABASES["default"]["ENGINE"] = "django.contrib.gis.db.backends.postgis"
 CSRF_COOKIE_SECURE = False  # Allow CSRF cookies to be sent over HTTP
 SESSION_COOKIE_SECURE = False  # Allow session cookies to be sent over HTTP
 CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript to access CSRF token
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SAMESITE = 'Lax'
 
-# CACHES
-# ------------------------------------------------------------------------------
-# https://docs.djangoproject.com/en/dev/ref/settings/#caches
-CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-        "LOCATION": "",
-    },
-}
+# django-allauth headless configuration
+ACCOUNT_EMAIL_VERIFICATION = "optional"  # Make email verification optional in development
+ACCOUNT_EMAIL_REQUIRED = True
 
-# EMAIL
-# ------------------------------------------------------------------------------
-# https://docs.djangoproject.com/en/dev/ref/settings/#email-backend
-EMAIL_BACKEND = env(
-    "DJANGO_EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend",
-)
-
-# WhiteNoise
-# ------------------------------------------------------------------------------
-# http://whitenoise.evans.io/en/latest/django.html#using-whitenoise-in-development
-INSTALLED_APPS = ["whitenoise.runserver_nostatic", *INSTALLED_APPS]
-
-# django-browser-reload
-# ------------------------------------------------------------------------------
-INSTALLED_APPS = ["django_browser_reload", *INSTALLED_APPS]
-MIDDLEWARE.append("django_browser_reload.middleware.BrowserReloadMiddleware")
-# django-debug-toolbar
-# ------------------------------------------------------------------------------
-# https://django-debug-toolbar.readthedocs.io/en/latest/installation.html#prerequisites
-# INSTALLED_APPS += ["debug_toolbar"]
-# https://django-debug-toolbar.readthedocs.io/en/latest/installation.html#middleware
-# MIDDLEWARE += ["debug_toolbar.middleware.DebugToolbarMiddleware"]
-# https://django-debug-toolbar.readthedocs.io/en/latest/configuration.html#debug-toolbar-config
-# DEBUG_TOOLBAR_CONFIG = {
-#     "DISABLE_PANELS": [
-#         "debug_toolbar.panels.redirects.RedirectsPanel",
-#         # Disable profiling panel due to an issue with Python 3.12:
-#         # https://github.com/jazzband/django-debug-toolbar/issues/1875
-#         "debug_toolbar.panels.profiling.ProfilingPanel",
-#     ],
-#     "SHOW_TEMPLATE_CONTEXT": True,
-# }
-# https://django-debug-toolbar.readthedocs.io/en/latest/installation.html#internal-ips
-INTERNAL_IPS = ["127.0.0.1", "10.0.2.2"]
-
-
-# django-extensions
-# ------------------------------------------------------------------------------
-# https://django-extensions.readthedocs.io/en/latest/installation_instructions.html#configuration
-INSTALLED_APPS += ["django_extensions"]
-# Celery
-# ------------------------------------------------------------------------------
-# https://docs.celeryq.dev/en/stable/userguide/configuration.html#task-always-eager
-CELERY_TASK_ALWAYS_EAGER = True
-# https://docs.celeryq.dev/en/stable/userguide/configuration.html#task-eager-propagates
-CELERY_TASK_EAGER_PROPAGATES = True
-# Your stuff...
-# ------------------------------------------------------------------------------
 # CORS settings for local development
 # ------------------------------------------------------------------------------
-CORS_ALLOW_ALL_ORIGINS = True  # Only use in development!
+CORS_ALLOW_ALL_ORIGINS = False  # Don't allow all origins, be explicit
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://localhost:5173",  # Vite dev server
+    "http://127.0.0.1:5173",  # Vite dev server
+]
 CORS_ALLOW_METHODS = [
     "DELETE",
     "GET",
@@ -112,7 +67,7 @@ CORS_ALLOW_HEADERS = [
     "user-agent",
     "x-csrftoken",
     "x-requested-with",
-    "x-session-token",  # Add this for django-allauth headless auth
+    "x-session-token",  # Required for allauth headless
 ]
 
 # Ensure CORS middleware is included and in correct order

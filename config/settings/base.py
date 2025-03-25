@@ -417,16 +417,43 @@ SOCIALACCOUNT_ADAPTER = "walkquest.users.adapters.SocialAccountAdapter"
 SOCIALACCOUNT_FORMS = {"signup": "walkquest.users.forms.UserSocialSignupForm"}
 
 # django-allauth headless configuration
-HEADLESS_FRONTEND_URLS = {
-    "account_confirm_email": env("FRONTEND_URL", default="http://localhost:5173") + "/account/verify-email/{key}",
-    "account_reset_password": env("FRONTEND_URL", default="http://localhost:5173") + "/account/password/reset",
-    "account_reset_password_from_key": env("FRONTEND_URL", default="http://localhost:5173") + "/account/password/reset/key/{key}",
-    "account_signup": env("FRONTEND_URL", default="http://localhost:5173") + "/account/signup",
-    "socialaccount_login_error": env("FRONTEND_URL", default="http://localhost:5173") + "/account/provider/callback",
-}
 HEADLESS_ONLY = True
-# Specify that we only want to use 'app' client endpoints, not 'browser'
 HEADLESS_CLIENTS = ("app",)
+
+# Allow X-Session-Token header
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+    "x-session-token",  # Required for allauth headless
+]
+
+# Ensure headless auth can work
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript to access the CSRF token
+CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+    'http://localhost:5173',  # Vite dev server
+    'http://127.0.0.1:5173',  # Vite dev server
+]
+
+# CORS settings for headless auth
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://localhost:5173",  # Vite dev server
+    "http://127.0.0.1:5173",  # Vite dev server
+]
 
 # Django Ninja API settings
 NINJA_JWT = {

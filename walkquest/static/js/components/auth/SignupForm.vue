@@ -318,6 +318,19 @@ async function handleSubmit() {
     
     console.log('Submitting form with email:', email.value);
     
+    // First get a session token by checking auth status
+    const sessionResponse = await fetch('/_allauth/app/v1/auth/session', {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      credentials: 'same-origin'
+    });
+
+    const sessionData = await sessionResponse.json();
+    const sessionToken = sessionData.meta?.session_token;
+
     // Prepare data for submission according to the API spec
     const signupData = {
       email: email.value,
@@ -336,22 +349,15 @@ async function handleSubmit() {
         signupData.first_name = name.value;
       }
     }
-    
-    // Add redirect field if needed
-    if (window.location.search.includes('next=')) {
-      const nextUrl = new URLSearchParams(window.location.search).get('next');
-      if (nextUrl) {
-        signupData.next = nextUrl;
-      }
-    }
-    
-    // Use the headless API endpoint
+
+    // Use the headless API endpoint with session token if available
     const res = await fetch('/_allauth/app/v1/auth/signup', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-CSRFToken': csrfToken.value,
-        'X-Requested-With': 'XMLHttpRequest'
+        'X-Requested-With': 'XMLHttpRequest',
+        ...(sessionToken ? { 'X-Session-Token': sessionToken } : {})
       },
       credentials: 'same-origin',
       body: JSON.stringify(signupData)
