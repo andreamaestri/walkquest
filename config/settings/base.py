@@ -96,6 +96,7 @@ THIRD_PARTY_APPS = [
     "allauth.headless",  # Add headless support
     "allauth.mfa",
     "allauth.socialaccount",
+    "allauth.usersessions",
     "django_celery_beat",
     "tagulous",
     "widget_tweaks",
@@ -426,9 +427,7 @@ HEADLESS_FRONTEND_URLS = {
     "account_reset_password_from_key": env("FRONTEND_URL", default="http://localhost:5173") + "/account/password/reset/key/{key}",
     "account_signup": env("FRONTEND_URL", default="http://localhost:5173") + "/account/signup",
 }
-
 HEADLESS_ONLY = True
-HEADLESS_API_PREFIX = "_allauth/api/v1/"
 
 # Django Ninja API settings
 NINJA_JWT = {
