@@ -320,6 +320,7 @@ export const useAuthStore = defineStore('auth', {
         if (!this.isAuthenticated) return false;
         
         const csrfToken = this.getCSRFToken();
+        const sessionToken = localStorage.getItem('allauth_session_token');
         
         // Use the correct URL format with 'app' client type
         const response = await fetch('/_allauth/app/v1/auth/session/refresh/', {
@@ -327,14 +328,29 @@ export const useAuthStore = defineStore('auth', {
           headers: {
             'X-CSRFToken': csrfToken,
             'X-Requested-With': 'XMLHttpRequest',
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...(sessionToken ? { 'X-Session-Token': sessionToken } : {})
           },
           credentials: 'same-origin',
           body: JSON.stringify({})
         });
         
         if (response.ok) {
+          // Try to get new session token from response if available
+          try {
+            const data = await response.json();
+            if (data.meta && data.meta.session_token) {
+              localStorage.setItem('allauth_session_token', data.meta.session_token);
+            }
+          } catch (e) {
+            // Ignore JSON parse errors
+          }
           return true;
+        }
+        
+        // If we got a 410 Gone, clear the session token
+        if (response.status === 410) {
+          localStorage.removeItem('allauth_session_token');
         }
         
         return this.checkAuth();

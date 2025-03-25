@@ -102,8 +102,9 @@ async function request(method, path, data) {
   }
   
   // Add session token if available (for app clients)
+  // According to the spec, we should use X-Session-Token header
   if (sessionToken) {
-    options.headers['Authorization'] = `Token ${sessionToken}`;
+    options.headers['X-Session-Token'] = sessionToken;
   }
   
   // Add JSON body for methods that support it
@@ -131,6 +132,18 @@ async function request(method, path, data) {
     // Add status and ok properties to the response data
     responseData.status = response.status;
     responseData.ok = response.ok;
+    
+    // Handle session token according to the API spec
+    if (responseData.meta && responseData.meta.session_token) {
+      // Store new session token
+      setSessionToken(responseData.meta.session_token);
+    }
+    
+    // Handle 410 Gone status (invalid session)
+    if (responseData.status === 410) {
+      // Clear the session token as it's no longer valid
+      clearSessionToken();
+    }
     
     return responseData;
   } catch (error) {
