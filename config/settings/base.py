@@ -350,6 +350,22 @@ SOCIALACCOUNT_FORMS = {"signup": "walkquest.users.forms.UserSocialSignupForm"}
 HEADLESS_ONLY = True
 HEADLESS_CLIENTS = ("app",)
 
+# Frontend URLs for headless auth flows
+HEADLESS_FRONTEND_URLS = {
+    # URLs for authentication flows
+    'account_signup': '/',  # Redirect after signup
+    'account_login': '/',  # Redirect after login
+    'account_logout': '/',  # Redirect after logout
+    'account_email_verification_sent': '/verify-email',  # Email verification sent page
+    'account_confirm_email': '/email-confirmed',  # Email confirmed page
+    'account_reset_password': '/reset-password',  # Password reset page
+    'account_reset_password_done': '/password-reset-done',  # Password reset done page
+    'account_reset_password_from_key': '/password-reset-confirm',  # Password reset confirm page
+    'account_reset_password_from_key_done': '/password-reset-complete',  # Password reset complete page
+    'account_inactive': '/account-inactive',  # Account inactive page
+    'account_email': '/email',  # Email management page
+}
+
 # CORS settings for headless auth
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
