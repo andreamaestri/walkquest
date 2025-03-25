@@ -208,80 +208,55 @@ const showPassword2 = ref(false)
 const error = ref(null)
 const errors = ref({})
 const response = reactive({ fetching: false, content: null })
-
-// Add a CSRF token ref and a function to get the token
 const csrfToken = ref('')
 
-onMounted(async () => {
-  // First fetch a fresh CSRF token
-  await refreshCSRFToken()
-  // Then get it from the cookie
-  getCsrfToken()
+onMounted(() => {
+  // Get CSRF token on mount
+  csrfToken.value = getCSRFToken()
 })
 
-async function refreshCSRFToken() {
-  try {
-    // Instead of fetching the signup page, use Django's CSRF cookie endpoint
-    await fetch('/accounts/csrf/', {
-      method: 'GET',
-      credentials: 'same-origin',
-      headers: {
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache'
-      }
-    });
-    
-    // Extract the CSRF token from the cookie
-    const cookies = document.cookie.split(';');
-    for (const cookie of cookies) {
-      if (cookie.trim().startsWith('csrftoken=')) {
-        csrfToken.value = cookie.trim().substring('csrftoken='.length);
-        break;
-      }
-    }
-  } catch (err) {
-    console.error("Failed to refresh CSRF token:", err)
+// Get CSRF token according to Django's recommended method
+function getCSRFToken() {
+  let token = null
+  
+  // First try to get from cookie
+  const tokenFromCookie = getCookie('csrftoken')
+  if (tokenFromCookie) {
+    token = tokenFromCookie
   }
+
+  // If not in cookie, try to get from meta tag
+  if (!token) {
+    const metaTag = document.querySelector('meta[name="csrf-token"]')
+    if (metaTag) {
+      token = metaTag.getAttribute('content')
+    }
+  }
+
+  // Finally try the DOM input (this is useful when CSRF_COOKIE_HTTPONLY=True)
+  if (!token) {
+    const tokenInput = document.querySelector('input[name="csrfmiddlewaretoken"]')
+    if (tokenInput) {
+      token = tokenInput.value
+    }
+  }
+
+  return token
 }
 
-function getCsrfToken() {
-  // Try to get from cookie
-  function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-      const cookies = document.cookie.split(';');
-      for (let i = 0; i < cookies.length; i++) {
-        const cookie = cookies[i].trim();
-        if (cookie.startsWith(name + '=')) {
-          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-          return cookieValue;
-        }
+function getCookie(name) {
+  let cookieValue = null
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';')
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim()
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1))
+        break
       }
     }
-    return cookieValue;
   }
-  
-  const token = getCookie('csrftoken');
-  if (token) {
-    csrfToken.value = token;
-    return;
-  }
-  
-  // Try to get from meta tag
-  const metaToken = document.querySelector('meta[name="csrf-token"]')
-  if (metaToken) {
-    csrfToken.value = metaToken.getAttribute('content')
-    return
-  }
-  
-  // Try to get from a hidden input (if present)
-  const inputToken = document.querySelector('input[name="csrfmiddlewaretoken"]')
-  if (inputToken) {
-    csrfToken.value = inputToken.value
-    return
-  }
-  
-  console.warn("CSRF token not found from cookie, meta, or hidden input.")
+  return cookieValue
 }
 
 // Handle form submission
@@ -290,141 +265,92 @@ async function handleSubmit() {
   error.value = null
   
   // Client-side validation
+  if (!email.value) {
+    errors.value.email = 'Email is required'
+    return
+  }
+  
+  if (!username.value) {
+    errors.value.username = 'Username is required'
+    return
+  }
+
+  if (!password1.value) {
+    errors.value.password1 = 'Password is required'
+    return
+  }
+
   if (password1.value !== password2.value) {
-    errors.value.password2 = 'Passwords do not match.'
+    errors.value.password2 = 'Passwords do not match'
     return
   }
   
   if (password1.value.length < 8) {
-    errors.value.password1 = 'Password must be at least 8 characters.'
+    errors.value.password1 = 'Password must be at least 8 characters'
     return
   }
-  
-  if (!email.value) {
-    errors.value.email = 'Email is required.'
-    return
-  }
-  
-  // Get a fresh token before submitting
-  await refreshCSRFToken()
-  getCsrfToken()
-  
+
   response.fetching = true
   
   try {
-    if (!csrfToken.value) {
-      throw new Error('CSRF token not available. Please try again.')
-    }
-    
-    console.log('Submitting form with email:', email.value);
-    
-    // First get a session token by checking auth status
-    const sessionResponse = await fetch('/_allauth/app/v1/auth/session', {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest'
-      },
-      credentials: 'include'
-    });
-
-    if (!sessionResponse.ok) {
-      console.warn('Failed to get session token:', sessionResponse.status);
+    // Always get a fresh token before submitting
+    const token = getCSRFToken()
+    if (!token) {
+      throw new Error('CSRF token not available')
     }
 
-    const sessionData = await sessionResponse.json();
-    const sessionToken = sessionData.meta?.session_token;
-
-    // Prepare data for submission according to the API spec
-    const signupData = {
-      email: email.value,
-      password1: password1.value,
-      password2: password2.value
-    };
-
-    // Add optional fields
-    if (username.value) {
-      signupData.username = username.value;
-    }
-    if (name.value) {
-      const nameParts = name.value.trim().split(/\s+/);
-      if (nameParts.length > 1) {
-        signupData.first_name = nameParts[0];
-        signupData.last_name = nameParts.slice(1).join(' ');
-      } else {
-        signupData.first_name = name.value;
-      }
-    }
-
-    // Use the headless API endpoint with session token
-    const res = await fetch('/_allauth/app/v1/auth/signup', {
+    // Submit to django-allauth signup endpoint
+    const res = await fetch('/accounts/signup/', {
       method: 'POST',
       headers: {
-        'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'X-CSRFToken': csrfToken.value,
-        'X-Requested-With': 'XMLHttpRequest',
-        ...(sessionToken ? { 'X-Session-Token': sessionToken } : {})
+        'X-CSRFToken': token,
+        'X-Requested-With': 'XMLHttpRequest'
       },
-      credentials: 'include',
-      body: JSON.stringify(signupData)
-    });
+      credentials: 'include', // Important! This ensures cookies are sent
+      mode: 'same-origin', // Ensure CSRF token isn't sent cross-domain
+      body: JSON.stringify({
+        email: email.value,
+        username: username.value,
+        password1: password1.value,
+        password2: password2.value,
+        name: name.value || ''
+      })
+    })
 
-    // Handle response
-    let data;
-    try {
-      data = await res.json();
-    } catch (e) {
-      console.error('Error parsing response:', e);
-      throw new Error('Failed to parse server response');
-    }
+    const data = await res.json()
     
-    console.log('Response status:', res.status);
-    console.log('Response data:', data);
-
-    if (res.status === 401 || res.status === 409) {
-      // Handle verification required
-      if (data.data?.flows?.some(flow => flow.id === 'verify_email')) {
-        authStore.needsEmailVerification = true;
-        router.push('/verify-email');
-        return;
-      }
-    }
-
     if (!res.ok) {
-      // Handle errors
-      if (data.data?.errors) {
-        errors.value = data.data.errors;
-      } else if (data.errors) {
-        errors.value = data.errors;
+      // Handle validation errors from Django
+      if (data.form) {
+        Object.entries(data.form).forEach(([field, error]) => {
+          errors.value[field] = Array.isArray(error) ? error[0] : error
+        })
       } else {
-        error.value = data.message || 'Signup failed. Please try again.';
+        error.value = data.message || 'Signup failed. Please try again.'
       }
-      return;
+      return
     }
 
     // Handle successful signup
-    if (data.data?.user) {
-      authStore.user = data.data.user;
-      authStore.isAuthenticated = true;
-      authStore.userDataLoaded = true;
-      
-      if (data.meta?.session_token) {
-        authStore.sessionToken = data.meta.session_token;
-      }
+    if (data.user) {
+      // Store user data in auth store
+      authStore.user = data.user
+      authStore.isAuthenticated = true
+      authStore.userDataLoaded = true
 
-      // Show verification message and redirect
-      authStore.showSnackbar('Account created! Please check your email to verify your account.');
-      router.push('/verify-email');
+      // Handle email verification if needed
+      if (data.requires_verification) {
+        router.push('/verify-email')
+      } else {
+        router.push('/')
+      }
     }
   } catch (err) {
-    console.error('Signup error:', err);
-    if (!error.value && !Object.keys(errors.value).length) {
-      error.value = err.message || 'Registration failed. Please try again.';
-    }
+    console.error('Signup error:', err)
+    error.value = err.message || 'Registration failed. Please try again.'
   } finally {
-    response.fetching = false;
+    response.fetching = false
   }
 }
 </script>
