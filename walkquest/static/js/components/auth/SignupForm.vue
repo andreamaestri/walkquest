@@ -323,10 +323,15 @@ async function handleSubmit() {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
+        'Content-Type': 'application/json',
         'X-Requested-With': 'XMLHttpRequest'
       },
-      credentials: 'same-origin'
+      credentials: 'include'
     });
+
+    if (!sessionResponse.ok) {
+      console.warn('Failed to get session token:', sessionResponse.status);
+    }
 
     const sessionData = await sessionResponse.json();
     const sessionToken = sessionData.meta?.session_token;
@@ -334,13 +339,15 @@ async function handleSubmit() {
     // Prepare data for submission according to the API spec
     const signupData = {
       email: email.value,
-      username: username.value || email.value.split('@')[0],
-      password: password1.value,  // Use single password field as required by API
+      password1: password1.value,
+      password2: password2.value
     };
-    
-    // Add name if provided
+
+    // Add optional fields
+    if (username.value) {
+      signupData.username = username.value;
+    }
     if (name.value) {
-      // Split name into first_name and last_name if it contains a space
       const nameParts = name.value.trim().split(/\s+/);
       if (nameParts.length > 1) {
         signupData.first_name = nameParts[0];
@@ -350,80 +357,65 @@ async function handleSubmit() {
       }
     }
 
-    // Use the headless API endpoint with session token if available
+    // Use the headless API endpoint with session token
     const res = await fetch('/_allauth/app/v1/auth/signup', {
       method: 'POST',
       headers: {
+        'Accept': 'application/json',
         'Content-Type': 'application/json',
         'X-CSRFToken': csrfToken.value,
         'X-Requested-With': 'XMLHttpRequest',
         ...(sessionToken ? { 'X-Session-Token': sessionToken } : {})
       },
-      credentials: 'same-origin',
+      credentials: 'include',
       body: JSON.stringify(signupData)
     });
-    
-    console.log('Response status:', res.status);
-    
-    // Parse response data
+
+    // Handle response
     let data;
-    const contentType = res.headers.get('content-type');
-    
     try {
-      if (contentType && contentType.includes('application/json')) {
-        data = await res.json();
-      } else {
-        // If not JSON, get text and wrap in object
-        const text = await res.text();
-        data = { message: text, status: res.status };
-      }
-      console.log('Response data:', data);
+      data = await res.json();
     } catch (e) {
       console.error('Error parsing response:', e);
       throw new Error('Failed to parse server response');
     }
     
-    // Handle authentication flow responses according to the headless API spec
-    if (res.status === 401 || res.status === 410) {
-      if (data.data?.flows) {
-        if (data.data.flows.some(flow => flow.id === 'verify_email')) {
-          // Email verification required
-          authStore.needsEmailVerification = true;
-          authStore.showSnackbar('Please check your email to verify your account.');
-          router.push('/verify-email');
-          return;
-        }
+    console.log('Response status:', res.status);
+    console.log('Response data:', data);
+
+    if (res.status === 401 || res.status === 409) {
+      // Handle verification required
+      if (data.data?.flows?.some(flow => flow.id === 'verify_email')) {
+        authStore.needsEmailVerification = true;
+        router.push('/verify-email');
+        return;
       }
     }
-    
-    // Handle error responses
+
     if (!res.ok) {
-      if (data.errors) {
-        // Map errors to form fields
-        errors.value = data.errors;
-      } else if (data.data?.errors) {
+      // Handle errors
+      if (data.data?.errors) {
         errors.value = data.data.errors;
-      } else if (data.message) {
-        error.value = data.message;
+      } else if (data.errors) {
+        errors.value = data.errors;
       } else {
-        error.value = 'Signup failed. Please try again.';
+        error.value = data.message || 'Signup failed. Please try again.';
       }
       return;
     }
-    
+
     // Handle successful signup
-    if (res.status === 200 || res.status === 201) {
-      // Show success message
-      authStore.showSnackbar('Account created successfully! Please check your email to verify your account.');
+    if (data.data?.user) {
+      authStore.user = data.data.user;
+      authStore.isAuthenticated = true;
+      authStore.userDataLoaded = true;
       
-      // Update auth store with user data if available
-      if (data.data?.user) {
-        authStore.user = data.data.user;
-        authStore.isAuthenticated = true;
-        authStore.userDataLoaded = true;
+      if (data.meta?.session_token) {
+        authStore.sessionToken = data.meta.session_token;
       }
-      
-      // Redirect to email verification page
+
+      // Show verification message and redirect
+      authStore.showSnackbar('Account created! Please check your email to verify your account.');
       router.push('/verify-email');
     }
   } catch (err) {

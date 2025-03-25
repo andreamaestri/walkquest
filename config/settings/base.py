@@ -280,13 +280,14 @@ FIXTURE_DIRS = (str(APPS_DIR / "fixtures"),)
 # https://docs.djangoproject.com/en/dev/ref/settings/#session-cookie-httponly
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
-# https://docs.djangoproject.com/en/dev/ref/settings/#csrf-cookie-httponly
 CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript to access the CSRF token
 CSRF_COOKIE_SAMESITE = 'Lax'
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:8000',
     'http://127.0.0.1:8000',
-    'https://solid-trout-4j64vvq9wqxh79vg-8000.app.github.dev',
+    'http://localhost:5173',  # Vite dev server
+    'http://127.0.0.1:5173',  # Vite dev server
+    'https://walkquest-b4598371b54d.herokuapp.com',  # Production server
 ]
 
 # CORS settings
@@ -295,7 +296,9 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:8000",
     "http://127.0.0.1:8000",
-    "https://solid-trout-4j64vvq9wqxh79vg-8000.app.github.dev",
+    "http://localhost:5173",  # Vite dev server
+    "http://127.0.0.1:5173",  # Vite dev server
+    "https://walkquest-b4598371b54d.herokuapp.com",  # Production server
 ]
 CORS_ALLOW_HEADERS = [
     "accept",
@@ -347,7 +350,22 @@ SOCIALACCOUNT_FORMS = {"signup": "walkquest.users.forms.UserSocialSignupForm"}
 HEADLESS_ONLY = True
 HEADLESS_CLIENTS = ("app",)
 
-# Allow X-Session-Token header
+# CORS settings for headless auth
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://localhost:5173",  # Vite dev server
+    "http://127.0.0.1:5173",  # Vite dev server
+]
+
+# Session and CSRF settings for headless auth
+SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript to access the CSRF token
+
+# Required headers for allauth headless
 CORS_ALLOW_HEADERS = [
     "accept",
     "accept-encoding",
