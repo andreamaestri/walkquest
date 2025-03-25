@@ -418,13 +418,15 @@ SOCIALACCOUNT_FORMS = {"signup": "walkquest.users.forms.UserSocialSignupForm"}
 
 # django-allauth headless configuration
 HEADLESS_FRONTEND_URLS = {
-    "account_confirm_email": "/account/verify-email/{key}",
-    "account_reset_password": "/account/password/reset",
-    "account_reset_password_from_key": "/account/password/reset/key/{key}",
-    "account_signup": "/account/signup",
-    "socialaccount_login_error": "/account/provider/callback",
+    "account_confirm_email": env("FRONTEND_URL", default="http://localhost:5173") + "/account/verify-email/{key}",
+    "account_reset_password": env("FRONTEND_URL", default="http://localhost:5173") + "/account/password/reset",
+    "account_reset_password_from_key": env("FRONTEND_URL", default="http://localhost:5173") + "/account/password/reset/key/{key}",
+    "account_signup": env("FRONTEND_URL", default="http://localhost:5173") + "/account/signup",
+    "socialaccount_login_error": env("FRONTEND_URL", default="http://localhost:5173") + "/account/provider/callback",
 }
 HEADLESS_ONLY = True
+# Specify that we only want to use 'app' client endpoints, not 'browser'
+HEADLESS_CLIENTS = ("app",)
 
 # Django Ninja API settings
 NINJA_JWT = {

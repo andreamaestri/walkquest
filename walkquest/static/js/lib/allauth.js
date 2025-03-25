@@ -3,8 +3,8 @@
 // Base URL for allauth API
 const BASE_URL = '';
 
-// Default client type - 'browser' for web applications, 'app' for mobile/desktop applications
-const CLIENT_TYPE = 'browser';
+// Use 'app' client type instead of 'browser'
+const CLIENT_TYPE = 'app';
 
 // URLs for different endpoints - using the headless API
 export const URLs = Object.freeze({
