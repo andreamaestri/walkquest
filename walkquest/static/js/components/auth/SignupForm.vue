@@ -318,12 +318,11 @@ async function handleSubmit() {
     
     console.log('Submitting form with email:', email.value);
     
-    // Prepare data for submission
+    // Prepare data for submission according to the API spec
     const signupData = {
       email: email.value,
       username: username.value || email.value.split('@')[0],
-      password1: password1.value,
-      password2: password2.value
+      password: password1.value,  // Use single password field as required by API
     };
     
     // Add name if provided
@@ -346,7 +345,7 @@ async function handleSubmit() {
       }
     }
     
-    // Use the correct API endpoint from allauth.js
+    // Use the headless API endpoint
     const res = await fetch('/_allauth/app/v1/auth/signup', {
       method: 'POST',
       headers: {

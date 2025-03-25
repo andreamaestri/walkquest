@@ -225,9 +225,8 @@ export async function signUp(data) {
   // Prepare data for JSON submission to headless API
   const signupData = {
     email: data.email,
-    password1: data.password1,
-    password2: data.password2,
-    username: data.username || data.email.split('@')[0] // Use provided username or generate from email
+    username: data.username || data.email.split('@')[0], // Use provided username or generate from email
+    password: data.password1 // Use password instead of password1/password2
   };
   
   // Add first_name and last_name if provided
