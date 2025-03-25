@@ -422,3 +422,10 @@ WHITENOISE_IMMUTABLE_FILE_TEST = immutable_file_test
 ACCOUNT_FORMS = {
     'login': 'walkquest.users.forms.UserLoginForm',
 }
+
+# Force the `admin` sign in process to go through the `django-allauth` workflow
+# https://cookiecutter-django.readthedocs.io/en/latest/settings.html#other-environment-settings
+ADMIN_FORCE_ALLAUTH = env.bool("DJANGO_ADMIN_FORCE_ALLAUTH", default=False)
+
+# LOGGING
+# ------------------------------------------------------------------------------
