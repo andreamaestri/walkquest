@@ -276,7 +276,7 @@ async function handleSubmit() {
   }
 
   if (!password1.value) {
-    errors.value.password1 = 'Password is required'
+    errors.value.password = 'Password is required'
     return
   }
 
@@ -286,7 +286,7 @@ async function handleSubmit() {
   }
   
   if (password1.value.length < 8) {
-    errors.value.password1 = 'Password must be at least 8 characters'
+    errors.value.password = 'Password must be at least 8 characters'
     return
   }
 
@@ -299,7 +299,7 @@ async function handleSubmit() {
       throw new Error('CSRF token not available')
     }
 
-    // Submit to django-allauth headless API endpoint with the correct password fields
+    // Submit using allauth API format
     const res = await fetch('/_allauth/app/v1/auth/signup', {
       method: 'POST',
       headers: {
@@ -313,8 +313,7 @@ async function handleSubmit() {
       body: JSON.stringify({
         email: email.value,
         username: username.value,
-        password1: password1.value,
-        password2: password2.value,
+        password: password1.value,  // Just send single password field
         name: name.value || ''
       })
     })
@@ -326,7 +325,11 @@ async function handleSubmit() {
       if (data.errors) {
         // Map API error format to form fields
         data.errors.forEach(error => {
-          if (error.param) {
+          if (error.param === 'password') {
+            // Map password errors to both fields
+            errors.value.password1 = error.message
+            errors.value.password2 = error.message
+          } else {
             errors.value[error.param] = error.message
           }
         })

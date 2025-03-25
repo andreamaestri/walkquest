@@ -226,12 +226,12 @@ export async function signUp(data) {
   const signupData = {
     email: data.email,
     username: data.username || data.email.split('@')[0], // Use provided username or generate from email
-    password: data.password1 // Use password instead of password1/password2
+    password1: data.password1,
+    password2: data.password2  // API requires both password1 and password2
   };
   
-  // Add first_name and last_name if provided
-  if (data.first_name) signupData.first_name = data.first_name;
-  if (data.last_name) signupData.last_name = data.last_name;
+  // Add name if provided
+  if (data.name) signupData.name = data.name;
   
   // Add any additional fields that were passed
   if (data.next) signupData.next = data.next;
