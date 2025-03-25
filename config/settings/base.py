@@ -427,5 +427,14 @@ ACCOUNT_FORMS = {
 # https://cookiecutter-django.readthedocs.io/en/latest/settings.html#other-environment-settings
 ADMIN_FORCE_ALLAUTH = env.bool("DJANGO_ADMIN_FORCE_ALLAUTH", default=False)
 
+# ADMIN
+# ------------------------------------------------------------------------------
+# Django Admin URL
+ADMIN_URL = env("DJANGO_ADMIN_URL", default="admin/")
+# https://docs.djangoproject.com/en/dev/ref/settings/#admins
+ADMINS = [("""Andrea Maestri""", "hello@andreadev.uk")]
+# https://docs.djangoproject.com/en/dev/ref/settings/#managers
+MANAGERS = ADMINS
+
 # LOGGING
 # ------------------------------------------------------------------------------
