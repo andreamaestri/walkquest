@@ -299,10 +299,11 @@ async function handleSubmit() {
       throw new Error('CSRF token not available')
     }
 
-    // Submit to django-allauth signup endpoint
-    const res = await fetch('/accounts/signup/', {
+    // Submit to django-allauth headless API endpoint
+    const res = await fetch('/_allauth/app/v1/auth/signup', {
       method: 'POST',
       headers: {
+        'Accept': 'application/json',
         'Content-Type': 'application/json',
         'X-CSRFToken': token,
         'X-Requested-With': 'XMLHttpRequest'
@@ -322,7 +323,11 @@ async function handleSubmit() {
     
     if (!res.ok) {
       // Handle validation errors from Django
-      if (data.form) {
+      if (data.data?.errors) {
+        // Handle structured validation errors from headless API
+        errors.value = data.data.errors
+      } else if (data.form) {
+        // Handle legacy form errors
         Object.entries(data.form).forEach(([field, error]) => {
           errors.value[field] = Array.isArray(error) ? error[0] : error
         })
@@ -333,14 +338,19 @@ async function handleSubmit() {
     }
 
     // Handle successful signup
-    if (data.user) {
+    if (data.data?.user) {
       // Store user data in auth store
-      authStore.user = data.user
+      authStore.user = data.data.user
       authStore.isAuthenticated = true
       authStore.userDataLoaded = true
+      
+      // Store session token if provided
+      if (data.meta?.session_token) {
+        localStorage.setItem('allauth_session_token', data.meta.session_token)
+      }
 
       // Handle email verification if needed
-      if (data.requires_verification) {
+      if (data.status === 401 && data.data?.flows?.includes('verify_email')) {
         router.push('/verify-email')
       } else {
         router.push('/')
