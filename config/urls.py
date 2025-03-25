@@ -6,7 +6,7 @@ from django.urls import include, path
 from django.views import defaults as default_views
 from django.views.generic import TemplateView
 from walkquest.walks.views import HomePageView 
-from walkquest.views import index, legacy_walk_view
+from walkquest.views import index, legacy_walk_view, csrf_token_view
 
 urlpatterns = [
     path("", HomePageView.as_view(), name="home"),
@@ -20,6 +20,9 @@ urlpatterns = [
     
     # User management
     path("users/", include("walkquest.users.urls", namespace="users")),
+    
+    # CSRF token endpoint for frontend apps
+    path("accounts/csrf/", csrf_token_view, name="csrf_token"),
     
     # Django allauth URLs - both traditional and headless API
     # Even when using headless, the third-party provider endpoints are still

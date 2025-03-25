@@ -221,8 +221,8 @@ onMounted(async () => {
 
 async function refreshCSRFToken() {
   try {
-    // Fetch the CSRF token with a non-caching request
-    const response = await fetch('/accounts/signup/', {
+    // Instead of fetching the signup page, use Django's CSRF cookie endpoint
+    await fetch('/accounts/csrf/', {
       method: 'GET',
       credentials: 'same-origin',
       headers: {
@@ -231,7 +231,7 @@ async function refreshCSRFToken() {
       }
     });
     
-    // Extract the CSRF token from the Set-Cookie header if available
+    // Extract the CSRF token from the cookie
     const cookies = document.cookie.split(';');
     for (const cookie of cookies) {
       if (cookie.trim().startsWith('csrftoken=')) {

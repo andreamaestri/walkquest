@@ -1,4 +1,8 @@
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import redirect, render
+from django.http import HttpResponse, JsonResponse
+from django.middleware.csrf import get_token
+from django.views.decorators.http import require_GET
+
 from django.conf import settings
 from django.http import Http404
 from django.core.serializers.json import DjangoJSONEncoder
@@ -60,3 +64,9 @@ def legacy_walk_view(request, walk_uuid):
         walk_id=walk.walk_id,
         permanent=True,
     )
+
+@require_GET
+def csrf_token_view(request):
+    """Return a CSRF token for use in frontend applications."""
+    token = get_token(request)
+    return HttpResponse("", headers={"X-CSRFToken": token})
