@@ -261,8 +261,10 @@ function getCookie(name) {
 
 // Handle form submission
 async function handleSubmit() {
+  // Clear all errors
   errors.value = {}
   error.value = null
+  console.log('Starting signup submission')
   
   // Client-side validation
   if (!email.value) {
@@ -397,33 +399,50 @@ async function handleSubmit() {
 
     // Handle successful signup
     if (res.ok) {
+      console.log('Signup successful!', data);
+      
       // Check for user data in data.user or data.data.user
       const userData = data.data?.user || data.user;
+      console.log('User data:', userData);
       
       if (userData) {
-        // Store user data in auth store
-        authStore.user = userData;
-        authStore.isAuthenticated = true;
-        authStore.userDataLoaded = true;
-        
-        // Store session token if provided
-        if (data.meta?.session_token) {
-          localStorage.setItem('allauth_session_token', data.meta.session_token);
-        }
-
-        // Check if email verification is needed
-        const needsEmailVerification = 
-          (data.status === 401 && data.data?.flows?.includes('verify_email')) || 
-          data.email_verification_needed;
+        try {
+          console.log('Storing user data in auth store');
+          // Store user data in auth store
+          authStore.user = userData;
+          authStore.isAuthenticated = true;
+          authStore.userDataLoaded = true;
           
-        if (needsEmailVerification) {
-          router.push('/verify-email');
-        } else {
-          router.push('/');
+          // Store session token if provided
+          if (data.meta?.session_token) {
+            console.log('Storing session token');
+            localStorage.setItem('allauth_session_token', data.meta.session_token);
+          }
+
+          // Check if email verification is needed
+          const needsEmailVerification = 
+            (data.status === 401 && data.data?.flows?.includes('verify_email')) || 
+            data.email_verification_needed;
+          
+          console.log('Email verification needed?', needsEmailVerification);
+          
+          setTimeout(() => {
+            // Add a small delay to ensure state has updated
+            if (needsEmailVerification) {
+              console.log('Redirecting to verification page');
+              router.push('/verify-email');
+            } else {
+              console.log('Redirecting to home');
+              router.push('/');
+            }
+          }, 100);
+        } catch (e) {
+          console.error('Error in signup success handling:', e);
         }
       } else {
+        console.log('No user data in response, redirecting home');
         // Just redirect to home if no user data
-        router.push('/');
+        setTimeout(() => router.push('/'), 100);
       }
     }
   } catch (err) {

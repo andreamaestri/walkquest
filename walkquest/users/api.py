@@ -52,6 +52,10 @@ def handle_login(request):
         user = authenticate(request, username=email, password=password)
         if user is not None:
             if user.is_active:
+                # When logging in, we need to specify the backend
+                from django.contrib.auth import get_backends
+                backend = get_backends()[0]  # Get the first backend
+                user.backend = f"{backend.__module__}.{backend.__class__.__name__}"
                 login(request, user)
                 return JsonResponse({
                     'message': 'Login successful',
@@ -157,7 +161,11 @@ def handle_signup(request):
             traceback.print_exc()
             # Continue anyway - don't block signup because of email issues
             
-        # Log user in
+        # Log user in with the specific backend
+        from django.contrib.auth import get_backends
+        backend = get_backends()[0]  # Get the first backend
+        print(f"Using authentication backend: {backend.__class__.__name__}")
+        user.backend = f"{backend.__module__}.{backend.__class__.__name__}"
         login(request, user)
         
         # Return response in a format similar to allauth headless
