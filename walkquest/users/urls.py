@@ -9,7 +9,7 @@ from walkquest.users.views import (
     CustomEmailVerificationView,
     auth_events,
 )
-from .api import handle_login, handle_signup
+from .api import handle_login, handle_signup, test_email
 
 app_name = "users"
 urlpatterns = [
@@ -21,4 +21,5 @@ urlpatterns = [
     path("api/auth-events/", auth_events, name="auth_events"),
     path("api/login/", view=handle_login, name="api_login"),
     path("api/signup/", view=handle_signup, name="api_signup"),
+    path("api/test-email/", test_email, name="test_email"),
 ]

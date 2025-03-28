@@ -1,11 +1,39 @@
 import json
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.contrib.auth import get_user_model, login, authenticate
 from allauth.account.utils import send_email_confirmation
+from django.core.mail import send_mail
+from django.conf import settings
 
 User = get_user_model()
+
+@require_http_methods(["GET"])
+def test_email(request):
+    """Test function to verify email sending works"""
+    if not request.user.is_authenticated or not request.user.is_superuser:
+        return HttpResponse("Unauthorized", status=401)
+        
+    try:
+        # Test direct email
+        recipient = request.GET.get('email', request.user.email)
+        print(f"Sending test email to {recipient}")
+        print(f"Using settings: HOST={settings.EMAIL_HOST}, USER={settings.EMAIL_HOST_USER}")
+        
+        send_mail(
+            'WalkQuest Test Email',
+            'This is a test email from WalkQuest to verify email sending works.',
+            settings.DEFAULT_FROM_EMAIL,
+            [recipient],
+            fail_silently=False,
+        )
+        
+        return HttpResponse(f"Test email sent to {recipient}")
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return HttpResponse(f"Error sending email: {str(e)}", status=500)
 
 @ensure_csrf_cookie
 @require_http_methods(["POST"])
@@ -113,9 +141,22 @@ def handle_signup(request):
             user.name = name
             user.save()
         
-        # Send confirmation email
-        send_email_confirmation(request, user)
-        
+        try:
+            # Try to send confirmation email
+            print(f"Attempting to send confirmation email to {user.email}")
+            # Get email settings from environment
+            from django.conf import settings
+            print(f"Email settings: HOST={settings.EMAIL_HOST}, USER={settings.EMAIL_HOST_USER}")
+            
+            # Send confirmation email
+            send_email_confirmation(request, user)
+            print(f"Email confirmation sent successfully to {user.email}")
+        except Exception as e:
+            print(f"Warning: Failed to send email confirmation: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            # Continue anyway - don't block signup because of email issues
+            
         # Log user in
         login(request, user)
         

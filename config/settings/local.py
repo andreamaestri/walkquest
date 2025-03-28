@@ -106,21 +106,38 @@ if DEBUG:
 
 # EMAIL
 # ------------------------------------------------------------------------------
-# https://docs.djangoproject.com/en/dev/ref/settings/#email-backend
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-EMAIL_HOST = "localhost"
-EMAIL_PORT = 1025
-EMAIL_HOST_USER = ""
-EMAIL_HOST_PASSWORD = ""
-EMAIL_USE_TLS = False
-DEFAULT_FROM_EMAIL = "WalkQuest <noreply@walkquest.app>"
+# Check if we want to use real Gmail in local development
+USE_REAL_EMAIL = env.bool("USE_REAL_EMAIL", default=True)
+
+if USE_REAL_EMAIL:
+    # Use the same settings as in base (Gmail)
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend" 
+    EMAIL_HOST = env('EMAIL_HOST', default='smtp.gmail.com')
+    EMAIL_PORT = env.int('EMAIL_PORT', default=587)
+    EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='walkquest.website@gmail.com')
+    EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
+    EMAIL_USE_TLS = True
+    DEFAULT_FROM_EMAIL = f"WalkQuest <{EMAIL_HOST_USER}>"
+    
+    print(f"Using REAL email settings: {EMAIL_HOST_USER}")
+else:
+    # Use console backend for development
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+    EMAIL_HOST = "localhost"
+    EMAIL_PORT = 1025
+    EMAIL_HOST_USER = ""
+    EMAIL_HOST_PASSWORD = ""
+    EMAIL_USE_TLS = False
+    DEFAULT_FROM_EMAIL = "WalkQuest <noreply@walkquest.app>"
+    
+    print(f"Using CONSOLE email settings")
 
 # django-allauth
 # ------------------------------------------------------------------------------
-ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+ACCOUNT_EMAIL_VERIFICATION = "optional"  # Make it optional for easier development
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_AUTHENTICATION_METHOD = "email"
-ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_USERNAME_REQUIRED = True
 ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 3
 ACCOUNT_CONFIRM_EMAIL_ON_GET = True
 ACCOUNT_EMAIL_CONFIRMATION_AUTHENTICATED_REDIRECT_URL = "/"

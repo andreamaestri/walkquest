@@ -13,6 +13,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
 from django.db.models import QuerySet
 from django.http import JsonResponse
+from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from django.views import View
@@ -74,13 +75,22 @@ class CustomEmailVerificationSentView(EmailVerificationSentView):
 
 class CustomEmailVerificationView(ConfirmEmailView):
     def get(self, request, *args, **kwargs):
-        # Add success message for snackbar when email is verified
-        messages.success(
-            request,
-            "Email verified successfully!",
-            extra_tags='md-snackbar'
-        )
-        return super().get(request, *args, **kwargs)
+        try:
+            # Add success message for snackbar when email is verified
+            messages.success(
+                request,
+                "Email verified successfully!",
+                extra_tags='md-snackbar'
+            )
+            return super().get(request, *args, **kwargs)
+        except Exception as e:
+            print(f"Error in email verification: {str(e)}")
+            messages.error(
+                request,
+                f"Error verifying email: {str(e)}",
+                extra_tags='md-snackbar'
+            )
+            return redirect('/')
 
 
 class JSONSignupView(SignupView):

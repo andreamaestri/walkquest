@@ -321,25 +321,32 @@ EMAIL_BACKEND = env(
 )
 EMAIL_HOST = env('EMAIL_HOST', default='smtp.gmail.com')
 EMAIL_PORT = env.int('EMAIL_PORT', default=587)
-EMAIL_HOST_USER = env('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
+EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='walkquest.website@gmail.com')
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
+
+if not EMAIL_HOST_PASSWORD:
+    print("WARNING: EMAIL_HOST_PASSWORD is not set in .env file!")
+    
 EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
 EMAIL_USE_SSL = env.bool('EMAIL_USE_SSL', default=False)
-DEFAULT_FROM_EMAIL = f"WalkQuest <{env('EMAIL_HOST_USER')}>"
-SERVER_EMAIL = env('EMAIL_HOST_USER')
+DEFAULT_FROM_EMAIL = f"WalkQuest <{EMAIL_HOST_USER}>"
+SERVER_EMAIL = EMAIL_HOST_USER
+
+# Print email configuration at startup (for debugging)
+print(f"Email configuration: HOST={EMAIL_HOST}, USER={EMAIL_HOST_USER}, PORT={EMAIL_PORT}, TLS={EMAIL_USE_TLS}")
 
 # django-allauth
 # ------------------------------------------------------------------------------
 ACCOUNT_ALLOW_REGISTRATION = env.bool("DJANGO_ACCOUNT_ALLOW_REGISTRATION", True)
 ACCOUNT_AUTHENTICATION_METHOD = "email"
 ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+ACCOUNT_EMAIL_VERIFICATION = "optional"  # Change to optional for development
 ACCOUNT_CONFIRM_EMAIL_ON_GET = True  # Verify on GET request
 ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 3
 ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True  # Auto-login after confirmation
 ACCOUNT_LOGIN_ON_PASSWORD_RESET = True
 ACCOUNT_UNIQUE_EMAIL = True
-ACCOUNT_USERNAME_REQUIRED = False  # We'll use email as the primary identifier
+ACCOUNT_USERNAME_REQUIRED = True  # We need usernames for our API
 ACCOUNT_USER_MODEL_USERNAME_FIELD = "username"
 
 # django-allauth social account configuration
@@ -350,20 +357,20 @@ SOCIALACCOUNT_FORMS = {"signup": "walkquest.users.forms.UserSocialSignupForm"}
 HEADLESS_ONLY = False  # Allow both standard and headless flows
 HEADLESS_CLIENTS = ("app", "browser")  # Support both client types
 
-# Frontend URLs for headless auth flows
+# Frontend URLs for headless auth flows - simplified
 HEADLESS_FRONTEND_URLS = {
-    # URLs for authentication flows
-    'account_signup': '/',  # Redirect after signup
-    'account_login': '/',  # Redirect after login
-    'account_logout': '/',  # Redirect after logout
-    'account_email_verification_sent': '/verify-email',  # Email verification sent page
-    'account_confirm_email': '/email-confirmed',  # Email confirmed page
-    'account_reset_password': '/reset-password',  # Password reset page
-    'account_reset_password_done': '/password-reset-done',  # Password reset done page
-    'account_reset_password_from_key': '/password-reset-confirm',  # Password reset confirm page
-    'account_reset_password_from_key_done': '/password-reset-complete',  # Password reset complete page
-    'account_inactive': '/account-inactive',  # Account inactive page
-    'account_email': '/email',  # Email management page
+    # Use relative URLs to the base domain
+    'account_signup': '/',  
+    'account_login': '/',
+    'account_logout': '/',
+    'account_email_verification_sent': '/verify-email',
+    'account_confirm_email': None,  # Let Django handle this with a redirect
+    'account_reset_password': '/reset-password',
+    'account_reset_password_done': '/password-reset-done',
+    'account_reset_password_from_key': '/password-reset-confirm',
+    'account_reset_password_from_key_done': '/password-reset-complete',
+    'account_inactive': '/',
+    'account_email': '/profile',
 }
 
 # CORS settings for headless auth
