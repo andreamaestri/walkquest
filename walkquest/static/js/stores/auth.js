@@ -317,13 +317,17 @@ export const useAuthStore = defineStore('auth', {
         const csrfToken = this.getCSRFToken();
         const sessionToken = localStorage.getItem('allauth_session_token');
         
-        // Use the correct URL format with 'app' client type
-        const response = await fetch('/_allauth/app/v1/auth/session/refresh/', {
+        // Import the URLs from allauth.js
+        const { URLs } = await import('../lib/allauth');
+        
+        // Use the standard SESSION_REFRESH URL from the URLs object
+        const response = await fetch(URLs.SESSION_REFRESH, {
           method: 'POST',
           headers: {
             'X-CSRFToken': csrfToken,
             'X-Requested-With': 'XMLHttpRequest',
             'Content-Type': 'application/json',
+            'Accept': 'application/json',
             ...(sessionToken ? { 'X-Session-Token': sessionToken } : {})
           },
           credentials: 'same-origin',

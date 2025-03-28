@@ -131,7 +131,7 @@
           </div>
           <div v-if="errors.password1" class="md3-error-message">
             <Icon icon="mdi:alert-circle" class="md3-error-icon" />
-            <span>{{ typeof errors.password1 === 'string' ? errors.password1 : errors.password1[0] }}</span>
+            <span>{{ typeof errors.password1 === 'string' ? errors.password1 : Array.isArray(errors.password1) ? errors.password1[0] : 'Password is required' }}</span>
           </div>
         </div>
 
@@ -166,7 +166,7 @@
           </div>
           <div v-if="errors.password2" class="md3-error-message">
             <Icon icon="mdi:alert-circle" class="md3-error-icon" />
-            <span>{{ typeof errors.password2 === 'string' ? errors.password2 : errors.password2[0] }}</span>
+            <span>{{ typeof errors.password2 === 'string' ? errors.password2 : Array.isArray(errors.password2) ? errors.password2[0] : 'Confirmation password is required' }}</span>
           </div>
         </div>
 
@@ -276,7 +276,12 @@ async function handleSubmit() {
   }
 
   if (!password1.value) {
-    errors.value.password = 'Password is required'
+    errors.value.password1 = 'Password is required'
+    return
+  }
+  
+  if (!password2.value) {
+    errors.value.password2 = 'Confirmation password is required'
     return
   }
 
@@ -286,7 +291,7 @@ async function handleSubmit() {
   }
   
   if (password1.value.length < 8) {
-    errors.value.password = 'Password must be at least 8 characters'
+    errors.value.password1 = 'Password must be at least 8 characters'
     return
   }
 
@@ -299,8 +304,19 @@ async function handleSubmit() {
       throw new Error('CSRF token not available')
     }
 
-    // Submit using allauth API format
-    const res = await fetch('/_allauth/app/v1/auth/signup', {
+    // For debugging
+    const requestData = {
+      email: email.value,
+      username: username.value,
+      password1: password1.value,
+      password2: password2.value,
+      name: name.value || ''
+    };
+    
+    console.log('Signup request data:', requestData);
+    
+    // Submit using our custom API endpoint
+    const res = await fetch('/users/api/signup/', {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
@@ -310,52 +326,104 @@ async function handleSubmit() {
       },
       credentials: 'include',
       mode: 'same-origin',
-      body: JSON.stringify({
-        email: email.value,
-        username: username.value,
-        password: password1.value,  // Just send single password field
-        name: name.value || ''
-      })
+      body: JSON.stringify(requestData)
     })
 
-    const data = await res.json()
+    const responseText = await res.text();
+    console.log('Raw response text:', responseText);
+    
+    let data;
+    try {
+      data = JSON.parse(responseText);
+      console.log('Parsed response data:', data);
+    } catch (e) {
+      console.error('Failed to parse response as JSON:', e);
+      error.value = 'Server response was not valid JSON';
+      return;
+    }
     
     if (!res.ok) {
       // Handle validation errors from API
+      console.log('Signup API error response:', data, 'Status:', res.status);
+      
       if (data.errors) {
-        // Map API error format to form fields
-        data.errors.forEach(error => {
-          if (error.param === 'password') {
-            // Map password errors to both fields
-            errors.value.password1 = error.message
-            errors.value.password2 = error.message
-          } else {
-            errors.value[error.param] = error.message
+        // Array-style errors format
+        if (Array.isArray(data.errors)) {
+          data.errors.forEach(error => {
+            if (error.param === 'password') {
+              // Map password errors to both fields
+              errors.value.password1 = error.message;
+              errors.value.password2 = error.message;
+            } else {
+              errors.value[error.param] = error.message;
+            }
+          });
+        } 
+        // Django form errors format
+        else if (typeof data.errors === 'object') {
+          Object.keys(data.errors).forEach(key => {
+            if (key === 'password1' || key === 'password2') {
+              const errorMsg = Array.isArray(data.errors[key]) 
+                ? data.errors[key][0] 
+                : data.errors[key];
+              errors.value[key] = errorMsg;
+            } else {
+              const errorMsg = Array.isArray(data.errors[key]) 
+                ? data.errors[key][0] 
+                : data.errors[key];
+              errors.value[key] = errorMsg;
+            }
+          });
+        }
+      } 
+      // Django field errors in form format
+      else if (data.form) {
+        Object.keys(data.form).forEach(key => {
+          if (data.form[key].errors && data.form[key].errors.length) {
+            errors.value[key] = data.form[key].errors[0];
           }
-        })
-      } else {
-        error.value = data.message || 'Signup failed. Please try again.'
+        });
       }
-      return
+      // Direct error message
+      else if (data.message) {
+        error.value = data.message;
+      } 
+      // Default error
+      else {
+        error.value = 'Signup failed. Please try again.';
+      }
+      return;
     }
 
     // Handle successful signup
-    if (data.data?.user) {
-      // Store user data in auth store
-      authStore.user = data.data.user
-      authStore.isAuthenticated = true
-      authStore.userDataLoaded = true
+    if (res.ok) {
+      // Check for user data in data.user or data.data.user
+      const userData = data.data?.user || data.user;
       
-      // Store session token if provided
-      if (data.meta?.session_token) {
-        localStorage.setItem('allauth_session_token', data.meta.session_token)
-      }
+      if (userData) {
+        // Store user data in auth store
+        authStore.user = userData;
+        authStore.isAuthenticated = true;
+        authStore.userDataLoaded = true;
+        
+        // Store session token if provided
+        if (data.meta?.session_token) {
+          localStorage.setItem('allauth_session_token', data.meta.session_token);
+        }
 
-      // Handle email verification if needed
-      if (data.status === 401 && data.data?.flows?.includes('verify_email')) {
-        router.push('/verify-email')
+        // Check if email verification is needed
+        const needsEmailVerification = 
+          (data.status === 401 && data.data?.flows?.includes('verify_email')) || 
+          data.email_verification_needed;
+          
+        if (needsEmailVerification) {
+          router.push('/verify-email');
+        } else {
+          router.push('/');
+        }
       } else {
-        router.push('/')
+        // Just redirect to home if no user data
+        router.push('/');
       }
     }
   } catch (err) {

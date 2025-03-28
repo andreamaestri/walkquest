@@ -4,6 +4,7 @@
 const BASE_URL = '';
 
 // Use 'app' client type instead of 'browser'
+// 'app' type works better for headless API usage in SPA contexts
 const CLIENT_TYPE = 'app';
 
 // URLs for different endpoints - using the headless API - without trailing slashes
@@ -20,6 +21,8 @@ export const URLs = Object.freeze({
   CHANGE_PASSWORD: `/_allauth/${CLIENT_TYPE}/v1/account/password/change`,
   EMAIL: `/_allauth/${CLIENT_TYPE}/v1/account/email`,
   PROVIDERS: `/_allauth/${CLIENT_TYPE}/v1/auth/providers`,
+  // Add session refresh endpoint
+  SESSION_REFRESH: `/_allauth/${CLIENT_TYPE}/v1/auth/session/refresh`,
 });
 
 // Session token storage for app client
@@ -245,8 +248,26 @@ export async function signUp(data) {
       // Authentication required or re-authentication required
       console.log('Authentication flow required:', result.meta?.flows);
       
-      // Check for specific flows that need to be handled
-      if (result.meta && result.meta.flows) {
+      if (result.data && result.data.flows) {
+        // New API format - flows in data.flows array
+        if (Array.isArray(result.data.flows)) {
+          if (result.data.flows.includes('verify_email')) {
+            console.log('Email verification required');
+            result.email_verification_needed = true;
+          }
+          
+          if (result.data.flows.includes('mfa_authenticate')) {
+            console.log('MFA authentication required');
+            result.mfa_required = true;
+          }
+          
+          if (result.data.flows.includes('provider_signup')) {
+            console.log('Provider signup required');
+            result.provider_signup_required = true;
+          }
+        }
+      } else if (result.meta && result.meta.flows) {
+        // Backward compatibility - flows in meta.flows object
         // Email verification flow
         if (result.meta.flows.verify_email) {
           console.log('Email verification required');
@@ -277,10 +298,11 @@ export async function signUp(data) {
       
       // Dispatch auth change event if we're authenticated
       if (result.meta && result.meta.is_authenticated) {
+        const user = result.data?.user || result.user || { email: data.email };
         const event = new CustomEvent('allauth.auth.change', { 
           detail: {
             is_authenticated: true,
-            user: result.user || { email: data.email },
+            user: user,
             statusCode: result.status
           }
         });

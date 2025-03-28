@@ -140,19 +140,54 @@ def auth_events(request):
     """
     API endpoint to check for authentication events.
     Vue components can poll this endpoint to know when auth state changes.
+    
+    This endpoint is used for both:
+    1. Checking current auth status (is_authenticated, user data)
+    2. Getting any server-side auth events (login, logout, etc.)
+    
+    This helps keep the Vue app in sync with the server-side authentication state.
     """
     events = request.session.get('auth_events', [])
+    csrf_token = request.META.get('CSRF_COOKIE')
+    session_token = request.session.get('allauth_session_token')
     
     # Clear the events after reading them
     request.session['auth_events'] = []
     request.session.modified = True
     
-    return JsonResponse({
-        'events': events,
-        'is_authenticated': request.user.is_authenticated,
-        'user': {
-            'email': request.user.email,
-            'username': getattr(request.user, 'username', ''),
-            'name': getattr(request.user, 'name', ''),
-        } if request.user.is_authenticated else None
-    })
+    # Format response according to allauth headless API structure
+    response = {
+        'meta': {
+            'is_authenticated': request.user.is_authenticated,
+            'csrf_token': csrf_token
+        },
+        'data': {
+            'user': {
+                'email': request.user.email,
+                'username': getattr(request.user, 'username', ''),
+                'name': getattr(request.user, 'name', ''),
+            } if request.user.is_authenticated else None
+        },
+        'status': 200,
+        'events': events
+    }
+    
+    # Add session token if available (for app client type)
+    if session_token:
+        response['meta']['session_token'] = session_token
+    
+    # Include any auth flows if needed
+    email_verification_needed = False
+    if request.user.is_authenticated:
+        # Check if user needs email verification
+        try:
+            email_verified = getattr(request.user, 'emailaddress_set', None) and \
+                             request.user.emailaddress_set.filter(verified=True).exists()
+            email_verification_needed = not email_verified
+        except:
+            pass
+    
+    if email_verification_needed:
+        response['data']['flows'] = ['verify_email']
+    
+    return JsonResponse(response)

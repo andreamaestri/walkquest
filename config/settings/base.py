@@ -347,8 +347,8 @@ SOCIALACCOUNT_ADAPTER = "walkquest.users.adapters.SocialAccountAdapter"
 SOCIALACCOUNT_FORMS = {"signup": "walkquest.users.forms.UserSocialSignupForm"}
 
 # django-allauth headless configuration
-HEADLESS_ONLY = True
-HEADLESS_CLIENTS = ("app",)
+HEADLESS_ONLY = False  # Allow both standard and headless flows
+HEADLESS_CLIENTS = ("app", "browser")  # Support both client types
 
 # Frontend URLs for headless auth flows
 HEADLESS_FRONTEND_URLS = {

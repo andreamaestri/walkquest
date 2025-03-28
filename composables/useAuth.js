@@ -6,7 +6,8 @@ export function useAuth() {
     isAuthenticated: false,
     email: null,
     loading: true,
-    error: null
+    error: null,
+    emailVerificationNeeded: false
   });
   
   const messages = ref([]);
@@ -41,10 +42,20 @@ export function useAuth() {
       const response = await allauth.getAuth();
       
       if (response.status === 200) {
-        // Our endpoint returns is_authenticated and user object
-        if (response.meta && response.meta.is_authenticated && response.data && response.data.user) {
-          user.isAuthenticated = true;
-          user.email = response.data.user.email;
+        // Check for authentication state in meta
+        if (response.meta && response.meta.is_authenticated) {
+          // Look for user data in the data.user property (standard headless API)
+          if (response.data && response.data.user) {
+            user.isAuthenticated = true;
+            user.email = response.data.user.email;
+          } else if (response.user) {
+            // Backward compatibility if user is directly in response
+            user.isAuthenticated = true;
+            user.email = response.user.email;
+          } else {
+            user.isAuthenticated = true;
+            // No user data but authenticated
+          }
         } else {
           user.isAuthenticated = false;
           user.email = null;
@@ -53,6 +64,18 @@ export function useAuth() {
         // Check for events or messages
         if (response.events) {
           handleAuthEvents(response.events);
+        }
+      } else if (response.status === 401) {
+        // Handle 401 with flows
+        user.isAuthenticated = false;
+        user.email = null;
+        
+        // Check if email verification is needed
+        if (response.data && response.data.flows) {
+          if (Array.isArray(response.data.flows) && 
+              response.data.flows.includes('verify_email')) {
+            user.emailVerificationNeeded = true;
+          }
         }
       } else {
         user.isAuthenticated = false;
