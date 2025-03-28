@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<!-- Include the signup form Vue component and provide a CSRF token -->
+<div id="auth-root">
+  <signup-form></signup-form>
+</div>
+
+<!-- Add a hidden input with CSRF token to be used by JavaScript -->
+<form id="csrf-form" style="display: none;">
+  {% csrf_token %}
+</form>
+
+<script>
+  // Extract CSRF token and make it available globally
+  document.addEventListener('DOMContentLoaded', function() {
+    // Get CSRF token from the form
+    const csrfToken = document.querySelector('#csrf-form input[name="csrfmiddlewaretoken"]').value;
+    
+    // Set it as a global variable for Vue components
+    window.csrfToken = csrfToken;
+    
+    // Also set as a meta tag
+    const meta = document.createElement('meta');
+    meta.name = 'csrf-token';
+    meta.content = csrfToken;
+    document.getElementsByTagName('head')[0].appendChild(meta);
+    
+    console.log('CSRF token is available:', csrfToken);
+  });
+</script>
+{% endblock %}

@@ -210,38 +210,62 @@ const errors = ref({})
 const response = reactive({ fetching: false, content: null })
 const csrfToken = ref('')
 
-onMounted(() => {
-  // Get CSRF token on mount
-  csrfToken.value = getCSRFToken()
+onMounted(async () => {
+  // Try to get CSRF token from the global variable set by auth pages
+  if (window.csrfToken) {
+    console.log('Using CSRF token from global variable');
+    csrfToken.value = window.csrfToken;
+  } else {
+    // Get CSRF token on mount
+    csrfToken.value = await getCSRFToken();
+  }
 })
 
-// Get CSRF token according to Django's recommended method
-function getCSRFToken() {
-  let token = null
-  
-  // First try to get from cookie
-  const tokenFromCookie = getCookie('csrftoken')
+// Get CSRF token from multiple possible sources
+async function getCSRFToken() {
+  // Try to get from cookie
+  const tokenFromCookie = getCookie('csrftoken');
   if (tokenFromCookie) {
-    token = tokenFromCookie
+    csrfToken.value = tokenFromCookie;
+    return tokenFromCookie;
   }
 
   // If not in cookie, try to get from meta tag
-  if (!token) {
-    const metaTag = document.querySelector('meta[name="csrf-token"]')
-    if (metaTag) {
-      token = metaTag.getAttribute('content')
-    }
+  const metaTag = document.querySelector('meta[name="csrf-token"]');
+  if (metaTag) {
+    const token = metaTag.getAttribute('content');
+    csrfToken.value = token;
+    return token;
   }
 
-  // Finally try the DOM input (this is useful when CSRF_COOKIE_HTTPONLY=True)
-  if (!token) {
-    const tokenInput = document.querySelector('input[name="csrfmiddlewaretoken"]')
-    if (tokenInput) {
-      token = tokenInput.value
-    }
+  // Try the DOM input (useful when CSRF_COOKIE_HTTPONLY=True)
+  const tokenInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
+  if (tokenInput) {
+    csrfToken.value = tokenInput.value;
+    return tokenInput.value;
   }
-
-  return token
+  
+  // As a last resort, try to fetch a new CSRF token from the server
+  try {
+    console.log('Fetching new CSRF token from server');
+    const response = await fetch('/accounts/csrf/', {
+      method: 'GET',
+      credentials: 'include'
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (data.csrfToken) {
+        csrfToken.value = data.csrfToken;
+        return data.csrfToken;
+      }
+    }
+  } catch (error) {
+    console.error('Failed to fetch CSRF token:', error);
+  }
+  
+  console.warn("CSRF token not found from any source.");
+  return null;
 }
 
 function getCookie(name) {
@@ -300,13 +324,57 @@ async function handleSubmit() {
   response.fetching = true
   
   try {
-    // Always get a fresh token before submitting
-    const token = getCSRFToken()
+    // Ensure we have a valid CSRF token before proceeding
+    const token = await getCSRFToken();
+    if (!token) {
+      error.value = 'Could not obtain CSRF token. Please refresh the page and try again.';
+      response.fetching = false;
+      return;
+    }
+    
+    // Save email in localStorage for potential email verification page use
+    localStorage.setItem('signup_email', email.value);
+  
+    // Try using the Pinia auth store's signup method first
+    try {
+      console.log('Attempting signup through auth store');
+      await authStore.signup(email.value, password1.value, password2.value, username.value, name.value);
+      
+      // If we reach here, signup was successful
+      console.log('Signup through auth store successful!');
+      
+      // Check for email verification
+      if (authStore.needsEmailVerification) {
+        console.log('Email verification needed, redirecting to verification page');
+        router.push('/verify-email');
+      } else {
+        console.log('No email verification needed, redirecting to home');
+        router.push('/');
+      }
+      
+      return;
+    } catch (storeError) {
+      // If the store method fails, fall back to direct API call
+      console.warn('Auth store signup failed, falling back to direct API call:', storeError);
+      
+      if (storeError.errors) {
+        // If we have structured errors, use them
+        errors.value = storeError.errors;
+        response.fetching = false;
+        return;
+      }
+    }
+    
+    // Fallback: direct API call if auth store method failed with a non-validation error
+    console.log('Falling back to direct API call');
+    
+    // Use the token we just validated
     if (!token) {
       throw new Error('CSRF token not available')
     }
+    console.log('Using CSRF token:', token)
 
-    // For debugging
+    // Prepare request data
     const requestData = {
       email: email.value,
       username: username.value,
@@ -420,15 +488,18 @@ async function handleSubmit() {
           }
 
           // Check if email verification is needed
-          const needsEmailVerification = 
-            (data.status === 401 && data.data?.flows?.includes('verify_email')) || 
-            data.email_verification_needed;
+          const emailVerificationNeeded = 
+            data.email_verification_needed || 
+            (data.data?.flows && data.data.flows.includes('verify_email'));
           
-          console.log('Email verification needed?', needsEmailVerification);
+          // Update the auth store's email verification flag
+          authStore.needsEmailVerification = emailVerificationNeeded;
           
+          console.log('Email verification needed?', emailVerificationNeeded);
+          
+          // Force a UI update and navigation after a small delay
           setTimeout(() => {
-            // Add a small delay to ensure state has updated
-            if (needsEmailVerification) {
+            if (emailVerificationNeeded) {
               console.log('Redirecting to verification page');
               router.push('/verify-email');
             } else {
@@ -438,11 +509,20 @@ async function handleSubmit() {
           }, 100);
         } catch (e) {
           console.error('Error in signup success handling:', e);
+          // Force a check of authentication state
+          await authStore.forceAuthCheck();
+          router.push('/');
         }
       } else {
-        console.log('No user data in response, redirecting home');
-        // Just redirect to home if no user data
-        setTimeout(() => router.push('/'), 100);
+        console.log('No user data in response, running auth check');
+        // Run a fresh auth check and redirect accordingly
+        await authStore.forceAuthCheck();
+        
+        if (authStore.needsEmailVerification) {
+          router.push('/verify-email');
+        } else {
+          router.push('/');
+        }
       }
     }
   } catch (err) {

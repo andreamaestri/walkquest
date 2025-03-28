@@ -69,4 +69,6 @@ def legacy_walk_view(request, walk_uuid):
 def csrf_token_view(request):
     """Return a CSRF token for use in frontend applications."""
     token = get_token(request)
-    return HttpResponse("", headers={"X-CSRFToken": token})
+    response = JsonResponse({"csrfToken": token})
+    response["X-CSRFToken"] = token
+    return response

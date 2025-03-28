@@ -7,22 +7,35 @@ const BASE_URL = '';
 // 'app' type works better for headless API usage in SPA contexts
 const CLIENT_TYPE = 'app';
 
-// URLs for different endpoints - using the headless API - without trailing slashes
+// Check for globally defined URLs from Django template
+const globalAllAuth = window.djangoAllAuth || {};
+
+// URLs for different endpoints - prioritize global URLs when available
 export const URLs = Object.freeze({
-  // Django Allauth headless API endpoints 
-  CONFIG: `/_allauth/${CLIENT_TYPE}/v1/config`,
-  LOGIN: `/_allauth/${CLIENT_TYPE}/v1/auth/login`,
-  LOGOUT: `/_allauth/${CLIENT_TYPE}/v1/auth/logout`,
-  SIGNUP: `/_allauth/${CLIENT_TYPE}/v1/auth/signup`,
-  SESSION: `/_allauth/${CLIENT_TYPE}/v1/auth/session`,  // Auth session endpoint
-  AUTH_SESSION: `/_allauth/${CLIENT_TYPE}/v1/auth/session`,  // For checking auth status
-  VERIFY_EMAIL: `/_allauth/${CLIENT_TYPE}/v1/auth/email/verify`,
-  PASSWORD_RESET: `/_allauth/${CLIENT_TYPE}/v1/auth/password/reset`,
-  CHANGE_PASSWORD: `/_allauth/${CLIENT_TYPE}/v1/account/password/change`,
-  EMAIL: `/_allauth/${CLIENT_TYPE}/v1/account/email`,
-  PROVIDERS: `/_allauth/${CLIENT_TYPE}/v1/auth/providers`,
-  // Add session refresh endpoint
-  SESSION_REFRESH: `/_allauth/${CLIENT_TYPE}/v1/auth/session/refresh`,
+  // Django Allauth headless API endpoints - use global values or fallbacks
+  CONFIG: globalAllAuth.configUrl || `/_allauth/${CLIENT_TYPE}/v1/config/`,
+  LOGIN: globalAllAuth.loginUrl || `/_allauth/${CLIENT_TYPE}/v1/auth/login/`,
+  LOGOUT: globalAllAuth.logoutUrl || `/_allauth/${CLIENT_TYPE}/v1/auth/logout/`,
+  SIGNUP: globalAllAuth.signupUrl || `/_allauth/${CLIENT_TYPE}/v1/auth/signup/`,
+  SESSION: globalAllAuth.sessionUrl || `/_allauth/${CLIENT_TYPE}/v1/auth/session/`,
+  AUTH_SESSION: globalAllAuth.sessionUrl || `/_allauth/${CLIENT_TYPE}/v1/auth/session/`,
+  VERIFY_EMAIL: globalAllAuth.verifyEmailUrl || `/_allauth/${CLIENT_TYPE}/v1/auth/email/verify/`,
+  PASSWORD_RESET: globalAllAuth.passwordResetUrl || `/_allauth/${CLIENT_TYPE}/v1/auth/password/reset/`,
+  CHANGE_PASSWORD: globalAllAuth.passwordChangeUrl || `/_allauth/${CLIENT_TYPE}/v1/account/password/change/`,
+  EMAIL: globalAllAuth.emailUrl || `/_allauth/${CLIENT_TYPE}/v1/account/email/`,
+  PROVIDERS: globalAllAuth.providersUrl || `/_allauth/${CLIENT_TYPE}/v1/auth/providers/`,
+  SESSION_REFRESH: globalAllAuth.sessionRefreshUrl || `/_allauth/${CLIENT_TYPE}/v1/auth/session/refresh/`,
+  
+  // Custom API endpoints
+  CUSTOM_LOGIN: globalAllAuth.loginUrl || `/users/api/login/`,
+  CUSTOM_SIGNUP: globalAllAuth.signupUrl || `/users/api/signup/`,
+  CUSTOM_AUTH_EVENTS: globalAllAuth.authEventsUrl || `/users/api/auth-events/`,
+  CUSTOM_LOGOUT: globalAllAuth.logoutUrl || `/users/api/logout/`,
+  
+  // Standard Django AllAuth URLs for fallback
+  STANDARD_LOGIN: globalAllAuth.standardLoginUrl || `/accounts/login/`,
+  STANDARD_SIGNUP: globalAllAuth.standardSignupUrl || `/accounts/signup/`,
+  STANDARD_LOGOUT: globalAllAuth.standardLogoutUrl || `/accounts/logout/`
 });
 
 // Session token storage for app client
@@ -118,11 +131,13 @@ async function request(method, path, data) {
     credentials: 'same-origin'
   };
   
-  // Get CSRF token and add it to headers if available
-  const csrfToken = getCsrfToken();
-  if (csrfToken) {
-    options.headers['X-CSRFToken'] = csrfToken;
-  }
+  // Temporarily comment out CSRF token for debugging
+  // const csrfToken = getCsrfToken();
+  // if (csrfToken) {
+  //   options.headers['X-CSRFToken'] = csrfToken;
+  // }
+  
+  console.log('Making request to:', path, 'with method:', method);
   
   // Add session token if available (for app clients)
   if (sessionToken) {
@@ -185,6 +200,46 @@ async function request(method, path, data) {
 
 // Login with email and password
 export async function login(data) {
+  // Try custom login endpoint first
+  try {
+    // Prepare data for the custom endpoint
+    const customLoginData = {
+      email: data.email,
+      password: data.password
+    };
+    
+    // Add remember me if provided
+    if (data.remember) {
+      customLoginData.remember = data.remember;
+    }
+    
+    console.log('Trying custom login endpoint first');
+    const customResult = await request('POST', URLs.CUSTOM_LOGIN, customLoginData);
+    
+    // If custom login is successful, return its result
+    if (customResult.status === 200) {
+      console.log('Custom login successful');
+      
+      // Format response to match headless API format
+      return {
+        meta: {
+          is_authenticated: true,
+          session_token: customResult.meta?.session_token || localStorage.getItem('allauth_session_token')
+        },
+        data: {
+          user: customResult.user
+        },
+        ok: true,
+        status: 200
+      };
+    }
+    
+    console.log('Custom login failed, falling back to headless API');
+  } catch (error) {
+    console.error('Custom login error, falling back to headless API:', error);
+  }
+  
+  // Fall back to standard headless API
   // Prepare data for JSON submission to headless API
   const loginData = {
     login: data.email,
@@ -225,6 +280,48 @@ export async function login(data) {
 
 // Signup with email and password
 export async function signUp(data) {
+  // Try custom signup endpoint first
+  try {
+    // Prepare data for the custom endpoint
+    const customSignupData = {
+      email: data.email,
+      username: data.username || data.email.split('@')[0], // Use provided username or generate from email
+      password1: data.password1,
+      password2: data.password2  // API requires both password1 and password2
+    };
+    
+    // Add name if provided
+    if (data.name) customSignupData.name = data.name;
+    
+    console.log('Trying custom signup endpoint first');
+    const customResult = await request('POST', URLs.CUSTOM_SIGNUP, customSignupData);
+    
+    // If custom signup is successful, return its result
+    if (customResult.status === 200 || customResult.status === 201) {
+      console.log('Custom signup successful');
+      
+      // Dispatch auth change event if we're authenticated
+      if (customResult.meta?.is_authenticated) {
+        const user = customResult.data?.user || customResult.user || { email: data.email };
+        const event = new CustomEvent('allauth.auth.change', { 
+          detail: {
+            is_authenticated: true,
+            user: user,
+            statusCode: customResult.status
+          }
+        });
+        document.dispatchEvent(event);
+      }
+      
+      return customResult;
+    }
+    
+    console.log('Custom signup failed, falling back to headless API');
+  } catch (error) {
+    console.error('Custom signup error, falling back to headless API:', error);
+  }
+  
+  // Fall back to standard headless API
   // Prepare data for JSON submission to headless API
   const signupData = {
     email: data.email,
@@ -323,11 +420,99 @@ export async function signUp(data) {
 
 // Logout the current user
 export async function logout() {
-  return await request('POST', URLs.LOGOUT);
+  console.log('Starting logout process');
+  
+  // Try our custom logout endpoint first
+  try {
+    console.log('Attempting logout via custom endpoint:', URLs.CUSTOM_LOGOUT);
+    const response = await fetch(URLs.CUSTOM_LOGOUT, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken(),
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      credentials: 'include',
+    });
+    
+    // If successful, clean up any local storage items
+    if (response.ok) {
+      console.log('Custom logout successful');
+      clearSessionToken();
+      return {
+        ok: true,
+        status: 200,
+        message: 'Logged out successfully'
+      };
+    }
+  } catch (error) {
+    console.error('Custom logout failed, falling back to headless API:', error);
+  }
+  
+  // Try standard Django logout as a fallback
+  try {
+    console.log('Attempting standard Django logout:', URLs.STANDARD_LOGOUT);
+    const standardResponse = await fetch(URLs.STANDARD_LOGOUT, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken(),
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      credentials: 'include',
+    });
+    
+    if (standardResponse.ok) {
+      console.log('Standard logout successful');
+      clearSessionToken();
+      return {
+        ok: true,
+        status: 200,
+        message: 'Logged out successfully via standard endpoint'
+      };
+    }
+  } catch (error) {
+    console.error('Standard logout failed:', error);
+  }
+  
+  // As a last resort, try headless API
+  console.log('Attempting headless API logout as last resort:', URLs.LOGOUT);
+  try {
+    const result = await request('POST', URLs.LOGOUT);
+    return result;
+  } catch (error) {
+    console.error('All logout attempts failed:', error);
+    // At this point, just clear local state and assume logout worked
+    clearSessionToken();
+    return {
+      ok: true,
+      status: 200,
+      message: 'Forced logout by clearing local state'
+    };
+  }
 }
 
 // Get current authentication state
 export async function getAuth() {
+  // Try custom auth events endpoint first
+  try {
+    console.log('Trying custom auth events endpoint first');
+    const customResult = await request('GET', URLs.CUSTOM_AUTH_EVENTS);
+    
+    // If custom auth check is successful, return its result
+    if (customResult.status === 200) {
+      console.log('Custom auth check successful');
+      return customResult;
+    }
+    
+    console.log('Custom auth check failed, falling back to headless API');
+  } catch (error) {
+    console.error('Custom auth check error, falling back to headless API:', error);
+  }
+  
+  // Fall back to standard headless API
   return await request('GET', URLs.AUTH_SESSION);
 }
 

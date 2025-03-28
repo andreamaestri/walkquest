@@ -40,17 +40,26 @@
             <span>Change Password</span>
           </a>
           
-          <!-- Use a form for logout to handle CSRF correctly -->
-          <form ref="logoutForm" method="post" :action="authUrls.logoutUrl" style="display: contents;">
-            <input type="hidden" name="csrfmiddlewaretoken" :value="csrfToken">
-            <button type="submit" class="menu-item">
-              <Icon icon="mdi:logout" class="menu-icon" />
-              <span>Sign Out</span>
-            </button>
-          </form>
+          <!-- Show logout button -->
+          <button @click="showLogoutConfirmation = true" class="menu-item">
+            <Icon icon="mdi:logout" class="menu-icon" />
+            <span>Sign Out</span>
+          </button>
         </div>
       </div>
     </Transition>
+    
+    <!-- Logout Confirmation Modal -->
+    <ConfirmationModal
+      v-if="showLogoutConfirmation"
+      title="Sign Out"
+      message="Are you sure you want to sign out? You'll need to log in again to access your account."
+      confirmText="Sign Out"
+      cancelText="Cancel"
+      :isSubmitting="isLoggingOut"
+      @confirm="confirmLogout"
+      @cancel="showLogoutConfirmation = false"
+    />
   </Teleport>
 </template>
 
@@ -61,6 +70,8 @@ import { useAuthStore } from '../../stores/auth';
 import { useUiStore } from '../../stores/ui';
 import { useRouter } from 'vue-router';
 import { animate } from 'motion';
+import { useSnackbar } from '../../composables/useSnackbar';
+import ConfirmationModal from './ConfirmationModal.vue';
 
 const props = defineProps({
   isOpen: {
@@ -79,6 +90,8 @@ const emit = defineEmits(['close', 'action']);
 const menuRef = ref(null);
 const logoutForm = ref(null);
 const isLoadingUser = ref(false);
+const showLogoutConfirmation = ref(false);
+const isLoggingOut = ref(false);
 
 // Default values if user data isn't loaded yet
 const defaultInitials = "U";
@@ -88,6 +101,7 @@ const defaultEmail = "User";
 const authStore = useAuthStore();
 const uiStore = useUiStore();
 const router = useRouter();
+const snackbar = useSnackbar();
 
 // Use computed properties to avoid reactivity issues
 const isMobileComputed = computed(() => uiStore.isMobile);
@@ -97,12 +111,12 @@ const csrfToken = ref('');
 
 // Get authentication URLs from window.djangoAllAuth object
 const authUrls = computed(() => ({
-  loginUrl: window.djangoAllAuth?.loginUrl || '/accounts/login/',
-  signupUrl: window.djangoAllAuth?.signupUrl || '/accounts/signup/',
-  logoutUrl: window.djangoAllAuth?.logoutUrl || '/accounts/logout/',
-  passwordResetUrl: window.djangoAllAuth?.passwordResetUrl || '/accounts/password/reset/',
-  passwordChangeUrl: window.djangoAllAuth?.passwordChangeUrl || '/accounts/password/change/',
-  emailUrl: window.djangoAllAuth?.emailUrl || '/accounts/email/'
+  loginUrl: window.djangoAllAuth?.loginUrl || '/users/api/login/',
+  signupUrl: window.djangoAllAuth?.signupUrl || '/users/api/signup/',
+  logoutUrl: window.djangoAllAuth?.logoutUrl || '/users/api/logout/',
+  passwordResetUrl: window.djangoAllAuth?.passwordResetUrl || '/_allauth/app/v1/auth/password/reset/',
+  passwordChangeUrl: window.djangoAllAuth?.passwordChangeUrl || '/_allauth/app/v1/account/password/change/',
+  emailUrl: window.djangoAllAuth?.emailUrl || '/_allauth/app/v1/account/email/'
 }));
 
 // Avatar color generation
@@ -153,6 +167,69 @@ const handleAdventuresClick = () => {
   router.push('/adventures');
   emit('close');
   emit('action', 'adventures');
+};
+
+// Show the logout confirmation modal
+const handleLogout = () => {
+  showLogoutConfirmation.value = true;
+};
+
+// Handle the confirmation from the modal
+const confirmLogout = async () => {
+  try {
+    // Show loading state
+    isLoggingOut.value = true;
+    
+    // Use the auth store to logout
+    await authStore.logout();
+    
+    // Close the modals
+    showLogoutConfirmation.value = false;
+    emit('close');
+    emit('action', 'logout');
+    
+    // Show a success message
+    snackbar.show('You have been successfully logged out');
+    
+    // Redirect to home page
+    router.push('/');
+  } catch (error) {
+    console.error('Logout error:', error);
+    
+    // If auth store logout fails, try a direct API call
+    try {
+      const response = await fetch(authUrls.value.logoutUrl, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': getCSRFToken(),
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        // Show success message
+        snackbar.show('You have been successfully logged out');
+        
+        // Force a refresh of the page to ensure clean state
+        showLogoutConfirmation.value = false;
+        window.location.href = '/';
+      } else {
+        // As a last resort, try the standard logout
+        showLogoutConfirmation.value = false;
+        window.location.href = '/accounts/logout/';
+      }
+    } catch (e) {
+      console.error('Direct logout failed, using fallback:', e);
+      // Last resort: redirect to standard Django logout
+      showLogoutConfirmation.value = false;
+      window.location.href = '/accounts/logout/';
+    }
+  } finally {
+    isLoggingOut.value = false;
+  }
 };
 
 // Handle overlay click

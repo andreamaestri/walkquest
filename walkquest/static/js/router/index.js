@@ -34,6 +34,11 @@ const routes = [
     }
   },
   {
+    path: '/verify-email',
+    name: 'verify-email',
+    component: () => import('../components/auth/EmailVerificationPage.vue')
+  },
+  {
     path: '/profile',
     name: 'profile',
     component: () => import('../components/profile/ProfileSettings.vue'),
@@ -60,15 +65,23 @@ const routes = [
   // Handle redirects from Django auth
   {
     path: '/accounts/login',
-    redirect: '/login'
+    redirect: '/users/login-page/'
   },
   {
     path: '/accounts/signup',
-    redirect: '/signup'
+    redirect: '/users/signup-page/'
   },
   {
     path: '/accounts/logout',
     redirect: '/'
+  },
+  // Additional auth-related routes
+  {
+    path: '/confirm-email/:key',
+    name: 'confirm-email',
+    // This route will actually be handled by Django, not Vue
+    // The router's navigation guard will handle the redirect
+    component: () => import('../components/Loading.vue')
   }
 ];
 
@@ -86,16 +99,48 @@ router.beforeEach(async (to, from, next) => {
     await authStore.initAuth();
   }
   
+  // Handle email verification route
+  if (to.path === '/verify-email') {
+    if (authStore.needsEmailVerification) {
+      next();
+      return;
+    } else if (authStore.isAuthenticated) {
+      // Already verified, redirect to home
+      next('/');
+      return;
+    }
+  }
+  
+  // Handle auth-specific routes (login, signup)
+  if (to.name === 'login' || to.name === 'signup') {
+    if (authStore.isAuthenticated) {
+      // Already logged in, redirect to home or saved redirect path
+      const redirectPath = authStore.getRedirectPath();
+      next(redirectPath);
+      return;
+    }
+  }
+  
   // Check if route requires auth
   if (to.matched.some(record => record.meta.requiresAuth)) {
     if (!authStore.isAuthenticated) {
-      // Save the intended destination
+      // Save the intended destination for after login
       authStore.setRedirectPath(to.fullPath);
       next('/login');
       return;
     }
   }
   
+  // Handle confirmation links
+  if (to.path.startsWith('/confirm-email/')) {
+    // Let Django handle email confirmation through its views
+    // but save the route so we can redirect back to the app after confirmation
+    authStore.setRedirectPath('/');
+    window.location.href = to.fullPath; // Use full page navigation
+    return;
+  }
+  
+  // Default: allow navigation
   next();
 });
 

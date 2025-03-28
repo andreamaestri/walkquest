@@ -130,42 +130,67 @@ const csrfToken = ref('')
 
 // Get CSRF token on component mount
 onMounted(() => {
-  getCsrfToken()
+  // Try to get CSRF token from the global variable set by auth-login.html
+  if (window.csrfToken) {
+    console.log('Using CSRF token from global variable');
+    csrfToken.value = window.csrfToken;
+  } else {
+    getCsrfToken();
+  }
 })
 
 // Get CSRF token from multiple possible sources
-function getCsrfToken() {
+async function getCsrfToken() {
   // Try to get from meta tag
   const metaToken = document.querySelector('meta[name="csrf-token"]');
   if (metaToken) {
     csrfToken.value = metaToken.getAttribute('content');
-    return;
+    return csrfToken.value;
   }
   
   // Try to get from cookie (if it's not httpOnly)
-  const name = 'csrftoken=';
-  const decodedCookie = decodeURIComponent(document.cookie);
-  const cookieArray = decodedCookie.split(';');
-  
-  for (let cookie of cookieArray) {
-    while (cookie.charAt(0) === ' ') {
-      cookie = cookie.substring(1);
-    }
-    if (cookie.indexOf(name) === 0) {
-      csrfToken.value = cookie.substring(name.length, cookie.length);
-      return;
-    }
+  const cookieToken = getCookie('csrftoken');
+  if (cookieToken) {
+    csrfToken.value = cookieToken;
+    return csrfToken.value;
   }
   
   // Try to get from the hidden input field
   const xcsrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]');
   if (xcsrfToken) {
     csrfToken.value = xcsrfToken.value;
-    return;
+    return csrfToken.value;
   }
   
-  // Removed fallback fetch to avoid 404 error
-  console.warn("CSRF token not found from meta, cookie, or hidden input.");
+  // As a last resort, try to fetch a new CSRF token from the server
+  try {
+    console.log('Fetching new CSRF token from server');
+    const response = await fetch('/accounts/csrf/', {
+      method: 'GET',
+      credentials: 'include'
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (data.csrfToken) {
+        csrfToken.value = data.csrfToken;
+        return csrfToken.value;
+      }
+    }
+  } catch (error) {
+    console.error('Failed to fetch CSRF token:', error);
+  }
+  
+  console.warn("CSRF token not found from any source.");
+  return null;
+}
+
+// Helper function to get cookie by name
+function getCookie(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+  return null;
 }
 
 // Handle form submission
@@ -175,46 +200,141 @@ async function handleSubmit() {
   response.fetching = true
   
   try {
-    // Call login and handle success
-    const result = await authStore.login(login.value, password.value, remember.value)
-    
-    // Handle email verification if needed
-    if (result && result.needsEmailVerification) {
-      // Redirect to email verification page
-      router.push('/verify-email')
-      return
+    // Ensure we have a valid CSRF token before proceeding
+    const token = await getCsrfToken();
+    if (!token) {
+      error.value = 'Could not obtain CSRF token. Please refresh the page and try again.';
+      return;
     }
     
-    // Check if user is authenticated
-    if (authStore.isAuthenticated) {
-      // If we get here, login was successful
-      const redirectTo = router.currentRoute.value.query.next || '/'
-      router.push(redirectTo)
-    } else {
-      // Login succeeded but user isn't authenticated yet (might need other verification)
-      console.warn('Login succeeded but user not authenticated')
-      // Force a fresh auth check to make sure we have the latest state
-      await authStore.forceAuthCheck()
+    // Store email for potential verification page
+    localStorage.setItem('signup_email', login.value);
+    
+    // Try using the auth store login first
+    try {
+      console.log('Attempting login through auth store');
+      const result = await authStore.login(login.value, password.value, remember.value);
       
+      // Handle email verification if needed
       if (authStore.needsEmailVerification) {
-        router.push('/verify-email')
-      } else if (authStore.isAuthenticated) {
-        const redirectTo = router.currentRoute.value.query.next || '/'
-        router.push(redirectTo)
+        console.log('Email verification needed, redirecting to verification page');
+        router.push('/verify-email');
+        return;
+      }
+      
+      // Normal authentication flow
+      if (authStore.isAuthenticated) {
+        console.log('Login successful, user is authenticated');
+        // Get redirect path from query string or auth store
+        const redirectPath = 
+          router.currentRoute.value.query.next || 
+          authStore.getRedirectPath();
+        
+        console.log(`Redirecting to: ${redirectPath}`);
+        router.push(redirectPath);
       } else {
-        // Something is wrong, possibly server-side issue
-        error.value = 'Login was successful but unable to confirm authentication state'
+        // This shouldn't happen with successful login
+        console.warn('Login succeeded but user not authenticated');
+        error.value = 'Login was successful but unable to confirm authentication state';
+        
+        // Force a fresh auth check to make sure we have the latest state
+        await authStore.forceAuthCheck();
+        
+        if (authStore.needsEmailVerification) {
+          router.push('/verify-email');
+        } else if (authStore.isAuthenticated) {
+          const redirectTo = router.currentRoute.value.query.next || '/';
+          router.push(redirectTo);
+        }
+      }
+    } catch (err) {
+      console.error('Login error through auth store:', err);
+      
+      // Handle validation errors
+      if (err.errors) {
+        errors.value = err.errors;
+      } else {
+        error.value = err.message || 'Login failed. Please try again.';
+      }
+      
+      // Fall back to direct API call
+      console.log('Falling back to direct API call');
+      
+      try {
+        // Get fresh CSRF token
+        const token = getCsrfToken();
+        if (!token) {
+          throw new Error('CSRF token not available');
+        }
+        
+        // Make direct API call to login endpoint
+        const res = await fetch('/users/api/login/', {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+            // Removed CSRF token header for now
+          },
+          credentials: 'include',
+          mode: 'same-origin',
+          body: JSON.stringify({
+            email: login.value,
+            password: password.value,
+            remember: remember.value
+          })
+        });
+        
+        console.log('Login request sent with headers:', {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        });
+        
+        const data = await res.json();
+        
+        if (res.ok) {
+          console.log('Direct API login successful:', data);
+          
+          // Update auth store with the result
+          authStore.user = data.data?.user || data.user;
+          authStore.isAuthenticated = true;
+          authStore.userDataLoaded = true;
+          
+          // Check if email verification is needed
+          const emailVerificationNeeded = 
+            data.email_verification_needed || 
+            (data.data?.flows && data.data.flows.includes('verify_email'));
+            
+          authStore.needsEmailVerification = emailVerificationNeeded;
+          
+          // Redirect accordingly
+          if (emailVerificationNeeded) {
+            router.push('/verify-email');
+          } else {
+            const redirectTo = router.currentRoute.value.query.next || '/';
+            router.push(redirectTo);
+          }
+        } else {
+          console.error('Direct API login failed:', data);
+          
+          // Handle error response
+          if (data.errors) {
+            errors.value = data.errors;
+          } else {
+            error.value = data.message || 'Login failed. Please try again.';
+          }
+        }
+      } catch (directApiError) {
+        console.error('Error in direct API login:', directApiError);
+        error.value = directApiError.message || 'Login failed. Please try again.';
       }
     }
   } catch (err) {
-    if (err.errors) {
-      errors.value = err.errors
-      response.content = { errors: err.errors }
-    } else {
-      error.value = err.message || 'Login failed. Please try again.'
-    }
+    console.error('Unexpected login error:', err);
+    error.value = err.message || 'Login failed. Please try again.';
   } finally {
-    response.fetching = false
+    response.fetching = false;
   }
 }
 </script>

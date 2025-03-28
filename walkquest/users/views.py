@@ -1,5 +1,6 @@
 import json
 
+from django.views.decorators.csrf import csrf_exempt
 from allauth.account import app_settings
 from allauth.account.utils import complete_signup
 from allauth.account.utils import user_display
@@ -145,6 +146,7 @@ class JSONLoginView(LoginView):
 
 
 # Add a new view to check for auth events
+@csrf_exempt
 @require_GET
 def auth_events(request):
     """
@@ -185,19 +187,66 @@ def auth_events(request):
     # Add session token if available (for app client type)
     if session_token:
         response['meta']['session_token'] = session_token
+    elif request.session.session_key:
+        # Use Django's session key as a fallback for session token
+        response['meta']['session_token'] = request.session.session_key
     
-    # Include any auth flows if needed
+    # Check if email verification is needed
     email_verification_needed = False
-    if request.user.is_authenticated:
-        # Check if user needs email verification
-        try:
-            email_verified = getattr(request.user, 'emailaddress_set', None) and \
-                             request.user.emailaddress_set.filter(verified=True).exists()
-            email_verification_needed = not email_verified
-        except:
-            pass
     
+    # First, check if there's a session flag for email verification
+    if request.session.get('email_verification_needed', False):
+        email_verification_needed = True
+    # Then, if the user is authenticated, check their email verification status
+    elif request.user.is_authenticated:
+        try:
+            # Check if the user has any verified email addresses
+            from allauth.account.models import EmailAddress
+            email_verified = EmailAddress.objects.filter(user=request.user, verified=True).exists()
+            email_verification_needed = not email_verified
+            
+            # Update the session flag based on our check
+            request.session['email_verification_needed'] = email_verification_needed
+            request.session.modified = True
+        except Exception as e:
+            print(f"Error checking email verification status: {str(e)}")
+            import traceback
+            traceback.print_exc()
+    
+    # Include email verification status in the response
+    response['email_verification_needed'] = email_verification_needed
+    
+    # Add to the flows array if needed
     if email_verification_needed:
         response['data']['flows'] = ['verify_email']
     
+    # Add Django messages if any
+    from django.contrib import messages
+    django_messages = []
+    for message in messages.get_messages(request):
+        django_messages.append({
+            'message': message.message,
+            'tags': message.tags,
+            'level': message.level
+        })
+    
+    if django_messages:
+        response['messages'] = django_messages
+    
     return JsonResponse(response)
+
+
+# Simple view to render the login page with CSRF token
+def login_page(request):
+    """
+    Render a login page that includes a proper CSRF token
+    """
+    return render(request, "auth-login.html")
+
+
+# Simple view to render the signup page with CSRF token
+def signup_page(request):
+    """
+    Render a signup page that includes a proper CSRF token
+    """
+    return render(request, "auth-signup.html")

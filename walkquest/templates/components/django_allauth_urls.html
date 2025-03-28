@@ -3,11 +3,27 @@
 <script>
   // Create a global object to store Django AllAuth URLs
   window.djangoAllAuth = {
-    loginUrl: "/_allauth/api/v1/auth/login/",
-    signupUrl: "/_allauth/api/v1/auth/signup/",
-    logoutUrl: "/_allauth/api/v1/auth/logout/",
-    passwordResetUrl: "/_allauth/api/v1/auth/password/reset/",
-    passwordChangeUrl: "/_allauth/api/v1/auth/password/change/",
-    emailUrl: "/_allauth/api/v1/account/email/"
+    // Use the custom API endpoints
+    loginUrl: "/users/api/login/",
+    signupUrl: "/users/api/signup/",
+    logoutUrl: "/users/api/logout/",
+    
+    // Headless API paths with correct path prefix (for app client type)
+    passwordResetUrl: "/_allauth/app/v1/auth/password/reset/",
+    passwordChangeUrl: "/_allauth/app/v1/account/password/change/",
+    emailUrl: "/_allauth/app/v1/account/email/",
+    configUrl: "/_allauth/app/v1/config/",
+    sessionUrl: "/_allauth/app/v1/auth/session/",
+    verifyEmailUrl: "/_allauth/app/v1/auth/email/verify/",
+    providersUrl: "/_allauth/app/v1/auth/providers/",
+    sessionRefreshUrl: "/_allauth/app/v1/auth/session/refresh/",
+    
+    // Standard Django AllAuth fallback paths
+    standardLoginUrl: "/accounts/login/",
+    standardSignupUrl: "/accounts/signup/",
+    standardLogoutUrl: "/accounts/logout/",
+    
+    // Custom authentication API endpoints
+    authEventsUrl: "/users/api/auth-events/"
   };
 </script>
