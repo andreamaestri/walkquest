@@ -9,6 +9,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 import json
 from django.utils.html import escapejs
 from .walks.models import Walk
+from django.shortcuts import get_object_or_404
 
 WALK_NOT_FOUND_MESSAGE = "The requested walk could not be found"
 
@@ -72,3 +73,7 @@ def csrf_token_view(request):
     response = JsonResponse({"csrfToken": token})
     response["X-CSRFToken"] = token
     return response
+
+def email_confirmed_view(request):
+    """Custom view for displaying email confirmation success"""
+    return render(request, "account/email_confirmed.html")

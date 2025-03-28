@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load account %}
+
+{% block title %}{% trans "Email Confirmed" %}{% endblock %}
+
+{% block body_class %}bg-surface text-on-surface flex items-center justify-center min-h-screen{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-md p-8 bg-surface-container rounded-3xl shadow-md">
+  <div class="flex justify-center mb-6">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  </div>
+
+  <h1 class="text-2xl font-medium mb-4 text-center text-on-surface">{% trans "Email Confirmed!" %}</h1>
+  
+  <p class="mb-6 text-center">{% trans "Thank you for confirming your email address. Your account is now fully activated." %}</p>
+  
+  <div class="flex flex-col space-y-3">
+    <a href="/login" class="text-center w-full bg-primary hover:bg-primary-variant text-on-primary font-medium py-3 px-4 rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 transition-colors">
+      {% trans 'Log in to your account' %}
+    </a>
+    
+    <a href="/" class="text-center w-full border border-outline hover:bg-surface-container-highest text-on-surface font-medium py-3 px-4 rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 transition-colors">
+      {% trans 'Go to homepage' %}
+    </a>
+  </div>
+</div>
+
+<script>
+  // Store confirmation status in localStorage for Vue app
+  localStorage.setItem('email_confirmed', 'true');
+  
+  // Redirect to Vue login route after 3 seconds
+  setTimeout(function() {
+    window.location.href = '/login';
+  }, 3000);
+</script>
+{% endblock %}

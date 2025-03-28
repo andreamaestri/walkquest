@@ -349,6 +349,10 @@ ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_USERNAME_REQUIRED = True  # We need usernames for our API
 ACCOUNT_USER_MODEL_USERNAME_FIELD = "username"
 
+# Custom URL for email confirmation success
+ACCOUNT_EMAIL_CONFIRMATION_AUTHENTICATED_REDIRECT_URL = "/accounts/email-confirmed/"
+ACCOUNT_EMAIL_CONFIRMATION_ANONYMOUS_REDIRECT_URL = "/accounts/email-confirmed/"
+
 # django-allauth social account configuration
 SOCIALACCOUNT_ADAPTER = "walkquest.users.adapters.SocialAccountAdapter"
 SOCIALACCOUNT_FORMS = {"signup": "walkquest.users.forms.UserSocialSignupForm"}

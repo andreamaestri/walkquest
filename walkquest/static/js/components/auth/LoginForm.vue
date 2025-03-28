@@ -187,73 +187,63 @@ async function handleSubmit() {
   response.fetching = true
   
   try {
-    // Ensure we have a valid CSRF token before proceeding
-    const token = await getCsrfToken();
-    if (!token) {
-      error.value = 'Could not obtain CSRF token. Please refresh the page and try again.';
-      return;
-    }
+    // Always fetch fresh CSRF token before login attempt
+    await fetchCsrfToken()
     
     // Store email for potential verification page
-    localStorage.setItem('signup_email', login.value);
+    localStorage.setItem('signup_email', login.value)
     
     // Try using the auth store login first
     try {
-      console.log('Attempting login through auth store');
-      const result = await authStore.login(login.value, password.value, remember.value);
+      console.log('Attempting login through auth store')
+      const result = await authStore.login(login.value, password.value, remember.value)
       
       // Handle email verification if needed
       if (authStore.needsEmailVerification) {
-        console.log('Email verification needed, redirecting to verification page');
-        router.push('/verify-email');
-        return;
+        console.log('Email verification needed, redirecting to verification page')
+        router.push('/verify-email')
+        return
       }
       
       // Normal authentication flow
       if (authStore.isAuthenticated) {
-        console.log('Login successful, user is authenticated');
+        console.log('Login successful, user is authenticated')
         // Get redirect path from query string or auth store
         const redirectPath = 
           router.currentRoute.value.query.next || 
-          authStore.getRedirectPath();
+          authStore.getRedirectPath()
         
-        console.log(`Redirecting to: ${redirectPath}`);
-        router.push(redirectPath);
+        console.log(`Redirecting to: ${redirectPath}`)
+        router.push(redirectPath)
       } else {
         // This shouldn't happen with successful login
-        console.warn('Login succeeded but user not authenticated');
-        error.value = 'Login was successful but unable to confirm authentication state';
+        console.warn('Login succeeded but user not authenticated')
+        error.value = 'Login was successful but unable to confirm authentication state'
         
         // Force a fresh auth check to make sure we have the latest state
-        await authStore.forceAuthCheck();
+        await authStore.forceAuthCheck()
         
         if (authStore.needsEmailVerification) {
-          router.push('/verify-email');
+          router.push('/verify-email')
         } else if (authStore.isAuthenticated) {
-          const redirectTo = router.currentRoute.value.query.next || '/';
-          router.push(redirectTo);
+          const redirectTo = router.currentRoute.value.query.next || '/'
+          router.push(redirectTo)
         }
       }
     } catch (err) {
-      console.error('Login error through auth store:', err);
+      console.error('Login error through auth store:', err)
       
       // Handle validation errors
       if (err.errors) {
-        errors.value = err.errors;
+        errors.value = err.errors
       } else {
-        error.value = err.message || 'Login failed. Please try again.';
+        error.value = err.message || 'Login failed. Please try again.'
       }
       
       // Fall back to direct API call
-      console.log('Falling back to direct API call');
+      console.log('Falling back to direct API call')
       
       try {
-        // Get fresh CSRF token
-        const token = getCsrfToken();
-        if (!token) {
-          throw new Error('CSRF token not available');
-        }
-        
         // Make direct API call to login endpoint
         const res = await fetch('/users/api/login/', {
           method: 'POST',
@@ -261,68 +251,96 @@ async function handleSubmit() {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRFToken': token
+            'X-CSRFToken': csrfToken.value
           },
           credentials: 'include',
           mode: 'same-origin',
           body: JSON.stringify({
-            login: login.value, // Use login instead of email to match Django's field name
+            email: login.value, // Use email field name consistently
             password: password.value,
             remember: remember.value
           })
-        });
+        })
         
         console.log('Login request sent with headers:', {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
           'X-Requested-With': 'XMLHttpRequest',
-          'X-CSRFToken': token
-        });
+          'X-CSRFToken': csrfToken.value
+        })
         
-        const data = await res.json();
+        const data = await res.json()
         
         if (res.ok) {
-          console.log('Direct API login successful:', data);
+          console.log('Direct API login successful:', data)
           
           // Update auth store with the result
-          authStore.user = data.data?.user || data.user;
-          authStore.isAuthenticated = true;
-          authStore.userDataLoaded = true;
+          authStore.user = data.data?.user || data.user
+          authStore.isAuthenticated = true
+          authStore.userDataLoaded = true
           
           // Check if email verification is needed
           const emailVerificationNeeded = 
             data.email_verification_needed || 
-            (data.data?.flows && data.data.flows.includes('verify_email'));
+            (data.data?.flows && data.data.flows.includes('verify_email'))
             
-          authStore.needsEmailVerification = emailVerificationNeeded;
+          authStore.needsEmailVerification = emailVerificationNeeded
           
           // Redirect accordingly
           if (emailVerificationNeeded) {
-            router.push('/verify-email');
+            router.push('/verify-email')
           } else {
-            const redirectTo = router.currentRoute.value.query.next || '/';
-            router.push(redirectTo);
+            const redirectTo = router.currentRoute.value.query.next || '/'
+            router.push(redirectTo)
           }
         } else {
-          console.error('Direct API login failed:', data);
+          console.error('Direct API login failed:', data)
           
           // Handle error response
           if (data.errors) {
-            errors.value = data.errors;
+            errors.value = data.errors
           } else {
-            error.value = data.message || 'Login failed. Please try again.';
+            error.value = data.message || 'Login failed. Please try again.'
           }
         }
       } catch (directApiError) {
-        console.error('Error in direct API login:', directApiError);
-        error.value = directApiError.message || 'Login failed. Please try again.';
+        console.error('Error in direct API login:', directApiError)
+        error.value = directApiError.message || 'Login failed. Please try again.'
       }
     }
   } catch (err) {
-    console.error('Unexpected login error:', err);
-    error.value = err.message || 'Login failed. Please try again.';
+    console.error('Unexpected login error:', err)
+    error.value = err.message || 'Login failed. Please try again.'
   } finally {
-    response.fetching = false;
+    response.fetching = false
+  }
+}
+
+// Add a method to fetch a fresh CSRF token
+async function fetchCsrfToken() {
+  try {
+    const response = await fetch('/users/api/csrf/', {
+      method: 'GET',
+      credentials: 'include',
+      cache: 'no-store' // Prevent caching
+    })
+    
+    if (response.ok) {
+      // After the request, the CSRF cookie should be set
+      // Now, let's get the CSRF token from the cookie
+      const token = getCookie('csrftoken')
+      if (token) {
+        csrfToken.value = token
+        return token
+      }
+    }
+    
+    // If we couldn't get a fresh token, try other methods
+    return getCsrfToken()
+  } catch (error) {
+    console.error('Error fetching CSRF token:', error)
+    // Fall back to existing methods
+    return getCsrfToken()
   }
 }
 </script>

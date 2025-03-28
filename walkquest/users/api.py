@@ -86,13 +86,15 @@ def handle_login(request):
                 }
             }, status=400)
             
-        # Authenticate user - try both email and username fields
-        user = authenticate(request, username=email, password=password)
-        
-        # If authentication with email fails, try with username
-        if user is None and '@' not in email:
-            user = authenticate(request, username=email, password=password)
+        # For email authentication, we need to use email=email parameter
+        # This matches django-allauth's ACCOUNT_AUTHENTICATION_METHOD = "email" setting
+        user = authenticate(request, email=email, password=password)
             
+        # If that fails, fall back to username authentication
+        if user is None:
+            # Try username authentication directly
+            user = authenticate(request, username=email, password=password)
+        
         # Debug info
         print(f"Authentication result: user={user}")
         
@@ -109,11 +111,11 @@ def handle_login(request):
                 
                 # Set session expiry based on the remember flag
                 if remember:
-                    # Set session to expire when the user closes their browser
-                    request.session.set_expiry(0)
-                else:
                     # Set session to expire in 2 weeks
                     request.session.set_expiry(1209600)
+                else:
+                    # Set session to expire when the user closes their browser
+                    request.session.set_expiry(0)
                 
                 # Check if email verification is needed
                 email_verification_needed = False
@@ -165,14 +167,29 @@ def handle_login(request):
                     'status': 403
                 }, status=403)
         else:
-            return JsonResponse({
-                'message': 'Invalid credentials',
-                'errors': {
-                    'email': ['Invalid email or password'],
-                    'password': ['Invalid email or password']
-                },
-                'status': 401
-            }, status=401)
+            # Check if user exists but password is wrong
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            
+            user_exists = User.objects.filter(email=email).exists()
+            if user_exists:
+                print(f"User exists with email {email} but password is incorrect")
+                return JsonResponse({
+                    'message': 'Invalid password',
+                    'errors': {
+                        'password': ['The password you entered is incorrect.']
+                    },
+                    'status': 401
+                }, status=401)
+            else:
+                print(f"No user found with email {email}")
+                return JsonResponse({
+                    'message': 'Invalid credentials',
+                    'errors': {
+                        'email': ['No account found with this email address.'],
+                    },
+                    'status': 401
+                }, status=401)
             
     except json.JSONDecodeError:
         return JsonResponse({

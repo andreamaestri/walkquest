@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load account %}
+
+{% block title %}{% trans "Confirm Email" %}{% endblock %}
+
+{% block body_class %}bg-surface text-on-surface flex items-center justify-center min-h-screen{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-md p-8 bg-surface-container rounded-3xl shadow-md">
+  <h1 class="text-2xl font-medium mb-4 text-on-surface">{% trans "Confirm Email" %}</h1>
+  
+  {% if confirmation %}
+    {% user_display confirmation.email_address.user as user_display %}
+    
+    <div class="mb-6">
+      <p>{% blocktrans with confirmation.email_address.email as email %}Please confirm that <span class="font-medium">{{ email }}</span> is an email address for user {{ user_display }}.{% endblocktrans %}</p>
+    </div>
+
+    <form method="post" action="{% url 'account_confirm_email' confirmation.key %}">
+      {% csrf_token %}
+      <button type="submit" class="w-full bg-primary hover:bg-primary-variant text-on-primary font-medium py-3 px-4 rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 transition-colors">
+        {% trans 'Confirm' %}
+      </button>
+    </form>
+    
+  {% else %}
+    {% url 'account_email' as email_url %}
+    
+    <div class="bg-error-container text-on-error-container p-4 rounded-lg mb-4">
+      <p>{% blocktrans %}This confirmation link has expired or is invalid. Please <a href="{{ email_url }}" class="text-primary hover:underline">request a new confirmation email</a>.{% endblocktrans %}</p>
+    </div>
+    
+    <a href="/" class="block text-center w-full bg-primary hover:bg-primary-variant text-on-primary font-medium py-3 px-4 rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 transition-colors">
+      {% trans 'Go to homepage' %}
+    </a>
+  {% endif %}
+</div>
+
+<!-- Script to redirect after successful confirmation -->
+{% if confirmation %}
+<script>
+  // Listen for form submission
+  document.querySelector('form').addEventListener('submit', function(e) {
+    // Store that email was confirmed in localStorage for the Vue app to use
+    localStorage.setItem('email_confirmed', 'true');
+    localStorage.setItem('confirmed_email', '{{ confirmation.email_address.email }}');
+  });
+</script>
+{% endif %}
+{% endblock %}

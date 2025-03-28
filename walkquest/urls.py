@@ -25,6 +25,12 @@ urlpatterns = [
     # Authentication URLs - for login, logout, signup
     path("accounts/", include("allauth.urls")),
     
+    # Custom email confirmation success route
+    path("accounts/email-confirmed/", views.email_confirmed_view, name="account_email_confirmed"),
+    
+    # Add redirect from /login/ to accounts/login/ for email confirmation flow
+    path("login/", lambda request: redirect('/accounts/login/')),
+    
     # Primary route using slug
     path("<slug:walk_id>/", views.index, name="walk-detail-by-slug"),
     

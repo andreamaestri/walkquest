@@ -75,32 +75,42 @@ export const useAuthStore = defineStore('auth', {
       // First, ensure we have a CSRF token - fetch from our dedicated endpoint if needed
       try {
         console.log('Attempting to ensure CSRF token before login');
-        await fetch('/users/api/csrf/', {
+        const csrfResponse = await fetch('/users/api/csrf/', {
           method: 'GET',
           credentials: 'include',
+          cache: 'no-store' // Prevent caching
         });
+        
+        if (!csrfResponse.ok) {
+          console.warn('Failed to get CSRF token from endpoint, will try login anyway');
+        }
       } catch (e) {
         console.warn('Failed to refresh CSRF token, will try login anyway:', e);
       }
       
       console.log('Login requested:', { email });
+      this.isLoading = true;
       this.error = null;
+      this.loginError = null;
       
       try {
+        // Prepare login data with both email and login fields to ensure compatibility
+        const loginData = {
+          email: email,   // Send as email for our custom API
+          login: email,   // Send as login for compatibility with allauth API
+          password,
+          remember
+        };
+        
         // Get the login function from allauth.js
         const { login } = await import('../lib/allauth');
         
-        // Call the login function with properly named fields
-        const result = await login({
-          email: email, // Send as email
-          login: email, // Also send as login to handle both field name possibilities
-          password,
-          remember
-        });
+        // Call the login function
+        const result = await login(loginData);
         
         console.log('Login result:', result);
         
-        // Handle login result
+        // Handle login result - many possible success scenarios
         if (result.ok || result.status === 200) {
           // Extract user data from the response
           const userData = result.data?.user || {};
@@ -127,6 +137,42 @@ export const useAuthStore = defineStore('auth', {
             user: userData,
             needsEmailVerification: this.needsEmailVerification
           };
+        }
+        
+        // Check for custom login response patterns
+        if (result.meta && result.meta.is_authenticated) {
+          // Some authentication successful response without ok/status
+          const userData = result.data?.user || result.user || {};
+          this.user = userData;
+          this.isAuthenticated = true;
+          this.userDataLoaded = true;
+          this.setupIdleTimeout();
+          this.showSnackbar('Login successful');
+          return { success: true, user: userData };
+        }
+        
+        // Handle authentication flow requirements
+        if (result.status === 401 && result.flowInfo) {
+          const { needsAuthentication, availableFlows } = result.flowInfo;
+          
+          if (needsAuthentication && availableFlows) {
+            if (availableFlows.includes('verify_email')) {
+              this.needsEmailVerification = true;
+              this.loginError = 'Please verify your email before logging in.';
+              throw new Error('Email verification required');
+            }
+            
+            if (availableFlows.includes('mfa_authenticate')) {
+              this.loginError = 'Multi-factor authentication required';
+              throw new Error('MFA authentication required');
+            }
+          }
+        }
+        
+        // Handle error response with custom message
+        if (result.message) {
+          this.loginError = result.message;
+          throw new Error(result.message);
         }
         
         // Handle login errors
