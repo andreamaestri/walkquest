@@ -72,59 +72,69 @@ export const useAuthStore = defineStore('auth', {
     
     // Authentication actions
     async login(email, password, remember = false) {
+      // First, ensure we have a CSRF token - fetch from our dedicated endpoint if needed
       try {
-        this.isLoading = true;
+        console.log('Attempting to ensure CSRF token before login');
+        await fetch('/users/api/csrf/', {
+          method: 'GET',
+          credentials: 'include',
+        });
+      } catch (e) {
+        console.warn('Failed to refresh CSRF token, will try login anyway:', e);
+      }
+      
+      console.log('Login requested:', { email });
+      this.error = null;
+      
+      try {
+        // Get the login function from allauth.js
+        const { login } = await import('../lib/allauth');
         
-        // Make sure we have a CSRF token
-        const csrfToken = this.getCSRFToken();
-        if (!csrfToken) {
-          // Try to fetch a fresh CSRF token from the server
-          try {
-            const response = await fetch('/accounts/csrf/', {
-              method: 'GET',
-              credentials: 'include'
-            });
-            
-            if (response.ok) {
-              const data = await response.json();
-              if (data.csrfToken) {
-                console.log('Successfully fetched new CSRF token');
-              }
-            }
-          } catch (error) {
-            console.error('Failed to fetch CSRF token:', error);
-          }
-        }
+        // Call the login function with properly named fields
+        const result = await login({
+          email: email, // Send as email
+          login: email, // Also send as login to handle both field name possibilities
+          password,
+          remember
+        });
         
-        // Use the login function from the allauth library instead of direct fetch
-        const result = await login({ email, password, remember });
+        console.log('Login result:', result);
         
-        if (!result.ok) {
-          if (result.errors) {
-            throw { errors: result.errors };
-          } else {
-            throw new Error(result.message || 'Authentication failed. Please check your credentials.');
-          }
-        }
-        
-        // Handle response based on its content
-        if (result.user) {
-          // User data provided directly in response
-          this.user = result.user;
+        // Handle login result
+        if (result.ok || result.status === 200) {
+          // Extract user data from the response
+          const userData = result.data?.user || {};
+          
+          // Update user state
+          this.user = userData;
           this.isAuthenticated = true;
           this.userDataLoaded = true;
+          
+          // Check for email verification requirements
+          this.needsEmailVerification = result.email_verification_needed ||
+            (result.data?.flows && result.data.flows.includes('verify_email'));
+            
+          // Show a success message
+          this.showSnackbar('Login successful');
+          
+          // Set up user session
+          this.refreshToken();
           this.setupIdleTimeout();
-        } else if (result.email_verification_needed) {
-          // Email verification is required
-          this.needsEmailVerification = true;
-          this.showSnackbar('Please verify your email address to continue.');
-          return { success: true, needsEmailVerification: true };
-        } else {
-          // No user data in response, check auth status
-          await this.forceAuthCheck();
+          
+          // Return success
+          return {
+            success: true,
+            user: userData,
+            needsEmailVerification: this.needsEmailVerification
+          };
         }
         
-        return { success: true };
+        // Handle login errors
+        if (result.errors) {
+          throw { errors: result.errors };
+        } else {
+          throw new Error(result.message || 'Authentication failed. Please check your credentials.');
+        }
       } catch (error) {
         const errorMessage = this.handleError(error, 'login');
         this.loginError = errorMessage;

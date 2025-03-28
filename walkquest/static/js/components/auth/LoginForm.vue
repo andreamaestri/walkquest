@@ -140,7 +140,7 @@ onMounted(() => {
 })
 
 // Get CSRF token from multiple possible sources
-async function getCsrfToken() {
+function getCsrfToken() {
   // Try to get from meta tag
   const metaToken = document.querySelector('meta[name="csrf-token"]');
   if (metaToken) {
@@ -162,23 +162,10 @@ async function getCsrfToken() {
     return csrfToken.value;
   }
   
-  // As a last resort, try to fetch a new CSRF token from the server
-  try {
-    console.log('Fetching new CSRF token from server');
-    const response = await fetch('/accounts/csrf/', {
-      method: 'GET',
-      credentials: 'include'
-    });
-    
-    if (response.ok) {
-      const data = await response.json();
-      if (data.csrfToken) {
-        csrfToken.value = data.csrfToken;
-        return csrfToken.value;
-      }
-    }
-  } catch (error) {
-    console.error('Failed to fetch CSRF token:', error);
+  // Try to use window.csrfToken if available
+  if (window.csrfToken) {
+    csrfToken.value = window.csrfToken;
+    return csrfToken.value;
   }
   
   console.warn("CSRF token not found from any source.");
@@ -273,13 +260,13 @@ async function handleSubmit() {
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest'
-            // Removed CSRF token header for now
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': token
           },
           credentials: 'include',
           mode: 'same-origin',
           body: JSON.stringify({
-            email: login.value,
+            login: login.value, // Use login instead of email to match Django's field name
             password: password.value,
             remember: remember.value
           })
@@ -288,7 +275,8 @@ async function handleSubmit() {
         console.log('Login request sent with headers:', {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest'
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRFToken': token
         });
         
         const data = await res.json();

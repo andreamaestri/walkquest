@@ -11,7 +11,7 @@ from walkquest.users.views import (
     login_page,
     signup_page,
 )
-from .api import handle_login, handle_signup, handle_logout, test_email
+from .api import handle_login, handle_signup, handle_logout, test_email, get_csrf_token
 
 app_name = "users"
 urlpatterns = [
@@ -24,6 +24,7 @@ urlpatterns = [
     path("api/login/", view=handle_login, name="api_login"),
     path("api/logout/", view=handle_logout, name="api_logout"),
     path("api/signup/", view=handle_signup, name="api_signup"),
+    path("api/csrf/", view=get_csrf_token, name="get_csrf_token"),
     path("api/test-email/", test_email, name="test_email"),
     
     # Views for rendering auth pages with CSRF token

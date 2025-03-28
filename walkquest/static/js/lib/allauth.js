@@ -131,11 +131,11 @@ async function request(method, path, data) {
     credentials: 'same-origin'
   };
   
-  // Temporarily comment out CSRF token for debugging
-  // const csrfToken = getCsrfToken();
-  // if (csrfToken) {
-  //   options.headers['X-CSRFToken'] = csrfToken;
-  // }
+  // Add CSRF token to requests
+  const csrfToken = getCsrfToken();
+  if (csrfToken) {
+    options.headers['X-CSRFToken'] = csrfToken;
+  }
   
   console.log('Making request to:', path, 'with method:', method);
   

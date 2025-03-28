@@ -69,9 +69,13 @@ def handle_logout(request):
 def handle_login(request):
     try:
         data = json.loads(request.body)
-        email = data.get('email')
+        # Support both 'login' and 'email' field names
+        email = data.get('login') or data.get('email')
         password = data.get('password')
         remember = data.get('remember', False)
+        
+        # Debug info
+        print(f"Login attempt: login/email={email}, remember={remember}")
         
         if not email or not password:
             return JsonResponse({
@@ -88,6 +92,9 @@ def handle_login(request):
         # If authentication with email fails, try with username
         if user is None and '@' not in email:
             user = authenticate(request, username=email, password=password)
+            
+        # Debug info
+        print(f"Authentication result: user={user}")
         
         if user is not None:
             if user.is_active:
@@ -325,3 +332,15 @@ def handle_signup(request):
             'status': 'error',
             'message': f'Server error: {str(e)}'
         }, status=500)
+
+@ensure_csrf_cookie
+@require_http_methods(["GET"])
+def get_csrf_token(request):
+    """
+    API endpoint to get a CSRF token via a cookie
+    This view does nothing, but forces Django to send the CSRF cookie
+    """
+    return JsonResponse({
+        'success': True,
+        'message': 'CSRF cookie set'
+    })
