@@ -10,14 +10,14 @@ import { initMotionHelpers } from './motion-helpers';
 import { Icon } from '@iconify/vue';
 import './fixes/portalFix.js';
 import MDSnackbar from './components/shared/MDSnackbar.vue';
-import { motionPlugin } from 'motion-v'; // Import Motion for Vue plugin
+import { motion } from 'motion-v'; // Import Motion for Vue
 
 // Create app with Pinia store
 const app = createApp(App);
 const pinia = createPinia();
 
 // Initialize Motion for Vue
-app.use(motionPlugin); // Register the Motion for Vue plugin
+app.use(motion); // Register the Motion for Vue plugin
 initMotionHelpers();
 
 // Add global error handler
