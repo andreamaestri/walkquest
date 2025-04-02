@@ -13,6 +13,9 @@ APPS_DIR = BASE_DIR / "walkquest"
 env = environ.Env()
 environ.Env.read_env(str(BASE_DIR / ".env"))
 
+# Define REDIS_URL used by production settings
+REDIS_URL = env.str("REDIS_URL", default="redis://127.0.0.1:6379/0")
+
 # User display configuration - This determines how the user is displayed in messages
 def get_user_display(user):
     """Return a user-friendly display name"""
