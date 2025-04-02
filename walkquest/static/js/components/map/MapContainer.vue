@@ -322,9 +322,9 @@ const handleMapCreated = (map) => {
       logoElement.style.position = 'fixed';
       
       if (uiStore.isMobile) {
-        // Mobile positioning - ensure logo stays within viewport
-        logoElement.style.bottom = `-52px!important`;
-        logoElement.style.left = '0'; // Fixed left position to ensure visibility
+        // Mobile positioning - ensure logo stays at the bottom of the viewport
+        logoElement.style.bottom = `${env(safe-area-inset-bottom, 0) + 12}px`;
+        logoElement.style.left = '10px'; // Fixed left position to ensure visibility
         logoElement.style.right = 'auto';
         logoElement.style.transform = 'scale(1.25)';
         logoElement.style.transformOrigin = 'bottom left';
