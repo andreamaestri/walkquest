@@ -2,7 +2,10 @@ import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import App from './App.vue';
 import router from './router';
-import './index.css';
+// Import CSS files that actually exist in the project
+import '../css/material3.css';
+import '../css/tokens.css';
+import '../css/project.css';
 import { initMotionHelpers } from './motion-helpers';
 import { Icon } from '@iconify/vue';
 import './fixes/portalFix.js';
