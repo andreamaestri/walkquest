@@ -60,6 +60,16 @@ DATABASES = {
     ),
 }
 DATABASES["default"]["ATOMIC_REQUESTS"] = True
+
+# Database performance optimizations
+DATABASES["default"]["CONN_MAX_AGE"] = env.int("CONN_MAX_AGE", default=60)  # Persistent connections
+DATABASES["default"]["OPTIONS"] = {
+    "connect_timeout": 10,
+    # Add options specific to PostgreSQL for better performance
+    "client_encoding": "UTF8",
+    "default_transaction_isolation": "read committed",
+}
+
 # https://docs.djangoproject.com/en/stable/ref/settings/#std:setting-DEFAULT_AUTO_FIELD
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

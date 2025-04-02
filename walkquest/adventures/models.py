@@ -65,6 +65,10 @@ class Achievement(models.Model):
         indexes = [
             models.Index(fields=["user", "adventure"]),
             models.Index(fields=["conquered_date"]),
+            models.Index(fields=["status"], name="achievements_status_idx"),
+            models.Index(fields=["visibility"], name="achievements_visibility_idx"),
+            models.Index(fields=["user", "status"], name="achievements_user_status_idx"),
+            models.Index(fields=["created_at"], name="achievements_created_at_idx"),
         ]
         constraints = [
             models.UniqueConstraint(

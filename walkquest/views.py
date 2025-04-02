@@ -23,7 +23,13 @@ def index(request, walk_id=None):
     # If a walk_id slug is provided, try to find the walk
     if walk_id:
         try:
-            walk = Walk.objects.get(walk_id=walk_id)
+            # Optimize query with select_related and prefetch_related
+            walk = Walk.objects.select_related('adventure').prefetch_related(
+                'features', 
+                'categories', 
+                'related_categories'
+            ).get(walk_id=walk_id)
+            
             # Create walk data dict
             walk_data = {
                 "id": str(walk.id),

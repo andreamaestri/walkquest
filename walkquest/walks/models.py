@@ -15,6 +15,11 @@ class WalkCategoryTag(TagModel):
         constraints = [
             models.UniqueConstraint(fields=["slug"], name="unique_category_slug"),
         ]
+        indexes = [
+            models.Index(fields=["name"], name="walks_cat_name_idx"),
+            models.Index(fields=["slug"], name="walks_cat_slug_idx"),
+            models.Index(fields=["count"], name="walks_cat_count_idx"),
+        ]
 
     def __str__(self):
         return self.name
@@ -47,6 +52,11 @@ class WalkFeatureTag(TagModel):
         verbose_name_plural = _("Walk Features")
         constraints = [
             models.UniqueConstraint(fields=["slug"], name="unique_feature_slug"),
+        ]
+        indexes = [
+            models.Index(fields=["name"], name="walks_feat_name_idx"),
+            models.Index(fields=["slug"], name="walks_feat_slug_idx"),
+            models.Index(fields=["count"], name="walks_feat_count_idx"),
         ]
 
     def __str__(self):
@@ -168,6 +178,9 @@ class Adventure(models.Model):
         indexes = [
             models.Index(fields=["difficulty_level"], name="walks_adv_diff_lvl_idx"),
             models.Index(fields=["start_date", "end_date"], name="walks_adv_start_end_idx"),
+            models.Index(fields=["is_public"], name="walks_adv_is_public_idx"),
+            models.Index(fields=["created_at"], name="walks_adv_created_at_idx"),
+            models.Index(fields=["title"], name="walks_adv_title_idx"),
         ]
         permissions = [
             ("can_create_featured_adventure", "Can create featured adventure"),
@@ -353,6 +366,12 @@ class Walk(models.Model):
             models.Index(fields=["walk_name"], name="walks_walk_walk_name_idx"),
             models.Index(fields=["distance"], name="walks_walk_distance_idx"),
             models.Index(fields=["created_at"], name="walks_walk_created_at_idx"),
+            models.Index(fields=["steepness_level"], name="walks_walk_steepness_idx"),
+            models.Index(fields=["footwear_category"], name="walks_walk_footwear_idx"),
+            models.Index(fields=["has_pub"], name="walks_walk_has_pub_idx"),
+            models.Index(fields=["has_cafe"], name="walks_walk_has_cafe_idx"),
+            models.Index(fields=["adventure"], name="walks_walk_adventure_idx"),
+            models.Index(fields=["latitude", "longitude"], name="walks_walk_location_idx"),
         ]
 
     def __str__(self):
