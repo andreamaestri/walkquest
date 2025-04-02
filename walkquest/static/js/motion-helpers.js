@@ -1,26 +1,59 @@
-// Initialize Motion press helper
-export function initMotionPress(element, options = {}) {
-    if (!window.Motion?.press || !element) return null;
+// Motion for Vue helpers
+import { animate } from 'motion-v';
 
-    const callbacks = {
-        onPressStart: typeof options.onPressStart === 'function' ? options.onPressStart : () => {},
-        onPressEnd: typeof options.onPressEnd === 'function' ? options.onPressEnd : () => {}
-    };
+// Initialize Motion press helper for UI elements
+export function initMotionPress(element, options = {}) {
+    if (!element) return null;
+
+    const { 
+        scale = true,
+        onPress = null,
+        onRelease = null
+    } = options;
 
     try {
-        // Correct Motion.press API usage:
-        // press(elementOrSelector, onPressStart, options)
-        return window.Motion.press(
-            element,
-            (element, event) => {
-                callbacks.onPressStart();
-                return () => callbacks.onPressEnd();
-            },
-            {
-                scale: options.scale || 0.97,
-                duration: options.duration || 100
+        // Apply press effect with Motion for Vue
+        element.addEventListener('mousedown', () => {
+            if (scale) {
+                animate(element, { scale: 0.95 }, {
+                    duration: 0.2,
+                    easing: [0.2, 0, 0, 1]
+                });
             }
-        );
+
+            if (onPress && typeof onPress === 'function') {
+                onPress(element);
+            }
+        });
+
+        element.addEventListener('mouseup', () => {
+            if (scale) {
+                animate(element, { scale: 1 }, {
+                    duration: 0.3,
+                    easing: [0.2, 0, 0.2, 1]
+                });
+            }
+
+            if (onRelease && typeof onRelease === 'function') {
+                onRelease(element);
+            }
+        });
+
+        element.addEventListener('mouseleave', () => {
+            if (scale) {
+                animate(element, { scale: 1 }, {
+                    duration: 0.3,
+                    easing: [0.2, 0, 0.2, 1]
+                });
+            }
+        });
+
+        return {
+            element,
+            cleanup: () => {
+                // Could add cleanup logic here if needed
+            }
+        };
     } catch (error) {
         console.error('Motion press error:', error);
         return null;
@@ -28,12 +61,14 @@ export function initMotionPress(element, options = {}) {
 }
 
 // Initialize immediately if Motion is available, otherwise wait for ready event
-if (window.Motion) {
+export function initMotionHelpers() {
     window.initMotionPress = initMotionPress;
-} else {
-    window.addEventListener('motion:ready', () => {
-        window.initMotionPress = initMotionPress;
-    }, { once: true });
+    
+    // Dispatch ready event to let components know motion is available
+    document.dispatchEvent(new Event('motion:ready'));
 }
 
-console.log('Motion helpers setup complete');
+// Export motion utilities
+export { animate };
+
+console.log('Motion for Vue helpers setup complete');

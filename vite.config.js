@@ -4,14 +4,24 @@ import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
-  plugins: [vue(), tailwindcss()],
+  plugins: [
+    vue({
+      template: {
+        compilerOptions: {
+          isCustomElement: tag => tag.startsWith('motion.')
+        }
+      }
+    }),
+    tailwindcss()
+  ],
   base: '/static/', // Changed from '/static/dist/' to '/static/'
   define: {
     __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: true
   },
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'walkquest/static/js')
+      '@': resolve(__dirname, 'walkquest/static/js'),
+      'static': resolve(__dirname, './static')
     }
   },
   build: {

@@ -1,14 +1,21 @@
 import { createApp } from 'vue';
 import { createPinia } from 'pinia';
-import router from './router';
 import App from './App.vue';
-import '../css/material3.css';
+import router from './router';
+import './index.css';
+import { initMotionHelpers } from './motion-helpers';
 import { Icon } from '@iconify/vue';
 import './fixes/portalFix.js';
 import MDSnackbar from './components/shared/MDSnackbar.vue';
+import { motionPlugin } from 'motion-v'; // Import Motion for Vue plugin
 
-// Create Vue app instance
+// Create app with Pinia store
 const app = createApp(App);
+const pinia = createPinia();
+
+// Initialize Motion for Vue
+app.use(motionPlugin); // Register the Motion for Vue plugin
+initMotionHelpers();
 
 // Add global error handler
 app.config.errorHandler = (err, vm, info) => {
@@ -23,16 +30,13 @@ app.config.errorHandler = (err, vm, info) => {
   }
 };
 
-// Initialize Pinia store
-const pinia = createPinia();
+// Apply plugins
 app.use(pinia);
-
-// Initialize router
 app.use(router);
 
 // Configure custom elements
 app.config.compilerOptions.isCustomElement = (tag) => {
-  return false; // Don't treat Icon as a custom element since we're using it as a component
+  return tag.startsWith('motion.'); // Treat motion.* as custom elements for Motion for Vue
 };
 
 // Register components globally
@@ -40,4 +44,4 @@ app.component('Icon', Icon);
 app.component('MDSnackbar', MDSnackbar);
 
 // Mount app
-const vueApp = app.mount('#app');
+app.mount('#app');

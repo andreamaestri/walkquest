@@ -122,11 +122,11 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import { animate } from "motion";
-import { Icon } from "@iconify/vue";
 import { useUiStore } from "../../stores/ui";
 import { useSearchStore } from "../../stores/searchStore";
 import { useLocationStore } from "../../stores/locationStore";
+import { useMotionV } from "../../composables/useMotionV";
+import { Icon } from "@iconify/vue";
 import WalkList from "../WalkList.vue";
 
 /**
@@ -158,6 +158,14 @@ const route = useRoute();
 const uiStore = useUiStore();
 const searchStore = useSearchStore();
 const locationStore = useLocationStore();
+
+// Get motion from our new composable
+const { 
+  animate, 
+  stagger, 
+  animateElement, 
+  staggerElements 
+} = useMotionV();
 
 // Component state
 const sidebarRef = ref(null);
@@ -203,13 +211,13 @@ const toggleExpanded = () => {
   const contentArea = document.querySelector(".m3-rail-content-area");
   if (contentArea) {
     if (isExpanded.value) {
-      animate(
+      animateElement(
         contentArea,
         { opacity: [0, 1], scale: [0.97, 1] },
         { duration: 0.35, easing: springEasing, delay: 0.05 }
       );
     } else {
-      animate(
+      animateElement(
         contentArea,
         { opacity: [1, 0], scale: [1, 0.97] },
         { duration: 0.25, easing: standardEasing }
@@ -236,18 +244,14 @@ const expandSidebar = () => {
     nextTick(() => {
       const contentArea = document.querySelector(".m3-rail-content-area");
       if (contentArea) {
-        animate(
+        animateElement(
           contentArea,
           { 
             opacity: [0, 1], 
             scale: [0.97, 1],
             y: [-5, 0] 
           },
-          { 
-            duration: 0.35, 
-            easing: springEasing, 
-            delay: 0.05 
-          }
+          { duration: 0.35, easing: springEasing, delay: 0.05 }
         );
       }
     });
@@ -262,7 +266,7 @@ const handleFabClick = async () => {
   // Add tactile feedback animation
   const fab = document.querySelector(".m3-rail-fab");
   if (fab) {
-    await animate(
+    await animateElement(
       fab,
       { scale: [1, 0.92, 1] },
       { duration: 0.4, easing: springEasing }
@@ -316,7 +320,7 @@ const handleExploreClick = async () => {
   // Get the button element and add tactile feedback
   const button = document.querySelector(".m3-rail-item:nth-child(1)");
   if (button) {
-    await animate(
+    await animateElement(
       button,
       { scale: [1, 0.95, 1] },
       { duration: 0.3, easing: springEasing }
@@ -344,7 +348,7 @@ const handleLocationSearchClick = async () => {
   // Get the button element and add tactile feedback
   const button = document.querySelector(".m3-rail-item:nth-child(2)");
   if (button) {
-    await animate(
+    await animateElement(
       button,
       { scale: [1, 0.95, 1] },
       { duration: 0.3, easing: springEasing }
@@ -388,7 +392,7 @@ const handleCategoriesClick = async () => {
   // Get the button element and add tactile feedback
   const button = document.querySelector(".m3-rail-item:nth-child(3)");
   if (button) {
-    await animate(
+    await animateElement(
       button,
       { scale: [1, 0.95, 1] },
       { duration: 0.3, easing: springEasing }
@@ -426,7 +430,7 @@ watch(
         nextTick(() => {
           const contentArea = document.querySelector(".m3-rail-content-area");
           if (contentArea) {
-            animate(
+            animateElement(
               contentArea,
               { opacity: [0, 1], scale: [0.97, 1] },
               { duration: 0.35, easing: springEasing, delay: 0.05 }
@@ -470,7 +474,7 @@ onMounted(() => {
   // Animate rail header with improved physics
   const railHeader = document.querySelector(".m3-rail-header");
   if (railHeader) {
-    animate(
+    animateElement(
       railHeader,
       { opacity: [0, 1], y: [-15, 0] },
       { duration: 0.45, easing: mdEmphasizedEasing }
@@ -480,7 +484,7 @@ onMounted(() => {
   // Animate menu button with slight bounce
   const menuButton = document.querySelector(".menu-button");
   if (menuButton) {
-    animate(
+    animateElement(
       menuButton,
       { scale: [0.8, 1], opacity: [0, 1] },
       {
@@ -494,7 +498,7 @@ onMounted(() => {
   // Animate FAB with spring physics
   const fab = document.querySelector(".m3-rail-fab");
   if (fab) {
-    animate(
+    animateElement(
       fab,
       { scale: [0.85, 1], opacity: [0, 1] },
       {
@@ -508,24 +512,23 @@ onMounted(() => {
   // Animate nav items with staggered entrance
   const navItems = document.querySelectorAll(".m3-rail-item:not(.menu-button)");
   if (navItems.length) {
-    navItems.forEach((item, index) => {
-      animate(
-        item,
-        { opacity: [0, 1], y: [15, 0] },
-        {
-          duration: 0.4,
-          easing: mdEmphasizedEasing,
-          delay: 0.2 + index * 0.08, // Staggered delay for each item
-        }
-      );
-    });
+    staggerElements(
+      navItems,
+      { opacity: [0, 1], y: [15, 0] },
+      {
+        duration: 0.4,
+        easing: mdEmphasizedEasing,
+        interval: 0.08, // Staggered delay for each item
+        delay: 0.2, // Base delay before sequence starts
+      }
+    );
   }
 
   // Animate content area if expanded
   if (isExpanded.value) {
     const contentArea = document.querySelector(".m3-rail-content-area");
     if (contentArea) {
-      animate(
+      animateElement(
         contentArea,
         { opacity: [0, 1], x: [-20, 0] },
         {
