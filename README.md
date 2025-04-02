@@ -52,7 +52,6 @@
 - [Version Control](#version-control)
     - [Git Workflow](#git-workflow)
     - [Commit Convention](#commit-convention)
-    - [Branch Strategy](#branch-strategy)
 - [Deployment](#deployment)
     - [Local Development](#local-development)
     - [Production Deployment](#production-deployment)
@@ -651,13 +650,6 @@ fix: resolve mobile navigation
 docs: update deployment guide
 test: add walk model tests
 ```
-
-### Branch Strategy
-- main: Production code
-- develop: Integration branch
-- feature/*: New features
-- bugfix/*: Bug fixes
-- release/*: Release preparation
 
 ## Deployment
 
