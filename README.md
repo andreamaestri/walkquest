@@ -1,54 +1,135 @@
+```markdown
 # ![material-symbols--hiking](https://github.com/user-attachments/assets/85beb384-d086-44d3-8e94-3cbf58fafd83) WalkQuest
-
 
 [![Built with Cookiecutter Django](https://img.shields.io/badge/built%20with-Cookiecutter%20Django-ff69b4.svg?logo=cookiecutter)](https://github.com/cookiecutter/cookiecutter-django/)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![Python 3.9+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/andreamaestri/walkquest/ci.yml?branch=main)](https://github.com/andreamaestri/walkquest/actions)
 
 ## Table of Contents
+
 - [Description](#description)
-- [Project Structure](#project-structure--attribution)
 - [Features](#features)
+- [UX Design & Development Process](#ux-design--development-process)
+    - [Project Goals](#project-goals)
+    - [User Stories](#user-stories)
+        - [User Types](#user-types)
+    - [Design Process](#design-process)
+        - [Wireframes](#wireframes)
+        - [Accessibility](#accessibility)
+    - [Database Schema](#database-schema)
+- [Project Structure & Attribution](#project-structure--attribution)
+    - [Cookiecutter Django Generated Files](#cookiecutter-django-generated-files)
+    - [Custom Implemented Files](#custom-implemented-files)
+- [Django Applications Overview](#django-applications-overview)
+    - [Django Core Apps (Cookiecutter Provided)](#django-core-apps-cookiecutter-provided)
+    - [Third-Party Apps (Added to Cookiecutter)](#third-party-apps-added-to-cookiecutter)
+    - [Custom Apps (Project Specific)](#custom-apps-project-specific)
+    - [Cookiecutter-Provided Features (Modified)](#cookiecutter-provided-features-modified)
 - [Prerequisites](#prerequisites)
-- [Installation](#installation)
 - [Usage](#usage)
-- [Technical Implementation](#technical-implementation)
-- [Testing](#testing)
-- [Deployment](#deployment)
 - [Screenshots](#screenshots)
+- [Technical Implementation](#technical-implementation)
+    - [Custom Backend Development](#custom-backend-development)
+    - [Map Integration with @studiometa/vue-mapbox-gl](#map-integration-with-studiometavue-mapbox-gl)
+    - [Custom Frontend Components](#custom-frontend-components)
+    - [Modified Cookiecutter Features](#modified-cookiecutter-features)
+- [Development Process](#development-process)
+    - [Version Control Strategy](#version-control-strategy)
+    - [Testing](#testing)
+        - [Manual Testing Documentation](#manual-testing-documentation)
+        - [Automated Testing](#automated-testing)
+- [Security Implementation](#security-implementation)
+    - [Authentication & Authorization](#authentication--authorization)
+    - [Security Features](#security-features)
+- [Testing Documentation](#testing-documentation)
+    - [Testing Strategy](#testing-strategy)
+    - [Automated Tests Coverage](#automated-tests-coverage)
+    - [Browser Compatibility](#browser-compatibility)
+    - [Performance Testing](#performance-testing)
+    - [Validation Testing](#validation-testing)
+- [Version Control](#version-control)
+    - [Git Workflow](#git-workflow)
+    - [Commit Convention](#commit-convention)
+    - [Branch Strategy](#branch-strategy)
+- [Deployment](#deployment)
+    - [Local Development](#local-development)
+    - [Production Deployment](#production-deployment)
+        - [Prerequisites](#prerequisites-1)
+        - [Step 1: Heroku Setup](#step-1-heroku-setup)
+        - [Step 2: Configure Environment Variables](#step-2-configure-environment-variables)
+        - [Step 3: Deploy](#step-3-deploy)
+        - [Step 4: Verify Deployment](#step-4-verify-deployment)
+- [Contributing](#contributing)
+    - [Development Process](#development-process-1)
+    - [Code Style](#code-style)
+    - [Documentation](#documentation-1)
+- [License](#license)
 - [Credits](#credits)
+    - [Core Framework](#core-framework)
+    - [Third-Party Libraries and Usage](#third-party-libraries-and-usage)
+    - [Code Attribution](#code-attribution)
+    - [Content & Media Attribution](#content--media-attribution)
+
+## Description
+
+WalkQuest is an adventure-driven, gamified walking app designed to immerse users in Cornwall's rich history, nature, and folklore through thematic walking adventures. Complete curated walks, uncover hidden stories, and earn achievements as you explore.
+
+[Link to Live Site](https://walkquest-b4598371b54d.herokuapp.com/)
+
+## Features
+
+### Custom-Built Features
+
+-   **🗺️ Thematic Adventures**:
+    -   Custom-built adventure system
+    -   Unique gamification mechanics
+    -   Interactive checkpoints
+    -   Progress tracking
+-   **🥾 Gamified Exploration**:
+    -   Custom achievement system
+    -   Level progression logic
+    -   Badge collection mechanics
+-   **🌿 Nature & History Integration**:
+    -   Custom content management
+    -   Location-based triggers
+    -   Historical data integration
+-   **🚶 Personalized Experience**:
+    -   Custom filtering system
+    -   User preference engine
+    -   Route recommendation algorithm
 
 ## UX Design & Development Process
 
 ### Project Goals
-- Create an engaging walking adventure platform
-- Promote exploration of Cornwall's heritage
-- Provide gamified outdoor experiences
-- Support community interaction
+
+-   Create an engaging walking adventure platform
+-   Promote exploration of Cornwall's heritage
+-   Provide gamified outdoor experiences
+-   Support community interaction
 
 ### User Stories
-[Link to Agile Board](https://trello.com/b/your-board)
+
+[Link to Agile Board](https://github.com/users/andreamaestri/projects/4)
 
 #### User Types
-1. **Regular Walker**
-   - Create an account and profile
-   - Find walks near me
-   - Track progress
-   - Earn achievements
 
-2. **History Enthusiast**
-   - Discover historical sites
-   - Learn local stories
-   - Share knowledge
-   - Create themed walks
-
-3. **Administrator**
-   - Manage user accounts
-   - Moderate content
-   - Monitor platform usage
-   - Generate reports
+1.  **Regular Walker**
+    -   Create an account and profile
+    -   Find walks near me
+    -   Track progress
+    -   Earn achievements
+2.  **History Enthusiast**
+    -   Discover historical sites
+    -   Learn local stories
+    -   Share knowledge
+    -   Create themed walks
+3.  **Administrator**
+    -   Manage user accounts
+    -   Moderate content
+    -   Monitor platform usage
+    -   Generate reports
 
 ### Design Process
 
@@ -61,32 +142,35 @@ The wireframe designs below illustrate the user interface for both mobile and de
 
 ![Mobile Wireframe 1](https://github.com/user-attachments/assets/43cea466-16aa-4379-a580-7f79c582e9d9)
 ![Mobile Wireframe 2](https://github.com/user-attachments/assets/85fb1b0c-75ad-438e-9377-e8c658bcffc1)
-- Navigation optimized for touch
-- SpeedDial FAB
-- Collapsible content
+
+-   Navigation optimized for touch
+-   SpeedDial FAB
+-   Collapsible content
 
 </details>
+
 <details>
 <summary>Desktop Design</summary>
 
 ![Desktop Wireframe](https://github.com/user-attachments/assets/a24ea427-496d-46d3-a582-aa3d63ab787b)
 
-- Full-screen map view
-- Advanced filtering
-- Navigation Rail/Material Design 3 Canonical layout
+-   Full-screen map view
+-   Advanced filtering
+-   Navigation Rail/Material Design 3 Canonical layout
 
-  
 </details>
 
-### Accessibility
-- WCAG 2.1 AA compliant
-- Semantic HTML structure
-- ARIA labels where needed
-- Keyboard navigation support
-- Color contrast ratios meet standards
-- Screen reader compatible
+#### Accessibility
 
-### Database Schema
+-   WCAG 2.1 AA compliant
+-   Semantic HTML structure
+-   ARIA labels where needed
+-   Keyboard navigation support
+-   Color contrast ratios meet standards
+-   Screen reader compatible
+
+#### Database Schema
+
 ```sql
 -- Core Models
 Table User {
@@ -125,11 +209,12 @@ Table Achievement {
 ## Project Structure & Attribution
 
 ### Cookiecutter Django Generated Files
+
 ```
 walkquest/
 ├── config/                     # Cookiecutter: Project configuration
 │   ├── settings/              # Cookiecutter: Settings modules
-│   │   ├── base.py           
+│   │   ├── base.py
 │   │   ├── local.py
 │   │   ├── production.py
 │   │   └── test.py
@@ -147,6 +232,7 @@ walkquest/
 ```
 
 ### Custom Implemented Files
+
 ```
 walkquest/
 ├── walkquest/
@@ -161,6 +247,7 @@ walkquest/
 ## Django Applications Overview
 
 ### Django Core Apps (Cookiecutter Provided)
+
 ```python
 DJANGO_APPS = [
     "django.contrib.auth",
@@ -176,40 +263,42 @@ DJANGO_APPS = [
 ```
 
 ### Third-Party Apps (Added to Cookiecutter)
+
 ```python
 THIRD_PARTY_APPS = [
-    # Authentication & Forms
-    "crispy_forms",
-    "crispy_bootstrap5",
-    "allauth_ui",
-    "allauth",
-    "allauth.account",
-    "allauth.headless",
-    "allauth.mfa",
-    "allauth.socialaccount",
-    
-    # Admin Interface
-    "unfold",
-    "unfold.contrib.filters",
-    "unfold.contrib.forms",
-    "unfold.contrib.inlines",
-    
-    # Task Processing
-    "django_celery_beat",
-    
-    # Frontend Integration
-    "django_vite",
-    "compressor",
-    
-    # API & Data Handling
-    "ninja",
-    "tagulous",
-    "widget_tweaks",
-    "slippers",
+  # Authentication & Forms
+  "crispy_forms",            # Form rendering with crispy layout
+  "crispy_bootstrap5",       # Bootstrap 5 theme for crispy forms
+  "allauth_ui",              # Enhanced UI for django-allauth
+  "allauth",                 # Authentication framework
+  "allauth.account",         # User account management
+  "allauth.headless",        # API-based authentication
+  "allauth.mfa",             # Multi-factor authentication
+  "allauth.socialaccount",   # Social media login support
+
+  # Admin Interface
+  "unfold",                  # Modern admin interface
+  "unfold.contrib.filters",  # Enhanced admin filters
+  "unfold.contrib.forms",    # Enhanced admin forms
+  "unfold.contrib.inlines",  # Enhanced admin inline models
+
+  # Task Processing
+  "django_celery_beat",      # Scheduled task management
+
+  # Frontend Integration
+  "django_vite",             # Integration with Vite.js for frontend
+  "compressor",              # Static file compression
+
+  # API & Data Handling
+  "ninja",                   # Fast Django API framework
+  "tagulous",                # Enhanced tagging system
+  "widget_tweaks",           # Form widget customization
+  "slippers",                # Template component system
 ]
 ```
 
 ### Custom Apps (Project Specific)
+
 ```python
 LOCAL_APPS = [
     "walkquest",              # Base app for template tags
@@ -219,52 +308,25 @@ LOCAL_APPS = [
 ]
 ```
 
-## Description
-
-WalkQuest is an adventure-driven, gamified walking app designed to immerse users in Cornwall's rich history, nature, and folklore through thematic walking adventures. Complete curated walks, uncover hidden stories, and earn achievements as you explore.
-
-[Link to Live Site](https://walkquest-production.herokuapp.com)
-
-## Features
-
-### Custom-Built Features
-- **🗺️ Thematic Adventures**: 
-  - Custom-built adventure system
-  - Unique gamification mechanics
-  - Interactive checkpoints
-  - Progress tracking
-
-- **🥾 Gamified Exploration**: 
-  - Custom achievement system
-  - Level progression logic
-  - Badge collection mechanics
-
-- **🌿 Nature & History Integration**:
-  - Custom content management
-  - Location-based triggers
-  - Historical data integration
-
-- **🚶 Personalized Experience**:
-  - Custom filtering system
-  - User preference engine
-  - Route recommendation algorithm
-
 ### Cookiecutter-Provided Features (Modified)
-- User authentication (extended with custom profile)
-- Basic database setup (enhanced with PostGIS)
-- Development environment configuration
-- Testing framework setup
+
+-   User authentication (extended with custom profile)
+-   Basic database setup (enhanced with PostGIS)
+-   Development environment configuration
+-   Testing framework setup
 
 ## Prerequisites
 
 Before you begin, ensure you have the following installed:
-- Python 3.9+
-- PostgreSQL 13+ with PostGIS extension
-- Node.js 16+
-- Redis (for production)
-- Git
+
+-   Python 3.9+
+-   PostgreSQL 13+ with PostGIS extension
+-   Node.js 16+
+-   Redis (for production)
+-   Git
 
 Required Python packages:
+
 ```bash
 Django==5.x
 django-ninja
@@ -274,6 +336,7 @@ psycopg2-binary
 ```
 
 Required Node.js packages:
+
 ```bash
 vue@3.x
 @vitejs/plugin-vue
@@ -284,53 +347,58 @@ tailwindcss
 
 After installation, you can:
 
-1. Start the development server:
-```bash
-python manage.py runserver
-```
-
-2. Start the Vite development server:
-```bash
-npm run dev
-```
-
-3. Access the application:
-- Frontend: http://localhost:5173
-- Django Admin: http://localhost:8000/admin
-- API Documentation: http://localhost:8000/api/docs
+1.  Start the development server:
+    ```bash
+    python manage.py runserver
+    ```
+2.  Start the Vite development server:
+    ```bash
+    npm run dev
+    ```
+3.  Access the application:
+    -   Frontend: http://localhost:5173
+    -   Django Admin: http://localhost:8000/admin
+    -   API Documentation: http://localhost:8000/api/docs
 
 ## Screenshots
 
 <details>
 <summary>Dashboard View</summary>
 
-*Dashboard screenshot to be added*
-- Interactive map display
-- Walk listings
-- Achievement progress
+\*Dashboard screenshot to be added\*
+
+-   Interactive map display
+-   Walk listings
+-   Achievement progress
+
 </details>
 
 <details>
 <summary>Walk Detail</summary>
 
-*Walk Detail screenshot to be added*
-- Route information
-- Historical context
-- Checkpoints
+\*Walk Detail screenshot to be added\*
+
+-   Route information
+-   Historical context
+-   Checkpoints
+
 </details>
 
 <details>
 <summary>Mobile View</summary>
 
-*Mobile Interface screenshot to be added*
-- Responsive design
-- Touch-friendly controls
-- Offline capabilities
+\*Mobile Interface screenshot to be added\*
+
+-   Responsive design
+-   Touch-friendly controls
+-   Offline capabilities
+
 </details>
 
 ## Technical Implementation
 
 ### Custom Backend Development
+
 ```python
 # walkquest/walks/models.py - Custom Walk Model
 class Walk(models.Model):
@@ -339,7 +407,7 @@ class Walk(models.Model):
     difficulty = models.IntegerField(choices=DIFFICULTY_CHOICES)
     checkpoints = models.ManyToManyField('Checkpoint')
     creator = models.ForeignKey(User, on_delete=models.CASCADE)
-    
+
     def calculate_progress(self, user):
         # Custom progress calculation logic
         completed = self.checkpoints.filter(
@@ -349,6 +417,7 @@ class Walk(models.Model):
 ```
 
 ### Map Integration with @studiometa/vue-mapbox-gl
+
 We use the Vue 3 Mapbox GL library from Studio Meta for map functionalities:
 
 ```javascript
@@ -376,14 +445,16 @@ export default {
 ```
 
 Key map features:
-- `MapboxMap`: Main map display with outdoor styling
-- `MapboxMarker`: Custom markers for walk checkpoints
-- `MapboxCluster`: Clustering for multiple walks in an area
-- `MapboxNavigationControl`: Map navigation controls
-- `MapboxGeocoder`: Location search functionality
-- `MapboxPopup`: Information popups for walks and checkpoints
+
+-   `MapboxMap`: Main map display with outdoor styling
+-   `MapboxMarker`: Custom markers for walk checkpoints
+-   `MapboxCluster`: Clustering for multiple walks in an area
+-   `MapboxNavigationControl`: Map navigation controls
+-   `MapboxGeocoder`: Location search functionality
+-   `MapboxPopup`: Information popups for walks and checkpoints
 
 ### Custom Frontend Components
+
 ```javascript
 // src/components/WalkInterface.vue
 export default {
@@ -391,18 +462,19 @@ export default {
   setup() {
     const store = useWalkStore()
     const progress = ref(0)
-    
+
     // Custom walk progress tracking
     const updateProgress = async () => {
       progress.value = await store.calculateProgress()
     }
-    
+
     return { progress, updateProgress }
   }
 }
 ```
 
 ### Modified Cookiecutter Features
+
 ```python
 # walkquest/users/models.py - Extended User Model
 class User(AbstractUser):
@@ -415,9 +487,10 @@ class User(AbstractUser):
 ## Development Process
 
 ### Version Control Strategy
-- Feature branches for new custom features
-- Documentation updates in separate branches
-- Regular commits with clear attribution
+
+-   Feature branches for new custom features
+-   Documentation updates in separate branches
+-   Regular commits with clear attribution
 
 ### Testing
 
@@ -425,31 +498,28 @@ class User(AbstractUser):
 
 ##### API Endpoints Testing
 
-| Core API Endpoints |
-| Endpoint | Test Description | Expected Result | Status |
-|----------|-----------------|-----------------|---------|
-| `GET /api/health` | Health check endpoint | Returns `{"status": "ok"}` | ✅ |
-| `GET /api/user` | Get current user info | Returns user data or anonymous | ✅ |
-| `GET /api/preferences` | Get user preferences | Returns preference object | ✅ |
-| `PATCH /api/preferences` | Update preferences | Returns updated preferences | ✅ |
-
-| Walks API Endpoints |
-| Endpoint | Test Description | Expected Result | Status |
-|----------|-----------------|-----------------|---------|
-| `GET /api/walks` | List walks with filters | Returns filtered walk list | ✅ |
-| `GET /api/walks/nearby` | Find nearby walks | Returns walks within radius | ✅ |
-| `GET /api/walks/{id}` | Get walk details | Returns single walk data | ✅ |
-| `GET /api/walks/{id}/geometry` | Get walk route | Returns GeoJSON feature | ✅ |
-| `POST /api/walks/{id}/favorite` | Toggle favorite status | Updates favorite state | ✅ |
-
-| Configuration Endpoints |
-| Endpoint | Test Description | Expected Result | Status |
-|----------|-----------------|-----------------|---------|
-| `GET /api/tags` | Get all walk tags | Returns tags with counts | ✅ |
-| `GET /api/config` | Get app configuration | Returns Mapbox and UI settings | ✅ |
-| `GET /api/filters` | Get filter options | Returns available filters | ✅ |
+| Core API Endpoints     |                               |                               |       |
+| :--------------------- | :---------------------------- | :---------------------------- | :---- |
+| Endpoint               | Test Description              | Expected Result               | Status |
+| `GET /api/health`      | Health check endpoint         | Returns `{"status": "ok"}`    | ✅    |
+| `GET /api/user`        | Get current user info         | Returns user data or anonymous | ✅    |
+| `GET /api/preferences` | Get user preferences          | Returns preference object     | ✅    |
+| `PATCH /api/preferences`| Update preferences            | Returns updated preferences   | ✅    |
+| Walks API Endpoints    |                               |                               |       |
+| Endpoint               | Test Description              | Expected Result               | Status |
+| `GET /api/walks`       | List walks with filters       | Returns filtered walk list    | ✅    |
+| `GET /api/walks/nearby`| Find nearby walks             | Returns walks within radius   | ✅    |
+| `GET /api/walks/{id}`  | Get walk details              | Returns single walk data      | ✅    |
+| `GET /api/walks/{id}/geometry` | Get walk route              | Returns GeoJSON feature     | ✅    |
+| `POST /api/walks/{id}/favorite` | Toggle favorite status      | Updates favorite state      | ✅    |
+| Configuration Endpoints|                               |                               |       |
+| Endpoint               | Test Description              | Expected Result               | Status |
+| `GET /api/tags`        | Get all walk tags             | Returns tags with counts      | ✅    |
+| `GET /api/config`      | Get app configuration         | Returns Mapbox and UI settings | ✅    |
+| `GET /api/filters`     | Get filter options            | Returns available filters     | ✅    |
 
 ##### Authentication Flow Testing
+
 | Test Case | Steps | Expected Result | Status |
 |-----------|-------|-----------------|---------|
 | User Registration | 1. Access signup page<br>2. Fill form<br>3. Submit | Account created successfully | ✅ |
@@ -706,24 +776,19 @@ We welcome contributions to WalkQuest! Here's how you can help:
 7. Open a Pull Request
 
 ### Code Style
-- Follow PEP 8 for Python code
-- Use ESLint configuration for JavaScript
-- Follow Vue.js style guide for components
-- Write meaningful commit messages
-- Add tests for new features
+
+-   Follow PEP 8 for Python code
+-   Use ESLint configuration for JavaScript
+-   Follow Vue.js style guide for components
+-   Write meaningful commit messages
+-   Add tests for new features
 
 ### Documentation
-- Update README.md if needed
-- Add docstrings to Python functions
-- Comment complex logic
-- Update API documentation
 
-## Support
-
-For support:
-1. Check the [documentation](docs/)
-2. Open an issue
-3. Join our [Discord community](link_to_discord)
+-   Update README.md if needed
+-   Add docstrings to Python functions
+-   Comment complex logic
+-   Update API documentation
 
 ## License
 
@@ -732,186 +797,215 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Credits
 
 ### Core Framework
-- [Cookiecutter Django](https://github.com/cookiecutter/cookiecutter-django/) - Base project template
-- [Django](https://www.djangoproject.com/) - Web framework
-- [Vue.js](https://vuejs.org/) - Frontend framework
+
+-   [Cookiecutter Django](https://github.com/cookiecutter/cookiecutter-django/) - Base project template
+-   [Django](https://www.djangoproject.com/) - Web framework
+-   [Vue.js](https://vuejs.org/) - Frontend framework
 
 ### Third-Party Libraries and Usage
 
 #### Map Integration
-- [@studiometa/vue-mapbox-gl](https://vue-mapbox-gl.studiometa.dev/)
-  - **Usage**: Main map interface in WalkInterface component
-  - **Purpose**: Provides Vue.js components for Mapbox GL integration
-  - **Location**: `src/components/map/`
-  - **Features Used**: MapboxMap, MapboxMarker, MapboxCluster, MapboxNavigationControl
+
+-   [@studiometa/vue-mapbox-gl](https://vue-mapbox-gl.studiometa.dev/)
+    -   **Usage**: Main map interface in WalkInterface component
+    -   **Purpose**: Provides Vue.js components for Mapbox GL integration
+    -   **Location**: `src/components/map/`
+    -   **Features Used**: MapboxMap, MapboxMarker, MapboxCluster, MapboxNavigationControl
 
 #### Authentication
-- [Django AllAuth](https://docs.allauth.org/)
-  - **Usage**: User authentication and account management
-  - **Purpose**: Handles user registration, login, and social auth
-  - **Location**: `walkquest/users/`
-  - **Customizations**: Extended with custom user model and headless API
+
+-   [Django AllAuth](https://docs.allauth.org/)
+    -   **Usage**: User authentication and account management
+    -   **Purpose**: Handles user registration, login, and social auth
+    -   **Location**: `walkquest/users/`
+    -   **Customisations**: Extended with custom user model and headless API
 
 #### API Framework
-- [Django Ninja](https://django-ninja.rest-framework.com/)
-  - **Usage**: REST API implementation
-  - **Purpose**: Type-safe API endpoints with modern Python features
-  - **Location**: `walkquest/api.py`, `walkquest/walks/api.py`
-  - **Features Used**: Schemas, OpenAPI documentation, JWT authentication
+
+-   [Django Ninja](https://django-ninja.rest-framework.com/)
+    -   **Usage**: REST API implementation
+    -   **Purpose**: Type-safe API endpoints with modern Python features
+    -   **Location**: `walkquest/api.py`, `walkquest/walks/api.py`
+    -   **Features Used**: Schemas, OpenAPI documentation, JWT authentication
 
 ### Code Attribution
 
 #### Original Implementations
-- **Walk Tracking System**
-  - Fully custom implementation for tracking walk progress
-  - Located in `walkquest/walks/models.py` and `walkquest/walks/services.py`
-  - Uses Django's ORM and PostGIS for spatial features
 
-- **Achievement System**
-  - Custom gamification logic and progression system
-  - Located in `walkquest/achievements/`
-  - Integrates with user profile and walk completion events
+-   **Walk Tracking System**
+    -   Fully custom implementation for tracking walk progress
+    -   Located in `walkquest/walks/models.py` and `walkquest/walks/services.py`
+    -   Uses Django's ORM and PostGIS for spatial features
 
-- **Adventure System**
-  - Original implementation for story-driven walks
-  - Located in `walkquest/adventures/`
-  - Custom content management and progression tracking
+-   **Achievement System**
+    -   Custom gamification logic and progression system
+    -   Located in `walkquest/achievements/`
+    -   Integrates with user profile and walk completion events
+
+-   **Adventure System**
+    -   Original implementation for story-driven walks
+    -   Located in `walkquest/adventures/`
+    -   Custom content management and progression tracking
 
 #### Modified Third-Party Code
-- **Map Integration**
-  - Based on @studiometa/vue-mapbox-gl examples
-  - Customized for Cornwall region and walk visualization
-  - Enhanced with custom clustering and route display
-  - Located in `src/components/map/`
 
-- **User Authentication**
-  - Extended Django AllAuth with custom profile
-  - Added headless API support
-  - Custom registration flow
-  - Located in `walkquest/users/`
+-   **Map Integration**
+    -   Based on @studiometa/vue-mapbox-gl examples
+    -   Customised for Cornwall region and walk visualisation
+    -   Enhanced with custom clustering and route display
+    -   Located in `src/components/map/`
 
-- **API Framework**
-  - Built on Django Ninja with custom serializers
-  - Enhanced with spatial query support
-  - Custom middleware for security
-  - Located in `walkquest/api/`
-  - **Features Used**: Schemas, OpenAPI documentation, JWT authentication
+-   **User Authentication**
+    -   Extended Django AllAuth with custom profile
+    -   Added headless API support
+    -   Custom registration flow
+    -   Located in `walkquest/users/`
+
+-   **API Framework**
+    -   Built on Django Ninja with custom serializers
+    -   Enhanced with spatial query support
+    -   Custom middleware for security
+    -   Located in `walkquest/api/`
+    -   **Features Used**: Schemas, OpenAPI documentation, JWT authentication
 
 #### Frontend Framework
-- [Vue.js 3](https://vuejs.org/)
-  - **Usage**: Frontend reactive components
-  - **Purpose**: Component-based UI development
-  - **Location**: `src/components/`
-  - **Key Features**: Composition API, reactive state management
+
+-   [Vue.js 3](https://vuejs.org/)
+    -   **Usage**: Frontend reactive components
+    -   **Purpose**: Component-based UI development
+    -   **Location**: `src/components/`
+    -   **Key Features**: Composition API, reactive state management
 
 #### Styling and UI
-- [Tailwind CSS](https://tailwindcss.com/)
-  - **Usage**: Utility-first styling
-  - **Purpose**: Consistent design system and responsive layouts
-  - **Location**: `tailwind.config.js`, component templates
-  - **Custom Config**: Custom animations and color schemes
+
+-   [Tailwind CSS](https://tailwindcss.com/)
+    -   **Usage**: Utility-first styling
+    -   **Purpose**: Consistent design system and responsive layouts
+    -   **Location**: `tailwind.config.js`, component templates
+    -   **Custom Config**: Custom animations and colour schemes
 
 #### Database
-- [PostGIS](https://postgis.net/)
-  - **Usage**: Spatial database functionality
-  - **Purpose**: Handles location-based queries and walk routes
-  - **Location**: `walkquest/walks/models.py`
-  - **Features Used**: Spatial indexes, distance calculations
+
+-   [PostGIS](https://postgis.net/)
+    -   **Usage**: Spatial database functionality
+    -   **Purpose**: Handles location-based queries and walk routes
+    -   **Location**: `walkquest/walks/models.py`
+    -   **Features Used**: Spatial indexes, distance calculations
 
 #### Task Processing
-- [Celery](https://docs.celeryq.dev/)
-  - **Usage**: Background task processing
-  - **Purpose**: Handles async tasks like notifications and data processing
-  - **Location**: `walkquest/tasks/`
-  - **Integration**: Redis as message broker
+
+-   [Celery](https://docs.celeryq.dev/)
+    -   **Usage**: Background task processing
+    -   **Purpose**: Handles async tasks like notifications and data processing
+    -   **Location**: `walkquest/tasks/`
+    -   **Integration**: Redis as message broker
 
 #### Icons and Assets
-- [Iconify](https://iconify.design/)
-  - **Usage**: Icon system across the application
-  - **Purpose**: Consistent icon design and efficient loading
-  - **Location**: Component templates
-  - **Integration**: On-demand loading with framework integration
+
+-   [Iconify](https://iconify.design/)
+    -   **Usage**: Icon system across the application
+    -   **Purpose**: Consistent icon design and efficient loading
+    -   **Location**: Component templates
+    -   **Integration**: On-demand loading with framework integration
 
 ### Custom Code Attribution
-- Walk tracking system: Original implementation
-- Achievement system: Original implementation
-- Map integration: Modified from Mapbox examples
-- Virtual list: Modified from vue-virtual-scroller
+
+-   Walk tracking system: Original implementation
+-   Achievement system: Original implementation
+-   Map integration: Modified from Mapbox examples
+-   Virtual list: Modified from vue-virtual-scroller
+
+### AI Development Assistance
+
+-   **AI Coding Agents**
+    -   Used a mixture of AI coding agents for learning and development support
+    -   **Claude Code**: Utilised for code generation and debugging complex functions
+    -   **GitHub Copilot**: Assisted with code completion and implementation suggestions
+    -   **Cline AI with Memory Bank**: Leveraged for contextual assistance and maintaining project knowledge
+    -   **Documentation Fetching**: Used AI to retrieve and summarise relevant library documentation
+    -   All AI-generated code was reviewed, understood, and modified as part of the learning process
+    -   Served as learning tools to improve skills as a junior developer while maintaining code quality
 
 ### Content & Media Attribution
 
 #### Historical Content
-- **Cornwall Historical Society**
-  - Historical site information and descriptions
-  - Local folklore and cultural narratives
-  - Heritage site documentation
-  - License: CC BY-SA 4.0
+
+-   **Cornwall Historical Society**
+    -   Historical site information and descriptions
+    -   Local folklore and cultural narratives
+    -   Heritage site documentation
+    -   License: CC BY-SA 4.0
 
 #### Route & Trail Data
-- **Local Experts & Guides**
-  - Curated walking routes
-  - Trail safety information
-  - Local knowledge and insights
-  - Custom content agreement in place
 
-- **Cornwall Council**
-  - Public Rights of Way data
-  - Trail accessibility information
-  - Open Government License v3.0
+-   **Local Experts & Guides**
+    -   Curated walking routes
+    -   Trail safety information
+    -   Local knowledge and insights
+    -   Custom content agreement in place
+
+-   **Cornwall Council**
+    -   Public Rights of Way data
+    -   Trail accessibility information
+    -   Open Government License v3.0
 
 #### Visual Assets & Animations
-- **Icon System**
-  - [Iconify](https://iconify.design/) - MIT License
-  - Custom SVG icons - Original work
-  - Tailwind UI components - Licensed
-  - Component-specific icons - Original work
 
-- **Animations & Transitions**
-  - Custom spring animations:
-    - 'float': Smooth floating effect
-    - 'bounce-spring': Spring-based bouncing
-    - 'pulse-scale': Subtle pulsing effect
-    - 'rotate-spring': Rotating with spring physics
-    - 'slide-up': Smooth entry animation
-    - 'morph': Shape-morphing effect
-    - 'wiggle': Playful wiggle animation
-    - 'scale': Scale in/out effect
-  - Custom timing functions:
-    - spring-light
-    - spring-regular
-    - spring-heavy
-  - Transition durations:
-    - quick
-    - normal
-    - slow
+-   **Icon System**
+    -   [Iconify](https://iconify.design/) - MIT License
+    -   Custom SVG icons - Original work
+    -   Tailwind UI components - Licensed
+    -   Component-specific icons - Original work
 
-- **Background Effects**
-  - Gradient systems:
-    - gradient-radial
-    - gradient-morphing
-  - All animations and effects original work
+-   **Animations & Transitions**
+    -   Custom spring animations:
+        -   'float': Smooth floating effect
+        -   'bounce-spring': Spring-based bouncing
+        -   'pulse-scale': Subtle pulsing effect
+        -   'rotate-spring': Rotating with spring physics
+        -   'slide-up': Smooth entry animation
+        -   'morph': Shape-morphing effect
+        -   'wiggle': Playful wiggle animation
+        -   'scale': Scale in/out effect
+    -   Custom timing functions:
+        -   spring-light
+        -   spring-regular
+        -   spring-heavy
+    -   Transition durations:
+        -   quick
+        -   normal
+        -   slow
+
+-   **Background Effects**
+    -   Gradient systems:
+        -   gradient-radial
+        -   gradient-morphing
+    -   All animations and effects original work
 
 #### Map Resources
-- **Mapbox**
-  - Base maps and tiles - Commercial license
-  - Custom style modifications - Original work
 
-- **OpenStreetMap Data**
-  - Geographical base data
-  - Point of interest information
-  - ODbL License v1.0
+-   **Mapbox**
+    -   Base maps and tiles - Commercial license
+    -   Custom style modifications - Original work
+
+-   **OpenStreetMap Data**
+    -   Geographical base data
+    -   Point of interest information
+    -   ODbL License v1.0
 
 #### Documentation
-- **Trail Guides**
-  - Safety instructions - Original work
-  - Route descriptions - Original work
-  - Historical context - CC BY-SA 4.0
-  - Technical documentation - MIT License
 
-This README provides a clear distinction between:
-- Custom-built features
-- Cookiecutter-provided foundation
-- Modified Cookiecutter features
-- Third-party integrations
+-   **Trail Guides**
+    -   Safety instructions - Original work
+    -   Route descriptions - Original work
+    -   Historical context - CC BY-SA 4.0
+    -   Technical documentation - MIT License
 
-For detailed technical documentation, see the `docs/` directory.
+#### Walking Routes
+
+-   **iWalk Cornwall**
+    -   Selected walks sourced from [iWalk Cornwall](https://www.iwalkcornwall.co.uk/)
+    -   Used in accordance with their Terms of Use
+    -   Links provided to original walk sources
+    -   Safety disclaimers included as per iWalk Cornwall guidelines
+    -   Not for commercial redistribution
