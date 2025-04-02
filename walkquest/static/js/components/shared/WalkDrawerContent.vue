@@ -315,6 +315,7 @@ import { Icon } from "@iconify/vue";
 import { useWalkData } from "../../composables/useWalkData";
 import { useDrawerAnimations } from "../../composables/useDrawerAnimations";
 import { useAdventureDialogStore } from "../../stores/adventureDialog";
+import { useWalksStore } from "../../stores/walks";
 
 const props = defineProps({
   walk: {
@@ -336,6 +337,10 @@ const emit = defineEmits([
   'recenter'
 ]);
 
+// Store initialization
+const walksStore = useWalksStore();
+const adventureDialogStore = useAdventureDialogStore();
+
 // Component refs
 const sectionRefs = ref([]);
 const keyInfoRef = ref(null);
@@ -346,9 +351,6 @@ const footwearDetailsRef = ref(null);
 // UI State
 const detailsOpen = ref(false);
 const hoveredCategory = ref(null);
-
-// Get the adventure dialog store
-const adventureDialogStore = useAdventureDialogStore();
 
 // Helper function to set section refs
 function setSectionRef(index, el) {
@@ -448,7 +450,7 @@ function handleStartWalk() {
 
 // New handler functions for direct handling
 function handleSaveClick() {
-  emit('save-walk', walk.value);
+  walksStore.toggleFavorite(walk.value);
 }
 
 function handleShareClick() {
