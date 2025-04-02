@@ -75,7 +75,7 @@
       v-if="isMobile"
       class="fixed bottom-0 left-0 right-0 bg-surface z-40 shadow-lg"
     >
-      <div class="flex justify-around items-center h-16 px-4">
+      <div class="flex justify-around items-center h-16 px-4 pb-safe">
         <button
           class="m3-nav-button"
           :class="{ active: searchMode === 'walks' }"
@@ -416,5 +416,36 @@ async function animateInterfaceElement(el, options = {}, onComplete) {
   padding: 0 !important;
   padding-top: env(safe-area-inset-top, 0px);
   box-sizing: border-box;
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+}
+
+/* Improve touch targets for mobile navigation */
+@media (hover: none) and (pointer: coarse) {
+  .m3-nav-button {
+    min-height: 48px;
+    min-width: 48px;
+    padding: 12px 16px;
+    position: relative;
+  }
+  
+  /* Provide better touch feedback */
+  .m3-nav-button:active {
+    transform: scale(0.96);
+    transition: transform 0.2s;
+  }
+  
+  .m3-nav-button:active .text-2xl {
+    transform: scale(1.1);
+    transition: transform 0.2s;
+  }
+  
+  /* Larger touch targets for action buttons */
+  .m3-icon-button {
+    min-height: 48px;
+    min-width: 48px;
+  }
 }
 </style>

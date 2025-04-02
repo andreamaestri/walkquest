@@ -57,20 +57,20 @@
       </button>
 
       <div class="secondary-buttons">
-        <button class="m3-button m3-tonal-button" @click="$emit('directions', walk)">
+        <button class="m3-button m3-tonal-button" @click="handleDirections">
           <Icon icon="mdi:navigation" class="button-icon" />
           <span>Directions</span>
         </button>
 
-        <button class="m3-button m3-outlined-button icon-button" @click="$emit('save-walk', walk)">
-          <Icon icon="mdi:heart" class="button-icon" />
+        <button class="m3-button m3-outlined-button icon-button" @click="handleSaveClick">
+          <Icon icon="mdi:heart" class="button-icon" :class="{'text-primary': walk.is_favorite}" />
         </button>
 
-        <button class="m3-button m3-outlined-button icon-button" @click="$emit('share', walk)">
+        <button class="m3-button m3-outlined-button icon-button" @click="handleShareClick">
           <Icon icon="mdi:share" class="button-icon" />
         </button>
 
-        <button class="m3-button m3-outlined-button icon-button" @click="$emit('recenter')" title="Recenter map">
+        <button class="m3-button m3-outlined-button icon-button" @click="handleRecenterClick" title="Recenter map">
           <Icon icon="mdi:crosshairs-gps" />
         </button>
       </div>
@@ -413,6 +413,23 @@ async function handleCategoryClick(category) {
 // Function to handle the "Log an Adventure" button click
 function handleStartWalk() {
   adventureDialogStore.openDialog(props.walk);
+}
+
+// New handler functions for direct handling
+function handleSaveClick() {
+  emit('save-walk', walk.value);
+}
+
+function handleShareClick() {
+  emit('share', walk.value);
+}
+
+function handleRecenterClick() {
+  emit('recenter');
+}
+
+function handleDirections() {
+  emit('directions', walk.value);
 }
 
 onMounted(() => {

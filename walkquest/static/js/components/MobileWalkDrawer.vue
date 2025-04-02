@@ -32,6 +32,7 @@
           @share="handleShare"
           @directions="handleDirections"
           @recenter="$emit('recenter')"
+          @category-selected="handleCategorySelected"
         />
       </div>
     </BottomSheet>
@@ -259,6 +260,10 @@ function handleDirections() {
   }
   
   emit('directions');
+}
+
+function handleRecenter() {
+  emit('recenter');
 }
 </script>
 
