@@ -7,7 +7,7 @@
   top: 0;
   left: 0;
   background-color: rgb(var(--md-sys-color-surface-container));
-  box-shadow: var(--md-sys-elevation-level2);
+  box-shadow: var(--md-sys-elevation-2);
   border-radius: 0 24px 24px 0;
   z-index: 20;
   overflow: hidden; /* Important: Keep this to prevent double scrollbars */
@@ -22,7 +22,8 @@
   width: 28px;
   background-color: rgb(var(--md-sys-color-surface-container-high));
   border-radius: 0 28px 28px 0;
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+  /* Replace custom shadow with a consistent elevation variable */
+  box-shadow: var(--md-sys-elevation-1);
   z-index: 5; /* Ensure proper stacking */
 }
 
@@ -40,7 +41,7 @@
 /* Header Styles */
 .header-container {
   background: #EADDFF;
-  box-shadow: var(--md-sys-elevation-level2);
+  box-shadow: var(--md-sys-elevation-2);
   border-top-right-radius: 24px;
   position: sticky;
   top: 0;
@@ -124,7 +125,6 @@
 .content {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
   padding-top: 1.5rem;
 }
 
@@ -180,6 +180,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  padding-bottom: 1rem;
 }
 
 .m3-button {
@@ -227,12 +228,12 @@
 
 .m3-filled-button {
   background-color: rgb(var(--md-sys-color-primary));
-  color: rgb(var(--md-sys-color-on-primary));
-  box-shadow: var(--md-sys-elevation-level1);
+  color: #FFFFFF;
+  box-shadow: var(--md-sys-elevation-1);
 }
 
 .m3-filled-button:hover {
-  box-shadow: var(--md-sys-elevation-level2);
+  box-shadow: var(--md-sys-elevation-2);
 }
 
 .m3-tonal-button {
@@ -282,16 +283,9 @@
   background-color: rgb(var(--md-sys-color-surface-container-low));
   border-radius: 16px;
   padding: 16px;
-  box-shadow: var(--md-sys-elevation-level1);
   margin-bottom: 16px;
   transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1), 
               box-shadow 0.3s cubic-bezier(0.2, 0, 0, 1);
-  will-change: transform, box-shadow;
-}
-
-.section:hover {
-  box-shadow: var(--md-sys-elevation-level2);
-  transform: translateY(-2px);
 }
 
 .section-title-with-icon {
@@ -309,6 +303,7 @@
 .section-list {
   list-style: disc;
   padding-left: 1.5rem;
+  margin-top: 1rem;
 }
 
 .section-list-item {
@@ -391,6 +386,7 @@
 .poi-categories {
   display: flex;
   flex-direction: column;
+  padding-top: 1rem;
   gap: 1.25rem;
 }
 
@@ -408,10 +404,6 @@
   background-color: rgb(var(--md-sys-color-surface-container-highest));
   border-radius: 0.5rem;
   width: fit-content;
-}
-
-.category-icon {
-  font-size: 1rem;
 }
 
 .category-name {
@@ -440,8 +432,7 @@
   flex-shrink: 1;
   flex-basis: auto;
   overflow: hidden;
-  border: 1px solid rgba(var(--md-sys-color-outline), 0.2);
-  box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(var(--md-sys-color-outline), 0.05);
   border-radius: 12px;
   padding: 0.75rem;
   transition: all 0.3s ease-in-out;
@@ -450,7 +441,7 @@
 
 .poi-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 3px 1px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--md-sys-elevation-1);
 }
 
 .poi-card-featured {
@@ -566,7 +557,7 @@
   border-radius: 16px;
   font-size: 0.650rem;
   font-weight: 500;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--md-sys-elevation-1);
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: normal;
   max-width: 100%;
@@ -579,7 +570,7 @@
 
 .category-chip:hover {
   transform: translateY(-2px);
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--md-sys-elevation-2);
 }
 
 .category-icon {
@@ -609,7 +600,7 @@
 .feature-item:hover {
   background-color: rgb(var(--md-sys-color-surface-container-highest));
   transform: translateY(-2px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--md-sys-elevation-1);
 }
 
 .feature-item-icon {
@@ -637,11 +628,7 @@
   align-items: center;
   gap: 0.25rem;
   font-weight: 500;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-}
-
-.category-icon {
-  font-size: 1rem;
+  box-shadow: var(--md-sys-elevation-1);
 }
 
 /* Add Tailwind color utility classes */
@@ -684,14 +671,13 @@
 .pub-card {
   background-color: rgb(var(--md-sys-color-surface-container-low));
   border-radius: 0.75rem;
-  box-shadow: var(--md-sys-elevation-level1);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .pub-card:hover {
   transform: translateY(-2px);
   background-color: rgb(var(--md-sys-color-surface-container-high));
-  box-shadow: var(--md-sys-elevation-level2);
+  box-shadow: var(--md-sys-elevation-1);
 }
 
 .pub-button {
@@ -790,7 +776,7 @@
 }
 
 .pub-button:hover .pub-open-icon {
-  opacity: 1;
+  opacity: 0.5;
 }
 
 /* Practical Information Styles */
@@ -980,7 +966,6 @@
 .info-card {
   background-color: rgb(var(--md-sys-color-surface-container-highest));
   border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   margin-top: 1rem;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   box-sizing: border-box;
@@ -992,7 +977,7 @@
 
 .info-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--md-sys-elevation-1);
 }
 
 .info-card-header {
@@ -1093,7 +1078,6 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
   background: linear-gradient(
     to right,
     rgba(var(--md-sys-color-surface-container-highest), 1),
@@ -1161,7 +1145,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--md-sys-elevation-1);
   transform: translateZ(0);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
@@ -1184,7 +1168,7 @@
   transform: scale(1.1);
   background-color: rgb(var(--md-sys-color-primary));
   color: rgb(var(--md-sys-color-on-primary));
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--md-sys-elevation-2);
 }
 
 .enhanced-section-header:hover .count-badge::after {

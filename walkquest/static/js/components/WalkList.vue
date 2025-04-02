@@ -16,7 +16,7 @@
         <!-- Category Cards Grid -->
         <div v-if="!selectedCategory" class="category-cards-direct">
           <button 
-            v-for="category in availableCategories"
+            v-for="category in displayCategories"
             :key="typeof category === 'string' ? category : (category.id || category.name || JSON.stringify(category))"
             class="category-card"
             :class="[
@@ -116,9 +116,9 @@
         <!-- Category mode empty states -->
         <div v-else-if="searchMode === 'categories'" class="empty-message">
           <Icon v-if="selectedCategory" icon="mdi:tag-off" class="empty-icon" />
-          <Icon v-else-if="!availableCategories.length" icon="mdi:tag-multiple" class="empty-icon" />
+          <Icon v-else-if="!displayCategories.length" icon="mdi:tag-multiple" class="empty-icon" />
           <span v-if="selectedCategory">No walks found in this category</span>
-          <span v-else-if="!availableCategories.length">No categories available</span>
+          <span v-else-if="!displayCategories.length">No categories available</span>
         </div>
         
         <!-- Default empty states -->
@@ -173,6 +173,30 @@ const { flyToLocation } = useMap()
 // Extract reactive state from stores
 const { searchQuery, searchMode, error: searchError, selectedCategory, availableCategories } = storeToRefs(searchStore)
 const { userLocation, nearbyWalks } = storeToRefs(locationStore)
+
+// Debug current search mode and categories
+console.log('Current search mode:', searchMode.value);
+console.log('Available categories:', availableCategories.value);
+
+// Fallback categories if the store doesn't provide any
+const fallbackCategories = ref([
+  'circular walks',
+  'coastal walks',
+  'linear walks',
+  'riverside walks',
+  'woodland walks',
+  'pub walks',
+  'dog friendly walks'
+]);
+
+// Use either store categories or fallback if empty
+const displayCategories = computed(() => {
+  if (availableCategories.value && availableCategories.value.length > 0) {
+    return availableCategories.value;
+  }
+  console.warn('Using fallback categories because availableCategories is empty');
+  return fallbackCategories.value;
+});
 
 // Use shallowRef to optimize large data structures more specific icons
 const filteredResults = shallowRef([])
@@ -608,6 +632,13 @@ onMounted(() => {
   console.log('Available categories:', availableCategories.value);
   console.log('Search mode:', searchMode.value);
   
+  // If we're not already in categories mode but we need to show categories,
+  // set the search mode explicitly
+  if (searchMode.value !== 'categories' && displayCategories.value.length > 0) {
+    console.log('Setting search mode to categories automatically');
+    searchStore.setSearchMode('categories');
+  }
+  
   // Setup ResizeObserver for responsive updates
   if (listContainer.value && window.ResizeObserver) {
     resizeObserver.value = new ResizeObserver(debounce(() => {
@@ -670,6 +701,8 @@ watch(searchQuery, debounce(() => {
 
 // Watch for search mode changes
 watch(searchMode, (newMode) => {
+  console.log('Search mode changed to:', newMode);
+  
   // Reset scroll position when changing modes
   updateFilteredResults();
   nextTick(() => {

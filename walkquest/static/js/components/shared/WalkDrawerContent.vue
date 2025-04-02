@@ -6,17 +6,17 @@
         <Icon icon="mdi:map-marker-distance" class="info-icon" />
         <span>{{ formatDistance(walk.distance) }}</span>
       </div>
-      <div v-if="walk.steepness" class="info-item">
+      <div class="info-item">
         <Icon icon="mdi:trending-up" class="info-icon" />
-        <span>{{ walk.steepness }}</span>
+        <span>{{ walk.steepness || 'Flat' }}</span>
       </div>
-      <div v-if="walk.duration" class="info-item">
+      <div class="info-item">
         <Icon icon="mdi:clock-outline" class="info-icon" />
-        <span>{{ formatDuration(walk.duration) }}</span>
+        <span>{{ formatDuration(walk.duration || 60) }}</span>
       </div>
-      <div v-if="walk.difficulty" class="info-item">
+      <div class="info-item">
         <Icon icon="mdi:stairs" class="info-icon" />
-        <span>{{ formatDifficulty(walk.difficulty) }}</span>
+        <span>{{ formatDifficulty(walk.difficulty || 'easy') }}</span>
       </div>
     </div>
 
@@ -376,9 +376,39 @@ const {
   formatValue,
   formatDistance,
   formatDuration,
-  formatDifficulty,
   openInGoogleMaps
 } = useWalkData(walkRef);
+
+// Function to properly format difficulty level, similar to WalkCard.vue
+function formatDifficulty(difficulty) {
+  if (!difficulty) return 'Easy';
+  
+  // Normalize difficulty value
+  const normalizedLevel = typeof difficulty === 'string' 
+    ? difficulty.toUpperCase().trim() 
+    : String(difficulty).toUpperCase().trim();
+  
+  // Match common difficulty patterns
+  if (normalizedLevel.includes('NOVICE') || normalizedLevel.includes('EASY')) return 'Easy';
+  if (normalizedLevel.includes('PATHFINDER') || normalizedLevel.includes('MODERATE') || normalizedLevel.includes('RANGER')) return 'Moderate';
+  if (normalizedLevel.includes('ASCENT') || normalizedLevel.includes('CHALLENGING') || normalizedLevel.includes('MASTER')) return 'Challenging';
+  
+  // Numeric difficulty levels
+  const difficultyNum = parseInt(normalizedLevel, 10);
+  if (!isNaN(difficultyNum)) {
+    switch(difficultyNum) {
+      case 1: return 'Easy';
+      case 2: return 'Moderate';
+      case 3: return 'Challenging';
+      case 4: return 'Difficult';
+      case 5: return 'Very Difficult';
+      default: return `Level ${difficultyNum}`;
+    }
+  }
+  
+  // Default to original value with first letter capitalized
+  return difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
+}
 
 // Use the drawer animations composable
 const {
@@ -454,6 +484,35 @@ onMounted(() => {
 
 .content.mobile {
   padding: 0 16px;
+}
+
+/* Fix for key info display */
+.key-info {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  background-color: rgb(var(--md-sys-color-surface-container-low));
+  border-radius: 16px;
+  margin-bottom: 16px;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: rgb(var(--md-sys-color-surface-container-high));
+  border-radius: 12px;
+  flex: 1 1 auto;
+  min-width: 120px;
+  box-shadow: var(--md-sys-elevation-1);
+}
+
+.info-icon {
+  color: rgb(var(--md-sys-color-primary));
+  font-size: 20px;
 }
 
 /* Add new interactive styles for category chips */
