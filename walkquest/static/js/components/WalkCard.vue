@@ -182,20 +182,20 @@ const getCategoryStyle = (cat) => {
 
 <style>
 .walk-card {
-  background: rgb(var(--md-sys-color-surface-container-low));
+  background: #FFFFFF;
+  border: 1px solid rgba(var(--md-sys-color-outline), 0.12);
   border-radius: 16px;
   margin: 4px 8px;
   overflow: hidden;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: var(--md-sys-elevation-1);
+  transition: all 0.125s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   width: calc(100% - 16px); /* Ensure consistent width accounting for margins */
 }
 
 .walk-card:hover {
-  background: rgb(var(--md-sys-color-surface-container));
-  box-shadow: var(--md-sys-elevation-2);
-  transform: translateY(-1px);
+  background: rgb(var(--md-sys-color-surface-container), 0.85);
+  border: 2px solid rgb(var(--md-sys-color-primary));
+  box-shadow: var(--md-sys-elevation-1);
 }
 
 .walk-card.is-selected {
