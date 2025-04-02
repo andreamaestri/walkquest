@@ -242,11 +242,11 @@ onUnmounted(() => {
   width: 40px;
 }
 
-/* Mobile version (standalone) - Moved to left side on mobile */
+/* Mobile version (standalone) with proper safe area handling */
 .account-circle-container.mobile {
   position: absolute;
-  top: calc(4 + env(safe-area-inset-top, 0px)); 
-  left: calc(4px + env(safe-area-inset-left, 0px)); /* Moved to left side */
+  top: calc(16px + env(safe-area-inset-top, 0px)); 
+  left: calc(16px + env(safe-area-inset-left, 0px));
   z-index: 50;
   pointer-events: auto;
 }
