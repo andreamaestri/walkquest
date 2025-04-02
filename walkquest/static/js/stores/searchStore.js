@@ -39,26 +39,52 @@ export const useSearchStore = defineStore('search', () => {
   // Extract all unique categories from walks
   function extractCategories() {
     const categories = new Set()
+    
+    // Debug the first few walks to understand the structure
+    if (walksStore.walks.length > 0) {
+      console.log('First walk categories structure:', {
+        related_categories: walksStore.walks[0].related_categories,
+        categories: walksStore.walks[0].categories
+      })
+    }
+    
     walksStore.walks.forEach(walk => {
+      // Handle related_categories
       if (walk.related_categories && Array.isArray(walk.related_categories)) {
         walk.related_categories.forEach(category => {
           if (typeof category === 'string') {
             categories.add(category)
-          } else if (category && typeof category === 'object' && category.name) {
-            categories.add(category.name)
+          } else if (category && typeof category === 'object') {
+            if (category.name) {
+              categories.add(category.name)
+            } else if (category.slug) {
+              // In some cases, only slug might be available
+              categories.add(category.slug.replace(/-/g, ' '))
+            }
           }
         })
-      } else if (walk.categories && Array.isArray(walk.categories)) {
+      }
+      
+      // Handle categories
+      if (walk.categories && Array.isArray(walk.categories)) {
         walk.categories.forEach(category => {
           if (typeof category === 'string') {
             categories.add(category)
-          } else if (category && typeof category === 'object' && category.name) {
-            categories.add(category.name)
+          } else if (category && typeof category === 'object') {
+            if (category.name) {
+              categories.add(category.name)
+            } else if (category.slug) {
+              // In some cases, only slug might be available
+              categories.add(category.slug.replace(/-/g, ' '))
+            }
           }
         })
       }
     })
-    availableCategories.value = Array.from(categories).sort()
+    
+    // Convert to array and sort
+    availableCategories.value = Array.from(categories).filter(Boolean).sort()
+    console.log('Extracted categories:', availableCategories.value)
   }
 
   // Update searchableWalks when walksStore.walks changes
@@ -425,10 +451,25 @@ export const useSearchStore = defineStore('search', () => {
   }
 
   function setSelectedCategory(category) {
-    if (category && typeof category === 'object' && category.name) {
-      selectedCategory.value = category.name
-    } else {
+    console.log('Setting selected category:', category)
+    if (!category) {
+      selectedCategory.value = null
+      return
+    }
+    
+    if (typeof category === 'object') {
+      if (category.name) {
+        selectedCategory.value = category.name
+      } else if (category.slug) {
+        // If we only have a slug, convert it to a readable name
+        selectedCategory.value = category.slug.replace(/-/g, ' ')
+      } else {
+        console.warn('Invalid category object:', category)
+      }
+    } else if (typeof category === 'string') {
       selectedCategory.value = category
+    } else {
+      console.warn('Invalid category type:', typeof category)
     }
   }
 

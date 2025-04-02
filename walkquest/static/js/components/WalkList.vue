@@ -335,13 +335,57 @@ const updateFilteredResults = () => {
   }
 
   if (searchMode.value === 'categories' && selectedCategory.value) {
+    console.log('Filtering by category:', selectedCategory.value);
+    
+    // Convert the selected category to lowercase for case-insensitive comparison
+    const selectedCategoryLower = typeof selectedCategory.value === 'string' 
+      ? selectedCategory.value.toLowerCase() 
+      : selectedCategory.value.name?.toLowerCase() || '';
+    
     filteredResults.value = results.filter(walk => {
-      const categories = walk.related_categories || walk.categories || [];
-      const categoryNames = categories.map(cat =>
-        typeof cat === 'string' ? cat.toLowerCase() : cat.name.toLowerCase()
-      );
-      return categoryNames.some(name => name.includes(selectedCategory.value.toLowerCase()));
+      // Handle different category structures
+      if (!walk.related_categories && !walk.categories) {
+        return false;
+      }
+      
+      // Try to match in related_categories first
+      if (Array.isArray(walk.related_categories)) {
+        const match = walk.related_categories.some(cat => {
+          if (typeof cat === 'string') {
+            return cat.toLowerCase().includes(selectedCategoryLower);
+          } else if (cat && typeof cat === 'object') {
+            if (cat.name) {
+              return cat.name.toLowerCase().includes(selectedCategoryLower);
+            } else if (cat.slug) {
+              return cat.slug.replace(/-/g, ' ').toLowerCase().includes(selectedCategoryLower);
+            }
+          }
+          return false;
+        });
+        
+        if (match) return true;
+      }
+      
+      // Try to match in categories as fallback
+      if (Array.isArray(walk.categories)) {
+        return walk.categories.some(cat => {
+          if (typeof cat === 'string') {
+            return cat.toLowerCase().includes(selectedCategoryLower);
+          } else if (cat && typeof cat === 'object') {
+            if (cat.name) {
+              return cat.name.toLowerCase().includes(selectedCategoryLower);
+            } else if (cat.slug) {
+              return cat.slug.replace(/-/g, ' ').toLowerCase().includes(selectedCategoryLower);
+            }
+          }
+          return false;
+        });
+      }
+      
+      return false;
     });
+    
+    console.log(`Found ${filteredResults.value.length} walks for category: ${selectedCategory.value}`);
     return;
   }
 
