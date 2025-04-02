@@ -250,11 +250,12 @@
 .icon-button {
   width: 40px;
   height: 40px;
-  padding: 0;
+  padding: 0 !important;
   border-radius: 20px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .secondary-buttons {
@@ -265,7 +266,6 @@
 }
 
 .button-icon {
-  margin-right: 8px;
   font-size: 18px;
   display: flex;
   align-items: center;
@@ -515,6 +515,7 @@
   flex-direction: column;
   gap: 0.55rem;
   width: 100%;
+  margin-top: 1rem;
 }
 
 .feature-group-header {
