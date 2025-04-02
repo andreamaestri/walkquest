@@ -6,19 +6,11 @@ import router from './router';
 import '../css/material3.css';
 import '../css/tokens.css';
 import '../css/project.css';
-import { initMotionHelpers } from './motion-helpers';
-import { Icon } from '@iconify/vue';
 import './fixes/portalFix.js';
-import MDSnackbar from './components/shared/MDSnackbar.vue';
-import { motion } from 'motion-v'; // Import Motion for Vue
 
 // Create app with Pinia store
 const app = createApp(App);
 const pinia = createPinia();
-
-// Initialize Motion for Vue
-app.use(motion); // Register the Motion for Vue plugin
-initMotionHelpers();
 
 // Add global error handler
 app.config.errorHandler = (err, vm, info) => {
@@ -42,9 +34,38 @@ app.config.compilerOptions.isCustomElement = (tag) => {
   return tag.startsWith('motion.'); // Treat motion.* as custom elements for Motion for Vue
 };
 
-// Register components globally
-app.component('Icon', Icon);
-app.component('MDSnackbar', MDSnackbar);
+// Dynamically import heavier components
+const registerComponents = async () => {
+  try {
+    // Lazy load non-critical modules
+    const [
+      { Icon },
+      { motion },
+      { initMotionHelpers },
+      MDSnackbar
+    ] = await Promise.all([
+      import(/* webpackChunkName: "iconify" */ '@iconify/vue'),
+      import(/* webpackChunkName: "motion" */ 'motion-v'),
+      import(/* webpackChunkName: "motion-helpers" */ './motion-helpers'),
+      import(/* webpackChunkName: "snackbar" */ './components/shared/MDSnackbar.vue')
+    ]);
 
-// Mount app
+    // Initialize motion after it's loaded
+    app.use(motion);
+    initMotionHelpers();
+
+    // Register components globally after they're loaded
+    app.component('Icon', Icon);
+    app.component('MDSnackbar', MDSnackbar);
+    
+    console.log('All components registered');
+  } catch (error) {
+    console.error('Error loading components:', error);
+  }
+};
+
+// Mount app immediately without waiting for non-critical dependencies
 app.mount('#app');
+
+// Register components after initial render
+registerComponents();

@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import { resolve } from 'path'
 import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
+import { splitVendorChunkPlugin } from 'vite'
 
 export default defineConfig({
   plugins: [
@@ -12,9 +13,10 @@ export default defineConfig({
         }
       }
     }),
-    tailwindcss()
+    tailwindcss(),
+    splitVendorChunkPlugin() // Add vendor chunk splitting
   ],
-  base: '/static/', // Changed from '/static/dist/' to '/static/'
+  base: '/static/',
   define: {
     __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: true
   },
@@ -29,13 +31,31 @@ export default defineConfig({
     outDir: resolve('./walkquest/static/dist'),
     rollupOptions: {
       input: {
-        main: resolve(__dirname, 'walkquest/static/js/main.js') // Corrected path to main.js
+        main: resolve(__dirname, 'walkquest/static/js/main.js')
+      },
+      output: {
+        manualChunks: {
+          'vue-vendor': ['vue', 'vue-router', 'pinia'],
+          'ui-components': ['@iconify/vue'],
+          'motion': ['motion-v']
+        }
       }
     },
     assetsDir: '',
-    emptyOutDir: true
+    emptyOutDir: true,
+    minify: 'terser', // Use terser for better minification
+    terserOptions: {
+      compress: {
+        drop_console: true, // Remove console logs in production
+        drop_debugger: true
+      }
+    },
+    target: 'es2018', // Target modern browsers for smaller bundles
+    cssCodeSplit: true, // Split CSS into smaller chunks
+    reportCompressedSize: false, // Improve build speed
+    chunkSizeWarningLimit: 500 // Raise the size warning limit
   },
   server: {
-    origin: 'http://localhost:5173' // Changed from 5174 to 5173 to match current requests
+    origin: 'http://localhost:5173'
   }
 })

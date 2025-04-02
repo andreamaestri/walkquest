@@ -5,13 +5,14 @@
     </main>
     <Loading ref="loadingComponent" />
     <Teleport to="#portal-root" :disabled="!portalRoot()">
-      <AdventureLogDialog
-        v-if="adventureDialogStore.currentWalk"
+      <component 
+        :is="adventureDialogStore.currentWalk ? AdventureLogDialog : null"
+        v-if="adventureDialogStore.currentWalk && AdventureLogDialog"
         :walk="adventureDialogStore.currentWalk"
         @submit="handleAdventureSubmit"
       />
     </Teleport>
-    <MDSnackbar ref="snackbarRef" />
+    <component :is="snackbarComponent" ref="snackbarRef" />
     <!-- Error boundary component -->
     <div v-if="hasError" class="error-boundary">
       <div class="error-content">
@@ -24,7 +25,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount, onErrorCaptured } from 'vue';
+import { ref, computed, watch, onMounted, onBeforeUnmount, onErrorCaptured, defineAsyncComponent, shallowRef } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useUiStore } from './stores/ui';
 import { useSearchStore } from './stores/searchStore';
@@ -34,9 +35,18 @@ import { useAuthStore } from './stores/auth';
 import { usePortal } from './composables/usePortal';
 import { registerSnackbar } from './composables/useSnackbar';
 import Loading from './components/shared/Loading.vue';
-import AdventureLogDialog from './components/shared/AdventureLogDialog.vue';
-import MDSnackbar from './components/shared/MDSnackbar.vue';
 import { RouterView } from 'vue-router';
+
+// Async component imports
+const AdventureLogDialog = defineAsyncComponent(() => 
+  import('./components/shared/AdventureLogDialog.vue')
+);
+const snackbarComponent = shallowRef(null);
+
+// Lazy load the snackbar component
+import('./components/shared/MDSnackbar.vue').then(module => {
+  snackbarComponent.value = module.default;
+});
 
 // Error handling state
 const hasError = ref(false);
@@ -92,10 +102,12 @@ let beforeUnloadHandler;
 let styleFixInterval;
 
 onMounted(() => {
-  // Register snackbar instance
-  if (snackbarRef.value) {
-    registerSnackbar(snackbarRef.value);
-  }
+  // Register snackbar instance when it's loaded
+  watch(snackbarRef, (value) => {
+    if (value) {
+      registerSnackbar(value);
+    }
+  });
   
   // Initialize auth store
   authStore.initAuth();
@@ -119,14 +131,14 @@ onMounted(() => {
   };
   window.addEventListener('beforeunload', beforeUnloadHandler);
 
-  // Fix for portal click issue
-  // Try to make the portal-root element transparent to clicks
-  const portalRootElement = document.getElementById('portal-root');
-  if (portalRootElement) {
-    portalRootElement.style.pointerEvents = 'none';
-    
-    // Ensure direct children have pointer events
-    styleFixInterval = setInterval(() => {
+  // Fix for portal click issue - with requestIdleCallback
+  const fixPortalStyles = () => {
+    // Try to make the portal-root element transparent to clicks
+    const portalRootElement = document.getElementById('portal-root');
+    if (portalRootElement) {
+      portalRootElement.style.pointerEvents = 'none';
+      
+      // Ensure direct children have pointer events
       try {
         const children = portalRootElement.children;
         for (let i = 0; i < children.length; i++) {
@@ -135,7 +147,19 @@ onMounted(() => {
       } catch (error) {
         console.error('Portal fix error:', error);
       }
-    }, 500);
+    }
+  };
+  
+  // Use requestIdleCallback for non-critical styling tasks
+  if (window.requestIdleCallback) {
+    window.requestIdleCallback(fixPortalStyles);
+    styleFixInterval = setInterval(() => {
+      window.requestIdleCallback(fixPortalStyles);
+    }, 2000);
+  } else {
+    // Fallback for browsers without requestIdleCallback
+    fixPortalStyles();
+    styleFixInterval = setInterval(fixPortalStyles, 2000);
   }
   
   // Watch loading states to show/hide loading component
@@ -196,6 +220,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style>
+/* Use critical CSS only in the component style */
 .app-root {
   height: 100vh;
   width: 100vw;
@@ -203,6 +228,7 @@ onBeforeUnmount(() => {
   position: relative;
   background-color: rgb(var(--md-sys-color-background));
   color: rgb(var(--md-sys-color-on-background));
+  contain: layout size;
 }
 
 /* When in PWA mode, set background to be transparent */
@@ -213,39 +239,7 @@ onBeforeUnmount(() => {
   }
 }
 
-/* Keep other styles but remove sidebar-related ones */
-.hover-reveal-zone {
-  position: fixed;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 16px;
-  z-index: 60;
-  opacity: 0;
-  background: linear-gradient(
-    to right,
-    rgb(var(--md-sys-color-surface-container-highest) / 0.1),
-    transparent
-  );
-  transition: opacity 0.3s ease;
-}
-
-.hover-reveal-zone:hover {
-  opacity: 1;
-}
-
-/* Global styles to ensure proper z-index stacking */
-body {
-  position: relative;
-  z-index: 1;
-}
-
-#app {
-  position: relative;
-  z-index: 1;
-}
-
-/* Error boundary styling */
+/* Error boundary styling - this is critical */
 .error-boundary {
   position: fixed;
   top: 0;
@@ -285,8 +279,11 @@ body {
   transition: background-color 0.2s;
 }
 
-.error-reset-button:hover {
-  background-color: rgb(var(--md-sys-color-primary-container));
-  color: rgb(var(--md-sys-color-on-primary-container));
+/* Additional styles loaded after component mount */
+@media (prefers-reduced-motion: no-preference) {
+  .error-reset-button:hover {
+    background-color: rgb(var(--md-sys-color-primary-container));
+    color: rgb(var(--md-sys-color-on-primary-container));
+  }
 }
 </style>
