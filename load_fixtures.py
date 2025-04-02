@@ -94,6 +94,25 @@ def load_fixture(fixture_file):
                             walk.save()
                             created_objects.setdefault(model_name, {})[pk] = walk
                             continue
+                        
+                        # Also check if a walk with the same walk_id (slug) already exists
+                        if 'walk_id' in regular_fields:
+                            slug_exists = Model.objects.filter(walk_id=regular_fields['walk_id']).exists()
+                            if slug_exists:
+                                print(f"Walk with slug {regular_fields['walk_id']} already exists, updating with UUID {pk}")
+                                walk = Model.objects.get(walk_id=regular_fields['walk_id'])
+                                # Update the walk with the UUID from the fixture
+                                # This ensures the walk has the correct UUID for relationships
+                                Model.objects.filter(id=walk.id).update(id=pk)
+                                # Refresh the object
+                                walk = Model.objects.get(pk=pk)
+                                # Update other fields
+                                for field, value in regular_fields.items():
+                                    if field != 'id' and field != 'walk_id':  # Don't update id or walk_id
+                                        setattr(walk, field, value)
+                                walk.save()
+                                created_objects.setdefault(model_name, {})[pk] = walk
+                                continue
                     except Exception as e:
                         print(f"Error checking Walk with UUID {pk}: {str(e)}")
                         
@@ -123,16 +142,43 @@ def load_fixture(fixture_file):
                         try:
                             # Check if the referenced walk exists
                             Walk = apps.get_model('walks', 'Walk')
+                            # Try to find the walk by UUID first
                             walk_exists = Walk.objects.filter(pk=walk_id).exists()
                             
                             if not walk_exists:
-                                missing_walk_ids.add(walk_id)
-                                print(f"Note: Walk with ID {walk_id} does not exist, will be handled later")
-                                continue
+                                # If not found by UUID, try to find by walk_id field (slug)
+                                walk_by_slug = Walk.objects.filter(walk_id=walk_id).exists()
+                                if walk_by_slug:
+                                    # If found by slug, get the walk and use its UUID
+                                    walk = Walk.objects.get(walk_id=walk_id)
+                                    fields['walk_id'] = str(walk.id)
+                                    print(f"Found walk by slug {walk_id}, using UUID {walk.id} instead")
+                                    walk_exists = True
+                                else:
+                                    missing_walk_ids.add(walk_id)
+                                    print(f"Note: Walk with ID {walk_id} does not exist, will be handled later")
+                                    continue
                                 
                             # Check if the referenced category exists
                             WalkCategoryTag = apps.get_model('walks', 'WalkCategoryTag')
                             category_exists = WalkCategoryTag.objects.filter(id=category_id).exists()
+                            
+                            if not category_exists:
+                                # Try to find by name if it's a string
+                                if isinstance(category_id, str):
+                                    category = WalkCategoryTag.objects.filter(name=category_id).first()
+                                    if category:
+                                        fields['walkcategorytag_id'] = category.id
+                                        category_exists = True
+                                        print(f"Found category by name {category_id}, using ID {category.id} instead")
+                                    else:
+                                        # Try by slug
+                                        slug = category_id.lower().replace(' ', '-')
+                                        category = WalkCategoryTag.objects.filter(slug=slug).first()
+                                        if category:
+                                            fields['walkcategorytag_id'] = category.id
+                                            category_exists = True
+                                            print(f"Found category by slug {slug}, using ID {category.id} instead")
                             
                             if not category_exists:
                                 print(f"Skipping {model_name}: Category with ID {category_id} does not exist")
@@ -253,16 +299,41 @@ def load_fixture(fixture_file):
                 Walk = apps.get_model('walks', 'Walk')
                 for walk_id in missing_walk_ids:
                     try:
-                        # Check again if walk exists (might have been created in second pass)
+                        # Check again if walk exists by UUID (might have been created in second pass)
                         if not Walk.objects.filter(pk=walk_id).exists():
-                            # Create a placeholder walk
-                            placeholder = Walk.objects.create(
-                                id=walk_id,
-                                walk_name=f"Placeholder walk {walk_id[:8]}",
-                                description="Placeholder walk created by fixture loader"
-                            )
-                            print(f"Created placeholder walk with ID: {walk_id}")
-                            all_walk_ids.add(walk_id)
+                            # Also check if it exists by walk_id field (slug)
+                            # If it's a UUID format, create a slug from it
+                            slug_id = walk_id
+                            if len(walk_id) > 30:  # Likely a UUID
+                                slug_id = f"placeholder-{walk_id[:8]}"
+                            
+                            # Check if a walk with this slug already exists
+                            if Walk.objects.filter(walk_id=slug_id).exists():
+                                # If it exists, update its ID to match the expected UUID
+                                existing_walk = Walk.objects.get(walk_id=slug_id)
+                                print(f"Found walk with slug {slug_id}, updating its UUID to {walk_id}")
+                                # We need to use a raw update to change the primary key
+                                from django.db import connection
+                                with connection.cursor() as cursor:
+                                    cursor.execute(
+                                        "UPDATE walks_walk SET id = %s WHERE id = %s",
+                                        [walk_id, existing_walk.id]
+                                    )
+                                # Refresh the object
+                                walk = Walk.objects.get(pk=walk_id)
+                                print(f"Updated walk UUID from {existing_walk.id} to {walk_id}")
+                                all_walk_ids.add(walk_id)
+                            else:
+                                # Create a placeholder walk with the correct UUID and a unique slug
+                                placeholder = Walk.objects.create(
+                                    id=walk_id,
+                                    walk_id=slug_id,
+                                    walk_name=f"Placeholder walk {walk_id[:8]}",
+                                    highlights="Placeholder walk created by fixture loader",
+                                    route_geometry="POINT(0 0)"  # Add a simple geometry to satisfy the constraint
+                                )
+                                print(f"Created placeholder walk with ID: {walk_id} and slug: {slug_id}")
+                                all_walk_ids.add(walk_id)
                     except Exception as e:
                         print(f"Error creating placeholder walk {walk_id}: {str(e)}")
             
@@ -282,9 +353,27 @@ def load_fixture(fixture_file):
                                 Walk = apps.get_model('walks', 'Walk')
                                 WalkCategoryTag = apps.get_model('walks', 'WalkCategoryTag')
                                 
-                                # Check if the walk exists now (should include placeholders)
+                                # First try to find the walk by UUID
                                 walk = Walk.objects.filter(id=walk_id).first()
+                                
+                                # If not found by UUID, try by walk_id field (slug)
+                                if not walk:
+                                    # Try to find by slug-like ID
+                                    walk_by_slug = Walk.objects.filter(walk_id=walk_id).first()
+                                    if walk_by_slug:
+                                        walk = walk_by_slug
+                                        print(f"Found walk by slug {walk_id} instead of UUID")
+                                
+                                # Try to find the category
                                 category = WalkCategoryTag.objects.filter(id=category_id).first()
+                                
+                                # If category not found by ID, try by name
+                                if not category and isinstance(category_id, str):
+                                    category = WalkCategoryTag.objects.filter(name=category_id).first()
+                                    if not category:
+                                        # Try by slug
+                                        slug = category_id.lower().replace(' ', '-')
+                                        category = WalkCategoryTag.objects.filter(slug=slug).first()
                                 
                                 if walk and category:
                                     # Add to related_categories field directly
