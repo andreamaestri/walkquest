@@ -493,7 +493,7 @@ onMounted(() => {
   justify-content: space-between;
   gap: 12px;
   padding: 16px;
-  background-color: rgb(var(--md-sys-color-surface-container-low));
+  border: 1px solid rgba(var(--md-sys-color-outline-variant), 0.35);
   border-radius: 16px;
   margin-bottom: 16px;
 }
@@ -503,11 +503,10 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background-color: rgb(var(--md-sys-color-surface-container-high));
+  background-color: rgb(var(--md-sys-color-surface-container-low));
   border-radius: 12px;
   flex: 1 1 auto;
   min-width: 120px;
-  box-shadow: var(--md-sys-elevation-1);
 }
 
 .info-icon {
