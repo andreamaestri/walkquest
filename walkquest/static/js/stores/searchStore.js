@@ -333,11 +333,25 @@ export const useSearchStore = defineStore('search', () => {
     }
   }
 
+  // Enhanced search mode setter with better error handling
   function setSearchMode(mode) {
-    if (!['walks', 'locations', 'categories'].includes(mode)) return
-    if (searchMode.value === mode) return
-    searchMode.value = mode
-    clearSearch()
+    console.log('Setting search mode to:', mode);
+    if (!['walks', 'locations', 'categories'].includes(mode)) {
+      console.warn(`Invalid search mode: ${mode}`);
+      return;
+    }
+    if (searchMode.value === mode) return;
+    searchMode.value = mode;
+    clearSearch();
+    
+    // Log available categories when switching to categories mode
+    if (mode === 'categories') {
+      console.log('Available categories for category mode:', availableCategories.value);
+      if (!availableCategories.value.length) {
+        console.warn('No categories available. Trying to extract again...');
+        extractCategories();
+      }
+    }
   }
 
   function setError(message) {

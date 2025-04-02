@@ -560,6 +560,10 @@ onMounted(() => {
   // Initial filtered results
   updateFilteredResults();
 
+  // Debug categories data
+  console.log('Available categories:', availableCategories.value);
+  console.log('Search mode:', searchMode.value);
+  
   // Setup ResizeObserver for responsive updates
   if (listContainer.value && window.ResizeObserver) {
     resizeObserver.value = new ResizeObserver(debounce(() => {
