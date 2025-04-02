@@ -193,8 +193,8 @@ const getCategoryStyle = (cat) => {
 }
 
 .walk-card:hover {
-  background: rgb(var(--md-sys-color-surface-container), 0.85);
-  border: 2px solid rgb(var(--md-sys-color-primary));
+  background: rgb(var(--md-sys-color-surface-container), 0.15);
+  border: 1px solid rgb(var(--md-sys-color-primary));
   box-shadow: var(--md-sys-elevation-1);
 }
 

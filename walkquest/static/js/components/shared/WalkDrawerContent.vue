@@ -20,32 +20,99 @@
       </div>
     </div>
 
-    <!-- Amenities Grid -->
-    <div ref="amenitiesRef" class="amenities-grid">
-      <div v-if="walk.has_pub" class="amenity-item">
-        <Icon icon="mdi:glass-mug-variant" class="amenity-icon" />
-        <span>Pub Available</span>
-        <Icon icon="mdi:check-circle" class="amenity-check" />
+    <!-- Amenities Grid with Toggle -->
+    <div class="amenities-section">
+      <div class="amenities-header">
+        <h3 class="section-subtitle">Amenities</h3>
+        <button class="amenities-toggle" @click="toggleUnavailableAmenities">
+          <span>{{ showUnavailableAmenities ? 'Hide Unavailable' : 'Show All' }}</span>
+          <Icon :icon="showUnavailableAmenities ? 'mdi:eye-off-outline' : 'mdi:eye-outline'" />
+        </button>
       </div>
-      <div v-if="walk.has_cafe" class="amenity-item">
-        <Icon icon="mdi:tea" class="amenity-icon" />
-        <span>Café Available</span>
-        <Icon icon="mdi:check-circle" class="amenity-check" />
-      </div>
-      <div v-if="walk.has_stiles" class="amenity-item">
-        <Icon icon="mdi:gate-alert" class="amenity-icon" />
-        <span>Has Stiles</span>
-        <Icon icon="mdi:check-circle" class="amenity-check" />
-      </div>
-      <div v-if="walk.has_bus_access" class="amenity-item">
-        <Icon icon="mdi:bus" class="amenity-icon" />
-        <span>Bus Access</span>
-        <Icon icon="mdi:check-circle" class="amenity-check" />
-      </div>
-      <div v-if="walk.is_favorite" class="amenity-item">
-        <Icon icon="mdi:heart" class="amenity-icon" />
-        <span>Favorite Walk</span>
-        <Icon icon="mdi:check-circle" class="amenity-check" />
+      <div ref="amenitiesRef" class="amenities-grid">
+        <!-- Available amenities -->
+        <div v-if="walk.has_pub || (walk.pubs_list && walk.pubs_list.length > 0)" class="amenity-item">
+          <div class="amenity-icon-container">
+            <Icon icon="mdi:glass-mug-variant" class="amenity-icon" />
+          </div>
+          <div class="amenity-content">
+            <span class="amenity-label">Pub Available</span>
+            <span class="amenity-status available">Available</span>
+          </div>
+        </div>
+        <div v-if="walk.has_cafe || hasCafeCategory" class="amenity-item">
+          <div class="amenity-icon-container">
+            <Icon icon="mdi:tea" class="amenity-icon" />
+          </div>
+          <div class="amenity-content">
+            <span class="amenity-label">Café</span>
+            <span class="amenity-status available">Available</span>
+          </div>
+        </div>
+        <div v-if="walk.has_stiles" class="amenity-item">
+          <div class="amenity-icon-container">
+            <Icon icon="mdi:gate-alert" class="amenity-icon" />
+          </div>
+          <div class="amenity-content">
+            <span class="amenity-label">Stiles</span>
+            <span class="amenity-status present">Present</span>
+          </div>
+        </div>
+        <div v-if="walk.has_bus_access" class="amenity-item">
+          <div class="amenity-icon-container">
+            <Icon icon="mdi:bus" class="amenity-icon" />
+          </div>
+          <div class="amenity-content">
+            <span class="amenity-label">Public Transport</span>
+            <span class="amenity-status available">Available</span>
+          </div>
+        </div>
+        <div v-if="walk.is_favorite" class="amenity-item">
+          <div class="amenity-icon-container favorite">
+            <Icon icon="mdi:heart" class="amenity-icon" />
+          </div>
+          <div class="amenity-content">
+            <span class="amenity-label">Favorite</span>
+            <span class="amenity-status favorite">Added</span>
+          </div>
+        </div>
+        <!-- Unavailable amenities (visible when toggle is on) -->
+        <div v-if="showUnavailableAmenities && !walk.has_pub && !(walk.pubs_list && walk.pubs_list.length > 0)" class="amenity-item unavailable">
+          <div class="amenity-icon-container unavailable">
+            <Icon icon="mdi:glass-mug-variant" class="amenity-icon" />
+          </div>
+          <div class="amenity-content">
+            <span class="amenity-label">Pub</span>
+            <span class="amenity-status unavailable">Not Available</span>
+          </div>
+        </div>
+        <div v-if="showUnavailableAmenities && !walk.has_cafe && !hasCafeCategory" class="amenity-item unavailable">
+          <div class="amenity-icon-container unavailable">
+            <Icon icon="mdi:tea" class="amenity-icon" />
+          </div>
+          <div class="amenity-content">
+            <span class="amenity-label">Café</span>
+            <span class="amenity-status unavailable">Not Available</span>
+          </div>
+        </div>
+        <div v-if="showUnavailableAmenities && !walk.has_bus_access" class="amenity-item unavailable">
+          <div class="amenity-icon-container unavailable">
+            <Icon icon="mdi:bus" class="amenity-icon" />
+          </div>
+          <div class="amenity-content">
+            <span class="amenity-label">Public Transport</span>
+            <span class="amenity-status unavailable">Not Available</span>
+          </div>
+        </div>
+        <div v-if="showUnavailableAmenities && !walk.has_stiles" class="amenity-item unavailable">
+          <div class="amenity-icon-container unavailable">
+            <Icon icon="mdi:gate" class="amenity-icon" />
+          </div>
+          <div class="amenity-content">
+            <span class="amenity-label">Stiles</span>
+            <span class="amenity-status unavailable">None</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -351,6 +418,7 @@ const footwearDetailsRef = ref(null);
 // UI State
 const detailsOpen = ref(false);
 const hoveredCategory = ref(null);
+const showUnavailableAmenities = ref(false); // Controls visibility of unavailable amenities
 
 // Helper function to set section refs
 function setSectionRef(index, el) {
@@ -380,6 +448,17 @@ const {
   formatDuration,
   openInGoogleMaps
 } = useWalkData(walkRef);
+
+// Find the café category in the walk categories
+const hasCafeCategory = computed(() => {
+  if (!props.walk.categories) return false;
+  
+  return props.walk.categories.some(category => 
+    category.name.toLowerCase().includes('café') || 
+    category.name.toLowerCase().includes('cafe') ||
+    category.slug.toLowerCase().includes('cafe')
+  );
+});
 
 // Function to properly format difficulty level, similar to WalkCard.vue
 function formatDifficulty(difficulty) {
@@ -463,6 +542,10 @@ function handleRecenterClick() {
 
 function handleDirections() {
   emit('directions', walk.value);
+}
+
+function toggleUnavailableAmenities() {
+  showUnavailableAmenities.value = !showUnavailableAmenities.value;
 }
 
 onMounted(() => {

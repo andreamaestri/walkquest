@@ -148,31 +148,185 @@
   font-size: 1.25rem;
 }
 
-/* Amenities Styles */
+/* Amenities Styles - Updated */
 .amenities-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid rgba(var(--md-sys-color-outline-variant), 0.35);
+  border-radius: 16px;
+  margin-bottom: 16px;
+  background-color: rgb(var(--md-sys-color-surface-container-low), 0.6);
 }
 
 .amenity-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-  color: rgb(var(--md-sys-color-on-surface));
+  gap: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  background-color: rgb(var(--md-sys-color-surface-container-high));
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(var(--md-sys-color-outline-variant), 0.1);
+}
+
+.amenity-item:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--md-sys-elevation-1);
+}
+
+.amenity-item::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(45deg, 
+    rgba(var(--md-sys-color-primary), 0.05), 
+    rgba(var(--md-sys-color-primary), 0.01));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.amenity-item:hover::after {
+  opacity: 1;
+}
+
+.amenity-icon-container {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: rgba(var(--md-sys-color-primary), 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.amenity-item:hover .amenity-icon-container {
+  transform: scale(1.1);
+  background-color: rgba(var(--md-sys-color-primary), 0.15);
 }
 
 .amenity-icon {
+  font-size: 20px;
   color: rgb(var(--md-sys-color-primary));
-  font-size: 1.25rem;
-  margin-right: 0.25rem;
 }
 
-.amenity-check {
-  margin-left: auto;
-  color: rgb(var(--md-sys-color-success));
-  font-size: 1.25rem;
+.amenity-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.amenity-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgb(var(--md-sys-color-on-surface));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.amenity-status {
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  width: fit-content;
+}
+
+.amenity-status.available {
+  background-color: rgb(var(--md-sys-color-primary-container));
+  color: rgb(var(--md-sys-color-on-primary-container));
+}
+
+.amenity-status.present {
+  background-color: rgb(var(--md-sys-color-tertiary-container));
+  color: rgb(var(--md-sys-color-on-tertiary-container));
+}
+
+.amenity-status.favorite {
+  background-color: rgba(255, 0, 80, 0.15);
+  color: rgb(255, 0, 80);
+}
+
+.amenity-status.unavailable {
+  background-color: rgb(var(--md-sys-color-surface-container-highest));
+  color: rgb(var(--md-sys-color-on-surface-variant));
+}
+
+.amenity-item.unavailable {
+  opacity: 0.7;
+  filter: grayscale(30%);
+}
+
+.amenity-icon-container.favorite {
+  background-color: rgba(255, 0, 80, 0.15);
+}
+
+.amenity-icon-container.unavailable {
+  background-color: rgb(var(--md-sys-color-surface-container-highest));
+}
+
+.amenity-icon-container.unavailable .amenity-icon {
+  color: rgb(var(--md-sys-color-on-surface-variant));
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 400px) {
+  .amenities-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  }
+}
+
+/* Amenities Section Styles */
+.amenities-section {
+  margin-bottom: 20px;
+}
+
+.amenities-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding: 0 8px;
+}
+
+.section-subtitle {
+  font-size: 1rem;
+  font-weight: 500;
+  color: rgb(var(--md-sys-color-on-surface));
+  margin: 0;
+}
+
+.amenities-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 16px;
+  border: none;
+  background-color: rgba(var(--md-sys-color-primary), 0.08);
+  color: rgb(var(--md-sys-color-primary));
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.amenities-toggle:hover {
+  background-color: rgba(var(--md-sys-color-primary), 0.12);
+  transform: translateY(-1px);
+}
+
+.amenities-toggle:active {
+  transform: translateY(1px);
 }
 
 /* Buttons Styles */
