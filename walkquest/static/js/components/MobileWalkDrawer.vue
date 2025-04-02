@@ -46,6 +46,7 @@ import WalkDrawerHeader from './shared/WalkDrawerHeader.vue';
 import WalkDrawerContent from './shared/WalkDrawerContent.vue';
 import { useAdventureDialogStore } from '../stores/adventureDialog';
 import { useWalksStore } from '../stores/walks';
+import { useRouter } from 'vue-router';
 
 const props = defineProps({
   walk: {
@@ -61,11 +62,13 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'close', 'start-walk', 'save-walk', 'directions', 'category-selected', 'recenter']);
 
 const walksStore = useWalksStore();
+const router = useRouter();
 
 const bottomSheetRef = ref(null);
 const isOpen = ref(props.modelValue);
 const maxHeight = ref(window.innerHeight);
 const adventureDialogStore = useAdventureDialogStore();
+let isHandlingBackNavigation = false;
 
 // Function to calculate available height accounting for safe area
 function calculateAvailableHeight() {
@@ -106,6 +109,30 @@ const handleResize = () => {
   maxHeight.value = calculateAvailableHeight();
 };
 
+// Create popstate listener
+function setupBackButtonHandling() {
+  const handlePopState = () => {
+    isHandlingBackNavigation = true;
+    
+    // Close the drawer when the back button is pressed
+    if (isOpen.value) {
+      close();
+    }
+    
+    // Reset the flag after a short delay
+    setTimeout(() => {
+      isHandlingBackNavigation = false;
+    }, 100);
+  };
+  
+  window.addEventListener('popstate', handlePopState);
+  
+  // Return cleanup function
+  return () => {
+    window.removeEventListener('popstate', handlePopState);
+  };
+}
+
 // Lifecycle hooks
 onMounted(() => {
   // Update max height initially
@@ -119,6 +146,16 @@ onMounted(() => {
   if (props.modelValue) {
     nextTick(() => open());
   }
+  
+  // Setup back button handling
+  const cleanupBackHandler = setupBackButtonHandling();
+  
+  // Add to onBeforeUnmount
+  onBeforeUnmount(() => {
+    window.removeEventListener('resize', handleResize);
+    window.removeEventListener('orientationchange', handleResize);
+    cleanupBackHandler(); // Clean up back button handler
+  });
 });
 
 // Cleanup event listeners

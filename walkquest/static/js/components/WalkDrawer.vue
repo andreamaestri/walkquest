@@ -254,11 +254,17 @@ function restoreScrollPosition() {
 function handleBackClick() {
   console.log("Back button clicked");
 
-  emit("close", {
-    expandSidebar: true,
-    fromMapMarker: props.fromMapMarker,
-    animated: true,
-  });
+  // Only trigger a navigation if this wasn't from a browser back button
+  if (!window._isPopState) {
+    emit("close", {
+      expandSidebar: true,
+      fromMapMarker: props.fromMapMarker,
+      animated: true,
+    });
+  } else {
+    // If this was from a browser back button, just handle the UI changes
+    uiStore.handleWalkClosed();
+  }
 }
 
 function handleStartWalkClick() {

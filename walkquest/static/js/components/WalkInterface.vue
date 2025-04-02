@@ -419,35 +419,30 @@ const handleWalkSelection = async (walk) => {
  * Clears route query and updates UI state
  */
 const handleDrawerClose = async () => {
-  // Close drawer
-  await router.push({ name: 'home' });
+  // Check if this was triggered by a back button (popstate event)
+  // If so, don't push a new navigation (which would create a loop)
+  if (!window._isPopState) {
+    await router.push({ name: 'home' });
+  }
+  
   isExpanded.value = true;
   uiStore.handleWalkClosed();
   showWalkDetailSheet.value = false; // Also close mobile walk detail sheet
 };
 
-/**
- * Handle start walk action
- * Opens the adventure log dialog
- */
-const handleStartWalk = (walk) => {
-  // Open the adventure log dialog instead of closing
-  adventureDialogStore.openDialog(walk);
-};
-
-/**
- * Handle category selection
- * Could filter walks by category or navigate to category view
- */
-const handleCategorySelected = (category) => {
-  // Close the mobile sheet if on mobile
-  if (uiStore.isMobile) {
-    showWalkDetailSheet.value = false;
+// Add event listener for popstate to properly handle back button
+const handlePopState = (e) => {
+  window._isPopState = true;
+  
+  // If we're going back from a walk detail to home
+  if (!route.params.walk_id && !route.params.slug && selectedWalk.value) {
+    handleDrawerClose();
   }
   
-  // Filter walks by the selected category
-  searchStore.setSearchMode('categories');
-  searchStore.setSearchQuery(category.name);
+  // Reset the flag after a short delay
+  setTimeout(() => {
+    window._isPopState = false;
+  }, 100);
 };
 
 /**
@@ -694,11 +689,16 @@ onMounted(() => {
     // Initialize interface
     const cleanup = initializeInterface();
     
+    // Add event listener to handle browser navigation
+    window.addEventListener('popstate', handlePopState);
+    
     // Return cleanup function
     onBeforeUnmount(() => {
       try {
         cleanup();
         window.removeEventListener("popstate", preventRouteChange);
+        // Remove popstate listener
+        window.removeEventListener('popstate', handlePopState);
       } catch (error) {
         uiStore.setError("Error during cleanup. Please refresh the page.");
       }
