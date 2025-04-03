@@ -323,7 +323,8 @@ const handleMapCreated = (map) => {
       
       if (uiStore.isMobile) {
         // Mobile positioning - ensure logo stays at the bottom of the viewport
-        logoElement.style.bottom = `${env(safe-area-inset-bottom, 0) + 12}px`;
+        // Fix: Use a string with CSS env() function instead of trying to call env as a JS function
+        logoElement.style.bottom = `calc(env(safe-area-inset-bottom, 0px) + 12px)`;
         logoElement.style.left = '10px'; // Fixed left position to ensure visibility
         logoElement.style.right = 'auto';
         logoElement.style.transform = 'scale(1.25)';
