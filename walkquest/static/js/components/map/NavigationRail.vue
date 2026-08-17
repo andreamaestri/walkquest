@@ -92,6 +92,11 @@
           </div>
         </button>
       </nav>
+
+      <div class="m3-rail-footer" aria-label="Display preferences">
+        <ThemeToggle />
+        <span v-if="isExpanded" class="m3-rail-footer-label">Theme</span>
+      </div>
       
       <!-- Main Content Area -->
       <div
@@ -128,6 +133,7 @@ import { useLocationStore } from "../../stores/locationStore";
 import { useMotionV } from "../../composables/useMotionV";
 import { Icon } from "@iconify/vue";
 import WalkList from "../WalkList.vue";
+import ThemeToggle from "../shared/ThemeToggle.vue";
 
 /**
  * Props definition with proper validation
@@ -696,6 +702,20 @@ onMounted(() => {
   padding: 4px 0;
   gap: 12px;
   z-index: 10;
+}
+
+.m3-rail-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: auto;
+  padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  color: rgb(var(--md-sys-color-on-surface-variant));
+}
+
+.m3-rail-footer-label {
+  font: 650 var(--md-sys-typescale-label-large-size) / 1.4 "Inter", system-ui, sans-serif;
 }
 
 /* Navigation item styling with enhanced hover effects */

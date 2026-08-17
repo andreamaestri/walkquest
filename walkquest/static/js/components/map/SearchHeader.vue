@@ -91,6 +91,7 @@
       :is-active="accountActive"
       @click="handleAccountClick"
     />
+    <ThemeToggle v-if="uiStore.isMobile" class="mobile-theme-toggle" />
   </div>
 </template>
 
@@ -100,6 +101,7 @@ import { useUiStore } from "../../stores/ui";
 import { useSearchStore } from "../../stores/searchStore";
 import SearchView from "../SearchView.vue";
 import AccountCircle from "../shared/AccountCircle.vue";
+import ThemeToggle from "../shared/ThemeToggle.vue";
 import { Icon } from '@iconify/vue';
 import BottomSheet from '@douxcode/vue-spring-bottom-sheet';
 
@@ -305,6 +307,15 @@ defineExpose({
   right: 0;
   z-index: 10;
   pointer-events: none;
+}
+
+.mobile-theme-toggle {
+  position: fixed;
+  top: calc(8px + var(--safe-area-top, 0px));
+  right: 68px;
+  z-index: 12;
+  background: rgb(var(--md-sys-color-surface-container-highest) / 0.92);
+  box-shadow: var(--md-sys-elevation-1);
 }
 
 .search-header-wrapper > header {

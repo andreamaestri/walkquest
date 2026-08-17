@@ -3,6 +3,10 @@
     <main>
       <RouterView :mapbox-token="mapboxToken" />
     </main>
+    <ThemeToggle
+      v-if="route.name !== 'home' && route.name !== 'walk' && route.name !== 'walk-by-id'"
+      class="global-theme-toggle"
+    />
     <Loading ref="loadingComponent" />
     <Teleport to="#portal-root" :disabled="!portalRoot()">
       <component 
@@ -36,6 +40,7 @@ import { usePortal } from './composables/usePortal';
 import { registerSnackbar } from './composables/useSnackbar';
 import Loading from './components/shared/Loading.vue';
 import { RouterView } from 'vue-router';
+import ThemeToggle from './components/shared/ThemeToggle.vue';
 
 // Async component imports
 const AdventureLogDialog = defineAsyncComponent(() => 
@@ -277,6 +282,15 @@ onBeforeUnmount(() => {
   cursor: pointer;
   margin-top: 16px;
   transition: background-color 0.2s;
+}
+
+.global-theme-toggle {
+  position: fixed;
+  top: calc(16px + var(--safe-area-top, 0px));
+  right: 16px;
+  z-index: 100;
+  background: rgb(var(--md-sys-color-surface-container-highest) / 0.92);
+  box-shadow: var(--md-sys-elevation-1);
 }
 
 /* Additional styles loaded after component mount */

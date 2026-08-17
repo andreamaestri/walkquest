@@ -6,7 +6,11 @@ import router from './router';
 import '../css/material3.css';
 import '../css/tokens.css';
 import '../css/project.css';
+import '../css/expressive.css';
 import './fixes/portalFix.js';
+import { initializeTheme } from './composables/useTheme';
+
+initializeTheme();
 
 // Create app with Pinia store
 const app = createApp(App);

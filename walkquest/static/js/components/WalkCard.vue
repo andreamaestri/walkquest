@@ -1,20 +1,30 @@
 <template>
   <div 
     class="walk-card"
+    role="button"
+    tabindex="0"
+    :aria-label="`Open walk ${walk.walk_name || walk.title}`"
     :class="{
       'is-selected': isSelected,
       'is-compact': isCompact
     }"
     @click="$emit('walk-selected', walk)"
+    @keydown.enter="$emit('walk-selected', walk)"
+    @keydown.space.prevent="$emit('walk-selected', walk)"
   >
     <div class="walk-content">
       <div class="walk-info">
         <div class="title-row">
           <h3 class="walk-title">{{ walk.walk_name || walk.title }}</h3>
-          <div class="favorite-icon" @click.stop="handleFavorite">
+          <button
+            type="button"
+            class="favorite-icon"
+            :aria-label="walk.is_favorite ? 'Remove from favorites' : 'Save to favorites'"
+            @click.stop="handleFavorite"
+          >
             <Icon :icon="walk.is_favorite ? 'material-symbols:star-rounded' : 'material-symbols:star-outline-rounded'" 
                   :class="{'is-favorite': walk.is_favorite, 'is-pending': isPendingFavorite}" />
-          </div>
+          </button>
         </div>
       </div>
       
@@ -35,7 +45,7 @@
             v-for="category in firstCategories" 
             :key="category.id"
             class="category-tag"
-            :style="getCategoryStyle(category)"
+            :class="`category-${category.slug || 'default'}`"
           >
             {{ category.name }}
           </span>
@@ -131,76 +141,31 @@ const moreCount = computed(() => {
   return cats.length > 3 ? cats.length - 3 : 0
 })
 
-const categoryStyles = {
-  'circular-walks': {
-    backgroundColor: 'rgb(233,221,255)',
-    color: 'rgb(77,61,117)',
-    fontWeight: 600,
-    padding: '4px 8px',
-    borderRadius: '16px'
-  },
-  'coastal-walks': {
-    backgroundColor: 'rgb(232,222,248)',
-    color: 'rgb(74,68,88)',
-    fontWeight: 600,
-    padding: '4px 8px',
-    borderRadius: '16px'
-  },
-  'pub-walks': {
-    backgroundColor: 'rgb(255,217,227)',
-    color: 'rgb(99,59,72)',
-    fontWeight: 600,
-    padding: '4px 8px',
-    borderRadius: '16px'
-  },
-  'linear-walks': {
-    backgroundColor: 'rgb(230,240,255)',
-    color: 'rgb(30,70,120)',
-    fontWeight: 600,
-    padding: '4px 8px',
-    borderRadius: '16px'
-  },
-  'woodland-walks': {
-    backgroundColor: 'rgb(225,245,235)',
-    color: 'rgb(34,85,45)',
-    fontWeight: 600,
-    padding: '4px 8px',
-    borderRadius: '16px'
-  }
-};
-
-const getCategoryStyle = (cat) => {
-  return categoryStyles[cat.slug] || { 
-    backgroundColor: '#eee', 
-    color: '#333',
-    fontWeight: 600,
-    padding: '4px 8px',
-    borderRadius: '16px'
-  };
-}
 </script>
 
 <style>
 .walk-card {
-  background: #FFFFFF;
+  background: rgb(var(--md-sys-color-surface-container-low));
   border: 1px solid rgba(var(--md-sys-color-outline), 0.12);
-  border-radius: 16px;
+  border-radius: var(--md-sys-shape-lg, 16px);
   margin: 4px 8px;
   overflow: hidden;
-  transition: all 0.125s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background-color var(--md-sys-motion-duration-short2), border-color var(--md-sys-motion-duration-short2), box-shadow var(--md-sys-motion-duration-short2), transform var(--md-sys-motion-duration-short1);
   cursor: pointer;
   width: calc(100% - 16px); /* Ensure consistent width accounting for margins */
 }
 
 .walk-card:hover {
-  background: rgb(var(--md-sys-color-surface-container), 0.15);
-  border: 1px solid rgb(var(--md-sys-color-primary));
+  background: rgb(var(--md-sys-color-surface-container));
+  border-color: rgb(var(--md-sys-color-primary));
   box-shadow: var(--md-sys-elevation-1);
+  transform: translateY(-1px);
 }
 
 .walk-card.is-selected {
-  background: rgb(var(--md-sys-color-surface-container-highest));
-  border: 1px solid rgb(var(--md-sys-color-primary));
+  background: rgb(var(--md-sys-color-secondary-container));
+  border-color: rgb(var(--md-sys-color-primary));
+  box-shadow: var(--md-sys-elevation-1);
 }
 
 .walk-content {
@@ -228,6 +193,8 @@ const getCategoryStyle = (cat) => {
 }
 
 .favorite-icon {
+  border: 0;
+  background: transparent;
   font-size: 1.5rem;
   color: rgb(var(--md-sys-color-outline));
   cursor: pointer;
@@ -236,6 +203,11 @@ const getCategoryStyle = (cat) => {
   align-items: center;
   justify-content: center;
   padding: 4px;
+}
+
+.favorite-icon:focus-visible {
+  outline: 3px solid rgb(var(--md-sys-color-primary) / 0.48);
+  outline-offset: 2px;
 }
 
 .favorite-icon .is-favorite {
@@ -308,9 +280,21 @@ const getCategoryStyle = (cat) => {
 
 .category-tag {
   padding: 4px 12px;
-  border-radius: 16px;
+  border-radius: 999px;
   font-size: 0.75rem;
   font-weight: 500;
+  background: rgb(var(--category-background, var(--md-sys-color-surface-variant)));
+  color: rgb(var(--category-foreground, var(--md-sys-color-on-surface-variant)));
+}
+
+.category-circular-walks { --category-background: 234, 221, 255; --category-foreground: 54, 30, 105; }
+.category-coastal-walks { --category-background: 211, 238, 242; --category-foreground: 0, 53, 59; }
+.category-pub-walks { --category-background: 255, 217, 226; --category-foreground: 73, 37, 49; }
+.category-linear-walks { --category-background: 218, 237, 255; --category-foreground: 0, 47, 78; }
+.category-woodland-walks { --category-background: 213, 239, 220; --category-foreground: 20, 63, 34; }
+
+:is([data-theme="dark"]) .category-tag {
+  filter: saturate(0.88) brightness(0.82);
 }
 
 .more-count {

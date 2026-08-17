@@ -1,0 +1,316 @@
+/* WalkQuest Material 3 Expressive foundation.
+   This file is intentionally loaded after the legacy theme files so the
+   application has one final, predictable token contract. */
+
+:root,
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --md-sys-color-primary: 103, 80, 164;
+  --md-sys-color-on-primary: 255, 251, 255;
+  --md-sys-color-primary-container: 234, 221, 255;
+  --md-sys-color-on-primary-container: 33, 0, 93;
+  --md-sys-color-secondary: 98, 91, 113;
+  --md-sys-color-on-secondary: 255, 251, 255;
+  --md-sys-color-secondary-container: 232, 222, 248;
+  --md-sys-color-on-secondary-container: 30, 25, 43;
+  --md-sys-color-tertiary: 125, 82, 96;
+  --md-sys-color-on-tertiary: 255, 251, 255;
+  --md-sys-color-tertiary-container: 255, 217, 226;
+  --md-sys-color-on-tertiary-container: 49, 17, 29;
+  --md-sys-color-background: 255, 251, 255;
+  --md-sys-color-on-background: 29, 27, 32;
+  --md-sys-color-surface: 255, 251, 255;
+  --md-sys-color-surface-dim: 222, 216, 225;
+  --md-sys-color-surface-bright: 255, 251, 255;
+  --md-sys-color-surface-container-lowest: 255, 255, 255;
+  --md-sys-color-surface-container-low: 247, 242, 250;
+  --md-sys-color-surface-container: 243, 237, 247;
+  --md-sys-color-surface-container-high: 236, 230, 240;
+  --md-sys-color-surface-container-highest: 230, 224, 233;
+  --md-sys-color-surface-variant: 231, 224, 236;
+  --md-sys-color-on-surface: 29, 27, 32;
+  --md-sys-color-on-surface-variant: 73, 69, 79;
+  --md-sys-color-outline: 121, 116, 126;
+  --md-sys-color-outline-variant: 202, 196, 208;
+  --md-sys-color-error: 186, 26, 26;
+  --md-sys-color-on-error: 255, 255, 255;
+  --md-sys-color-error-container: 255, 218, 214;
+  --md-sys-color-on-error-container: 65, 0, 2;
+  --md-sys-color-scrim: 0, 0, 0;
+  --md-sys-color-shadow: 0, 0, 0;
+  --md-sys-color-inverse-surface: 49, 48, 51;
+  --md-sys-color-inverse-on-surface: 244, 239, 244;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --md-sys-color-primary: 215, 189, 255;
+  --md-sys-color-on-primary: 54, 30, 105;
+  --md-sys-color-primary-container: 79, 55, 127;
+  --md-sys-color-on-primary-container: 239, 219, 255;
+  --md-sys-color-secondary: 204, 194, 219;
+  --md-sys-color-on-secondary: 51, 45, 65;
+  --md-sys-color-secondary-container: 74, 68, 88;
+  --md-sys-color-on-secondary-container: 232, 222, 248;
+  --md-sys-color-tertiary: 239, 184, 198;
+  --md-sys-color-on-tertiary: 73, 37, 49;
+  --md-sys-color-tertiary-container: 99, 59, 72;
+  --md-sys-color-on-tertiary-container: 255, 217, 226;
+  --md-sys-color-background: 20, 19, 24;
+  --md-sys-color-on-background: 232, 225, 229;
+  --md-sys-color-surface: 20, 19, 24;
+  --md-sys-color-surface-dim: 20, 19, 24;
+  --md-sys-color-surface-bright: 59, 57, 63;
+  --md-sys-color-surface-container-lowest: 15, 13, 18;
+  --md-sys-color-surface-container-low: 28, 27, 32;
+  --md-sys-color-surface-container: 32, 31, 36;
+  --md-sys-color-surface-container-high: 43, 41, 47;
+  --md-sys-color-surface-container-highest: 54, 52, 58;
+  --md-sys-color-surface-variant: 73, 69, 79;
+  --md-sys-color-on-surface: 232, 225, 229;
+  --md-sys-color-on-surface-variant: 202, 196, 208;
+  --md-sys-color-outline: 147, 143, 153;
+  --md-sys-color-outline-variant: 73, 69, 79;
+  --md-sys-color-error: 255, 180, 171;
+  --md-sys-color-on-error: 105, 0, 5;
+  --md-sys-color-error-container: 147, 0, 10;
+  --md-sys-color-on-error-container: 255, 218, 214;
+  --md-sys-color-scrim: 0, 0, 0;
+  --md-sys-color-shadow: 0, 0, 0;
+  --md-sys-color-inverse-surface: 232, 225, 229;
+  --md-sys-color-inverse-on-surface: 51, 48, 51;
+}
+
+:root {
+  --md-sys-typescale-display-large-font: "Outfit", "Inter", system-ui, sans-serif;
+  --md-sys-typescale-display-large-size: clamp(2.75rem, 6vw, 4rem);
+  --md-sys-typescale-display-large-line-height: 1.05;
+  --md-sys-typescale-display-large-weight: 700;
+  --md-sys-typescale-headline-large-font: "Outfit", "Inter", system-ui, sans-serif;
+  --md-sys-typescale-headline-large-size: clamp(2rem, 4vw, 2.5rem);
+  --md-sys-typescale-headline-large-line-height: 1.15;
+  --md-sys-typescale-headline-large-weight: 650;
+  --md-sys-typescale-title-large-size: 1.375rem;
+  --md-sys-typescale-title-large-line-height: 1.25;
+  --md-sys-typescale-title-large-weight: 650;
+  --md-sys-typescale-body-large-size: 1rem;
+  --md-sys-typescale-body-large-line-height: 1.5;
+  --md-sys-typescale-body-medium-size: 0.875rem;
+  --md-sys-typescale-body-medium-line-height: 1.45;
+  --md-sys-typescale-label-large-size: 0.875rem;
+  --md-sys-typescale-label-large-line-height: 1.4;
+  --md-sys-typescale-label-large-weight: 650;
+
+  --md-sys-shape-xs: 4px;
+  --md-sys-shape-sm: 8px;
+  --md-sys-shape-md: 12px;
+  --md-sys-shape-lg: 16px;
+  --md-sys-shape-xl: 28px;
+  --md-sys-shape-expressive: 32px 12px 28px 16px;
+
+  --md-sys-elevation-0: none;
+  --md-sys-elevation-1: 0 1px 3px rgb(var(--md-sys-color-shadow) / 0.16), 0 1px 2px rgb(var(--md-sys-color-shadow) / 0.12);
+  --md-sys-elevation-2: 0 4px 8px rgb(var(--md-sys-color-shadow) / 0.16), 0 2px 4px rgb(var(--md-sys-color-shadow) / 0.12);
+  --md-sys-elevation-3: 0 8px 16px rgb(var(--md-sys-color-shadow) / 0.18), 0 4px 8px rgb(var(--md-sys-color-shadow) / 0.14);
+
+  --md-sys-motion-duration-short1: 100ms;
+  --md-sys-motion-duration-short2: 180ms;
+  --md-sys-motion-duration-medium1: 280ms;
+  --md-sys-motion-duration-medium2: 420ms;
+  --md-sys-motion-duration-long1: 560ms;
+  --md-sys-motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --md-sys-motion-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --md-sys-motion-easing-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --md-sys-motion-easing-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+}
+
+html,
+body {
+  background: rgb(var(--md-sys-color-background));
+  color: rgb(var(--md-sys-color-on-background));
+  transition: background-color var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-standard),
+    color var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-standard);
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible {
+  outline: 3px solid rgb(var(--md-sys-color-primary) / 0.48);
+  outline-offset: 2px;
+}
+
+.m3-interactive {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  transition: background-color var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard),
+    box-shadow var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard),
+    transform var(--md-sys-motion-duration-short1) var(--md-sys-motion-easing-emphasized);
+}
+
+.m3-interactive::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard);
+}
+
+.m3-interactive:hover::before {
+  opacity: 0.08;
+}
+
+.m3-interactive:active {
+  transform: scale(0.98);
+}
+
+.m3-interactive:active::before {
+  opacity: 0.12;
+}
+
+.m3-icon-button {
+  min-width: 48px;
+  min-height: 48px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+  cursor: pointer;
+}
+
+.m3-icon-button:hover {
+  background: rgb(var(--md-sys-color-on-surface) / 0.08);
+  color: rgb(var(--md-sys-color-on-surface));
+}
+
+.m3-expressive-surface {
+  background: rgb(var(--md-sys-color-surface-container));
+  border: 1px solid rgb(var(--md-sys-color-outline-variant) / 0.42);
+  border-radius: var(--md-sys-shape-expressive);
+  box-shadow: var(--md-sys-elevation-1);
+}
+
+/* Surface mapping for the existing explorer shell. These selectors are
+   intentionally shallow so the map and virtualized list remain inexpensive. */
+.m3-navigation-rail,
+.walk-drawer,
+.mobile-walk-drawer-sheet,
+.account-menu,
+.modal-container {
+  background: rgb(var(--md-sys-color-surface-container));
+  color: rgb(var(--md-sys-color-on-surface));
+}
+
+.m3-navigation-rail {
+  border-right: 1px solid rgb(var(--md-sys-color-outline-variant) / 0.42);
+}
+
+.m3-rail-item,
+.m3-rail-fab,
+.search-wrapper,
+.search-fab {
+  color: rgb(var(--md-sys-color-on-surface));
+}
+
+.m3-rail-item.is-active {
+  background: rgb(var(--md-sys-color-secondary-container));
+  color: rgb(var(--md-sys-color-on-secondary-container));
+}
+
+.search-wrapper {
+  border: 1px solid rgb(var(--md-sys-color-outline-variant) / 0.45);
+  box-shadow: var(--md-sys-elevation-1);
+}
+
+.walk-drawer,
+.mobile-walk-drawer-sheet {
+  border: 1px solid rgb(var(--md-sys-color-outline-variant) / 0.42);
+  box-shadow: var(--md-sys-elevation-3);
+}
+
+.modal-container,
+.account-menu {
+  border: 1px solid rgb(var(--md-sys-color-outline-variant) / 0.5);
+  border-radius: var(--md-sys-shape-xl);
+  box-shadow: var(--md-sys-elevation-3);
+}
+
+.modal-overlay {
+  background: rgb(var(--md-sys-color-scrim) / 0.42);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+.close-btn,
+.password-toggle,
+.snackbar-close {
+  min-width: 40px;
+  min-height: 40px;
+}
+
+.btn,
+.md3-button,
+.auth-link-primary {
+  min-height: 48px;
+  border-radius: 999px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+
+.snackbar {
+  border: 1px solid rgb(var(--md-sys-color-outline-variant) / 0.45);
+  border-radius: var(--md-sys-shape-lg);
+  background: rgb(var(--md-sys-color-inverse-surface, 49, 48, 51));
+  color: rgb(var(--md-sys-color-inverse-on-surface, 244, 239, 244));
+  box-shadow: var(--md-sys-elevation-3);
+}
+
+.m3-chip {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid rgb(var(--md-sys-color-outline));
+  border-radius: 999px;
+  background: transparent;
+  color: rgb(var(--md-sys-color-on-surface-variant));
+  font: 650 var(--md-sys-typescale-label-large-size) / 1.4 "Inter", system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.m3-chip[aria-pressed="true"],
+.m3-chip.is-selected {
+  border-color: transparent;
+  background: rgb(var(--md-sys-color-secondary-container));
+  color: rgb(var(--md-sys-color-on-secondary-container));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+@media (max-width: 599px) {
+  :root {
+    --md-sys-shape-expressive: 24px 10px 20px 12px;
+  }
+}
