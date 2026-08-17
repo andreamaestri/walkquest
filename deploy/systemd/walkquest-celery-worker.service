@@ -1,0 +1,18 @@
+[Unit]
+Description=WalkQuest Celery worker
+After=network-online.target valkey.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=opc
+Group=opc
+WorkingDirectory=/srv/django/walkquest
+EnvironmentFile=/etc/walkquest.env
+Environment="DJANGO_SETTINGS_MODULE=config.settings.production"
+ExecStart=/srv/django/walkquest/.venv/bin/celery -A config.celery_app worker --loglevel=INFO --concurrency=2
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

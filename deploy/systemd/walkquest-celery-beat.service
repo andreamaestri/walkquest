@@ -1,0 +1,18 @@
+[Unit]
+Description=WalkQuest Celery beat scheduler
+After=network-online.target valkey.service walkquest-celery-worker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=opc
+Group=opc
+WorkingDirectory=/srv/django/walkquest
+EnvironmentFile=/etc/walkquest.env
+Environment="DJANGO_SETTINGS_MODULE=config.settings.production"
+ExecStart=/srv/django/walkquest/.venv/bin/celery -A config.celery_app beat --loglevel=INFO --scheduler django_celery_beat.schedulers:DatabaseScheduler
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
