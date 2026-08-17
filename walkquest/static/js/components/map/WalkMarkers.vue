@@ -227,8 +227,8 @@ defineExpose({
 
 /* Mapbox sets the map canvas to a grab cursor. Markers sit above that canvas,
    so make their clickable hit area explicitly use the pointer cursor. */
-:deep(.mapboxgl-marker.map-marker),
-:deep(.mapboxgl-marker.map-marker *) {
+:deep(.mapboxgl-marker),
+:deep(.mapboxgl-marker *) {
   cursor: pointer !important;
 }
 
