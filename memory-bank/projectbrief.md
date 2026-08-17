@@ -85,7 +85,7 @@ walkquest/
 ├── core/
 ├── static/
 │   └── js/
-│       ├── bundle.js
+│       ├── main.js
 │       └── components/
 │           ├── WalkInterface.vue
 │           ├── WalkList.vue
