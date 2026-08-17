@@ -163,6 +163,11 @@ const handleMarkerClick = (walk) => {
  * Emits event to parent component with marker reference
  */
 const handleMarkerMounted = (marker, walkId) => {
+  // Mapbox markers are DOM elements outside this component's scoped styles.
+  // Set the cursor on the root element only, avoiding a broad descendant CSS
+  // selector for every marker child.
+  const markerElement = marker?.getElement?.() ?? marker;
+  markerElement?.style?.setProperty("cursor", "pointer");
   emit("marker-mounted", marker, walkId);
 };
 
@@ -223,13 +228,6 @@ defineExpose({
 
 .border-primary {
   border-color: rgb(var(--md-sys-color-primary));
-}
-
-/* Mapbox sets the map canvas to a grab cursor. Markers sit above that canvas,
-   so make their clickable hit area explicitly use the pointer cursor. */
-:deep(.mapboxgl-marker),
-:deep(.mapboxgl-marker *) {
-  cursor: pointer !important;
 }
 
 :deep(.mapboxgl-popup-close-button) {
