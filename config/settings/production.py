@@ -34,7 +34,13 @@ CACHES = {
         "LOCATION": REDIS_URL,
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "SOCKET_CONNECT_TIMEOUT": 2,
+            "SOCKET_TIMEOUT": 2,
+            "IGNORE_EXCEPTIONS": True,
         },
+        # A Redis outage should degrade cached endpoints to database-backed
+        # responses instead of taking the whole web process down.
+        "TIMEOUT": 300,
     },
 }
 

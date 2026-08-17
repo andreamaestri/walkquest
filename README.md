@@ -109,6 +109,15 @@ The `Procfile` starts Gunicorn with the Django WSGI application:
 gunicorn config.wsgi:application --workers 2 --threads 4 --timeout 60 --access-logfile -
 ```
 
+The same Procfile also defines the Redis-backed background processes:
+
+```bash
+celery -A config.celery_app worker --loglevel=INFO
+celery -A config.celery_app beat --loglevel=INFO --scheduler django_celery_beat.schedulers:DatabaseScheduler
+```
+
+Run the worker whenever asynchronous tasks are dispatched. Run beat only when scheduled database tasks are configured in Django admin.
+
 A production deployment should provide PostgreSQL/PostGIS, Redis, a securely configured `.env`, and a reverse proxy such as Nginx. Build frontend assets and collect Django static files during deployment:
 
 ```bash

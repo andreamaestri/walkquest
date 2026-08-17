@@ -16,6 +16,22 @@ environ.Env.read_env(str(BASE_DIR / ".env"))
 # Define REDIS_URL used by production settings
 REDIS_URL = env.str("REDIS_URL", default="redis://127.0.0.1:6379/0")
 
+# Celery uses the same Redis service as the shared production cache. Keeping
+# these settings in the base module also makes the worker configuration match
+# whichever Django settings module is selected at runtime.
+CELERY_BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = REDIS_URL
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TASK_TRACK_STARTED = True
+CELERY_RESULT_EXPIRES = 60 * 60
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_TASK_TIME_LIMIT = 5 * 60
+CELERY_TASK_SOFT_TIME_LIMIT = 4 * 60
+CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+
 # User display configuration - This determines how the user is displayed in messages
 def get_user_display(user):
     """Return a user-friendly display name"""
