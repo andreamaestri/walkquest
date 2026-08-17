@@ -103,6 +103,10 @@ def list_walks(
         if has_bus_access is not None:  # updated filtering
             walks = walks.filter(has_bus_access=has_bus_access)
 
+        # A walk can match multiple many-to-many filters. Keep the response
+        # one-row-per-walk while retaining the existing unpaginated API.
+        walks = walks.distinct()
+
         walk_list = []
         for walk in walks:
             # Format points_of_interest as a list by splitting on semicolons and stripping whitespace
@@ -164,9 +168,13 @@ def find_nearby_walks(
 ):
     """Find walks near a specific location using efficient spatial queries"""
     try:
-        # Validate coordinates
+        # Validate coordinates and keep the bounding-box query bounded. The
+        # endpoint remains unpaginated, but an unbounded radius could still
+        # force a full-table scan and large Python-side response.
         if not (-90 <= latitude <= 90) or not (-180 <= longitude <= 180):
             return []
+        radius = max(0, min(radius, 50_000))
+        limit = max(1, min(limit, 500))
 
         # Calculate bounding box for initial filtering
         lat_radius = radius / 111000  # Convert meters to degrees
@@ -194,6 +202,7 @@ def find_nearby_walks(
                 if request.user.is_authenticated
                 else Value(False)
             )
+            .distinct()
         )
 
         # Calculate exact distances and prepare response
@@ -245,14 +254,16 @@ def find_nearby_walks(
                         created_at=walk.created_at.isoformat(),
                         updated_at=walk.updated_at.isoformat(),
                     )
-                    results.append(walk_out)
+                    # Keep the computed distance for correct proximity
+                    # ordering; walk.distance is the route length.
+                    results.append((distance, walk_out))
             except (ValueError, TypeError) as e:
                 print(f"Error processing walk {walk.id}: {e}")
                 continue
 
         # Sort by distance and limit results
-        results.sort(key=lambda x: float(x.distance) if x.distance else float("inf"))
-        return results[:limit]
+        results.sort(key=lambda result: result[0])
+        return [walk_out for _, walk_out in results[:limit]]
 
     except Exception as e:
         print(f"Error finding nearby walks: {e}")
@@ -265,11 +276,9 @@ def get_walk(request: HttpRequest, identifier: str):
     try:
         # Try UUID first
         try:
-            uuid_id = UUID(identifier)
-            walk = Walk.objects.get(id=uuid_id)
-        except (ValueError, Walk.DoesNotExist):
-            # If not UUID, try slug
-            walk = Walk.objects.get(walk_id=identifier)
+            lookup = {"id": UUID(identifier)}
+        except ValueError:
+            lookup = {"walk_id": identifier}
 
         walk = (
             Walk.objects.prefetch_related(
@@ -284,7 +293,7 @@ def get_walk(request: HttpRequest, identifier: str):
                 if request.user.is_authenticated
                 else Value(False)
             )
-            .get(id=walk.id)  # Use get() again to get annotated version
+            .get(**lookup)
         )
 
         return WalkOutSchema(

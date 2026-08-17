@@ -1,8 +1,11 @@
 import { defineConfig } from 'vite'
-import { resolve } from 'path'
+import { dirname, resolve } from 'path'
+import { fileURLToPath } from 'url'
 import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
 import { splitVendorChunkPlugin } from 'vite'
+
+const projectDir = dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig({
   plugins: [
@@ -22,16 +25,16 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'walkquest/static/js'),
-      'static': resolve(__dirname, './static')
+      '@': resolve(projectDir, 'walkquest/static/js'),
+      'static': resolve(projectDir, './static')
     }
   },
   build: {
     manifest: "manifest.json",
-    outDir: resolve('./walkquest/static/dist'),
+    outDir: resolve(projectDir, './walkquest/static/dist'),
     rollupOptions: {
       input: {
-        main: resolve(__dirname, 'walkquest/static/js/main.js')
+        main: resolve(projectDir, 'walkquest/static/js/main.js')
       },
       output: {
         manualChunks: {

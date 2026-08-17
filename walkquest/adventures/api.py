@@ -91,6 +91,7 @@ def list_adventures(request):
     achievements = (
         Achievement.objects.filter(user=request.user)
         .select_related("adventure")
+        .prefetch_related("adventure__related_categories", "adventure__companions")
     )
     adventures = [achievement.adventure for achievement in achievements]
     

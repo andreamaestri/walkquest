@@ -9,7 +9,10 @@ from .base import env
 # https://docs.djangoproject.com/en/dev/ref/settings/#secret-key
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 # https://docs.djangoproject.com/en/dev/ref/settings/#allowed-hosts
-ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["*"])
+ALLOWED_HOSTS = env.list(
+    "DJANGO_ALLOWED_HOSTS",
+    default=["walkquest.andreadev.uk"],
+)
 
 # DATABASES
 # ------------------------------------------------------------------------------
@@ -38,11 +41,11 @@ SECURE_HSTS_PRELOAD = True
 
 # Update CSRF and CORS settings for production
 CSRF_TRUSTED_ORIGINS = [
-    'https://walkquest-b4598371b54d.herokuapp.com',
+    "https://walkquest.andreadev.uk",
 ]
 
 CORS_ALLOWED_ORIGINS = [
-    'https://walkquest-b4598371b54d.herokuapp.com',
+    "https://walkquest.andreadev.uk",
 ]
 
 # Ensure all traffic is redirected to HTTPS
