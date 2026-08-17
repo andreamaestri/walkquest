@@ -5,11 +5,14 @@ from uuid import UUID
 
 import orjson
 from django.conf import settings
+from django.core.cache import cache
+from django.db import transaction
 from django.db.models import Count
 from django.db.models import Exists
+from django.db.models import FloatField
 from django.db.models import OuterRef
-from django.db.models import Q
 from django.db.models import Value
+from django.db.models.expressions import RawSQL
 from django.http import HttpRequest
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
@@ -48,6 +51,17 @@ class ORJSONRenderer(BaseRenderer):
 
 # Create a Router for walks API endpoints
 api = Router()
+
+METADATA_CACHE_TIMEOUT = 60 * 15
+
+
+def get_cached_metadata(key, factory):
+    """Return shared, short-lived metadata without caching request-specific data."""
+    value = cache.get(key)
+    if value is None:
+        value = factory()
+        cache.set(key, value, METADATA_CACHE_TIMEOUT)
+    return value
 
 
 @api.get("/", response=dict)
@@ -178,12 +192,23 @@ def find_nearby_walks(
 
         # Calculate bounding box for initial filtering
         lat_radius = radius / 111000  # Convert meters to degrees
-        lng_radius = lat_radius / math.cos(math.radians(latitude))
+        lng_radius = lat_radius / max(abs(math.cos(math.radians(latitude))), 1e-6)
 
         min_lat = latitude - lat_radius
         max_lat = latitude + lat_radius
         min_lng = longitude - lng_radius
         max_lng = longitude + lng_radius
+
+        # Calculate the exact distance in PostgreSQL after the indexed
+        # latitude/longitude bounding-box filter. This avoids materializing
+        # and sorting the entire candidate set in Python.
+        distance_sql = """
+            6371000 * 2 * ASIN(LEAST(1.0, SQRT(
+                POWER(SIN(RADIANS(latitude - %s) / 2), 2) +
+                COS(RADIANS(%s)) * COS(RADIANS(latitude)) *
+                POWER(SIN(RADIANS(longitude - %s) / 2), 2)
+            )))
+        """
 
         walks = (
             Walk.objects.filter(
@@ -192,6 +217,15 @@ def find_nearby_walks(
                 longitude__gte=min_lng,
                 longitude__lte=max_lng,
             )
+            .annotate(
+                nearby_distance=RawSQL(  # noqa: S611 - SQL uses only bound coordinates
+                    distance_sql,
+                    (latitude, latitude, longitude),
+                    output_field=FloatField(),
+                ),
+            )
+            .filter(nearby_distance__lte=radius)
+            .order_by("nearby_distance")
             .prefetch_related("features", "categories", "related_categories")
             .annotate(
                 is_favorite=Exists(
@@ -202,19 +236,13 @@ def find_nearby_walks(
                 if request.user.is_authenticated
                 else Value(False)
             )
-            .distinct()
         )
 
         # Calculate exact distances and prepare response
         results = []
         for walk in walks:
             try:
-                distance = haversine(
-                    latitude, longitude, float(walk.latitude), float(walk.longitude)
-                )
-
-                if distance <= radius:
-                    walk_out = WalkOutSchema(
+                walk_out = WalkOutSchema(
                         id=walk.id,
                         walk_id=walk.walk_id,
                         walk_name=walk.walk_name,
@@ -253,17 +281,13 @@ def find_nearby_walks(
                         has_bus_access=walk.has_bus_access,
                         created_at=walk.created_at.isoformat(),
                         updated_at=walk.updated_at.isoformat(),
-                    )
-                    # Keep the computed distance for correct proximity
-                    # ordering; walk.distance is the route length.
-                    results.append((distance, walk_out))
+                )
+                results.append(walk_out)
             except (ValueError, TypeError) as e:
                 print(f"Error processing walk {walk.id}: {e}")
                 continue
 
-        # Sort by distance and limit results
-        results.sort(key=lambda result: result[0])
-        return [walk_out for _, walk_out in results[:limit]]
+        return results[:limit]
 
     except Exception as e:
         print(f"Error finding nearby walks: {e}")
@@ -347,13 +371,18 @@ def toggle_favorite(request: HttpRequest, id: UUID):
     if not request.user.is_authenticated:
         return {"status": "error", "message": "Authentication required"}
 
-    walk = get_object_or_404(Walk, id=id)
-    if walk.favorites.filter(id=request.user.id).exists():
-        walk.favorites.remove(request.user)
-        is_favorite = False
-    else:
-        walk.favorites.add(request.user)
-        is_favorite = True
+    with transaction.atomic():
+        walk = get_object_or_404(Walk.objects.select_for_update(), id=id)
+        through = Walk.favorites.through
+        favorite, created = through.objects.get_or_create(
+            walk_id=walk.id,
+            user_id=request.user.id,
+        )
+        if created:
+            is_favorite = True
+        else:
+            favorite.delete()
+            is_favorite = False
 
     return {"status": "success", "walk_id": str(id), "is_favorite": is_favorite}
 
@@ -376,78 +405,87 @@ class MarkerSchema(Schema):
 @api.get("/tags", response=List[TagResponseSchema])
 def list_tags(request):
     """Get all walk tags with usage counts"""
-    tags = []
+    def build_tags():
+        tags = []
 
-    # Get category tags with counts
-    category_tags = (
-        WalkCategoryTag.objects.annotate(
-            usage_count=Count("categorized_walks", distinct=True)
-            + Count("related_walks", distinct=True)
-        )
-        .filter(usage_count__gt=0)
-        .values("name", "slug", "usage_count")
-    )
-
-    # Add type field for category tags
-    for tag in category_tags:
-        tags.append(
-            {
-                "name": tag["name"],
-                "slug": tag["slug"],
-                "usage_count": tag["usage_count"],
-                "type": "category",
-            }
+        # Get category tags with counts
+        category_tags = (
+            WalkCategoryTag.objects.annotate(
+                usage_count=Count("categorized_walks", distinct=True)
+                + Count("related_walks", distinct=True)
+            )
+            .filter(usage_count__gt=0)
+            .values("name", "slug", "usage_count")
         )
 
-    # Get feature tags with counts
-    feature_tags = (
-        WalkFeatureTag.objects.annotate(usage_count=Count("walks", distinct=True))
-        .filter(usage_count__gt=0)
-        .values("name", "slug", "usage_count")
-    )
+        # Add type field for category tags
+        for tag in category_tags:
+            tags.append(
+                {
+                    "name": tag["name"],
+                    "slug": tag["slug"],
+                    "usage_count": tag["usage_count"],
+                    "type": "category",
+                }
+            )
 
-    # Add type field for feature tags
-    for tag in feature_tags:
-        tags.append(
-            {
-                "name": tag["name"],
-                "slug": tag["slug"],
-                "usage_count": tag["usage_count"],
-                "type": "feature",
-            }
+        # Get feature tags with counts
+        feature_tags = (
+            WalkFeatureTag.objects.annotate(usage_count=Count("walks", distinct=True))
+            .filter(usage_count__gt=0)
+            .values("name", "slug", "usage_count")
         )
 
-    return tags
+        # Add type field for feature tags
+        for tag in feature_tags:
+            tags.append(
+                {
+                    "name": tag["name"],
+                    "slug": tag["slug"],
+                    "usage_count": tag["usage_count"],
+                    "type": "feature",
+                }
+            )
+
+        return tags
+
+    return get_cached_metadata("walkquest:api:tags:v1", build_tags)
 
 
 @api.get("/config", response=ConfigSchema)
 def get_config(request):
     """Get application configuration"""
-    return {
-        "mapboxToken": settings.MAPBOX_TOKEN,
-        "map": {
-            "style": "mapbox://styles/mapbox/outdoors-v12?optimize=true",
-            "defaultCenter": [-4.85, 50.4],  # Cornwall's approximate center
-            "defaultZoom": 9.5,
-            "markerColors": {
-                "default": "#FF0000",  # Red markers
-                "selected": "#00FF00",  # Green markers for selected
-                "favorite": "#FFD700",  # Gold for favorites
+    return get_cached_metadata(
+        "walkquest:api:config:v1",
+        lambda: {
+            "mapboxToken": settings.MAPBOX_TOKEN,
+            "map": {
+                "style": "mapbox://styles/mapbox/outdoors-v12?optimize=true",
+                "defaultCenter": [-4.85, 50.4],
+                "defaultZoom": 9.5,
+                "markerColors": {
+                    "default": "#FF0000",
+                    "selected": "#00FF00",
+                    "favorite": "#FFD700",
+                },
             },
+            "filters": {"categories": True, "features": True, "distance": True},
         },
-        "filters": {"categories": True, "features": True, "distance": True},
-    }
+    )
 
 
 @api.get("/filters")
 def get_filters(request):
     """Get available filter options"""
-    return {
-        "difficulties": [choice[0] for choice in Walk.DIFFICULTY_CHOICES],
-        "footwear": [choice[0] for choice in Walk.FOOTWEAR_CHOICES],
-        "categories": list(WalkCategoryTag.objects.values("name", "slug")),
-        "features": list(WalkFeatureTag.objects.values("name", "slug")),
-    }
+    return get_cached_metadata(
+        "walkquest:api:filters:v1",
+        lambda: {
+            "difficulties": [choice[0] for choice in Walk.DIFFICULTY_CHOICES],
+            "footwear": [choice[0] for choice in Walk.FOOTWEAR_CHOICES],
+            "categories": list(WalkCategoryTag.objects.values("name", "slug")),
+            "features": list(WalkFeatureTag.objects.values("name", "slug")),
+        },
+    )
 
 
 class GeometrySchema(Schema):

@@ -136,7 +136,7 @@ else:
 # ------------------------------------------------------------------------------
 ACCOUNT_EMAIL_VERIFICATION = "optional"  # Make it optional for easier development
 ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_AUTHENTICATION_METHOD = "email"
+ACCOUNT_LOGIN_METHODS = {"email"}
 ACCOUNT_USERNAME_REQUIRED = True
 ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 3
 ACCOUNT_CONFIRM_EMAIL_ON_GET = True

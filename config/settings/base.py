@@ -62,15 +62,15 @@ DATABASES = {
         default="postgres:///walkquest",
     ),
 }
-DATABASES["default"]["ATOMIC_REQUESTS"] = True
+DATABASES["default"]["ATOMIC_REQUESTS"] = env.bool(
+    "ATOMIC_REQUESTS",
+    default=False,
+)
 
 # Database performance optimizations
 DATABASES["default"]["CONN_MAX_AGE"] = env.int("CONN_MAX_AGE", default=60)  # Persistent connections
 DATABASES["default"]["OPTIONS"] = {
     "connect_timeout": 10,
-    # Add options specific to PostgreSQL for better performance
-    "client_encoding": "UTF8",
-    "default_transaction_isolation": "read committed",
 }
 
 # https://docs.djangoproject.com/en/stable/ref/settings/#std:setting-DEFAULT_AUTO_FIELD
@@ -226,9 +226,11 @@ STATICFILES_DIRS = [
 
 # Django Vite Configuration
 DJANGO_VITE = {
-    "dev_mode": DEBUG,
-    "manifest_path": str(APPS_DIR / "static" / "dist" / "manifest.json"),
-    "static_url_prefix": "dist/",
+    "default": {
+        "dev_mode": DEBUG,
+        "manifest_path": str(APPS_DIR / "static" / "dist" / "manifest.json"),
+        "static_url_prefix": "dist/",
+    },
 }
 
 
@@ -351,7 +353,7 @@ print(f"Email configuration: HOST={EMAIL_HOST}, USER={EMAIL_HOST_USER}, PORT={EM
 # django-allauth
 # ------------------------------------------------------------------------------
 ACCOUNT_ALLOW_REGISTRATION = env.bool("DJANGO_ACCOUNT_ALLOW_REGISTRATION", True)
-ACCOUNT_AUTHENTICATION_METHOD = "email"
+ACCOUNT_LOGIN_METHODS = {"email"}
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_EMAIL_VERIFICATION = "optional"  # Change to optional for development
 ACCOUNT_CONFIRM_EMAIL_ON_GET = True  # Verify on GET request

@@ -3,7 +3,6 @@ import { dirname, resolve } from 'path'
 import { fileURLToPath } from 'url'
 import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
-import { splitVendorChunkPlugin } from 'vite'
 
 const projectDir = dirname(fileURLToPath(import.meta.url))
 
@@ -16,12 +15,11 @@ export default defineConfig({
         }
       }
     }),
-    tailwindcss(),
-    splitVendorChunkPlugin() // Add vendor chunk splitting
+    tailwindcss()
   ],
   base: '/static/',
   define: {
-    __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: true
+    __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: false
   },
   resolve: {
     alias: {
@@ -53,7 +51,7 @@ export default defineConfig({
         drop_debugger: true
       }
     },
-    target: 'es2018', // Target modern browsers for smaller bundles
+    target: 'es2020', // Target modern browsers for smaller bundles
     cssCodeSplit: true, // Split CSS into smaller chunks
     reportCompressedSize: false, // Improve build speed
     chunkSizeWarningLimit: 500 // Raise the size warning limit
