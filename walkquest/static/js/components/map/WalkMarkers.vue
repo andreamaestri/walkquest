@@ -225,6 +225,13 @@ defineExpose({
   border-color: rgb(var(--md-sys-color-primary));
 }
 
+/* Mapbox sets the map canvas to a grab cursor. Markers sit above that canvas,
+   so make their clickable hit area explicitly use the pointer cursor. */
+:deep(.mapboxgl-marker.map-marker),
+:deep(.mapboxgl-marker.map-marker *) {
+  cursor: pointer !important;
+}
+
 :deep(.mapboxgl-popup-close-button) {
   background-color: rgba(0, 0, 0, 0.3) !important;
   color: white !important;
