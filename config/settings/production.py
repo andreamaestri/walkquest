@@ -76,6 +76,26 @@ STORAGES = {
     },
 }
 
+# Media (walk photos) on Cloudflare R2 when configured; local MEDIA_ROOT otherwise.
+R2_BUCKET = env("DJANGO_R2_BUCKET", default="")
+if R2_BUCKET:
+    STORAGES["default"] = {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "bucket_name": R2_BUCKET,
+            "endpoint_url": env("DJANGO_R2_ENDPOINT_URL"),
+            "access_key": env("DJANGO_R2_ACCESS_KEY_ID"),
+            "secret_key": env("DJANGO_R2_SECRET_ACCESS_KEY"),
+            "region_name": "auto",
+            "signature_version": "s3v4",
+            # Served publicly from the bucket's custom domain, so no signed URLs.
+            "custom_domain": env("DJANGO_R2_PUBLIC_DOMAIN"),
+            "querystring_auth": False,
+            "default_acl": None,
+            "object_parameters": {"CacheControl": "public, max-age=604800"},
+        },
+    }
+
 # Additional static files settings
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATIC_URL = "/static/"
