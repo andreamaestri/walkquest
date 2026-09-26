@@ -12,7 +12,7 @@ import { getIcons } from '@iconify/utils';
 const ROOT = process.cwd();
 const SOURCES = ['walkquest/static/js'];
 const OUT = join(ROOT, 'walkquest/static/js/icons/subset.json');
-const PREFIXES = ['mdi', 'material-symbols', 'ph', 'icon-park-solid', 'heroicons'];
+const PREFIXES = ['mdi', 'material-symbols'];
 const pattern = new RegExp(`\\b(${PREFIXES.join('|')}):([a-z0-9]+(?:-[a-z0-9]+)*)`, 'g');
 
 const files = [];

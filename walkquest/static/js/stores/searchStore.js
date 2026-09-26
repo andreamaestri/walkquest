@@ -1,509 +1,168 @@
-import { defineStore } from 'pinia'
-import { ref, computed, shallowRef, watch } from 'vue'
-import { useWalksStore } from './walks'
-import { useLocationStore } from './locationStore'
-import { useUiStore } from './ui'
+import { defineStore } from 'pinia';
+import { computed, ref, shallowRef } from 'vue';
+import { useWalksStore } from './walks';
+import { filterWalks } from '../utils/walks';
 
+const ORIGIN_KEY = 'walkquest-origin';
+
+function readOrigin() {
+  try {
+    const value = JSON.parse(localStorage.getItem(ORIGIN_KEY) || 'null');
+    return value && Number.isFinite(value.latitude) && Number.isFinite(value.longitude) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The single filter pipeline. The list renders `results`; the map dims every
+ * pin not in `matchIds`. Everything runs client-side over the in-memory index.
+ */
 export const useSearchStore = defineStore('search', () => {
-  const locationStore = useLocationStore()
-  const walksStore = useWalksStore()
-  const uiStore = useUiStore()
+  const walksStore = useWalksStore();
 
-  // State
-  const searchQuery = ref('')
-  const searchMode = ref('walks')
-  const error = ref(null)
-  const isLoading = ref(false)
-  const MAX_HISTORY_ITEMS = 5
-  const searchHistory = ref([])
-  const locationSuggestions = shallowRef([])
-  const activeFilters = shallowRef(new Set())
-  const filterValues = shallowRef({})
-  const selectedCategory = ref(null)
-  const availableCategories = shallowRef([])
+  /** 'explore' | 'nearby' | 'saved' */
+  const mode = ref('explore');
+  const query = ref('');
+  const categories = ref([]);
+  const difficulties = ref([]);
+  const amenities = ref([]);
+  const sort = ref('relevance');
+  const radiusMiles = ref(10);
+  /** { latitude, longitude, label, source: 'gps' | 'place' } */
+  const origin = shallowRef(readOrigin());
+  const locating = ref(false);
+  const error = ref(null);
 
-  // Pre-compute searchable walks (using only titles in lowercase)
-  const searchableWalks = shallowRef([])
+  const nearbyActive = computed(() => mode.value === 'nearby' && !!origin.value);
 
-  function initializeSearchableWalks() {
-    console.time('initializeSearchableWalks')
-    searchableWalks.value = walksStore.walks.map(walk => ({
-      id: walk.id,
-      // Preprocess once: use title (or walk_name) in lowercase
-      title: (walk.title || walk.walk_name || '').toLowerCase(),
-      originalWalk: walk
-    }))
-    console.timeEnd('initializeSearchableWalks')
+  const filters = computed(() => ({
+    query: query.value,
+    categories: categories.value,
+    difficulties: difficulties.value,
+    amenities: amenities.value,
+    savedOnly: mode.value === 'saved',
+    origin: origin.value,
+    radiusMiles: nearbyActive.value ? radiusMiles.value : null,
+    sort: nearbyActive.value && sort.value === 'relevance' && !query.value.trim() ? 'distance' : sort.value,
+  }));
+
+  const pipeline = computed(() =>
+    filterWalks(walksStore.walks, filters.value, {
+      searchIndex: walksStore.searchIndex,
+      favoriteIds: walksStore.favoriteIds,
+    }),
+  );
+
+  const results = computed(() => pipeline.value.walks);
+  const distances = computed(() => pipeline.value.distances);
+  const matchIds = computed(() => new Set(results.value.map((walk) => walk.id)));
+
+  const activeFilterCount = computed(
+    () =>
+      categories.value.length +
+      difficulties.value.length +
+      amenities.value.length +
+      (query.value.trim() ? 1 : 0) +
+      (mode.value !== 'explore' ? 1 : 0),
+  );
+  const isFiltered = computed(() => activeFilterCount.value > 0);
+
+  function setQuery(value) {
+    query.value = value || '';
   }
 
-  // Extract all unique categories from walks
-  function extractCategories() {
-    const categories = new Set()
-    
-    // Debug the first few walks to understand the structure
-    if (walksStore.walks.length > 0) {
-      console.log('First walk categories structure:', {
-        related_categories: walksStore.walks[0].related_categories,
-        categories: walksStore.walks[0].categories
-      })
-    }
-    
-    walksStore.walks.forEach(walk => {
-      // Handle related_categories
-      if (walk.related_categories && Array.isArray(walk.related_categories)) {
-        walk.related_categories.forEach(category => {
-          if (typeof category === 'string') {
-            categories.add(category)
-          } else if (category && typeof category === 'object') {
-            if (category.name) {
-              categories.add(category.name)
-            } else if (category.slug) {
-              // In some cases, only slug might be available
-              categories.add(category.slug.replace(/-/g, ' '))
-            }
-          }
-        })
-      }
-      
-      // Handle categories
-      if (walk.categories && Array.isArray(walk.categories)) {
-        walk.categories.forEach(category => {
-          if (typeof category === 'string') {
-            categories.add(category)
-          } else if (category && typeof category === 'object') {
-            if (category.name) {
-              categories.add(category.name)
-            } else if (category.slug) {
-              // In some cases, only slug might be available
-              categories.add(category.slug.replace(/-/g, ' '))
-            }
-          }
-        })
-      }
-    })
-    
-    // Convert to array and sort
-    availableCategories.value = Array.from(categories).filter(Boolean).sort()
-    console.log('Extracted categories:', availableCategories.value)
+  function toggleIn(listRef, value) {
+    listRef.value = listRef.value.includes(value)
+      ? listRef.value.filter((item) => item !== value)
+      : [...listRef.value, value];
   }
 
-  // Update searchableWalks when walksStore.walks changes
-  watch(
-    () => walksStore.walks,
-    () => {
-      initializeSearchableWalks()
-      extractCategories()
-    },
-    { immediate: true }
-  )
+  const toggleCategory = (slug) => toggleIn(categories, slug);
+  const toggleDifficulty = (level) => toggleIn(difficulties, level);
+  const toggleAmenity = (key) => toggleIn(amenities, key);
 
-  // Optimized suggestions using only the preprocessed title
-  const suggestions = computed(() => {
-    const t0 = performance.now()
-    const query = searchQuery.value.trim().toLowerCase()
-    if (!query) return []
-    
-    const terms = query.split(/\s+/)
-    const results = []
-    
-    // Simple scan over the cached searchableWalks
-    for (const walk of searchableWalks.value) {
-      let match = true
-      for (const term of terms) {
-        if (!walk.title.includes(term)) {
-          match = false
-          break
-        }
-      }
-      if (match) {
-        results.push(walk.originalWalk)
-        if (results.length >= 5) break
-      }
-    }
-    
-    const t1 = performance.now()
-    console.debug(`Suggestions computed in ${(t1 - t0).toFixed(2)}ms for query: "${query}"`)
-    return results
-  })
-
-  // Cache for full text (for detailed filtering)
-  const walkTextCache = new Map()
-
-  function getWalkSearchText(walk) {
-    if (!walk?.id) return ''
-    if (walkTextCache.has(walk.id)) {
-      return walkTextCache.get(walk.id)
-    }
-    const text = [
-      walk.title,
-      walk.location,
-      walk.description
-    ].filter(Boolean).join(' ').toLowerCase()
-    walkTextCache.set(walk.id, text)
-    return text
+  function setMode(next) {
+    mode.value = next;
+    if (next !== 'nearby' && sort.value === 'distance') sort.value = 'relevance';
   }
 
-  // Cache for filtered results to prevent recalculation
-  const filteredCache = shallowRef({
-    query: '',
-    filters: new Set(),
-    filterValues: {},
-    selectedCategory: null,
-    searchMode: '',
-    results: []
-  })
-  
-  // Helper to compare filter sets
-  const areFiltersEqual = (a, b) => {
-    if (a.size !== b.size) return false
-    for (const item of a) {
-      if (!b.has(item)) return false
-    }
-    return true
-  }
-  
-  // Helper to compare filter values objects
-  const areFilterValuesEqual = (a, b) => {
-    const aKeys = Object.keys(a)
-    const bKeys = Object.keys(b)
-    if (aKeys.length !== bKeys.length) return false
-    
-    return aKeys.every(key => {
-      if (Array.isArray(a[key]) && Array.isArray(b[key])) {
-        return a[key].length === b[key].length && 
-               a[key].every((val, idx) => val === b[key][idx])
-      }
-      return a[key] === b[key]
-    })
-  }
-  
-  // Helper to check if we can use the cache
-  const canUseCache = () => {
-    return filteredCache.value.query === searchQuery.value.toLowerCase().trim() &&
-           areFiltersEqual(filteredCache.value.filters, activeFilters.value) &&
-           areFilterValuesEqual(filteredCache.value.filterValues, filterValues.value) &&
-           filteredCache.value.selectedCategory === selectedCategory.value &&
-           filteredCache.value.searchMode === searchMode.value
-  }
-  
-  // Optimized filtering with caching
-  const filteredWalks = computed(() => {
-    // Start timing for performance monitoring
-    console.time('filteredWalks computation')
-    
-    // Early return if no query and no filters
-    if (!searchQuery.value && activeFilters.value.size === 0) {
-      console.timeEnd('filteredWalks computation')
-      return []
-    }
-    
-    // Use cache if inputs haven't changed
-    if (canUseCache()) {
-      console.log('Using cached filtered walks')
-      console.timeEnd('filteredWalks computation')
-      return filteredCache.value.results
-    }
-    
-    // Handle location-based search
-    if (searchMode.value === 'locations' && locationStore.userLocation) {
-      // Update cache
-      filteredCache.value = {
-        query: searchQuery.value.toLowerCase().trim(),
-        filters: new Set(activeFilters.value),
-        filterValues: { ...filterValues.value },
-        selectedCategory: selectedCategory.value,
-        searchMode: searchMode.value,
-        results: locationStore.nearbyWalks
-      }
-      console.timeEnd('filteredWalks computation')
-      return locationStore.nearbyWalks
-    }
-    
-    // Handle category-based search
-    if (searchMode.value === 'categories' && selectedCategory.value) {
-      const selectedCat = typeof selectedCategory.value === 'string' ?
-                           selectedCategory.value.toLowerCase() :
-                           (selectedCategory.value.name ? selectedCategory.value.name.toLowerCase() : '')
-      
-      // Avoid creating functions inside the filter
-      const results = walksStore.walks.filter(walk => {
-        const categories = walk.related_categories || walk.categories || []
-        return categories.some(cat => {
-          const catName = typeof cat === 'string' ? cat.toLowerCase() :
-                          (cat && cat.name ? cat.name.toLowerCase() : '')
-          return catName.includes(selectedCat)
-        })
-      })
-      
-      // Update cache
-      filteredCache.value = {
-        query: searchQuery.value.toLowerCase().trim(),
-        filters: new Set(activeFilters.value),
-        filterValues: { ...filterValues.value },
-        selectedCategory: selectedCategory.value,
-        searchMode: searchMode.value,
-        results
-      }
-      console.timeEnd('filteredWalks computation')
-      return results
-    }
-    
-    // Handle text search and filters
-    const query = searchQuery.value.toLowerCase().trim()
-    let results = walksStore.walks
-    
-    // Apply text search filter first if present
-    if (query) {
-      const searchTerms = query.split(/\s+/)
-      // Avoid recalculating search text for each walk in every filter pass
-      const searchTextMap = new Map()
-      
-      results = results.filter(walk => {
-        // Get or calculate search text
-        let text
-        if (searchTextMap.has(walk.id)) {
-          text = searchTextMap.get(walk.id)
-        } else {
-          text = getWalkSearchText(walk)
-          searchTextMap.set(walk.id, text)
-        }
-        
-        // Check all terms
-        return searchTerms.every(term => text.includes(term))
-      })
-    }
-    
-    // Apply property filters if present
-    if (activeFilters.value.size > 0) {
-      // Extract filter criteria once before the filter loop
-      const difficultyValue = filterValues.value.difficulty
-      const distanceValues = filterValues.value.distance
-      const durationValues = filterValues.value.duration
-      const categoryValue = filterValues.value.category
-      
-      // Create a filter function based on active filters
-      results = results.filter(walk => {
-        // Check all filters
-        for (const filter of activeFilters.value) {
-          switch (filter) {
-            case 'difficulty':
-              if (difficultyValue && walk.difficulty !== difficultyValue) return false
-              break
-              
-            case 'distance':
-              if (distanceValues) {
-                const [min, max] = distanceValues
-                if (walk.distance < min || walk.distance > max) return false
-              }
-              break
-              
-            case 'duration':
-              if (durationValues) {
-                const [minHours, maxHours] = durationValues
-                if (walk.duration < minHours || walk.duration > maxHours) return false
-              }
-              break
-              
-            case 'category':
-              if (categoryValue && !walk.categories?.includes(categoryValue)) return false
-              break
-              
-            case 'dogFriendly':
-              if (walk.dogFriendly !== true) return false
-              break
-          }
-        }
-        return true
-      })
-    }
-    
-    // Update cache with new results
-    filteredCache.value = {
-      query,
-      filters: new Set(activeFilters.value),
-      filterValues: { ...filterValues.value },
-      selectedCategory: selectedCategory.value,
-      searchMode: searchMode.value,
-      results
-    }
-    
-    console.timeEnd('filteredWalks computation')
-    return results
-  })
-
-  // Add performSearch method
-  async function performSearch(query) {
-    if (!query?.trim()) {
-      clearSearch()
-      return []
-    }
-
+  function setOrigin(value) {
+    origin.value = value ? Object.freeze({ ...value }) : null;
     try {
-      setIsLoading(true)
-      setSearchQuery(query)
-      return filteredWalks.value
-    } finally {
-      setIsLoading(false)
+      if (value) localStorage.setItem(ORIGIN_KEY, JSON.stringify(value));
+      else localStorage.removeItem(ORIGIN_KEY);
+    } catch {
+      /* ignore storage errors */
     }
   }
 
-  // Actions
-  function setSearchQuery(query) {
-    if (searchQuery.value === query) return
-    searchQuery.value = query || ''
-    if (query?.trim() && !searchHistory.value.includes(query)) {
-      searchHistory.value.unshift(query)
-      if (searchHistory.value.length > MAX_HISTORY_ITEMS) {
-        searchHistory.value.pop()
-      }
+  /** Uses the browser location as the origin for "Nearby". */
+  function locate() {
+    if (!navigator.geolocation) {
+      error.value = 'Location is not available in this browser';
+      return Promise.reject(new Error(error.value));
     }
+    locating.value = true;
+    error.value = null;
+    return new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          locating.value = false;
+          const value = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            label: 'Your location',
+            source: 'gps',
+          };
+          setOrigin(value);
+          setMode('nearby');
+          resolve(value);
+        },
+        (err) => {
+          locating.value = false;
+          error.value = err.code === 1 ? 'Location permission denied' : 'Could not find your location';
+          reject(err);
+        },
+        { enableHighAccuracy: false, timeout: 10000, maximumAge: 5 * 60 * 1000 },
+      );
+    });
   }
 
-  // Enhanced search mode setter with better error handling
-  function setSearchMode(mode) {
-    console.log('Setting search mode to:', mode);
-    if (!['walks', 'locations', 'categories'].includes(mode)) {
-      console.warn(`Invalid search mode: ${mode}`);
-      return;
-    }
-    if (searchMode.value === mode) return;
-    searchMode.value = mode;
-    clearSearch();
-    
-    // Log available categories when switching to categories mode
-    if (mode === 'categories') {
-      console.log('Available categories for category mode:', availableCategories.value);
-      if (!availableCategories.value.length) {
-        console.warn('No categories available. Trying to extract again...');
-        extractCategories();
-      }
-    }
-  }
-
-  function setError(message) {
-    error.value = message
-  }
-
-  function setIsLoading(loading) {
-    isLoading.value = loading
-  }
-
-  async function handleLocationSelected(location) {
-    if (!location?.center) return
-    const [longitude, latitude] = location.center
-    setSearchMode('locations')
-    try {
-      isLoading.value = true
-      await locationStore.setUserLocation({
-        latitude,
-        longitude,
-        place_name: location.place_name
-      })
-    } catch (error) {
-      console.error('Error handling location:', error)
-      setError('Unable to process location')
-    } finally {
-      isLoading.value = false
-    }
-  }
-
-  function setLocationSuggestions(suggestions) {
-    locationSuggestions.value = suggestions || []
-  }
-
-  function clearLocationSuggestions() {
-    locationSuggestions.value = []
-  }
-
-  function toggleFilter(filter) {
-    const filters = new Set(activeFilters.value)
-    if (filters.has(filter)) {
-      filters.delete(filter)
-      delete filterValues.value[filter]
-    } else {
-      filters.add(filter)
-    }
-    activeFilters.value = filters
-  }
-
-  function setFilterValue(filter, value) {
-    if (!activeFilters.value.has(filter)) return
-    filterValues.value = { ...filterValues.value, [filter]: value }
-  }
-
-  function clearSearch() {
-    searchQuery.value = ''
-    error.value = null
-    locationSuggestions.value = []
-    activeFilters.value = new Set()
-    filterValues.value = {}
-    
-    // Clear caches
-    walkTextCache.clear()
-    filteredCache.value = {
-      query: '',
-      filters: new Set(),
-      filterValues: {},
-      selectedCategory: null,
-      searchMode: searchMode.value,
-      results: []
-    }
-  }
-
-  function setSelectedCategory(category) {
-    console.log('Setting selected category:', category)
-    if (!category) {
-      selectedCategory.value = null
-      return
-    }
-    
-    if (typeof category === 'object') {
-      if (category.name) {
-        selectedCategory.value = category.name
-      } else if (category.slug) {
-        // If we only have a slug, convert it to a readable name
-        selectedCategory.value = category.slug.replace(/-/g, ' ')
-      } else {
-        console.warn('Invalid category object:', category)
-      }
-    } else if (typeof category === 'string') {
-      selectedCategory.value = category
-    } else {
-      console.warn('Invalid category type:', typeof category)
-    }
+  function clearFilters() {
+    query.value = '';
+    categories.value = [];
+    difficulties.value = [];
+    amenities.value = [];
+    sort.value = 'relevance';
+    mode.value = 'explore';
+    error.value = null;
   }
 
   return {
-    // State
-    searchQuery,
-    searchMode,
+    mode,
+    query,
+    categories,
+    difficulties,
+    amenities,
+    sort,
+    radiusMiles,
+    origin,
+    locating,
     error,
-    isLoading,
-    searchHistory,
-    locationSuggestions,
-    activeFilters,
-    filterValues,
-    selectedCategory,
-    availableCategories,
-
-    // Computed
-    filteredWalks,
-    suggestions,
-    searchResults: filteredWalks, // Expose filteredWalks as searchResults
-
-    // Actions
-    setSearchQuery,
-    setSearchMode,
-    setError,
-    setIsLoading,
-    handleLocationSelected,
-    setLocationSuggestions,
-    clearLocationSuggestions,
-    toggleFilter,
-    setFilterValue,
-    clearSearch,
-    initializeSearchableWalks,
-    setSelectedCategory,
-    performSearch
-  }
-})
+    nearbyActive,
+    results,
+    distances,
+    matchIds,
+    activeFilterCount,
+    isFiltered,
+    setQuery,
+    toggleCategory,
+    toggleDifficulty,
+    toggleAmenity,
+    setMode,
+    setOrigin,
+    locate,
+    clearFilters,
+  };
+});

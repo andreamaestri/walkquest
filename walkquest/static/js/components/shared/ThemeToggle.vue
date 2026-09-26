@@ -1,27 +1,27 @@
 <template>
-  <button
-    type="button"
-    class="m3-icon-button m3-interactive theme-toggle"
-    :aria-label="isDark ? 'Switch to light theme' : 'Switch to dark theme'"
-    :aria-pressed="isDark"
-    @click="toggleTheme"
-  >
-    <Icon :icon="isDark ? 'mdi:white-balance-sunny' : 'mdi:weather-night'" aria-hidden="true" />
-    <span class="sr-only">{{ isDark ? 'Light theme' : 'Dark theme' }}</span>
-  </button>
+  <M3IconButton
+    :icon="icons[mode]"
+    :label="`Theme: ${labels[mode]} (click to change)`"
+    :variant="variant"
+    :size="size"
+    @click="cycleMode"
+  />
 </template>
 
 <script setup>
-import { Icon } from '@iconify/vue';
+import M3IconButton from '../m3/M3IconButton.vue';
 import { useTheme } from '../../composables/useTheme';
 
-const { isDark, toggleTheme } = useTheme();
-</script>
+defineProps({
+  variant: { type: String, default: 'standard' },
+  size: { type: String, default: 'sm' },
+});
 
-<style scoped>
-.theme-toggle {
-  display: grid;
-  place-items: center;
-  font-size: 22px;
-}
-</style>
+const { mode, cycleMode } = useTheme();
+const icons = {
+  light: 'material-symbols:light-mode-outline-rounded',
+  dark: 'material-symbols:dark-mode-outline-rounded',
+  system: 'material-symbols:brightness-auto-outline-rounded',
+};
+const labels = { light: 'Light', dark: 'Dark', system: 'System' };
+</script>

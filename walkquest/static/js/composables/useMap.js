@@ -1,69 +1,22 @@
-import { ref, shallowRef, nextTick } from 'vue';
+import { shallowRef } from 'vue';
+
+// One map per page: shared module-level state so every component that calls
+// useMap() talks to the same mapbox-gl instance.
+const mapInstance = shallowRef(null);
 
 export function useMap() {
-  const mapInstance = shallowRef(null);
-  
-  // Set map instance
   const setMapInstance = (map) => {
-    if (map) {
-      mapInstance.value = map;
-    }
+    mapInstance.value = map || null;
   };
 
-  // Add the missing flyToLocation function
-  const flyToLocation = async (options) => {
-    if (!mapInstance.value) {
-      console.error('Map instance not available for flyToLocation');
-      return;
-    }
-    
-    try {
-      // Extract options with defaults
-      const {
-        center,
-        zoom = 12,
-        pitch = 0,
-        bearing = 0,
-        duration = 2000,
-        essential = true,
-        callback = null
-      } = options;
-      
-      // Fly to the specified location with a delay to prevent state issues
-      await mapInstance.value.flyTo({
-        center,
-        zoom,
-        pitch,
-        bearing,
-        duration,
-        essential
-      });
-      
-      // Use a promise to handle the moveend event
-      if (typeof callback === 'function') {
-        return new Promise((resolve) => {
-          const onMoveEnd = () => {
-            // Remove the event listener to prevent memory leaks
-            mapInstance.value.off('moveend', onMoveEnd);
-            // Use nextTick to ensure Vue has updated the DOM
-            nextTick(() => {
-              callback();
-              resolve();
-            });
-          };
-          mapInstance.value.once('moveend', onMoveEnd);
-        });
-      }
-    } catch (error) {
-      console.error('Error flying to location:', error);
-      throw error;
-    }
-  };
-  
-  // Return functions and state
-  return {
-    mapInstance,
-    setMapInstance,
-    flyToLocation
-  };
+  /** Flies to a location; resolves when the camera settles. */
+  const flyToLocation = ({ center, zoom = 12, pitch = 0, bearing = 0, duration = 1600 } = {}) =>
+    new Promise((resolve) => {
+      const map = mapInstance.value;
+      if (!map || !center) return resolve();
+      map.once('moveend', () => resolve());
+      map.flyTo({ center, zoom, pitch, bearing, duration, essential: true });
+    });
+
+  return { mapInstance, setMapInstance, flyToLocation };
 }

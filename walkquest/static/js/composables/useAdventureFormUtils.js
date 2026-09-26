@@ -25,9 +25,9 @@ export function useAdventureFormUtils() {
   const difficultyLevels = [
     { value: 'NOVICE WANDERER', label: 'Novice Wanderer', icon: 'mdi:walk' },
     { value: "GREY'S PATHFINDER", label: "Grey's Pathfinder", icon: 'mdi:hiking' },
-    { value: 'TRAIL RANGER', label: 'Trail Ranger', icon: 'mdi:trail-sign' },
+    { value: 'TRAIL RANGER', label: 'Trail Ranger', icon: 'mdi:sign-direction' },
     { value: "WARDEN'S ASCENT", label: "Warden's Ascent", icon: 'mdi:mountain' },
-    { value: 'MASTER WAYFARER', label: 'Master Wayfarer', icon: 'mdi:mountain-peak' }
+    { value: 'MASTER WAYFARER', label: 'Master Wayfarer', icon: 'mdi:image-filter-hdr' }
   ]
 
   // Available categories

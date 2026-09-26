@@ -32,7 +32,6 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount, onErrorCaptured, defineAsyncComponent, shallowRef } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useUiStore } from './stores/ui';
-import { useSearchStore } from './stores/searchStore';
 import { useAdventureDialogStore } from './stores/adventureDialog';
 import { useAdventureStore } from './stores/adventure';
 import { useAuthStore } from './stores/auth';
@@ -82,7 +81,6 @@ const { portalRoot } = usePortal();
 const adventureStore = useAdventureStore();
 const adventureDialogStore = useAdventureDialogStore();
 const uiStore = useUiStore();
-const searchStore = useSearchStore();
 const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
@@ -186,20 +184,6 @@ onMounted(() => {
     }
   }, { immediate: true });
   
-  // Set initial search mode from localStorage or default to 'walks'
-  try {
-    const searchMode = localStorage.getItem('searchMode') || 'walks';
-    if (['walks', 'locations'].includes(searchMode)) {
-      searchStore.setSearchMode(searchMode);
-    }
-    
-    // Watch search mode changes to update localStorage
-    watch(() => searchStore.searchMode, (mode) => {
-      localStorage.setItem('searchMode', mode);
-    });
-  } catch (error) {
-    console.error('Error setting search mode:', error);
-  }
 });
 
 // Cleanup handlers when component is unmounted

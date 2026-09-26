@@ -50,6 +50,10 @@ export default defineConfig({
     reportCompressedSize: false, // Improve build speed
     chunkSizeWarningLimit: 500 // Raise the size warning limit
   },
+  test: {
+    include: ['walkquest/static/js/**/*.test.js'],
+    environment: 'node',
+  },
   server: {
     origin: 'http://localhost:5173'
   }

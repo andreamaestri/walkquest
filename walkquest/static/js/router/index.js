@@ -1,11 +1,21 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 
+// Child routes of the explore interface render nothing themselves.
+const EmptyRoute = { render: () => null };
+
 const routes = [
+  // The explore interface (list + map) stays mounted while moving between the
+  // list and a walk: the child routes only change which walk is selected, so
+  // the map is never torn down and rebuilt.
   {
     path: '/',
-    name: 'home',
-    component: () => import('../components/WalkInterface.vue')
+    component: () => import('../components/WalkInterface.vue'),
+    children: [
+      { path: '', name: 'home', component: EmptyRoute },
+      { path: 'walk/:walk_id', name: 'walk', component: EmptyRoute },
+      { path: 'walk/id/:walk_id', name: 'walk-by-id', component: EmptyRoute },
+    ],
   },
   {
     path: '/login',
@@ -49,18 +59,6 @@ const routes = [
     name: 'adventures',
     component: () => import('../components/adventures/AdventureManager.vue'),
     meta: { requiresAuth: true }
-  },
-  {
-    path: '/walk/:walk_id',
-    name: 'walk',
-    component: () => import('../components/WalkInterface.vue'),
-    props: true
-  },
-  {
-    path: '/walk/id/:walk_id',
-    name: 'walk-by-id',
-    component: () => import('../components/WalkInterface.vue'),
-    props: true
   },
   // Handle redirects from Django auth
   {
