@@ -260,6 +260,22 @@ async function share() {
 }
 .detail__top-title.is-visible { opacity: 1; transform: none; }
 .detail__scroll { flex: 1; min-block-size: 0; overflow-y: auto; padding: 0 16px 32px; overscroll-behavior: contain; }
+/* M3E: content rises in, staggered, as the view arrives (and as detail data lands). */
+.detail__scroll > * {
+  animation:
+    detail-rise var(--md-sys-motion-spring-slow-spatial-duration) var(--md-sys-motion-spring-slow-spatial) both,
+    detail-fade var(--md-sys-motion-spring-slow-effects-duration) var(--md-sys-motion-spring-slow-effects) both;
+  animation-delay: calc(var(--_i, 8) * 35ms + 60ms);
+}
+.detail__scroll > :nth-child(1) { --_i: 0; }
+.detail__scroll > :nth-child(2) { --_i: 1; }
+.detail__scroll > :nth-child(3) { --_i: 2; }
+.detail__scroll > :nth-child(4) { --_i: 3; }
+.detail__scroll > :nth-child(5) { --_i: 4; }
+.detail__scroll > :nth-child(6) { --_i: 5; }
+.detail__scroll > :nth-child(7) { --_i: 6; }
+@keyframes detail-rise { from { translate: 0 20px; } }
+@keyframes detail-fade { from { opacity: 0; } }
 .detail__credit { margin: 8px 4px 0; color: var(--md-sys-color-on-surface-variant); }
 .detail__credit a { color: var(--md-sys-color-primary); font-weight: 600; }
 .detail__title { margin: 16px 4px 16px; color: var(--md-sys-color-on-surface); text-wrap: balance; }

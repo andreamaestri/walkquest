@@ -1,5 +1,7 @@
+import { cubicBezier } from 'motion-v';
+
 /**
- * Material 3 Expressive motion for JavaScript animations (motion's `animate`).
+ * Material 3 Expressive motion for JavaScript animations (motion-v / Mapbox).
  *
  * M3E specifies springs by stiffness and damping *ratio*; motion expects an
  * absolute damping coefficient, so convert: c = ζ · 2·√(k·m).
@@ -46,3 +48,45 @@ export const prefersReducedMotion = () =>
 export function spring(name = 'defaultSpatial') {
   return prefersReducedMotion() ? { duration: 0 } : springs[name];
 }
+
+/** Easing functions for code that takes `t => t` (Mapbox camera, manual tweens). */
+export const ease = {
+  standard: cubicBezier(...easing.standard),
+  emphasized: cubicBezier(...easing.emphasized),
+  emphasizedDecelerate: cubicBezier(...easing.emphasizedDecelerate),
+  emphasizedAccelerate: cubicBezier(...easing.emphasizedAccelerate),
+};
+
+/**
+ * Camera motion. Maps travel further than UI, so camera moves use the M3
+ * emphasized curve with extra-long durations; reduced motion jumps instead.
+ */
+export function cameraMotion(duration = 1000, curve = 'emphasized') {
+  return prefersReducedMotion() ? { duration: 0 } : { duration, easing: ease[curve], essential: true };
+}
+
+/**
+ * M3 shared-axis X transition for hierarchical navigation (list ⇄ detail).
+ * `direction` is 1 going deeper, -1 going back; pass it as AnimatePresence
+ * `custom` so the leaving view reads the latest value.
+ */
+export const sharedAxisX = {
+  initial: (direction = 1) => ({ opacity: 0, x: 32 * direction }),
+  enter: { opacity: 1, x: 0, transition: { x: springs.fastSpatial, opacity: { ...springs.defaultEffects, delay: 0.05 } } },
+  // The outgoing view leaves quickly so the incoming one can take over.
+  exit: (direction = 1) => ({
+    opacity: 0,
+    x: -32 * direction,
+    transition: { duration: 0.12, ease: easing.emphasizedAccelerate },
+  }),
+};
+
+/** Staggered "fade up" for content sections arriving in a view. */
+export const fadeUp = {
+  hidden: { opacity: 0, y: 16 },
+  shown: (index = 0) => ({
+    opacity: 1,
+    y: 0,
+    transition: { y: { ...springs.defaultSpatial, delay: 0.04 * index }, opacity: { ...springs.defaultEffects, delay: 0.04 * index } },
+  }),
+};
