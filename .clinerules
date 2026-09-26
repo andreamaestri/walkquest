@@ -1,30 +1,33 @@
 # WalkQuest Project Rules
 
-# Frontend Patterns
-- Use Tailwind classes directly in HTML (no custom CSS or @apply)
-- Follow Vue 3 Composition API patterns
-- Use iconify-prerendered for all icons
-- All components must integrate with Pinia stores for state
+# Design system (Material 3 Expressive)
+- Colours come from generated tokens (npm run theme); never hard-code hex colours in components
+- Use var(--md-sys-color-*) directly (tokens are real colours); for transparency use color-mix(), not rgb(var())
+- Prefer the Tailwind theme utilities (bg-surface-container-low, text-on-surface, rounded-m3-lg, type-title-medium, state-layer, shape-morph)
+- Build UI from components/m3/* (M3Button, M3IconButton, M3Chip, M3Menu, M3FabMenu, M3BottomSheet, M3LoadingIndicator)
+- Icons: material-symbols:*-rounded via <Icon>; run npm run icons (build does it) to bundle new ones
 
-# Virtual List Implementation
-- Use vue-virtual-scroller (DynamicScroller/DynamicScrollerItem)
-- Min item size: isCompact ? 56 : 180, with buffer: 500
-- Always implement proper cleanup in onBeforeUnmount
+# Frontend patterns
+- Vue 3 Composition API (<script setup>); Pinia for shared state
+- Large collections live in shallowRef/frozen objects; never deep-proxy the walk index
+- One filter pipeline: stores/searchStore.js (pure logic in utils/walks.js); list and map both consume it
+- css/app.css is the only global stylesheet; component styles are scoped
 
-# Map Integration
-- Use @studiometa/vue-mapbox-gl for all map functionality
-- Include Mapbox CSS in base.html
-- Use empty container pattern for map
-- Place controls outside map container
+# Walk list
+- Load every walk at once from /api/walks (ETag-cached, IndexedDB copy); no pagination
+- Virtualise with RecycleScroller and a fixed item size (120px)
+- Fetch details/geometry on demand via the walks store / services/api.js
 
-# Animation System
-- Use motion's animate function for JavaScript animations
-- Always stop animations in onUnmounted/cleanup hooks
-- Combine with Vue transitions for enter/leave states
-- Use M3 emphasized easing: [0.2, 0, 0, 1]
-- Use M3 emphasized-accelerate for exits: [0.3, 0, 0.8, 0.15]
+# Map
+- Raw mapbox-gl in components/map/WalkMap.vue; no DOM markers and no clustering
+- All walks are one GeoJSON source; hover/selection via feature-state; build layers in utils/mapLayers.js
+- Zoom expressions must be the top-level interpolate/step input
+- Clean up map listeners/observers in onBeforeUnmount
 
-# Development Flow
-- Format with both Prettier (frontend) and Ruff (backend)
-- Always document store pattern changes
-- All new features need corresponding tests
+# Motion
+- CSS: --md-sys-motion-spring-* tokens; JS: springs from js/design/motion.js with motion's animate({ ease | type: 'spring' })
+- Respect prefers-reduced-motion
+
+# Development flow
+- Frontend: npm test and npm run build; Backend: ruff, manage.py check, makemigrations --check, pytest
+- New features need tests (Vitest for pure JS, pytest for API/commands)

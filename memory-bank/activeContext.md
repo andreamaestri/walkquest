@@ -1,6 +1,23 @@
 # Active Context
 
-## Current Focus
+## Current Focus (September 2026)
+
+### Material 3 Expressive redesign + performance overhaul ✅
+- Generated colour tokens (seed #127C80), Google Sans Flex, spring motion, M3E components
+- Explore interface rebuilt: navigation rail, search with places, filter chips,
+  virtualised photo cards, walk detail with captioned slideshow, mobile sheet + FAB menu
+- Map: single GeoJSON source + GPU layers, feature-state hover/selection, dimming for filters
+- API: compact ETag-cached /api/walks, /api/walks/favorites, photos in walk detail
+- Walk photos imported from iWalk Cornwall (manage.py import_iwalk_photos)
+
+### Next
+- Run import_iwalk_photos on the server (sandbox cannot reach iwalkcornwall.co.uk)
+- Visual check of the map with the real Mapbox style/token
+- Redesign the auth, profile and adventure screens with the new components
+
+---
+
+## Previous notes
 
 ### Vue.js Component Error Investigation - CRITICAL ISSUE 🔴
 - Recurring errors in component hierarchy affecting multiple components

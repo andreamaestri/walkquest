@@ -70,9 +70,81 @@ The Vite development server proxies frontend requests to Django. Open the addres
 
 ```bash
 npm run dev       # Start Vite in development mode
-npm run build     # Build production assets
+npm run build     # Bundle icons, then build production assets
+npm test          # Run the Vitest unit tests
+npm run theme     # Regenerate M3 colour tokens (SEED=#127C80 npm run theme)
+npm run icons     # Rebuild the bundled icon subset (runs before every build)
 npm audit         # Check JavaScript dependencies
 ```
+
+## Design system (Material 3 Expressive)
+
+- **Tokens:** colour roles are generated from one seed colour with
+  `@material/material-color-utilities` (`scripts/generate-m3-theme.mjs` →
+  `walkquest/static/css/m3e/color.generated.css`, light and dark). Shape,
+  typography, spring motion, elevation and state tokens live in
+  `css/m3e/foundation.css`.
+- **Tailwind v4:** `css/app.css` is the only stylesheet entry point. Tokens are
+  mapped with `@theme inline`, so utilities such as `bg-surface-container-low`,
+  `text-on-surface`, `rounded-m3-xl` and `ease-spring-fast` follow the theme,
+  and `type-*`, `state-layer` and `shape-morph` utilities provide M3 roles.
+- **Typeface:** Google Sans Flex (self-hosted, weight + roundness axes).
+- **Motion:** CSS uses the M3 Expressive spring tokens; JavaScript animations
+  use the matching springs in `js/design/motion.js`.
+- **Components:** `js/components/m3/` (buttons, icon buttons, chips, menu,
+  FAB menu, bottom sheet and the morphing-shape loading indicator).
+- **Icons:** Iconify icons are bundled offline (`scripts/build-icon-subset.mjs`),
+  so they render immediately without calls to the Iconify API.
+
+## Walk list and map performance
+
+Every walk is loaded at once, with no pagination and no clustering:
+
+- `GET /api/walks` returns a compact, user-agnostic summary of every walk,
+  cached per data version with an `ETag` (repeat visits get `304 Not
+  Modified`) and gzip. The browser also keeps a copy in IndexedDB and renders
+  it instantly while it revalidates.
+- The list is virtualised with fixed-height rows, so only the visible cards
+  exist in the DOM regardless of how many walks there are.
+- The map draws all walks as one GeoJSON source and GPU layers; hover and
+  selection use feature-state. Filters dim non-matching pins instead of
+  hiding them.
+- Full details (`/api/walks/{id}`), favourites (`/api/walks/favorites`) and
+  route geometry are fetched on demand and memoised.
+
+## Walk photos
+
+Walk photos (the list thumbnail plus a captioned slideshow in each walk) are
+imported from the walk's page on [iWalk Cornwall](https://www.iwalkcornwall.co.uk/),
+whose URLs match each walk's `walk_id`:
+
+```bash
+poetry run python manage.py import_iwalk_photos --walk blisland_to_lavethan_wood --dry-run
+poetry run python manage.py import_iwalk_photos            # walks without photos
+poetry run python manage.py import_iwalk_photos --refresh  # re-import everything
+```
+
+The importer honours `robots.txt`, waits between requests (`--delay`, default
+2 s), downloads each photo and stores 960 px and 320 px WebP renditions under
+`MEDIA_ROOT/walks/<walk_id>/`. Use `--hotlink` to store the remote URLs instead,
+and `--from-html page.html` to test the parser against a saved page. Photos
+can be reordered, re-captioned or removed in the Django admin (Walk → Photos).
+
+The photos are © iWalk Cornwall: make sure you have permission before
+publishing them. The app credits them and links back to the source walk.
+
+In production, serve `MEDIA_ROOT` from your web server, for example:
+
+```nginx
+location /media/ {
+    alias /path/to/walkquest/walkquest/media/;
+    expires 30d;
+    add_header Cache-Control "public, immutable";
+}
+```
+
+If nothing else serves media, set `DJANGO_SERVE_MEDIA=True` to let Django serve
+`/media/walks/` with long cache headers.
 
 ## Backend commands
 
@@ -90,16 +162,17 @@ Tests need a working PostgreSQL/PostGIS database and the environment variables u
 The API is available under `/api/` and interactive documentation is exposed by Django Ninja. Common endpoints include:
 
 - `GET /api/health`
-- `GET /api/walks`
+- `GET /api/walks` (compact summaries, `ETag`/`304`)
+- `GET /api/walks/favorites` (the signed-in user's favourite walk IDs)
 - `GET /api/walks/nearby`
-- `GET /api/walks/{identifier}`
+- `GET /api/walks/{identifier}` (full details and photos)
 - `GET /api/walks/{id}/geometry`
 - `POST /api/walks/{id}/favorite`
 - `GET /api/tags`
 - `GET /api/filters`
 - `GET /api/config`
 
-The walk list intentionally returns an unpaginated, bounded result set. Nearby searches use a geographic bounding box and distance calculation to keep requests responsive without changing that API contract.
+The walk list intentionally returns every walk in one response (see *Walk list and map performance*). Search, category, difficulty and nearby filtering happen client-side over that index; `/api/walks/nearby` remains available for other clients.
 
 ## Deployment
 
