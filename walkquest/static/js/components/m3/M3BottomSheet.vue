@@ -16,7 +16,7 @@
         type="button"
         class="m3-sheet__handle"
         :aria-label="`Resize ${label}`"
-        @click="step(snapIndex === snaps.length - 1 ? -1 : 1)"
+        @click="onHandleClick"
       />
       <slot name="header" />
     </div>
@@ -36,7 +36,7 @@ const props = defineProps({
   modelValue: { type: Number, default: 0 },
   headerHeight: { type: Number, default: 36 },
 });
-const emit = defineEmits(['update:modelValue', 'height']);
+const emit = defineEmits(['update:modelValue', 'height', 'dragging']);
 
 const viewport = ref(window.innerHeight);
 const snaps = computed(() =>
@@ -52,6 +52,7 @@ const bodyHeight = computed(() => Math.max(0, visible.value - props.headerHeight
 
 watch(() => props.modelValue, (value) => { snapIndex.value = Math.min(value, snaps.value.length - 1); });
 watch(visible, (value) => emit('height', value), { immediate: true });
+watch(dragging, (value) => emit('dragging', value));
 
 function step(direction) {
   snapIndex.value = Math.max(0, Math.min(snaps.value.length - 1, snapIndex.value + direction));
@@ -60,9 +61,20 @@ function step(direction) {
 
 let startY = 0;
 let startTime = 0;
+let moved = false;
+
+// A drag that ends on the handle also fires a click; only real taps toggle.
+function onHandleClick() {
+  if (moved) {
+    moved = false;
+    return;
+  }
+  step(snapIndex.value === snaps.value.length - 1 ? -1 : 1);
+}
 function onPointerDown(event) {
   if (event.button !== 0) return;
   dragging.value = true;
+  moved = false;
   startY = event.clientY;
   startTime = performance.now();
   window.addEventListener('pointermove', onPointerMove);
@@ -70,6 +82,7 @@ function onPointerDown(event) {
 }
 function onPointerMove(event) {
   dragDelta.value = event.clientY - startY;
+  if (Math.abs(dragDelta.value) > 6) moved = true;
 }
 function onPointerUp(event) {
   window.removeEventListener('pointermove', onPointerMove);

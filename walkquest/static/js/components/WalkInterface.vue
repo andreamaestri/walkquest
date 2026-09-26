@@ -88,15 +88,23 @@
         </SearchBar>
       </div>
 
-      <M3FabMenu
-        v-show="!selectedWalk && sheetSnap === 0"
+      <!-- Rides on top of the sheet: same transform + spring as the sheet, and no
+           transition while dragging, so it tracks the finger without lagging. -->
+      <div
         class="mobile-fab"
-        :style="{ bottom: `${sheetHeight + 16}px` }"
-        icon="material-symbols:explore-rounded"
-        label="Browse walks"
-        :items="fabItems"
-        @select="navigate"
-      />
+        :class="{ 'is-dragging': sheetDragging }"
+        :style="{ transform: `translate3d(0, ${-sheetHeight}px, 0)` }"
+      >
+        <Transition name="fab">
+          <M3FabMenu
+            v-if="!selectedWalk && sheetSnap === 0"
+            icon="material-symbols:explore-rounded"
+            label="Browse walks"
+            :items="fabItems"
+            @select="navigate"
+          />
+        </Transition>
+      </div>
 
       <M3BottomSheet
         v-model="sheetSnap"
@@ -104,6 +112,7 @@
         :snap-points="[132, '52%', '94%']"
         :header-height="36"
         @height="sheetHeight = $event"
+        @dragging="sheetDragging = $event"
       >
         <template #default>
           <Transition name="swap" mode="out-in">
@@ -175,6 +184,7 @@ const hoveredId = ref(null);
 const paneOpen = ref(true);
 const sheetSnap = ref(0);
 const sheetHeight = ref(132);
+const sheetDragging = ref(false);
 const detailLoading = ref(false);
 
 const isMobile = computed(() => uiStore.isMobile);
@@ -368,9 +378,23 @@ onMounted(async () => {
 .mobile-fab {
   position: fixed;
   right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   z-index: 26;
-  transition: bottom var(--md-sys-motion-spring-default-spatial-duration) var(--md-sys-motion-spring-default-spatial);
+  pointer-events: none;
+  will-change: transform;
+  transition: transform var(--md-sys-motion-spring-default-spatial-duration) var(--md-sys-motion-spring-default-spatial);
 }
+.mobile-fab.is-dragging { transition: none; }
+/* FAB enter/exit: scale out of its own centre like an M3 FAB. */
+.fab-enter-active,
+.fab-leave-active {
+  transform-origin: bottom right;
+  transition:
+    transform var(--md-sys-motion-spring-fast-spatial-duration) var(--md-sys-motion-spring-fast-spatial),
+    opacity var(--md-sys-motion-spring-fast-effects-duration) var(--md-sys-motion-spring-fast-effects);
+}
+.fab-enter-from,
+.fab-leave-to { transform: scale(0.4); opacity: 0; }
 .pane-enter-active, .pane-leave-active {
   transition: margin-inline-start var(--md-sys-motion-spring-default-spatial-duration) var(--md-sys-motion-spring-default-spatial),
     opacity var(--md-sys-motion-spring-default-effects-duration) var(--md-sys-motion-spring-default-effects);

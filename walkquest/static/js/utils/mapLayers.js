@@ -177,3 +177,43 @@ export function routeLayers(colors) {
     },
   ];
 }
+
+/**
+ * Tap targets: walk pins are drawn 5–11px wide, far smaller than a fingertip,
+ * so taps are resolved against a box around the touch point (M3 recommends
+ * 48dp targets, i.e. a ~24px radius) and the closest pin wins.
+ */
+export function hitRadius(coarsePointer) {
+  return coarsePointer ? 24 : 8;
+}
+
+export function hitBox({ x, y }, radius) {
+  return [
+    [x - radius, y - radius],
+    [x + radius, y + radius],
+  ];
+}
+
+/** Picks the candidate nearest to `point`; each candidate is { feature, x, y } in screen px. */
+export function nearestHit(candidates, point, radius = Infinity) {
+  let best = null;
+  let bestDistance = radius;
+  for (const candidate of candidates) {
+    const distance = Math.hypot(candidate.x - point.x, candidate.y - point.y);
+    if (distance <= bestDistance) {
+      best = candidate;
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
+
+/** Mapbox GL JS v3 needs WebGL 2 (iOS 15+, current Android browsers). */
+export function supportsWebGL2() {
+  try {
+    const canvas = document.createElement('canvas');
+    return Boolean(window.WebGL2RenderingContext && canvas.getContext('webgl2'));
+  } catch {
+    return false;
+  }
+}
