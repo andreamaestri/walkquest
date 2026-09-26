@@ -1,4 +1,4 @@
-import { animate, stagger, inView } from 'motion-v';
+import { animate, stagger, inView } from 'motion';
 import { ref } from 'vue';
 
 /**
@@ -27,7 +27,7 @@ export function useMotionV() {
     
     return animate(element, keyframes, {
       duration: 0.3,
-      easing: [0.2, 0, 0.2, 1], // MD3 standard curve
+      ease: [0.2, 0, 0.2, 1], // MD3 standard curve
       ...options
     });
   }
@@ -40,7 +40,7 @@ export function useMotionV() {
     
     return animate(elements, keyframes, {
       duration: 0.3,
-      easing: [0.2, 0, 0.2, 1],
+      ease: [0.2, 0, 0.2, 1],
       delay: stagger(0.05),
       ...options
     });
@@ -60,7 +60,7 @@ export function useMotionV() {
         },
         options: {
           duration: 0.4,
-          easing: [0.34, 1.56, 0.64, 1] // Spring-like curve
+          ease: [0.34, 1.56, 0.64, 1] // Spring-like curve
         }
       },
       exit: {
@@ -71,7 +71,7 @@ export function useMotionV() {
         },
         options: {
           duration: 0.3,
-          easing: [0.4, 0, 0.2, 1]
+          ease: [0.4, 0, 0.2, 1]
         }
       },
       hover: {
@@ -83,7 +83,7 @@ export function useMotionV() {
         },
         options: {
           duration: 0.3,
-          easing: [0.2, 0.8, 0.2, 1]
+          ease: [0.2, 0.8, 0.2, 1]
         }
       },
       press: {
@@ -92,7 +92,7 @@ export function useMotionV() {
         },
         options: {
           duration: 0.1,
-          easing: [0.4, 0, 0.2, 1]
+          ease: [0.4, 0, 0.2, 1]
         }
       }
     },
@@ -106,7 +106,7 @@ export function useMotionV() {
         },
         options: {
           duration: 0.3,
-          easing: [0.34, 1.56, 0.64, 1]
+          ease: [0.34, 1.56, 0.64, 1]
         }
       },
       exit: {
@@ -117,7 +117,7 @@ export function useMotionV() {
         },
         options: {
           duration: 0.2,
-          easing: [0.4, 0, 0.2, 1]
+          ease: [0.4, 0, 0.2, 1]
         }
       }
     },
@@ -130,7 +130,7 @@ export function useMotionV() {
         },
         options: {
           duration: 0.3,
-          easing: [0.05, 0.7, 0.1, 1.0] // MD3 emphasized decelerate
+          ease: [0.05, 0.7, 0.1, 1.0] // MD3 emphasized decelerate
         }
       },
       exit: {
@@ -140,7 +140,7 @@ export function useMotionV() {
         },
         options: {
           duration: 0.25,
-          easing: [0.3, 0.0, 0.8, 0.15] // MD3 emphasized accelerate
+          ease: [0.3, 0.0, 0.8, 0.15] // MD3 emphasized accelerate
         }
       }
     },
@@ -153,7 +153,7 @@ export function useMotionV() {
         },
         options: {
           duration: 0.3,
-          easing: [0.2, 0, 0.2, 1],
+          ease: [0.2, 0, 0.2, 1],
           delay: stagger(0.05, { startDelay: 0.1 })
         }
       },
@@ -164,7 +164,7 @@ export function useMotionV() {
         },
         options: {
           duration: 0.2,
-          easing: [0.4, 0, 0.2, 1],
+          ease: [0.4, 0, 0.2, 1],
           delay: stagger(0.05)
         }
       }

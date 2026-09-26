@@ -220,13 +220,13 @@ const toggleExpanded = () => {
       animateElement(
         contentArea,
         { opacity: [0, 1], scale: [0.97, 1] },
-        { duration: 0.35, easing: springEasing, delay: 0.05 }
+        { duration: 0.35, ease: springEasing, delay: 0.05 }
       );
     } else {
       animateElement(
         contentArea,
         { opacity: [1, 0], scale: [1, 0.97] },
-        { duration: 0.25, easing: standardEasing }
+        { duration: 0.25, ease: standardEasing }
       );
     }
   }
@@ -257,7 +257,7 @@ const expandSidebar = () => {
             scale: [0.97, 1],
             y: [-5, 0] 
           },
-          { duration: 0.35, easing: springEasing, delay: 0.05 }
+          { duration: 0.35, ease: springEasing, delay: 0.05 }
         );
       }
     });
@@ -275,7 +275,7 @@ const handleFabClick = async () => {
     await animateElement(
       fab,
       { scale: [1, 0.92, 1] },
-      { duration: 0.4, easing: springEasing }
+      { duration: 0.4, ease: springEasing }
     ).finished;
   }
   
@@ -329,7 +329,7 @@ const handleExploreClick = async () => {
     await animateElement(
       button,
       { scale: [1, 0.95, 1] },
-      { duration: 0.3, easing: springEasing }
+      { duration: 0.3, ease: springEasing }
     ).finished;
   }
 
@@ -357,7 +357,7 @@ const handleLocationSearchClick = async () => {
     await animateElement(
       button,
       { scale: [1, 0.95, 1] },
-      { duration: 0.3, easing: springEasing }
+      { duration: 0.3, ease: springEasing }
     ).finished;
   }
 
@@ -401,7 +401,7 @@ const handleCategoriesClick = async () => {
     await animateElement(
       button,
       { scale: [1, 0.95, 1] },
-      { duration: 0.3, easing: springEasing }
+      { duration: 0.3, ease: springEasing }
     ).finished;
   }
 
@@ -439,7 +439,7 @@ watch(
             animateElement(
               contentArea,
               { opacity: [0, 1], scale: [0.97, 1] },
-              { duration: 0.35, easing: springEasing, delay: 0.05 }
+              { duration: 0.35, ease: springEasing, delay: 0.05 }
             );
           }
         });
@@ -483,7 +483,7 @@ onMounted(() => {
     animateElement(
       railHeader,
       { opacity: [0, 1], y: [-15, 0] },
-      { duration: 0.45, easing: mdEmphasizedEasing }
+      { duration: 0.45, ease: mdEmphasizedEasing }
     );
   }
 
@@ -495,7 +495,7 @@ onMounted(() => {
       { scale: [0.8, 1], opacity: [0, 1] },
       {
         duration: 0.5,
-        easing: springEasing,
+        ease: springEasing,
         delay: 0.1,
       }
     );
@@ -509,7 +509,7 @@ onMounted(() => {
       { scale: [0.85, 1], opacity: [0, 1] },
       {
         duration: 0.55,
-        easing: springEasing,
+        ease: springEasing,
         delay: 0.15,
       }
     );
@@ -523,7 +523,7 @@ onMounted(() => {
       { opacity: [0, 1], y: [15, 0] },
       {
         duration: 0.4,
-        easing: mdEmphasizedEasing,
+        ease: mdEmphasizedEasing,
         interval: 0.08, // Staggered delay for each item
         delay: 0.2, // Base delay before sequence starts
       }
@@ -539,7 +539,7 @@ onMounted(() => {
         { opacity: [0, 1], x: [-20, 0] },
         {
           duration: 0.45,
-          easing: mdEmphasizedEasing,
+          ease: mdEmphasizedEasing,
           delay: 0.4,
         }
       );
@@ -556,7 +556,7 @@ onMounted(() => {
   top: 0;
   bottom: 0;
   z-index: 30;
-  background: rgb(var(--md-sys-color-surface));
+  background: var(--md-sys-color-surface);
   box-shadow: var(--md-sys-elevation-1);
   transition: width 0.35s cubic-bezier(0.2, 0, 0, 1),
               box-shadow 0.35s cubic-bezier(0.2, 0, 0, 1),
@@ -586,7 +586,7 @@ onMounted(() => {
   z-index: 40;
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
-  border-right: 1px solid rgba(var(--md-sys-color-outline-variant), 0.5);
+  border-right: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 50%, transparent);
   transition: all 0.35s cubic-bezier(0.2, 0, 0, 1);
 }
 
@@ -627,11 +627,11 @@ onMounted(() => {
 }
 
 .menu-button:hover {
-  background-color: rgba(var(--md-sys-color-on-surface-variant), 0.08);
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 8%, transparent);
 }
 
 .menu-button:active {
-  background-color: rgba(var(--md-sys-color-on-surface-variant), 0.12);
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 12%, transparent);
   transform: scale(0.95);
 }
 
@@ -711,7 +711,7 @@ onMounted(() => {
   gap: 8px;
   margin-top: auto;
   padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px));
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .m3-rail-footer-label {
@@ -794,7 +794,7 @@ span.m3-rail-label {
   font-weight: var(--md-sys-typescale-label-medium-weight, 500);
   letter-spacing: var(--md-sys-typescale-label-medium-tracking, 0.5px);
   text-align: center;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   transition: color 0.35s cubic-bezier(0.2, 0, 0, 1),
               transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
   position: absolute;
@@ -873,17 +873,17 @@ span.m3-rail-label {
 
 /* Apply active background to rail item with subtle animation */
 .m3-rail-item.is-active {
-  background-color: rgb(var(--md-sys-color-secondary-container));
+  background-color: var(--md-sys-color-secondary-container);
 }
 
 .m3-rail-item.is-active .m3-rail-label {
-  color: rgb(var(--md-sys-color-on-secondary-container));
+  color: var(--md-sys-color-on-secondary-container);
   font-weight: var(--md-sys-typescale-label-medium-weight-prominent, 600);
 }
 
 /* Different styles for expanded active items */
 .m3-rail-item.item-expanded.is-active {
-  background-color: rgb(var(--md-sys-color-secondary-container));
+  background-color: var(--md-sys-color-secondary-container);
   /* Can add additional styles specific to expanded active items */
 }
 
@@ -895,7 +895,7 @@ span.m3-rail-label {
   left: 0;
   right: 0;
   bottom: 0;
-  background: radial-gradient(circle at center, rgba(var(--md-sys-color-on-secondary-container), 0.1) 0%, transparent 70%);
+  background: radial-gradient(circle at center, color-mix(in srgb, var(--md-sys-color-on-secondary-container) 10%, transparent) 0%, transparent 70%);
   border-radius: inherit;
   opacity: 0;
   animation: ripple 0.6s cubic-bezier(0.2, 0, 0, 1) forwards;

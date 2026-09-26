@@ -147,7 +147,7 @@ function formatTime(timeString) {
   font-size: 16px;
   font-weight: 500;
   margin: 0 0 16px;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
 }
 
 .date-time-grid {
@@ -167,8 +167,8 @@ function formatTime(timeString) {
   display: flex;
   align-items: center;
   padding: 12px 16px;
-  background-color: rgb(var(--md-sys-color-surface-container-highest));
-  border: 1px solid rgba(var(--md-sys-color-outline), 0.5);
+  background-color: var(--md-sys-color-surface-container-highest);
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline) 50%, transparent);
   border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
@@ -176,12 +176,12 @@ function formatTime(timeString) {
 
 .md3-date-field:hover,
 .md3-time-field:hover {
-  background-color: rgba(var(--md-sys-color-on-surface), 0.05);
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface) 5%, transparent);
 }
 
 .md3-date-field.error,
 .md3-time-field.error {
-  border-color: rgb(var(--md-sys-color-error));
+  border-color: var(--md-sys-color-error);
 }
 
 .md3-date-field-icon,
@@ -190,7 +190,7 @@ function formatTime(timeString) {
   align-items: center;
   justify-content: center;
   margin-right: 12px;
-  color: rgb(var(--md-sys-color-primary));
+  color: var(--md-sys-color-primary);
   font-size: 20px;
 }
 
@@ -204,25 +204,25 @@ function formatTime(timeString) {
 .md3-time-field-label {
   font-size: 12px;
   font-weight: 500;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   margin-bottom: 4px;
 }
 
 .md3-date-field-value,
 .md3-time-field-value {
   font-size: 14px;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
 }
 
 .md3-date-field-placeholder,
 .md3-time-field-placeholder {
   font-size: 14px;
-  color: rgba(var(--md-sys-color-on-surface), 0.6);
+  color: color-mix(in srgb, var(--md-sys-color-on-surface) 60%, transparent);
 }
 
 .md3-field-error {
   font-size: 12px;
-  color: rgb(var(--md-sys-color-error));
+  color: var(--md-sys-color-error);
   margin-top: 4px;
 }
 

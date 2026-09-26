@@ -39,18 +39,18 @@ defineEmits(['close']);
   position: sticky;
   top: 0;
   width: 100%;
-  background-color: rgb(var(--md-sys-color-surface));
+  background-color: var(--md-sys-color-surface);
   z-index: 10;
   padding: env(safe-area-inset-top, 12px) 16px 12px;
   display: flex;
   flex-direction: column;
-  border-bottom: 1px solid rgba(var(--md-sys-color-outline), 0.08);
+  border-bottom: 1px solid color-mix(in srgb, var(--md-sys-color-outline) 8%, transparent);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .header-container.mobile {
   border-radius: 28px 28px 0 0;
-  background-color: rgb(var(--md-sys-color-surface));
+  background-color: var(--md-sys-color-surface);
 }
 
 .header-content {
@@ -144,13 +144,13 @@ defineEmits(['close']);
 /* Improve touch feedback */
 @media (hover: hover) {
   .m3-icon-button:hover {
-    background-color: rgba(var(--md-sys-color-on-surface), 0.08);
+    background-color: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
   }
 }
 
 @media (hover: none) {
   .m3-icon-button:active {
-    background-color: rgba(var(--md-sys-color-on-surface), 0.12);
+    background-color: color-mix(in srgb, var(--md-sys-color-on-surface) 12%, transparent);
   }
 }
 </style>

@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-2">
     <div class="flex items-center justify-between">
-      <label class="m3-label-large text-[rgb(var(--md-sys-color-on-surface))]">
+      <label class="m3-label-large text-[var(--md-sys-color-on-surface)]">
         Companions
       </label>
       <button
@@ -19,7 +19,7 @@
       <input
         v-model="newCompanionName"
         type="text"
-        class="flex-1 px-4 py-2 bg-[rgb(var(--md-sys-color-surface-container))] border border-[rgb(var(--md-sys-color-outline))] rounded-md focus:outline-none focus:border-[rgb(var(--md-sys-color-primary))] focus:ring-2 focus:ring-[rgb(var(--md-sys-color-primary))/0.2]"
+        class="flex-1 px-4 py-2 bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline)] rounded-md focus:outline-none focus:border-[var(--md-sys-color-primary)] focus:ring-2 focus:ring-[var(--md-sys-color-primary)/0.2]"
         placeholder="Companion name"
         @keyup.enter="saveNewCompanion"
       />
@@ -47,8 +47,8 @@
         class="flex items-center gap-2 px-4 py-2 rounded-full transition-colors duration-200"
         :class="[
           isSelected(companion)
-            ? 'bg-[rgb(var(--md-sys-color-secondary-container))] text-[rgb(var(--md-sys-color-on-secondary-container))]'
-            : 'bg-[rgb(var(--md-sys-color-surface-container))] text-[rgb(var(--md-sys-color-on-surface))] hover:bg-[rgb(var(--md-sys-color-surface-container-highest))]'
+            ? 'bg-[var(--md-sys-color-secondary-container)] text-[var(--md-sys-color-on-secondary-container)]'
+            : 'bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-highest)]'
         ]"
         @click="toggleCompanion(companion)"
       >
@@ -56,7 +56,7 @@
         <button 
           v-if="isSelected(companion)"
           type="button"
-          class="p-1 rounded-full hover:bg-[rgb(var(--md-sys-color-on-secondary-container))/0.12]"
+          class="p-1 rounded-full hover:bg-[var(--md-sys-color-on-secondary-container)/0.12]"
           @click.stop="removeCompanion(companion)"
         >
           <Icon icon="mdi:close" class="w-4 h-4" />

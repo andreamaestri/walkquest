@@ -1,0 +1,140 @@
+/* WalkQuest global stylesheet — the only CSS entry point (imported by main.js). */
+@import "tailwindcss";
+@source "../../templates";
+
+@import "@fontsource-variable/google-sans-flex/rond.css";
+@import "./m3e/color.generated.css";
+@import "./m3e/foundation.css";
+@import "./legacy.css";
+@import "./material3.css";
+@import "./expressive.css";
+
+/* Map M3 tokens into Tailwind so utilities follow the theme:
+   bg-surface-container-low, text-on-surface, rounded-m3-xl, ease-spring-fast … */
+@theme inline {
+  --font-sans: var(--md-ref-typeface-plain);
+  --font-brand: var(--md-ref-typeface-brand);
+
+  --color-primary: var(--md-sys-color-primary);
+  --color-on-primary: var(--md-sys-color-on-primary);
+  --color-primary-container: var(--md-sys-color-primary-container);
+  --color-on-primary-container: var(--md-sys-color-on-primary-container);
+  --color-secondary: var(--md-sys-color-secondary);
+  --color-on-secondary: var(--md-sys-color-on-secondary);
+  --color-secondary-container: var(--md-sys-color-secondary-container);
+  --color-on-secondary-container: var(--md-sys-color-on-secondary-container);
+  --color-tertiary: var(--md-sys-color-tertiary);
+  --color-on-tertiary: var(--md-sys-color-on-tertiary);
+  --color-tertiary-container: var(--md-sys-color-tertiary-container);
+  --color-on-tertiary-container: var(--md-sys-color-on-tertiary-container);
+  --color-error: var(--md-sys-color-error);
+  --color-on-error: var(--md-sys-color-on-error);
+  --color-error-container: var(--md-sys-color-error-container);
+  --color-on-error-container: var(--md-sys-color-on-error-container);
+  --color-surface: var(--md-sys-color-surface);
+  --color-surface-dim: var(--md-sys-color-surface-dim);
+  --color-surface-bright: var(--md-sys-color-surface-bright);
+  --color-surface-container-lowest: var(--md-sys-color-surface-container-lowest);
+  --color-surface-container-low: var(--md-sys-color-surface-container-low);
+  --color-surface-container: var(--md-sys-color-surface-container);
+  --color-surface-container-high: var(--md-sys-color-surface-container-high);
+  --color-surface-container-highest: var(--md-sys-color-surface-container-highest);
+  --color-on-surface: var(--md-sys-color-on-surface);
+  --color-on-surface-variant: var(--md-sys-color-on-surface-variant);
+  --color-outline: var(--md-sys-color-outline);
+  --color-outline-variant: var(--md-sys-color-outline-variant);
+  --color-inverse-surface: var(--md-sys-color-inverse-surface);
+  --color-inverse-on-surface: var(--md-sys-color-inverse-on-surface);
+  --color-inverse-primary: var(--md-sys-color-inverse-primary);
+  --color-scrim: var(--md-sys-color-scrim);
+
+  --radius-m3-xs: var(--md-sys-shape-corner-extra-small);
+  --radius-m3-sm: var(--md-sys-shape-corner-small);
+  --radius-m3-md: var(--md-sys-shape-corner-medium);
+  --radius-m3-lg: var(--md-sys-shape-corner-large);
+  --radius-m3-lg-plus: var(--md-sys-shape-corner-large-increased);
+  --radius-m3-xl: var(--md-sys-shape-corner-extra-large);
+  --radius-m3-xl-plus: var(--md-sys-shape-corner-extra-large-increased);
+  --radius-m3-2xl: var(--md-sys-shape-corner-extra-extra-large);
+  --radius-m3-full: var(--md-sys-shape-corner-full);
+
+  --ease-spring-fast: var(--md-sys-motion-spring-fast-spatial);
+  --ease-spring: var(--md-sys-motion-spring-default-spatial);
+  --ease-spring-slow: var(--md-sys-motion-spring-slow-spatial);
+  --ease-effects: var(--md-sys-motion-spring-default-effects);
+  --ease-emphasized: var(--md-sys-motion-easing-emphasized);
+
+  --shadow-m3-1: var(--md-sys-elevation-1);
+  --shadow-m3-2: var(--md-sys-elevation-2);
+  --shadow-m3-3: var(--md-sys-elevation-3);
+}
+
+/* ── Typography roles (emphasized variants use heavier weights + roundness) ── */
+@utility type-display-small { font-family: var(--font-brand); font-size: var(--md-sys-typescale-display-small-size); line-height: var(--md-sys-typescale-display-small-line-height); font-weight: 400; letter-spacing: 0; }
+@utility type-headline-medium { font-family: var(--font-brand); font-size: var(--md-sys-typescale-headline-medium-size); line-height: var(--md-sys-typescale-headline-medium-line-height); font-weight: 400; }
+@utility type-headline-small { font-family: var(--font-brand); font-size: var(--md-sys-typescale-headline-small-size); line-height: var(--md-sys-typescale-headline-small-line-height); font-weight: 400; }
+@utility type-headline-small-emphasized { font-family: var(--font-brand); font-size: var(--md-sys-typescale-headline-small-size); line-height: var(--md-sys-typescale-headline-small-line-height); font-weight: 600; font-variation-settings: "ROND" 100; }
+@utility type-title-large { font-size: var(--md-sys-typescale-title-large-size); line-height: var(--md-sys-typescale-title-large-line-height); font-weight: 400; }
+@utility type-title-large-emphasized { font-size: var(--md-sys-typescale-title-large-size); line-height: var(--md-sys-typescale-title-large-line-height); font-weight: 600; font-variation-settings: "ROND" 100; }
+@utility type-title-medium { font-size: var(--md-sys-typescale-title-medium-size); line-height: var(--md-sys-typescale-title-medium-line-height); font-weight: 500; letter-spacing: 0.15px; }
+@utility type-title-medium-emphasized { font-size: var(--md-sys-typescale-title-medium-size); line-height: var(--md-sys-typescale-title-medium-line-height); font-weight: 700; letter-spacing: 0.15px; font-variation-settings: "ROND" 100; }
+@utility type-title-small { font-size: var(--md-sys-typescale-title-small-size); line-height: var(--md-sys-typescale-title-small-line-height); font-weight: 500; letter-spacing: 0.1px; }
+@utility type-body-large { font-size: var(--md-sys-typescale-body-large-size); line-height: var(--md-sys-typescale-body-large-line-height); font-weight: 400; letter-spacing: 0.5px; }
+@utility type-body-medium { font-size: var(--md-sys-typescale-body-medium-size); line-height: var(--md-sys-typescale-body-medium-line-height); font-weight: 400; letter-spacing: 0.25px; }
+@utility type-body-small { font-size: var(--md-sys-typescale-body-small-size); line-height: var(--md-sys-typescale-body-small-line-height); font-weight: 400; letter-spacing: 0.4px; }
+@utility type-label-large { font-size: var(--md-sys-typescale-label-large-size); line-height: var(--md-sys-typescale-label-large-line-height); font-weight: 500; letter-spacing: 0.1px; }
+@utility type-label-large-emphasized { font-size: var(--md-sys-typescale-label-large-size); line-height: var(--md-sys-typescale-label-large-line-height); font-weight: 700; letter-spacing: 0.1px; }
+@utility type-label-medium { font-size: var(--md-sys-typescale-label-medium-size); line-height: var(--md-sys-typescale-label-medium-line-height); font-weight: 500; letter-spacing: 0.5px; }
+@utility type-label-small { font-size: var(--md-sys-typescale-label-small-size); line-height: var(--md-sys-typescale-label-small-line-height); font-weight: 500; letter-spacing: 0.5px; }
+
+/* ── State layer: hover/focus/press overlay using the current text colour ── */
+@utility state-layer {
+  position: relative;
+  isolation: isolate;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: currentColor;
+    opacity: 0;
+    pointer-events: none;
+    z-index: -1;
+    transition: opacity var(--md-sys-motion-spring-fast-effects-duration) var(--md-sys-motion-spring-fast-effects);
+  }
+  &:hover::before { opacity: var(--md-sys-state-hover-state-layer-opacity); }
+  &:focus-visible::before { opacity: var(--md-sys-state-focus-state-layer-opacity); }
+  &:active::before { opacity: var(--md-sys-state-pressed-state-layer-opacity); }
+}
+
+/* Spring-driven shape/size morph for interactive surfaces. */
+@utility shape-morph {
+  transition:
+    border-radius var(--md-sys-motion-spring-fast-spatial-duration) var(--md-sys-motion-spring-fast-spatial),
+    transform var(--md-sys-motion-spring-fast-spatial-duration) var(--md-sys-motion-spring-fast-spatial),
+    background-color var(--md-sys-motion-spring-default-effects-duration) var(--md-sys-motion-spring-default-effects),
+    color var(--md-sys-motion-spring-default-effects-duration) var(--md-sys-motion-spring-default-effects),
+    box-shadow var(--md-sys-motion-spring-default-effects-duration) var(--md-sys-motion-spring-default-effects);
+}
+
+@layer base {
+  html,
+  body {
+    background: var(--md-sys-color-surface);
+    color: var(--md-sys-color-on-surface);
+    font-family: var(--md-ref-typeface-plain);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--md-sys-color-secondary);
+    outline-offset: 2px;
+  }
+
+  button,
+  [role="button"] {
+    cursor: pointer;
+  }
+}
+

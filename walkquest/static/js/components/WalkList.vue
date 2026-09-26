@@ -477,9 +477,9 @@ async function animateCategorySelection(category, animationType) {
         {
           scale: [1, 1.05, 1],
           backgroundColor: [
-            'rgb(var(--md-sys-color-surface-container))',
-            'rgb(var(--md-sys-color-primary-container))',
-            'rgb(var(--md-sys-color-surface-container))'
+            'var(--md-sys-color-surface-container)',
+            'var(--md-sys-color-primary-container)',
+            'var(--md-sys-color-surface-container)'
           ]
         },
         {
@@ -748,7 +748,7 @@ watch(selectedCategory, (newCategory) => {
 <style scoped>
 
 .walk-list-container {
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -759,7 +759,7 @@ watch(selectedCategory, (newCategory) => {
     height: 100%;
     border-top-left-radius: 16px;
     border-top-right-radius: 16px;
-    background: rgb(var(--md-sys-color-surface));
+    background: var(--md-sys-color-surface);
     overflow: hidden;
         
     .walk-card-wrapper {
@@ -771,7 +771,7 @@ watch(selectedCategory, (newCategory) => {
     
     .category-selection {
       padding: 12px;
-      border-bottom: 1px solid rgb(var(--md-sys-color-outline-variant));
+      border-bottom: 1px solid var(--md-sys-color-outline-variant);
     }
   }
 }
@@ -781,7 +781,7 @@ watch(selectedCategory, (newCategory) => {
   flex-shrink: 0;
   padding: 8px;
   min-height: 200px;
-  background: rgb(var(--md-sys-color-on-surface-variant));
+  background: var(--md-sys-color-on-surface-variant);
   /* More specific background */
   z-index: 1;
   border-radius: 12px;
@@ -797,7 +797,7 @@ watch(selectedCategory, (newCategory) => {
   text-align: center;
   min-height: 0;
   /* Important for flex-child scrolling */
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 /* Empty Icon Style */
@@ -810,9 +810,9 @@ watch(selectedCategory, (newCategory) => {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  background: rgb(var(--md-sys-color-surface-container-low));
+  background: var(--md-sys-color-surface-container-low);
   height: 100%;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   padding: 0;
   border-radius: 8px;
 }
@@ -828,9 +828,9 @@ watch(selectedCategory, (newCategory) => {
 .location-info {
   gap: 4px;
   padding: 8px 16px;
-  color: rgb(var(--md-sys-color-primary));
-  background: rgb(var(--md-sys-color-surface-container));
-  border-bottom: 1px solid rgb(var(--md-sys-color-outline-variant));
+  color: var(--md-sys-color-primary);
+  background: var(--md-sys-color-surface-container);
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
   display: flex;
   justify-content: space-between;
 }
@@ -846,7 +846,7 @@ watch(selectedCategory, (newCategory) => {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   flex-direction: row;
   /* Adjusted to row for compact layout */
 }
@@ -859,7 +859,7 @@ watch(selectedCategory, (newCategory) => {
 
 /* Selected Location Icon Styles */
 .selected-location Icon {
-  color: rgb(var(--md-sys-color-primary));
+  color: var(--md-sys-color-primary);
   /* Location mode adjustment */
 }
 
@@ -878,18 +878,18 @@ watch(selectedCategory, (newCategory) => {
   gap: 4px;
   padding: 4px 8px;
   border-radius: 16px;
-  background: rgb(var(--md-sys-color-surface-container-highest));
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  background: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface-variant);
   font-size: 0.75rem;
-  border-bottom: 1px solid rgb(var(--md-sys-color-outline-variant));
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
   transition: all 0.2s ease;
   overflow-y: auto;
   /* Consider removing if not needed for clear-location itself */
 }
 
 .clear-location:hover {
-  background: rgb(var(--md-sys-color-surface-container-high));
-  color: rgb(var(--md-sys-color-on-surface));
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
   cursor: pointer;
   /* Added cursor for better UX */
 }
@@ -908,10 +908,10 @@ watch(selectedCategory, (newCategory) => {
   justify-content: center;
   padding: 24px;
   height: 100%;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   min-height: 200px;
   margin: 0;
-  background: rgb(var(--md-sys-color-surface-container-low));
+  background: var(--md-sys-color-surface-container-low);
   border-radius: 12px;
 }
 
@@ -922,7 +922,7 @@ watch(selectedCategory, (newCategory) => {
   align-items: center;
   gap: 16px;
   text-align: center;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 /* Empty Icon in Empty Message Styles */
@@ -935,10 +935,10 @@ watch(selectedCategory, (newCategory) => {
 .error-message {
   padding: 16px;
   margin: 8px;
-  color: rgb(var(--md-sys-color-on-surface-variant));
-  background: rgb(var(--md-sys-color-error-container));
-  color: rgb(var(--md-sys-color-on-error-container));
-  background-color: rgb(var(--md-sys-color-surface-container-highest));
+  color: var(--md-sys-color-on-surface-variant);
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+  background-color: var(--md-sys-color-surface-container-highest);
   border-radius: 8px;
   font-size: 0.875rem;
 }
@@ -950,7 +950,7 @@ watch(selectedCategory, (newCategory) => {
   /* Vertically center items in distance badge */
   gap: 4px;
   /* Spacing between icon and text */
-  color: rgb(var(--md-sys-color-primary));
+  color: var(--md-sys-color-primary);
   font-size: 0.875rem;
 }
 
@@ -972,8 +972,8 @@ watch(selectedCategory, (newCategory) => {
 /* Categories UI Styles */
 .category-selection {
   padding: 16px;
-  background: rgb(var(--md-sys-color-surface-container-low));
-  border-bottom: 1px solid rgb(var(--md-sys-color-outline-variant));
+  background: var(--md-sys-color-surface-container-low);
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
   overflow-y: auto;
   max-height: 100%;
 }
@@ -988,7 +988,7 @@ watch(selectedCategory, (newCategory) => {
 .category-title {
   font-size: 1.25rem;
   font-weight: 500;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   margin: 0;
   position: relative;
 }
@@ -1001,7 +1001,7 @@ watch(selectedCategory, (newCategory) => {
   bottom: -4px;
   width: 40px;
   height: 3px;
-  background: linear-gradient(to right, rgb(var(--md-sys-color-primary)), rgb(var(--md-sys-color-tertiary)));
+  background: linear-gradient(to right, var(--md-sys-color-primary), var(--md-sys-color-tertiary));
   opacity: 0.8;
   /* Added some opacity to the underline */
   transition: opacity 0.3s ease;
@@ -1010,9 +1010,9 @@ watch(selectedCategory, (newCategory) => {
 
 .result-count {
   font-size: 0.875rem;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   padding: 4px 10px;
-  background-color: rgb(var(--md-sys-color-surface-container-highest));
+  background-color: var(--md-sys-color-surface-container-highest);
   border-radius: 16px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
@@ -1052,8 +1052,8 @@ watch(selectedCategory, (newCategory) => {
   will-change: transform, box-shadow;
   border: 1px solid transparent;
   background: linear-gradient(to bottom right, 
-    rgb(var(--md-sys-color-surface-container-high)),
-    rgb(var(--md-sys-color-surface-container)));
+    var(--md-sys-color-surface-container-high),
+    var(--md-sys-color-surface-container));
 }
 
 .category-card:hover {
@@ -1109,8 +1109,8 @@ watch(selectedCategory, (newCategory) => {
   margin-bottom: 12px;
   font-size: 28px;
   box-shadow: var(--md-sys-elevation-1);
-  background: rgb(var(--md-sys-color-primary-container));
-  color: rgb(var(--md-sys-color-on-primary-container));
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
 }
 /* Icon backgrounds with very saturated hex colors */
 .category-card.water-category .category-card-icon {
@@ -1160,32 +1160,32 @@ watch(selectedCategory, (newCategory) => {
   left: 0;
   right: 0;
   height: 4px;
-  background-color: rgb(var(--md-sys-color-primary));
+  background-color: var(--md-sys-color-primary);
   border-radius: 0 0 16px 16px;
 }
 
 .category-card.water-category.is-active {
-  background-color: rgba(var(--md-sys-color-tertiary-container), 0.35);
+  background-color: color-mix(in srgb, var(--md-sys-color-tertiary-container) 35%, transparent);
 }
 
 .category-card.nature-category.is-active {
-  background-color: rgba(var(--md-sys-color-primary-container), 0.35);
+  background-color: color-mix(in srgb, var(--md-sys-color-primary-container) 35%, transparent);
 }
 
 .category-card.heritage-category.is-active {
-  background-color: rgba(var(--md-sys-color-secondary-container), 0.35);
+  background-color: color-mix(in srgb, var(--md-sys-color-secondary-container) 35%, transparent);
 }
 
 .category-card.amenity-category.is-active {
-  background-color: rgba(var(--md-sys-color-error-container), 0.35);
+  background-color: color-mix(in srgb, var(--md-sys-color-error-container) 35%, transparent);
 }
 
 .category-card.mountain-category.is-active {
-  background-color: rgba(var(--md-sys-color-tertiary), 0.25);
+  background-color: color-mix(in srgb, var(--md-sys-color-tertiary) 25%, transparent);
 }
 
 .category-card.access-category.is-active {
-  background-color: rgba(var(--md-sys-color-primary), 0.25);
+  background-color: color-mix(in srgb, var(--md-sys-color-primary) 25%, transparent);
 }
 
 .category-card.is-active::before {
@@ -1195,7 +1195,7 @@ watch(selectedCategory, (newCategory) => {
 
 .category-card-name {
   font-size: 0.9375rem;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   line-height: 1.3;
   font-weight: 500;
   text-align: center;
@@ -1211,7 +1211,7 @@ watch(selectedCategory, (newCategory) => {
 }
 
 .category-card:hover .category-card-name {
-  color: rgb(var(--md-sys-color-primary));
+  color: var(--md-sys-color-primary);
   /* Name color on hover */
 }
 
@@ -1223,8 +1223,8 @@ watch(selectedCategory, (newCategory) => {
   align-items: center;
   padding: 12px 16px;
   background: linear-gradient(to right,
-      rgb(var(--md-sys-color-surface-container-high)),
-      rgb(var(--md-sys-color-surface-container)));
+      var(--md-sys-color-surface-container-high),
+      var(--md-sys-color-surface-container));
   border-radius: 12px;
   margin-top: 16px;
   position: relative;
@@ -1275,8 +1275,8 @@ watch(selectedCategory, (newCategory) => {
   right: 0;
   bottom: 0;
   background: linear-gradient(to right,
-      rgba(var(--md-sys-color-primary), 0.1),
-      rgba(var(--md-sys-color-tertiary), 0.1));
+      color-mix(in srgb, var(--md-sys-color-primary) 10%, transparent),
+      color-mix(in srgb, var(--md-sys-color-tertiary) 10%, transparent));
   opacity: 0;
   transition: opacity 0.3s ease;
   z-index: -1;
@@ -1299,8 +1299,8 @@ watch(selectedCategory, (newCategory) => {
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  background-color: rgb(var(--md-sys-color-surface-container-highest));
-  color: rgb(var(--md-sys-color-primary));
+  background-color: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-primary);
   border-radius: 20px;
   font-size: 0.875rem;
   font-weight: 500;
@@ -1319,7 +1319,7 @@ watch(selectedCategory, (newCategory) => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(var(--md-sys-color-primary), 0.1);
+  background: color-mix(in srgb, var(--md-sys-color-primary) 10%, transparent);
   border-radius: inherit;
   /* Match button border-radius */
   opacity: 0;
@@ -1368,7 +1368,7 @@ watch(selectedCategory, (newCategory) => {
 }
 
 .selected-category Icon {
-  color: rgb(var(--md-sys-color-primary));
+  color: var(--md-sys-color-primary);
   font-size: 22px;
   width: 44px;
   height: 44px;
@@ -1377,9 +1377,9 @@ watch(selectedCategory, (newCategory) => {
   justify-content: center;
   border-radius: 12px; /* Squared corners for more modern look */
   background: linear-gradient(135deg, 
-    rgba(var(--md-sys-color-primary), 0.15),
-    rgba(var(--md-sys-color-tertiary), 0.1));
-  box-shadow: 0 2px 6px rgba(var(--md-sys-color-primary), 0.15);
+    color-mix(in srgb, var(--md-sys-color-primary) 15%, transparent),
+    color-mix(in srgb, var(--md-sys-color-tertiary) 10%, transparent));
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--md-sys-color-primary) 15%, transparent);
   transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); /* Bouncy animation */
   flex-shrink: 0; /* Prevent icon from shrinking */
 }
@@ -1388,7 +1388,7 @@ watch(selectedCategory, (newCategory) => {
   font-weight: 500;
   font-size: 0.9375rem;
   letter-spacing: 0.01em;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   position: relative;
   padding-bottom: 2px; /* Space for underline */
 }
@@ -1400,7 +1400,7 @@ watch(selectedCategory, (newCategory) => {
   bottom: 0;
   width: 0;
   height: 2px;
-  background: rgb(var(--md-sys-color-primary));
+  background: var(--md-sys-color-primary);
   transition: width 0.3s ease;
 }
 
@@ -1775,7 +1775,7 @@ watch(selectedCategory, (newCategory) => {
 
   /* Active state for touch devices */
   .category-card:active {
-    background-color: rgb(var(--md-sys-color-surface-container-high));
+    background-color: var(--md-sys-color-surface-container-high);
   }
 
   /* Remove hover effects that don't work well on touch */

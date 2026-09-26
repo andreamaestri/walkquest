@@ -82,11 +82,11 @@ defineExpose({
 }
 
 .m3-circular-progress-track {
-  stroke: rgb(var(--md-sys-color-surface-container-highest));
+  stroke: var(--md-sys-color-surface-container-highest);
 }
 
 .m3-circular-progress-indicator {
-  stroke: rgb(var(--md-sys-color-primary));
+  stroke: var(--md-sys-color-primary);
   stroke-dasharray: 126;
   stroke-dashoffset: 126;
   animation: progress 0.9s cubic-bezier(0.4, 0.0, 0.2, 1) infinite; /* Refined easing */
@@ -97,7 +97,7 @@ defineExpose({
   line-height: 24px;
   font-weight: 400;
   letter-spacing: 0.5px;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
 }
 
 @keyframes rotate {

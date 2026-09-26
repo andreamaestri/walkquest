@@ -36,3 +36,8 @@ TEMPLATES[0]["OPTIONS"]["debug"] = True  # type: ignore[index]
 MEDIA_URL = "http://media.testserver/"
 # Your stuff...
 # ------------------------------------------------------------------------------
+
+# Tagulous' serializer overrides are incompatible with Django 5.2's python
+# serializer (``_get_model`` was removed), which breaks test database
+# serialization. Tests don't need tag-aware fixtures, so use Django's own.
+SERIALIZATION_MODULES = {}

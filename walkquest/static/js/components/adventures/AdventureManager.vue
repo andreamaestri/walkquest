@@ -365,22 +365,22 @@ onMounted(() => {
   border-radius: 50%;
   background-color: transparent;
   border: none;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   cursor: pointer;
   transition: background-color 0.2s;
 }
 
 .back-btn:hover {
-  background-color: rgba(var(--md-sys-color-on-surface), 0.08);
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
 }
 
 .back-btn:active {
-  background-color: rgba(var(--md-sys-color-on-surface), 0.12);
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface) 12%, transparent);
 }
 
 .title {
   font-size: 1.8rem;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   margin: 0;
 }
 
@@ -390,8 +390,8 @@ onMounted(() => {
   gap: 0.5rem;
   padding: 0.75rem 1.25rem;
   border-radius: 50px;
-  background-color: rgb(var(--md-sys-color-primary));
-  color: rgb(var(--md-sys-color-on-primary));
+  background-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
   border: none;
   font-weight: 500;
   cursor: pointer;
@@ -399,8 +399,8 @@ onMounted(() => {
 }
 
 .create-btn:hover {
-  background-color: rgb(var(--md-sys-color-primary-container));
-  color: rgb(var(--md-sys-color-on-primary-container));
+  background-color: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
 }
 
 .create-btn:active {
@@ -418,15 +418,15 @@ onMounted(() => {
   padding: 0.5rem;
   border-radius: 50%;
   background-color: transparent;
-  border: 1px solid rgb(var(--md-sys-color-outline));
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  border: 1px solid var(--md-sys-color-outline);
+  color: var(--md-sys-color-on-surface-variant);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .toggle-btn.active {
-  background-color: rgb(var(--md-sys-color-secondary-container));
-  color: rgb(var(--md-sys-color-on-secondary-container));
+  background-color: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
   border-color: transparent;
 }
 
@@ -451,26 +451,26 @@ onMounted(() => {
   justify-content: center;
   padding: 3rem 1rem;
   text-align: center;
-  background-color: rgb(var(--md-sys-color-surface-container));
+  background-color: var(--md-sys-color-surface-container);
   border-radius: 16px;
   min-height: 200px;
 }
 
 .loading-icon {
   font-size: 48px;
-  color: rgb(var(--md-sys-color-primary));
+  color: var(--md-sys-color-primary);
   animation: spin 1.5s linear infinite;
 }
 
 .error-icon {
   font-size: 48px;
-  color: rgb(var(--md-sys-color-error));
+  color: var(--md-sys-color-error);
   margin-bottom: 1rem;
 }
 
 .empty-icon {
   font-size: 48px;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   margin-bottom: 1rem;
 }
 
@@ -478,8 +478,8 @@ onMounted(() => {
   margin-top: 1rem;
   padding: 0.5rem 1rem;
   border-radius: 50px;
-  background-color: rgb(var(--md-sys-color-primary));
-  color: rgb(var(--md-sys-color-on-primary));
+  background-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
   border: none;
   cursor: pointer;
 }

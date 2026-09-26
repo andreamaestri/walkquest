@@ -451,12 +451,12 @@ defineExpose({
 .mobile-walk-list-sheet {
   --vsbs-backdrop-bg: rgba(0, 0, 0, 0.5);
   --vsbs-shadow-color: rgba(89, 89, 89, 0.2);
-  --vsbs-background: rgb(var(--md-sys-color-surface));
+  --vsbs-background: var(--md-sys-color-surface);
   --vsbs-border-radius: 28px 28px 0 0;
   --vsbs-max-width: 100%;
-  --vsbs-border-color: rgba(var(--md-sys-color-outline), 0.12);
+  --vsbs-border-color: color-mix(in srgb, var(--md-sys-color-outline) 12%, transparent);
   --vsbs-padding-x: 0px;
-  --vsbs-handle-background: rgba(var(--md-sys-color-on-surface), 0.28);
+  --vsbs-handle-background: color-mix(in srgb, var(--md-sys-color-on-surface) 28%, transparent);
 }
 
 /* Ensure bottom sheet accounts for safe areas */
@@ -491,7 +491,7 @@ defineExpose({
   justify-content: space-between;
   align-items: center;
   padding: 16px;
-  border-bottom: 1px solid rgba(var(--md-sys-color-outline), 0.12);
+  border-bottom: 1px solid color-mix(in srgb, var(--md-sys-color-outline) 12%, transparent);
   height: 72px;
   flex-shrink: 0;
 }
@@ -550,7 +550,7 @@ defineExpose({
 .header-title {
   font-size: 20px;
   font-weight: 500;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
 }
 
 .header-actions {
@@ -567,7 +567,7 @@ defineExpose({
   justify-content: center;
   background: transparent;
   border: none;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   cursor: pointer;
 }
 
@@ -578,7 +578,7 @@ defineExpose({
   gap: 4px;
   width: auto;
   padding: 0 12px;
-  background-color: rgba(var(--md-sys-color-on-surface-variant), 0.08);
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 8%, transparent);
   border-radius: 16px;
 }
 
@@ -588,15 +588,15 @@ defineExpose({
 }
 
 .header-button:hover {
-  background-color: rgba(var(--md-sys-color-on-surface-variant), 0.08);
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 8%, transparent);
 }
 
 .clear-results-button:hover {
-  background-color: rgba(var(--md-sys-color-on-surface-variant), 0.12);
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 12%, transparent);
 }
 
 .header-button:active {
-  background-color: rgba(var(--md-sys-color-on-surface-variant), 0.12);
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 12%, transparent);
 }
 
 /* Search modal styles */
@@ -620,7 +620,7 @@ defineExpose({
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgb(var(--md-sys-color-surface));
+  background-color: var(--md-sys-color-surface);
   z-index: 1000;
   display: flex;
   flex-direction: column;
@@ -647,7 +647,7 @@ defineExpose({
   display: flex;
   align-items: center;
   padding: 8px;
-  border-bottom: 1px solid rgba(var(--md-sys-color-outline), 0.12);
+  border-bottom: 1px solid color-mix(in srgb, var(--md-sys-color-outline) 12%, transparent);
   height: 64px;
 }
 
@@ -660,7 +660,7 @@ defineExpose({
   justify-content: center;
   background: transparent;
   border: none;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   margin-right: 8px;
 }
 
@@ -677,9 +677,9 @@ defineExpose({
   height: 48px;
   border-radius: 24px;
   padding: 0 16px;
-  background-color: rgb(var(--md-sys-color-surface-container-high));
-  border: 1px solid rgba(var(--md-sys-color-outline), 0.12);
-  color: rgb(var(--md-sys-color-on-surface));
+  background-color: var(--md-sys-color-surface-container-high);
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline) 12%, transparent);
+  color: var(--md-sys-color-on-surface);
   font-size: 16px;
   outline: none;
 }
@@ -699,7 +699,7 @@ defineExpose({
   justify-content: center;
   background: transparent;
   border: none;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .md3-search-content {
@@ -738,20 +738,20 @@ defineExpose({
 
 .empty-state-icon {
   font-size: 64px;
-  color: rgba(var(--md-sys-color-on-surface-variant), 0.7);
+  color: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 70%, transparent);
   margin-bottom: 16px;
 }
 
 .empty-state-title {
   font-size: 20px;
   font-weight: 500;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   margin-bottom: 8px;
 }
 
 .empty-state-description {
   font-size: 16px;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   margin-bottom: 24px;
 }
 
@@ -762,7 +762,7 @@ defineExpose({
   padding: 12px 24px;
   border-radius: 20px;
   background-color: #F7F2FA;
-  color: rgb(var(--md-sys-color-on-primary));
+  color: var(--md-sys-color-on-primary);
   font-size: 16px;
   font-weight: 600; /* Increased font weight for better contrast */
   border: none;
@@ -772,13 +772,13 @@ defineExpose({
 }
 
 .empty-state-button:hover {
-  background-color: rgb(var(--md-sys-color-primary-dark, var(--md-sys-color-primary)));
-  color: rgb(var(--md-sys-color-on-primary));
+  background-color: var(--md-sys-color-primary-dark);
+  color: var(--md-sys-color-on-primary);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.18);
 }
 
 .empty-state-button:focus-visible {
-  outline: 2px solid rgb(var(--md-sys-color-outline));
+  outline: 2px solid var(--md-sys-color-outline);
   outline-offset: 2px;
 }
 

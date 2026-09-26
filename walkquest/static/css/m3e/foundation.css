@@ -1,0 +1,129 @@
+/* WalkQuest · Material 3 Expressive foundation tokens
+   Colour lives in color.generated.css (npm run theme). Everything else —
+   shape, typography, motion, elevation and state — is defined here once. */
+
+:root {
+  /* ── Typeface ───────────────────────────────────────────────────────── */
+  --md-ref-typeface-brand: "Google Sans Flex Variable", "Google Sans Flex", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --md-ref-typeface-plain: var(--md-ref-typeface-brand);
+
+  /* ── Shape (M3 Expressive corner scale) ─────────────────────────────── */
+  --md-sys-shape-corner-none: 0px;
+  --md-sys-shape-corner-extra-small: 4px;
+  --md-sys-shape-corner-small: 8px;
+  --md-sys-shape-corner-medium: 12px;
+  --md-sys-shape-corner-large: 16px;
+  --md-sys-shape-corner-large-increased: 20px;
+  --md-sys-shape-corner-extra-large: 28px;
+  --md-sys-shape-corner-extra-large-increased: 32px;
+  --md-sys-shape-corner-extra-extra-large: 48px;
+  --md-sys-shape-corner-full: 9999px;
+  /* Short aliases used by older components */
+  --md-sys-shape-xs: var(--md-sys-shape-corner-extra-small);
+  --md-sys-shape-sm: var(--md-sys-shape-corner-small);
+  --md-sys-shape-md: var(--md-sys-shape-corner-medium);
+  --md-sys-shape-lg: var(--md-sys-shape-corner-large);
+  --md-sys-shape-xl: var(--md-sys-shape-corner-extra-large);
+  --md-sys-shape-expressive: 32px 12px 28px 16px;
+
+  /* ── Motion: M3 Expressive springs expressed for CSS ────────────────── */
+  --md-sys-motion-spring-fast-spatial-duration: 350ms;
+  --md-sys-motion-spring-fast-spatial: cubic-bezier(0.42, 1.67, 0.21, 0.9);
+  --md-sys-motion-spring-default-spatial-duration: 500ms;
+  --md-sys-motion-spring-default-spatial: cubic-bezier(0.38, 1.21, 0.22, 1);
+  --md-sys-motion-spring-slow-spatial-duration: 650ms;
+  --md-sys-motion-spring-slow-spatial: cubic-bezier(0.39, 1.29, 0.35, 0.98);
+  --md-sys-motion-spring-fast-effects-duration: 150ms;
+  --md-sys-motion-spring-fast-effects: cubic-bezier(0.31, 0.94, 0.34, 1);
+  --md-sys-motion-spring-default-effects-duration: 200ms;
+  --md-sys-motion-spring-default-effects: cubic-bezier(0.34, 0.8, 0.34, 1);
+  --md-sys-motion-spring-slow-effects-duration: 300ms;
+  --md-sys-motion-spring-slow-effects: cubic-bezier(0.34, 0.88, 0.34, 1);
+
+  /* Easing + duration tokens (M3 baseline) kept for existing transitions */
+  --md-sys-motion-easing-linear: cubic-bezier(0, 0, 1, 1);
+  --md-sys-motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --md-sys-motion-easing-standard-accelerate: cubic-bezier(0.3, 0, 1, 1);
+  --md-sys-motion-easing-standard-decelerate: cubic-bezier(0, 0, 0, 1);
+  --md-sys-motion-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --md-sys-motion-easing-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --md-sys-motion-easing-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --md-sys-motion-duration-short1: 50ms;
+  --md-sys-motion-duration-short2: 100ms;
+  --md-sys-motion-duration-short3: 150ms;
+  --md-sys-motion-duration-short4: 200ms;
+  --md-sys-motion-duration-medium1: 250ms;
+  --md-sys-motion-duration-medium2: 300ms;
+  --md-sys-motion-duration-medium3: 350ms;
+  --md-sys-motion-duration-medium4: 400ms;
+  --md-sys-motion-duration-medium: var(--md-sys-motion-duration-medium2);
+  --md-sys-motion-duration-long1: 450ms;
+  --md-sys-motion-duration-long2: 500ms;
+  --md-sys-motion-duration-long3: 550ms;
+  --md-sys-motion-duration-long4: 600ms;
+
+  /* ── Elevation ──────────────────────────────────────────────────────── */
+  --md-sys-elevation-0: none;
+  --md-sys-elevation-1: 0 1px 2px color-mix(in srgb, var(--md-sys-color-shadow) 30%, transparent), 0 1px 3px 1px color-mix(in srgb, var(--md-sys-color-shadow) 15%, transparent);
+  --md-sys-elevation-2: 0 1px 2px color-mix(in srgb, var(--md-sys-color-shadow) 30%, transparent), 0 2px 6px 2px color-mix(in srgb, var(--md-sys-color-shadow) 15%, transparent);
+  --md-sys-elevation-3: 0 1px 3px color-mix(in srgb, var(--md-sys-color-shadow) 30%, transparent), 0 4px 8px 3px color-mix(in srgb, var(--md-sys-color-shadow) 15%, transparent);
+  --md-sys-elevation-4: 0 2px 3px color-mix(in srgb, var(--md-sys-color-shadow) 30%, transparent), 0 6px 10px 4px color-mix(in srgb, var(--md-sys-color-shadow) 15%, transparent);
+  --md-sys-elevation-5: 0 4px 4px color-mix(in srgb, var(--md-sys-color-shadow) 30%, transparent), 0 8px 12px 6px color-mix(in srgb, var(--md-sys-color-shadow) 15%, transparent);
+
+  /* ── State layers ───────────────────────────────────────────────────── */
+  --md-sys-state-hover-state-layer-opacity: 0.08;
+  --md-sys-state-focus-state-layer-opacity: 0.1;
+  --md-sys-state-pressed-state-layer-opacity: 0.1;
+  --md-sys-state-dragged-state-layer-opacity: 0.16;
+
+  /* ── Typescale (baseline + emphasized weights) ──────────────────────── */
+  --md-sys-typescale-display-large-size: 57px;  --md-sys-typescale-display-large-line-height: 64px;
+  --md-sys-typescale-display-medium-size: 45px; --md-sys-typescale-display-medium-line-height: 52px;
+  --md-sys-typescale-display-small-size: 36px;  --md-sys-typescale-display-small-line-height: 44px;
+  --md-sys-typescale-headline-large-size: 32px; --md-sys-typescale-headline-large-line-height: 40px;
+  --md-sys-typescale-headline-medium-size: 28px; --md-sys-typescale-headline-medium-line-height: 36px;
+  --md-sys-typescale-headline-small-size: 24px; --md-sys-typescale-headline-small-line-height: 32px;
+  --md-sys-typescale-title-large-size: 22px;    --md-sys-typescale-title-large-line-height: 28px;
+  --md-sys-typescale-title-medium-size: 16px;   --md-sys-typescale-title-medium-line-height: 24px;
+  --md-sys-typescale-title-small-size: 14px;    --md-sys-typescale-title-small-line-height: 20px;
+  --md-sys-typescale-body-large-size: 16px;     --md-sys-typescale-body-large-line-height: 24px;
+  --md-sys-typescale-body-medium-size: 14px;    --md-sys-typescale-body-medium-line-height: 20px;
+  --md-sys-typescale-body-small-size: 12px;     --md-sys-typescale-body-small-line-height: 16px;
+  --md-sys-typescale-label-large-size: 14px;    --md-sys-typescale-label-large-line-height: 20px;
+  --md-sys-typescale-label-medium-size: 12px;   --md-sys-typescale-label-medium-line-height: 16px;
+  --md-sys-typescale-label-small-size: 11px;    --md-sys-typescale-label-small-line-height: 16px;
+
+  --md-sys-typescale-body-large-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-body-large-weight: 400;
+  --md-sys-typescale-body-large-tracking: 0.5px;
+  --md-sys-typescale-label-medium-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-label-medium-weight: 500;
+  --md-sys-typescale-label-medium-weight-prominent: 700;
+  --md-sys-typescale-label-medium-tracking: 0.5px;
+
+  /* ── Layout ─────────────────────────────────────────────────────────── */
+  --md-sys-sidebar-collapsed: 96px;
+  --md-sys-sidebar-standard: 400px;
+  --md-sys-side-sheet-padding: 16px;
+  --md-sys-side-sheet-header-height: 64px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --md-sys-motion-spring-fast-spatial: linear;
+    --md-sys-motion-spring-default-spatial: linear;
+    --md-sys-motion-spring-slow-spatial: linear;
+    --md-sys-motion-spring-fast-spatial-duration: 1ms;
+    --md-sys-motion-spring-default-spatial-duration: 1ms;
+    --md-sys-motion-spring-slow-spatial-duration: 1ms;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}

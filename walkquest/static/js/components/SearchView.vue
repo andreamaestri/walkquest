@@ -783,7 +783,7 @@ const closeSearch = () => {
   
   /* In mobile fullscreen mode, apply Material Design 3 search modal styles */
   @media (max-width: 599px) {
-    background-color: rgb(var(--md-sys-color-surface));
+    background-color: var(--md-sys-color-surface);
     padding: 8px 16px;
   }
 }
@@ -797,22 +797,22 @@ const closeSearch = () => {
 .m3-search-field {
   height: 56px; /* Adjusted to match container height */
   border-radius: 52px;
-  background: rgb(var(--md-sys-color-surface-container-high));
+  background: var(--md-sys-color-surface-container-high);
   transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
 }
 
 /* Active state styling */
 .m3-search-field.is-active {
-  background: rgb(var(--md-sys-color-surface-container));
+  background: var(--md-sys-color-surface-container);
   border-radius: 24px;
 }
 
 .m3-search-field:hover {
-  background: rgb(var(--md-sys-color-surface-container));
+  background: var(--md-sys-color-surface-container);
 }
 
 .m3-search-field.is-focused {
-  background: rgb(var(--md-sys-color-surface-container));
+  background: var(--md-sys-color-surface-container);
 }
 
 .m3-search-field-container {
@@ -832,7 +832,7 @@ const closeSearch = () => {
 }
 
 .m3-search-field-icon {
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   font-size: 24px; /* Slightly smaller icon */
   flex-shrink: 0;
   opacity: 0.65;
@@ -845,7 +845,7 @@ const closeSearch = () => {
   padding: 0 16px; /* Adjusted padding */
   background: transparent;
   border: none;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   font-family: var(--md-sys-typescale-body-large-font);
   font-size: 14px; /* Slightly smaller text */
   line-height: var(--md-sys-typescale-body-large-line-height);
@@ -854,7 +854,7 @@ const closeSearch = () => {
 }
 
 .m3-search-field-input::placeholder {
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .m3-search-field-input:focus {
@@ -869,7 +869,7 @@ const closeSearch = () => {
 }
 
 .m3-search-field-loading {
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   font-size: 20px;
   opacity: 0.65;
   animation: m3-fade-in var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-standard);
@@ -894,19 +894,19 @@ const closeSearch = () => {
   border: none;
   border-radius: 16px;
   background: transparent;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   cursor: pointer;
   opacity: 0.75;
   transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
 }
 
 .m3-search-field-clear:hover {
-  background: rgb(var(--md-sys-color-on-surface-variant) / 0.08);
+  background: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 8%, transparent);
   opacity: 0.85;
 }
 
 .m3-search-field-clear:active {
-  background: rgb(var(--md-sys-color-on-surface-variant) / 0.12);
+  background: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 12%, transparent);
   opacity: 1;
 }
 
@@ -917,13 +917,13 @@ const closeSearch = () => {
 
 /* Error state */
 .m3-search-field.is-error {
-  background: rgb(var(--md-sys-color-error-container) / 0.08);
+  background: color-mix(in srgb, var(--md-sys-color-error-container) 8%, transparent);
 }
 
 .m3-search-error {
   margin-top: 4px;
   padding: 0 16px;
-  color: rgb(var(--md-sys-color-error));
+  color: var(--md-sys-color-error);
   font-size: var(--md-sys-typescale-body-small-size);
 }
 
@@ -933,7 +933,7 @@ const closeSearch = () => {
   left: 0;
   right: 0;
   margin-top: 4px;
-  background: rgb(var(--md-sys-color-surface-container));
+  background: var(--md-sys-color-surface-container);
   border-radius: 12px;
   overflow: hidden;
   box-shadow: var(--md-sys-elevation-2);
@@ -950,7 +950,7 @@ const closeSearch = () => {
   gap: 12px;
   border: none;
   background: transparent;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   font-family: var(--md-sys-typescale-body-large-font);
   text-align: left;
   cursor: pointer;
@@ -959,15 +959,15 @@ const closeSearch = () => {
 
 .m3-suggestion-item:hover,
 .m3-suggestion-item.is-selected {
-  background: rgb(var(--md-sys-color-surface-container-highest));
+  background: var(--md-sys-color-surface-container-highest);
 }
 
 .m3-suggestion-item:active {
-  background: rgb(var(--md-sys-color-surface-container-high));
+  background: var(--md-sys-color-surface-container-high);
 }
 
 .m3-suggestion-icon {
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   font-size: 20px;
   opacity: 0.65;
 }
@@ -992,7 +992,7 @@ const closeSearch = () => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   text-align: center;
   font-size: var(--md-sys-typescale-body-medium-size);
   animation: m3-fade-in var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-standard);
@@ -1000,7 +1000,7 @@ const closeSearch = () => {
 
 .m3-empty-icon {
   font-size: 48px;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 /* Animations */
@@ -1054,18 +1054,18 @@ const closeSearch = () => {
 /* Location Results */
 .m3-location-results {
   margin-top: 4px; /* Reduced margin */
-  background: rgb(var(--md-sys-color-surface-container));
+  background: var(--md-sys-color-surface-container);
   border-radius: 12px;
   overflow: hidden;
   box-shadow: var(--md-sys-elevation-0);
-  border: 1px solid rgb(var(--md-sys-color-outline-variant) / 0.2);
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 20%, transparent);
 }
 
 .m3-results-count {
   padding: 12px;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   font-size: var(--md-sys-typescale-body-medium-size);
-  border-bottom: 1px solid rgb(var(--md-sys-color-outline-variant));
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
 }
 
 .m3-search-field-close {
@@ -1078,7 +1078,7 @@ const closeSearch = () => {
   border: none;
   border-radius: 18px;
   background: transparent;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   cursor: pointer;
   opacity: 0.75;
   transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
@@ -1086,12 +1086,12 @@ const closeSearch = () => {
 }
 
 .m3-search-field-close:hover {
-  background: rgb(var(--md-sys-color-on-surface-variant) / 0.08);
+  background: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 8%, transparent);
   opacity: 0.85;
 }
 
 .m3-search-field-close:active {
-  background: rgb(var(--md-sys-color-on-surface-variant) / 0.12);
+  background: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 12%, transparent);
   opacity: 1;
 }
 
@@ -1102,7 +1102,7 @@ const closeSearch = () => {
   }
 
   .m3-suggestion-item:active {
-    background-color: rgb(var(--md-sys-color-surface-container-highest));
+    background-color: var(--md-sys-color-surface-container-highest);
     transform: scale(0.98);
   }
 }
@@ -1124,7 +1124,7 @@ const closeSearch = () => {
 
 .sheet-results-count {
   padding: 0 16px 12px;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -1154,9 +1154,9 @@ const closeSearch = () => {
   height: 32px;
   padding: 0 12px;
   border-radius: 16px;
-  border: 1px solid rgba(var(--md-sys-color-outline-variant), 0.5);
-  background: rgb(var(--md-sys-color-surface-container-low));
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 50%, transparent);
+  background: var(--md-sys-color-surface-container-low);
+  color: var(--md-sys-color-on-surface-variant);
   font-size: 13px;
   font-weight: 500;
   display: flex;
@@ -1167,8 +1167,8 @@ const closeSearch = () => {
 }
 
 .sheet-filter-chip.active {
-  background: rgb(var(--md-sys-color-primary-container));
-  color: rgb(var(--md-sys-color-on-primary-container));
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
   border-color: transparent;
 }
 
@@ -1186,7 +1186,7 @@ const closeSearch = () => {
   margin: 12px 0 8px 0;
   font-size: 14px;
   font-weight: 500;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .sheet-suggestion-list {
@@ -1204,7 +1204,7 @@ const closeSearch = () => {
   gap: 16px;
   border: none;
   background: transparent;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   font-family: var(--md-sys-typescale-body-large-font);
   text-align: left;
   cursor: pointer;
@@ -1214,16 +1214,16 @@ const closeSearch = () => {
 
 .sheet-suggestion-item:hover,
 .sheet-suggestion-item.is-selected {
-  background: rgb(var(--md-sys-color-surface-container-highest));
+  background: var(--md-sys-color-surface-container-highest);
 }
 
 .sheet-suggestion-item:active {
-  background: rgb(var(--md-sys-color-surface-container-high));
+  background: var(--md-sys-color-surface-container-high);
   transform: scale(0.98);
 }
 
 .sheet-suggestion-icon {
-  color: rgb(var(--md-sys-color-primary));
+  color: var(--md-sys-color-primary);
   font-size: 24px;
   opacity: 0.85;
 }
@@ -1247,7 +1247,7 @@ const closeSearch = () => {
 
 .sheet-suggestion-detail {
   font-size: 13px;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 /* Skeleton loading animation */
@@ -1272,7 +1272,7 @@ const closeSearch = () => {
   width: 56px;
   height: 56px;
   border-radius: 8px;
-  background: rgb(var(--md-sys-color-surface-container-highest));
+  background: var(--md-sys-color-surface-container-highest);
 }
 
 .skeleton-content,
@@ -1289,7 +1289,7 @@ const closeSearch = () => {
   height: 16px;
   width: 70%;
   border-radius: 4px;
-  background: rgb(var(--md-sys-color-surface-container-highest));
+  background: var(--md-sys-color-surface-container-highest);
 }
 
 .skeleton-subtitle,
@@ -1297,7 +1297,7 @@ const closeSearch = () => {
   height: 14px;
   width: 40%;
   border-radius: 4px;
-  background: rgb(var(--md-sys-color-surface-container-highest));
+  background: var(--md-sys-color-surface-container-highest);
 }
 
 .skeleton-details,
@@ -1305,7 +1305,7 @@ const closeSearch = () => {
   height: 12px;
   width: 60%;
   border-radius: 4px;
-  background: rgb(var(--md-sys-color-surface-container-highest));
+  background: var(--md-sys-color-surface-container-highest);
 }
 
 @keyframes skeleton-pulse {
@@ -1322,28 +1322,28 @@ const closeSearch = () => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   text-align: center;
-  background: rgb(var(--md-sys-color-surface-container-low));
+  background: var(--md-sys-color-surface-container-low);
   margin: 8px 16px;
   border-radius: 16px;
 }
 
 .sheet-empty-icon {
   font-size: 48px;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   opacity: 0.5;
 }
 
 .sheet-empty-title {
   font-size: 16px;
   font-weight: 500;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
 }
 
 .sheet-empty-text {
   font-size: 14px;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   margin: 0;
 }
 </style>

@@ -57,10 +57,10 @@ watch(() => props.modelValue, (newVal) => {
       animate(element, { 
         scale: [1, 1.05, 1],
         backgroundColor: [
-          'rgb(var(--md-sys-color-surface-container))',
-          'rgb(var(--md-sys-color-primary-container))'
+          'var(--md-sys-color-surface-container)',
+          'var(--md-sys-color-primary-container)'
         ]
-      }, { duration: 0.3, easing: [0.2, 0, 0, 1] })
+      }, { duration: 0.3, ease: [0.2, 0, 0, 1] })
     }
   })
 }, { immediate: false })
@@ -68,7 +68,7 @@ watch(() => props.modelValue, (newVal) => {
 
 <style scoped>
 .md3-section {
-  background-color: rgb(var(--md-sys-color-surface-container-low));
+  background-color: var(--md-sys-color-surface-container-low);
   border-radius: 16px;
   padding: 20px;
   transition: transform 0.2s, box-shadow 0.2s;
@@ -88,14 +88,14 @@ watch(() => props.modelValue, (newVal) => {
 
 .md3-section-icon {
   font-size: 24px;
-  color: rgb(var(--md-sys-color-primary));
+  color: var(--md-sys-color-primary);
 }
 
 .md3-section-title {
   font-size: 18px;
   font-weight: 500;
   margin: 0;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
 }
 
 /* Difficulty Cards */
@@ -112,32 +112,32 @@ watch(() => props.modelValue, (newVal) => {
   justify-content: center;
   padding: 16px 8px;
   border-radius: 16px;
-  background-color: rgb(var(--md-sys-color-surface-container));
+  background-color: var(--md-sys-color-surface-container);
   cursor: pointer;
   transition: all 0.25s;
   position: relative;
   overflow: hidden;
   text-align: center;
-  border: 1px solid rgba(var(--md-sys-color-outline), 0.3);
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline) 30%, transparent);
 }
 
 .md3-difficulty-card:hover {
-  background-color: rgb(var(--md-sys-color-surface-container-high));
+  background-color: var(--md-sys-color-surface-container-high);
   transform: translateY(-2px);
   box-shadow: var(--md-sys-elevation-1);
 }
 
 .md3-difficulty-card.selected {
-  background-color: rgb(var(--md-sys-color-primary-container));
-  color: rgb(var(--md-sys-color-on-primary-container));
-  border-color: rgb(var(--md-sys-color-primary));
+  background-color: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  border-color: var(--md-sys-color-primary);
 }
 
 .md3-difficulty-icon-container {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background-color: rgba(var(--md-sys-color-primary), 0.1);
+  background-color: color-mix(in srgb, var(--md-sys-color-primary) 10%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -146,13 +146,13 @@ watch(() => props.modelValue, (newVal) => {
 }
 
 .md3-difficulty-card.selected .md3-difficulty-icon-container {
-  background-color: rgba(var(--md-sys-color-primary), 0.2);
+  background-color: color-mix(in srgb, var(--md-sys-color-primary) 20%, transparent);
   transform: scale(1.1);
 }
 
 .md3-difficulty-icon {
   font-size: 24px;
-  color: rgb(var(--md-sys-color-primary));
+  color: var(--md-sys-color-primary);
 }
 
 .md3-difficulty-label {
@@ -172,8 +172,8 @@ watch(() => props.modelValue, (newVal) => {
 }
 
 .md3-difficulty-card.selected .md3-selection-indicator {
-  border-color: rgb(var(--md-sys-color-primary));
-  background-color: rgb(var(--md-sys-color-primary));
+  border-color: var(--md-sys-color-primary);
+  background-color: var(--md-sys-color-primary);
 }
 
 .md3-difficulty-card.selected .md3-selection-indicator::after {
@@ -191,7 +191,7 @@ watch(() => props.modelValue, (newVal) => {
 
 .md3-error-message {
   font-size: 12px;
-  color: rgb(var(--md-sys-color-error));
+  color: var(--md-sys-color-error);
   margin-top: 8px;
   margin-left: 4px;
 }

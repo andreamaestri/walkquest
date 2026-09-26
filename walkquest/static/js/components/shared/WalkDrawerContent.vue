@@ -578,7 +578,7 @@ onMounted(() => {
   justify-content: space-between;
   gap: 12px;
   padding: 16px;
-  border: 1px solid rgba(var(--md-sys-color-outline-variant), 0.35);
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 35%, transparent);
   border-radius: 16px;
   margin-bottom: 16px;
 }
@@ -588,14 +588,14 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background-color: rgb(var(--md-sys-color-surface-container-low));
+  background-color: var(--md-sys-color-surface-container-low);
   border-radius: 12px;
   flex: 1 1 auto;
   min-width: 120px;
 }
 
 .info-icon {
-  color: rgb(var(--md-sys-color-primary));
+  color: var(--md-sys-color-primary);
   font-size: 20px;
 }
 
@@ -659,15 +659,15 @@ onMounted(() => {
   justify-content: center;
   padding: 8px;
   border-radius: 50%;
-  background: rgb(var(--md-sys-color-surface-container-high));
-  color: rgb(var(--md-sys-color-on-surface));
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
   border: none;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .action-button:hover {
-  background: rgb(var(--md-sys-color-surface-container-highest));
+  background: var(--md-sys-color-surface-container-highest);
 }
 
 .action-button:active {

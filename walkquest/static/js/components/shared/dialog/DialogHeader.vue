@@ -31,8 +31,8 @@ defineEmits(['close'])
   justify-content: space-between;
   align-items: center;
   padding: 24px;
-  background-color: rgb(var(--md-sys-color-surface-container));
-  border-bottom: 1px solid rgba(var(--md-sys-color-outline), 0.1);
+  background-color: var(--md-sys-color-surface-container);
+  border-bottom: 1px solid color-mix(in srgb, var(--md-sys-color-outline) 10%, transparent);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -42,7 +42,7 @@ defineEmits(['close'])
   font-size: 1.25rem;
   font-weight: 500;
   margin: 0;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
 }
 
 .md3-close-button {
@@ -55,16 +55,16 @@ defineEmits(['close'])
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   transition: background-color 0.2s, color 0.2s;
 }
 
 .md3-close-button:hover {
-  background-color: rgba(var(--md-sys-color-on-surface), 0.08);
-  color: rgb(var(--md-sys-color-on-surface));
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
+  color: var(--md-sys-color-on-surface);
 }
 
 .md3-close-button:active {
-  background-color: rgba(var(--md-sys-color-on-surface), 0.12);
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface) 12%, transparent);
 }
 </style>

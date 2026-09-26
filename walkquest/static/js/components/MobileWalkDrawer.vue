@@ -308,12 +308,12 @@ function handleRecenter() {
 .mobile-walk-drawer-sheet {
   --vsbs-backdrop-bg: rgba(0, 0, 0, 0.5);
   --vsbs-shadow-color: rgba(89, 89, 89, 0.2);
-  --vsbs-background: rgb(var(--md-sys-color-surface));
+  --vsbs-background: var(--md-sys-color-surface);
   --vsbs-border-radius: 28px 28px 0 0;
   --vsbs-max-width: 100%;
-  --vsbs-border-color: rgba(var(--md-sys-color-outline), 0.12);
+  --vsbs-border-color: color-mix(in srgb, var(--md-sys-color-outline) 12%, transparent);
   --vsbs-padding-x: 0;
-  --vsbs-handle-background: rgba(var(--md-sys-color-on-surface), 0.28);
+  --vsbs-handle-background: color-mix(in srgb, var(--md-sys-color-on-surface) 28%, transparent);
 }
 
 .walk-drawer-bottom-sheet {
@@ -329,7 +329,7 @@ function handleRecenter() {
 .walk-drawer-header {
   padding-top: 0!important;
   flex-shrink: 0;
-  border-bottom: 1px solid rgba(var(--md-sys-color-outline), 0.12);
+  border-bottom: 1px solid color-mix(in srgb, var(--md-sys-color-outline) 12%, transparent);
   margin-top: 20px;
 }
 
@@ -370,7 +370,7 @@ function handleRecenter() {
 .mobile-walk-drawer-sheet :deep(.bottom-sheet__container) {
   transition: transform var(--md-sys-motion-duration-medium2, 320ms) 
               var(--md-sys-motion-easing-emphasized-decelerate, cubic-bezier(0.05, 0.7, 0.1, 1.0));
-  background: rgb(var(--md-sys-color-surface));
+  background: var(--md-sys-color-surface);
   pointer-events: auto !important;
   min-height: 300px;
   height: auto; /* Allow container to size properly */
@@ -401,14 +401,14 @@ function handleRecenter() {
 .header-container.mobile {
   border-top-left-radius: 16px!important;
   border-top-right-radius: 16px!important;
-  background-color: rgb(var(--md-sys-color-primary-container))!important;
+  background-color: var(--md-sys-color-primary-container)!important;
 }
 
 [data-vsbs-header] {
   padding: 0!important;
   border-top-left-radius: 16px!important;
   border-top-right-radius: 16px!important;
-  background-color: rgb(var(--md-sys-color-primary-container))!important;
+  background-color: var(--md-sys-color-primary-container)!important;
 }
 
 /* Drag handle styling */

@@ -51,7 +51,7 @@ watch(() => uiStore.loadingStates, (states) => {
 .loading-overlay {
   position: fixed;
   inset: 0;
-  background: rgb(var(--md-sys-color-surface) / 0.9);
+  background: color-mix(in srgb, var(--md-sys-color-surface) 90%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -65,16 +65,16 @@ watch(() => uiStore.loadingStates, (states) => {
   gap: 16px;
   padding: 24px;
   border-radius: 16px;
-  background: rgb(var(--md-sys-color-surface-container));
+  background: var(--md-sys-color-surface-container);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .loading-spinner {
-  color: rgb(var(--md-sys-color-primary));
+  color: var(--md-sys-color-primary);
 }
 
 .loading-message {
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   font-size: 1rem;
 }
 </style>

@@ -40,8 +40,8 @@ defineEmits(['cancel'])
   justify-content: flex-end;
   gap: 12px;
   padding: 16px 24px;
-  background-color: rgb(var(--md-sys-color-surface-container-high));
-  border-top: 1px solid rgba(var(--md-sys-color-outline), 0.1);
+  background-color: var(--md-sys-color-surface-container-high);
+  border-top: 1px solid color-mix(in srgb, var(--md-sys-color-outline) 10%, transparent);
   position: sticky;
   bottom: 0;
   z-index: 10;
@@ -60,13 +60,13 @@ defineEmits(['cancel'])
 }
 
 .md3-filled-button {
-  background-color: rgb(var(--md-sys-color-primary));
-  color: rgb(var(--md-sys-color-on-primary));
+  background-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
   box-shadow: var(--md-sys-elevation-1);
 }
 
 .md3-filled-button:hover {
-  background-color: rgb(var(--md-sys-color-primary));
+  background-color: var(--md-sys-color-primary);
   filter: brightness(1.1);
   box-shadow: var(--md-sys-elevation-2);
 }
@@ -77,24 +77,24 @@ defineEmits(['cancel'])
 }
 
 .md3-filled-button:disabled {
-  background-color: rgba(var(--md-sys-color-on-surface), 0.12);
-  color: rgba(var(--md-sys-color-on-surface), 0.38);
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface) 12%, transparent);
+  color: color-mix(in srgb, var(--md-sys-color-on-surface) 38%, transparent);
   box-shadow: none;
   cursor: not-allowed;
 }
 
 .md3-text-button {
   background-color: transparent;
-  color: rgb(var(--md-sys-color-primary));
+  color: var(--md-sys-color-primary);
 }
 
 .md3-text-button:hover {
-  background-color: rgba(var(--md-sys-color-primary), 0.08);
+  background-color: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
 }
 
 .md3-text-button:active {
   transform: scale(0.98);
-  background-color: rgba(var(--md-sys-color-primary), 0.12);
+  background-color: color-mix(in srgb, var(--md-sys-color-primary) 12%, transparent);
 }
 
 .md3-button-spinner {

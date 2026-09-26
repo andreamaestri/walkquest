@@ -214,7 +214,7 @@ function initializeDrawer() {
           {
             delay: 0.2,
             duration: 0.6,
-            easing: [0.2, 0, 0.2, 1], // Material Design standard easing
+            ease: [0.2, 0, 0.2, 1], // Material Design standard easing
           }
         );
       }
@@ -233,7 +233,7 @@ function initializeDrawer() {
           {
             delay: 0.3, // Slightly faster to better coordinate with connector
             duration: 0.5,
-            easing: [0.2, 0, 0.2, 1], // Material Design standard easing
+            ease: [0.2, 0, 0.2, 1], // Material Design standard easing
           }
         );
       }
@@ -367,7 +367,7 @@ onMounted(() => {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: rgb(var(--md-sys-color-surface));
+  background-color: var(--md-sys-color-surface);
   z-index: 20; /* Lower z-index so it appears to slide from behind the rail */
   box-shadow: var(--md-sys-elevation-2);
   will-change: transform;
@@ -386,7 +386,7 @@ onMounted(() => {
   left: -28px; /* Position outside drawer */
   width: 28px;
   height: 56px;
-  background-color: rgb(var(--md-sys-color-surface-container-high));
+  background-color: var(--md-sys-color-surface-container-high);
   box-shadow: var(--md-sys-elevation-1);
   opacity: 0;
   z-index: 25; /* Higher than drawer but lower than nav rail items */
@@ -403,13 +403,13 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: rgba(var(--md-sys-color-surface), 0.7);
+  background-color: color-mix(in srgb, var(--md-sys-color-surface) 70%, transparent);
   z-index: 20;
 }
 
 .loading-icon {
   font-size: 48px;
-  color: rgb(var(--md-sys-color-primary));
+  color: var(--md-sys-color-primary);
 }
 
 .scrollable-container {
@@ -430,7 +430,7 @@ onMounted(() => {
   bottom: 24px;
   left: 0;
   width: 4px;
-  background: linear-gradient(to bottom, rgb(var(--md-sys-color-primary)), rgb(var(--md-sys-color-tertiary)));
+  background: linear-gradient(to bottom, var(--md-sys-color-primary), var(--md-sys-color-tertiary));
   opacity: 0.8;
   transform-origin: top center;
   border-radius: 4px;

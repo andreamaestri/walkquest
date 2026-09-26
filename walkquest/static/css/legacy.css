@@ -1,0 +1,24 @@
+/* Legacy helper classes still referenced by components. */
+/* Performance optimizations */
+.hardware-accelerated {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  will-change: transform;
+  contain: layout style paint;
+}
+
+/* Side sheet transitions */
+.side-sheet-transition-enter-active,
+.side-sheet-transition-leave-active {
+  transition: width var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+}
+
+.side-sheet-content-enter-active {
+  transition: opacity var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized-decelerate);
+  transition-delay: var(--md-sys-motion-duration-short1);
+}
+
+.side-sheet-content-leave-active {
+  transition: opacity var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-emphasized-accelerate);
+}

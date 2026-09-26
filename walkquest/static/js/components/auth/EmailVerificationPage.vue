@@ -135,11 +135,11 @@ function goToHome() {
   align-items: center;
   justify-content: center;
   padding: 16px;
-  background-color: rgb(var(--md-sys-color-surface));
+  background-color: var(--md-sys-color-surface);
 }
 
 .verification-card {
-  background-color: rgb(var(--md-sys-color-surface-container));
+  background-color: var(--md-sys-color-surface-container);
   border-radius: 28px;
   padding: 32px;
   width: 100%;
@@ -154,19 +154,19 @@ function goToHome() {
 
 .email-icon {
   font-size: 64px;
-  color: rgb(var(--md-sys-color-primary));
+  color: var(--md-sys-color-primary);
 }
 
 .verification-title {
   font-size: 24px;
   font-weight: 500;
   margin: 0 0 16px;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
 }
 
 .verification-description {
   font-size: 16px;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   margin-bottom: 32px;
   line-height: 1.5;
 }
@@ -192,8 +192,8 @@ function goToHome() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background-color: rgb(var(--md-sys-color-primary));
-  color: rgb(var(--md-sys-color-on-primary));
+  background-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
 }
 
 .return-button {
@@ -204,14 +204,14 @@ function goToHome() {
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
-  border: 1px solid rgb(var(--md-sys-color-outline));
+  border: 1px solid var(--md-sys-color-outline);
   text-transform: uppercase;
   letter-spacing: 0.1px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   background-color: transparent;
-  color: rgb(var(--md-sys-color-primary));
+  color: var(--md-sys-color-primary);
 }
 
 .continue-button {
@@ -228,21 +228,21 @@ function goToHome() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background-color: rgb(var(--md-sys-color-tertiary));
-  color: rgb(var(--md-sys-color-on-tertiary));
+  background-color: var(--md-sys-color-tertiary);
+  color: var(--md-sys-color-on-tertiary);
   margin-top: 16px;
 }
 
 .help-text {
   font-size: 14px;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   margin-top: 24px;
 }
 
 .continue-section {
   margin-top: 32px;
   padding-top: 24px;
-  border-top: 1px solid rgba(var(--md-sys-color-outline), 0.3);
+  border-top: 1px solid color-mix(in srgb, var(--md-sys-color-outline) 30%, transparent);
 }
 
 .spinner-icon {

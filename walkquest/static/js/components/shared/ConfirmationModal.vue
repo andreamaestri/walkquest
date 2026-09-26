@@ -88,7 +88,7 @@ defineEmits(['confirm', 'cancel']);
 }
 
 .modal-container {
-  background-color: rgb(var(--md-sys-color-surface));
+  background-color: var(--md-sys-color-surface);
   border-radius: 28px;
   width: 100%;
   max-width: 400px;
@@ -102,13 +102,13 @@ defineEmits(['confirm', 'cancel']);
   justify-content: space-between;
   align-items: center;
   padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid rgb(var(--md-sys-color-outline));
+  border-bottom: 1px solid var(--md-sys-color-outline);
 }
 
 .modal-title {
   margin: 0;
   font-size: 1.25rem;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
 }
 
 .close-btn {
@@ -121,13 +121,13 @@ defineEmits(['confirm', 'cancel']);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   transition: all 0.2s;
 }
 
 .close-btn:hover {
-  background-color: rgb(var(--md-sys-color-surface-container-highest));
-  color: rgb(var(--md-sys-color-on-surface));
+  background-color: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface);
 }
 
 .modal-body {
@@ -138,8 +138,8 @@ defineEmits(['confirm', 'cancel']);
 .icon-container {
   width: 64px;
   height: 64px;
-  background-color: rgb(var(--md-sys-color-secondary-container));
-  color: rgb(var(--md-sys-color-on-secondary-container));
+  background-color: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
   font-size: 36px;
   border-radius: 50%;
   margin: 0 auto 1rem;
@@ -149,13 +149,13 @@ defineEmits(['confirm', 'cancel']);
 }
 
 .icon-container.danger {
-  background-color: rgb(var(--md-sys-color-error-container));
-  color: rgb(var(--md-sys-color-on-error-container));
+  background-color: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
 }
 
 .message {
   margin: 0;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   font-size: 1rem;
   line-height: 1.5;
 }
@@ -165,7 +165,7 @@ defineEmits(['confirm', 'cancel']);
   display: flex;
   justify-content: flex-end;
   gap: 1rem;
-  border-top: 1px solid rgb(var(--md-sys-color-outline-variant));
+  border-top: 1px solid var(--md-sys-color-outline-variant);
 }
 
 .btn {
@@ -183,31 +183,31 @@ defineEmits(['confirm', 'cancel']);
 
 .cancel-btn {
   background-color: transparent;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .cancel-btn:hover:not(:disabled) {
-  background-color: rgb(var(--md-sys-color-surface-container-highest));
+  background-color: var(--md-sys-color-surface-container-highest);
 }
 
 .confirm-btn {
-  background-color: rgb(var(--md-sys-color-primary));
-  color: rgb(var(--md-sys-color-on-primary));
+  background-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
 }
 
 .confirm-btn:hover:not(:disabled) {
-  background-color: rgb(var(--md-sys-color-primary-container));
-  color: rgb(var(--md-sys-color-on-primary-container));
+  background-color: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
 }
 
 .confirm-btn.danger {
-  background-color: rgb(var(--md-sys-color-error));
-  color: rgb(var(--md-sys-color-on-error));
+  background-color: var(--md-sys-color-error);
+  color: var(--md-sys-color-on-error);
 }
 
 .confirm-btn.danger:hover:not(:disabled) {
-  background-color: rgb(var(--md-sys-color-error-container));
-  color: rgb(var(--md-sys-color-on-error-container));
+  background-color: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
 }
 
 .btn:disabled {

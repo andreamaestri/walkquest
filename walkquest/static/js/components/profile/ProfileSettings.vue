@@ -204,7 +204,7 @@ const errors = ref({
 
 // Avatar color
 const avatarBgColor = computed(() => {
-  if (!email.value) return 'rgb(var(--md-sys-color-primary))'
+  if (!email.value) return 'var(--md-sys-color-primary)'
   
   let hash = 0
   for (let i = 0; i < email.value.length; i++) {
@@ -308,8 +308,8 @@ async function handleDeleteAccount() {
 <style scoped>
 .profile-settings {
   height: 100vh;
-  background-color: rgb(var(--md-sys-color-surface));
-  color: rgb(var(--md-sys-color-on-surface));
+  background-color: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
 }
 
 .profile-header {
@@ -317,8 +317,8 @@ async function handleDeleteAccount() {
   top: 0;
   z-index: 10;
   padding: 16px;
-  background-color: rgb(var(--md-sys-color-surface));
-  border-bottom: 1px solid rgba(var(--md-sys-color-outline), 0.12);
+  background-color: var(--md-sys-color-surface);
+  border-bottom: 1px solid color-mix(in srgb, var(--md-sys-color-outline) 12%, transparent);
   display: flex;
   align-items: center;
   gap: 16px;
@@ -334,18 +334,18 @@ async function handleDeleteAccount() {
   background: transparent;
   border: none;
   cursor: pointer;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
 }
 
 .back-button:hover {
-  background-color: rgba(var(--md-sys-color-on-surface), 0.08);
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
 }
 
 .profile-title {
   font-size: 22px;
   font-weight: 500;
   margin: 0;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
 }
 
 .profile-content {
@@ -355,7 +355,7 @@ async function handleDeleteAccount() {
 }
 
 .profile-section {
-  background-color: rgb(var(--md-sys-color-surface-container));
+  background-color: var(--md-sys-color-surface-container);
   border-radius: 16px;
   padding: 24px;
   margin-bottom: 24px;
@@ -365,7 +365,7 @@ async function handleDeleteAccount() {
   font-size: 18px;
   font-weight: 500;
   margin: 0 0 16px;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
 }
 
 .user-info-container {
@@ -387,7 +387,7 @@ async function handleDeleteAccount() {
   justify-content: center;
   font-size: 32px;
   font-weight: 500;
-  color: rgb(var(--md-sys-color-on-primary));
+  color: var(--md-sys-color-on-primary);
 }
 
 .info-section {
@@ -407,12 +407,12 @@ async function handleDeleteAccount() {
   height: 56px;
   width: 100%;
   border-radius: 4px;
-  background-color: rgb(var(--md-sys-color-surface-container-lowest));
+  background-color: var(--md-sys-color-surface-container-lowest);
   transition: all 0.2s;
 }
 
 .md3-text-field.focused {
-  background-color: rgb(var(--md-sys-color-surface-container-highest));
+  background-color: var(--md-sys-color-surface-container-highest);
 }
 
 .md3-input {
@@ -422,12 +422,12 @@ async function handleDeleteAccount() {
   border: none;
   background: transparent;
   font-size: 16px;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   outline: none;
 }
 
 .md3-input:disabled {
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .md3-label {
@@ -435,7 +435,7 @@ async function handleDeleteAccount() {
   left: 16px;
   top: 18px;
   font-size: 16px;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   pointer-events: none;
   transition: all 0.2s ease;
 }
@@ -453,23 +453,23 @@ async function handleDeleteAccount() {
   right: 0;
   bottom: 0;
   border-radius: 4px;
-  border: 1px solid rgba(var(--md-sys-color-outline), 0.6);
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline) 60%, transparent);
   pointer-events: none;
   transition: all 0.2s;
 }
 
 .md3-text-field.focused .md3-outline {
-  border-color: rgb(var(--md-sys-color-primary));
+  border-color: var(--md-sys-color-primary);
   border-width: 2px;
 }
 
 .md3-text-field.error .md3-outline {
-  border-color: rgb(var(--md-sys-color-error));
+  border-color: var(--md-sys-color-error);
 }
 
 .md3-error-message {
   font-size: 12px;
-  color: rgb(var(--md-sys-color-error));
+  color: var(--md-sys-color-error);
   margin-top: 4px;
   margin-left: 16px;
 }
@@ -482,7 +482,7 @@ async function handleDeleteAccount() {
   background: transparent;
   border: none;
   padding: 8px;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   cursor: pointer;
   border-radius: 50%;
   display: flex;
@@ -491,7 +491,7 @@ async function handleDeleteAccount() {
 }
 
 .password-toggle:hover {
-  background-color: rgba(var(--md-sys-color-on-surface-variant), 0.08);
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 8%, transparent);
 }
 
 .md3-submit-error {
@@ -500,8 +500,8 @@ async function handleDeleteAccount() {
   gap: 8px;
   padding: 12px 16px;
   border-radius: 8px;
-  background-color: rgba(var(--md-sys-color-error-container), 0.7);
-  color: rgb(var(--md-sys-color-on-error-container));
+  background-color: color-mix(in srgb, var(--md-sys-color-error-container) 70%, transparent);
+  color: var(--md-sys-color-on-error-container);
   margin-bottom: 16px;
 }
 
@@ -528,38 +528,38 @@ async function handleDeleteAccount() {
 }
 
 .md3-filled-button {
-  background-color: rgb(var(--md-sys-color-primary));
-  color: rgb(var(--md-sys-color-on-primary));
+  background-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
   box-shadow: var(--md-sys-elevation-1);
 }
 
 .md3-filled-button:hover {
   box-shadow: var(--md-sys-elevation-2);
-  background-color: rgb(var(--md-sys-color-primary) / 0.92);
+  background-color: color-mix(in srgb, var(--md-sys-color-primary) 92%, transparent);
 }
 
 .md3-filled-button:active {
   box-shadow: var(--md-sys-elevation-1);
-  background-color: rgb(var(--md-sys-color-primary) / 0.85);
+  background-color: color-mix(in srgb, var(--md-sys-color-primary) 85%, transparent);
 }
 
 .md3-outlined-button {
   background: transparent;
-  border: 1px solid rgb(var(--md-sys-color-outline));
-  color: rgb(var(--md-sys-color-primary));
+  border: 1px solid var(--md-sys-color-outline);
+  color: var(--md-sys-color-primary);
 }
 
 .md3-outlined-button:hover {
-  background-color: rgba(var(--md-sys-color-primary), 0.08);
+  background-color: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
 }
 
 .md3-outlined-button.danger {
-  color: rgb(var(--md-sys-color-error));
-  border-color: rgb(var(--md-sys-color-error));
+  color: var(--md-sys-color-error);
+  border-color: var(--md-sys-color-error);
 }
 
 .md3-outlined-button.danger:hover {
-  background-color: rgba(var(--md-sys-color-error), 0.08);
+  background-color: color-mix(in srgb, var(--md-sys-color-error) 8%, transparent);
 }
 
 .md3-button-spinner {
@@ -577,11 +577,11 @@ async function handleDeleteAccount() {
 }
 
 .danger-zone {
-  background-color: rgb(var(--md-sys-color-error-container));
+  background-color: var(--md-sys-color-error-container);
 }
 
 .danger-zone .section-title {
-  color: rgb(var(--md-sys-color-on-error-container));
+  color: var(--md-sys-color-on-error-container);
 }
 
 /* Mobile optimizations */

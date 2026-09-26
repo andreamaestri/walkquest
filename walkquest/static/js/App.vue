@@ -231,8 +231,8 @@ onBeforeUnmount(() => {
   width: 100vw;
   overflow: hidden;
   position: relative;
-  background-color: rgb(var(--md-sys-color-background));
-  color: rgb(var(--md-sys-color-on-background));
+  background-color: var(--md-sys-color-background);
+  color: var(--md-sys-color-on-background);
   contain: layout size;
 }
 
@@ -251,7 +251,7 @@ onBeforeUnmount(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(var(--md-sys-color-error-container), 0.95);
+  background-color: color-mix(in srgb, var(--md-sys-color-error-container) 95%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -259,7 +259,7 @@ onBeforeUnmount(() => {
 }
 
 .error-content {
-  background-color: rgb(var(--md-sys-color-surface));
+  background-color: var(--md-sys-color-surface);
   padding: 24px;
   border-radius: 16px;
   box-shadow: var(--md-sys-elevation-3);
@@ -268,13 +268,13 @@ onBeforeUnmount(() => {
 }
 
 .error-content h2 {
-  color: rgb(var(--md-sys-color-error));
+  color: var(--md-sys-color-error);
   margin-top: 0;
 }
 
 .error-reset-button {
-  background-color: rgb(var(--md-sys-color-primary));
-  color: rgb(var(--md-sys-color-on-primary));
+  background-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
   border: none;
   padding: 12px 24px;
   border-radius: 20px;
@@ -289,15 +289,15 @@ onBeforeUnmount(() => {
   top: calc(16px + var(--safe-area-top, 0px));
   right: 16px;
   z-index: 100;
-  background: rgb(var(--md-sys-color-surface-container-highest) / 0.92);
+  background: color-mix(in srgb, var(--md-sys-color-surface-container-highest) 92%, transparent);
   box-shadow: var(--md-sys-elevation-1);
 }
 
 /* Additional styles loaded after component mount */
 @media (prefers-reduced-motion: no-preference) {
   .error-reset-button:hover {
-    background-color: rgb(var(--md-sys-color-primary-container));
-    color: rgb(var(--md-sys-color-on-primary-container));
+    background-color: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
   }
 }
 </style>

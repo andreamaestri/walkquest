@@ -210,23 +210,23 @@ onUnmounted(() => {
 
 /* Type-specific styles */
 .snackbar-success {
-  background-color: rgb(var(--md-sys-color-success-container, 15, 123, 15));
-  color: rgb(var(--md-sys-color-on-success-container, 255, 255, 255));
+  background-color: var(--md-sys-color-success-container);
+  color: var(--md-sys-color-on-success-container);
 }
 
 .snackbar-error {
-  background-color: rgb(var(--md-sys-color-error-container, 176, 27, 27));
-  color: rgb(var(--md-sys-color-on-error-container, 255, 255, 255));
+  background-color: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
 }
 
 .snackbar-warning {
-  background-color: rgb(var(--md-sys-color-warning-container, 217, 163, 0));
-  color: rgb(var(--md-sys-color-on-warning-container, 255, 255, 255));
+  background-color: var(--md-sys-color-warning-container);
+  color: var(--md-sys-color-on-warning-container);
 }
 
 .snackbar-info {
-  background-color: rgb(var(--md-sys-color-secondary-container, 29, 87, 166));
-  color: rgb(var(--md-sys-color-on-secondary-container, 255, 255, 255));
+  background-color: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
 }
 
 .snackbar-default {

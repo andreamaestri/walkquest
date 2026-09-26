@@ -161,7 +161,7 @@ const capitalizeFirstLetter = (string) => {
 }
 
 .modal-container {
-  background-color: rgb(var(--md-sys-color-surface));
+  background-color: var(--md-sys-color-surface);
   border-radius: 28px;
   width: 100%;
   max-width: 600px;
@@ -178,13 +178,13 @@ const capitalizeFirstLetter = (string) => {
   justify-content: space-between;
   align-items: center;
   padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid rgb(var(--md-sys-color-outline));
+  border-bottom: 1px solid var(--md-sys-color-outline);
 }
 
 .modal-title {
   margin: 0;
   font-size: 1.25rem;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
 }
 
 .modal-actions {
@@ -201,25 +201,25 @@ const capitalizeFirstLetter = (string) => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  background-color: rgb(var(--md-sys-color-surface-container-high));
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  background-color: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface-variant);
   transition: all 0.2s;
 }
 
 .action-btn:hover {
-  background-color: rgb(var(--md-sys-color-surface-container-highest));
+  background-color: var(--md-sys-color-surface-container-highest);
 }
 
 .edit-btn:hover {
-  color: rgb(var(--md-sys-color-primary));
+  color: var(--md-sys-color-primary);
 }
 
 .delete-btn:hover {
-  color: rgb(var(--md-sys-color-error));
+  color: var(--md-sys-color-error);
 }
 
 .close-btn:hover {
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
 }
 
 .modal-body {
@@ -239,7 +239,7 @@ const capitalizeFirstLetter = (string) => {
   flex-wrap: wrap;
   gap: 1rem;
   padding: 1rem;
-  background-color: rgb(var(--md-sys-color-surface-container));
+  background-color: var(--md-sys-color-surface-container);
   border-radius: 12px;
 }
 
@@ -247,7 +247,7 @@ const capitalizeFirstLetter = (string) => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   font-size: 0.9rem;
 }
 
@@ -255,12 +255,12 @@ const capitalizeFirstLetter = (string) => {
 .adventure-locations h3 {
   margin: 0 0 0.75rem;
   font-size: 1.1rem;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
 }
 
 .adventure-description p {
   margin: 0;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   line-height: 1.5;
   white-space: pre-line;
 }
@@ -269,7 +269,7 @@ const capitalizeFirstLetter = (string) => {
   display: flex;
   gap: 1rem;
   padding: 1rem;
-  background-color: rgb(var(--md-sys-color-surface-container));
+  background-color: var(--md-sys-color-surface-container);
   border-radius: 12px;
   margin-bottom: 1rem;
 }
@@ -278,8 +278,8 @@ const capitalizeFirstLetter = (string) => {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background-color: rgb(var(--md-sys-color-primary-container));
-  color: rgb(var(--md-sys-color-on-primary-container));
+  background-color: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -290,12 +290,12 @@ const capitalizeFirstLetter = (string) => {
 .location-details h4 {
   margin: 0 0 0.25rem;
   font-size: 0.9rem;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
 }
 
 .location-details p {
   margin: 0;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .adventure-dates {
@@ -303,25 +303,25 @@ const capitalizeFirstLetter = (string) => {
   flex-wrap: wrap;
   gap: 1.5rem;
   padding-top: 1rem;
-  border-top: 1px solid rgb(var(--md-sys-color-outline-variant));
+  border-top: 1px solid var(--md-sys-color-outline-variant);
 }
 
 .date-item h4 {
   margin: 0 0 0.25rem;
   font-size: 0.8rem;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   font-weight: 500;
 }
 
 .date-item p {
   margin: 0;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   font-size: 0.9rem;
 }
 
 .modal-footer {
   padding: 1rem 1.5rem;
-  border-top: 1px solid rgb(var(--md-sys-color-outline-variant));
+  border-top: 1px solid var(--md-sys-color-outline-variant);
   display: flex;
   justify-content: flex-end;
 }
@@ -336,13 +336,13 @@ const capitalizeFirstLetter = (string) => {
 }
 
 .primary-btn {
-  background-color: rgb(var(--md-sys-color-primary));
-  color: rgb(var(--md-sys-color-on-primary));
+  background-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
 }
 
 .primary-btn:hover {
-  background-color: rgb(var(--md-sys-color-primary-container));
-  color: rgb(var(--md-sys-color-on-primary-container));
+  background-color: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
 }
 
 @keyframes modal-in {

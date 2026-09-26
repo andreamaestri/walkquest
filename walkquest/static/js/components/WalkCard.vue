@@ -145,8 +145,8 @@ const moreCount = computed(() => {
 
 <style>
 .walk-card {
-  background: rgb(var(--md-sys-color-surface-container-low));
-  border: 1px solid rgba(var(--md-sys-color-outline), 0.12);
+  background: var(--md-sys-color-surface-container-low);
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline) 12%, transparent);
   border-radius: var(--md-sys-shape-lg, 16px);
   margin: 4px 8px;
   overflow: hidden;
@@ -156,15 +156,15 @@ const moreCount = computed(() => {
 }
 
 .walk-card:hover {
-  background: rgb(var(--md-sys-color-surface-container));
-  border-color: rgb(var(--md-sys-color-primary));
+  background: var(--md-sys-color-surface-container);
+  border-color: var(--md-sys-color-primary);
   box-shadow: var(--md-sys-elevation-1);
   transform: translateY(-1px);
 }
 
 .walk-card.is-selected {
-  background: rgb(var(--md-sys-color-secondary-container));
-  border-color: rgb(var(--md-sys-color-primary));
+  background: var(--md-sys-color-secondary-container);
+  border-color: var(--md-sys-color-primary);
   box-shadow: var(--md-sys-elevation-1);
 }
 
@@ -187,7 +187,7 @@ const moreCount = computed(() => {
   margin-right: 8px;
   font-size: 1rem;
   font-weight: 500;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   margin: 0 0 4px 0;
   line-height: 1.5;
 }
@@ -196,7 +196,7 @@ const moreCount = computed(() => {
   border: 0;
   background: transparent;
   font-size: 1.5rem;
-  color: rgb(var(--md-sys-color-outline));
+  color: var(--md-sys-color-outline);
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
@@ -206,12 +206,12 @@ const moreCount = computed(() => {
 }
 
 .favorite-icon:focus-visible {
-  outline: 3px solid rgb(var(--md-sys-color-primary) / 0.48);
+  outline: 3px solid color-mix(in srgb, var(--md-sys-color-primary) 48%, transparent);
   outline-offset: 2px;
 }
 
 .favorite-icon .is-favorite {
-  color: rgb(var(--md-sys-color-primary));
+  color: var(--md-sys-color-primary);
 }
 
 .favorite-icon .is-pending {
@@ -248,28 +248,28 @@ const moreCount = computed(() => {
   border-radius: 16px;
   font-size: 0.75rem;
   font-weight: 500;
-  background: rgba(var(--md-sys-color-surface-variant), 0.5);
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  background: color-mix(in srgb, var(--md-sys-color-surface-variant) 50%, transparent);
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .badge.distance {
-  background: rgb(var(--md-sys-color-primary-container));
-  color: rgb(var(--md-sys-color-on-primary-container));
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
 }
 
 .badge.difficulty.easy {
-  background: rgb(var(--md-sys-color-tertiary-container));
-  color: rgb(var(--md-sys-color-on-tertiary-container));
+  background: var(--md-sys-color-tertiary-container);
+  color: var(--md-sys-color-on-tertiary-container);
 }
 
 .badge.difficulty.medium {
-  background: rgb(var(--md-sys-color-secondary-container));
-  color: rgb(var(--md-sys-color-on-secondary-container));
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
 }
 
 .badge.difficulty.hard {
-  background: rgb(var(--md-sys-color-error-container));
-  color: rgb(var(--md-sys-color-on-error-container));
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
 }
 
 .walk-categories {
@@ -299,7 +299,7 @@ const moreCount = computed(() => {
 
 .more-count {
   font-size: 0.75rem;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   padding: 4px 8px;
 }
 
@@ -394,8 +394,8 @@ const moreCount = computed(() => {
     height: 100%;
     background: linear-gradient(
       to bottom,
-      rgba(var(--md-sys-color-primary), 0.05),
-      rgba(var(--md-sys-color-surface), 0.02)
+      color-mix(in srgb, var(--md-sys-color-primary) 5%, transparent),
+      color-mix(in srgb, var(--md-sys-color-surface) 2%, transparent)
     );
     border-radius: inherit;
     opacity: 0;

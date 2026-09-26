@@ -460,7 +460,6 @@ watch(() => searchError.value, async (error) => {
 </script>
 
 <style>
-@import '../../css/material3.css';
 .location-search {
   width: 100% !important;
   position: relative !important;
@@ -491,7 +490,7 @@ watch(() => searchError.value, async (error) => {
   line-height: 18px;
   font-family: "Roboto", "Segoe UI", system-ui, -apple-system;
   position: relative;
-  background-color: rgb(var(--md-sys-color-surface-high));
+  background-color: var(--md-sys-color-surface-high);
   width: 100%;
   min-width: 240px;
   z-index: 10; /* Increased z-index */
@@ -507,7 +506,7 @@ watch(() => searchError.value, async (error) => {
   background-color: transparent;
   margin: 0;
   height: 56px;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   padding: 6px 40px 6px 36px !important;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -519,7 +518,7 @@ watch(() => searchError.value, async (error) => {
 }
 
 .mapboxgl-ctrl-geocoder--input:focus {
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   outline: none;
   box-shadow: none;
 }
@@ -548,7 +547,7 @@ watch(() => searchError.value, async (error) => {
   left: auto;
   width: 20px;
   height: 20px;
-  color: rgb(var(--md-sys-color-on-surface-variant))!important;
+  color: var(--md-sys-color-on-surface-variant)!important;
   padding: 4px;
   margin-right: 4px;
   border-radius: 16px;
@@ -572,7 +571,7 @@ watch(() => searchError.value, async (error) => {
 }
 
 .mapboxgl-ctrl-geocoder .mapboxgl-ctrl-geocoder--icon-close:hover {
-  background: rgb(var(--md-sys-color-on-surface-variant) / 0.08);
+  background: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 8%, transparent);
 }
 
 /* Adjust the input padding to account for both icons */
@@ -594,7 +593,7 @@ watch(() => searchError.value, async (error) => {
 
 /* Suggestions */
 .mapboxgl-ctrl-geocoder .suggestions {
-  background-color: rgb(var(--md-sys-color-surface));
+  background-color: var(--md-sys-color-surface);
   border-radius: 12px; /* More rounded corners */
   left: 0;
   list-style: none;
@@ -623,7 +622,7 @@ watch(() => searchError.value, async (error) => {
 
 .mapboxgl-ctrl-geocoder .suggestions > li > a {
   padding: 8px 12px;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -633,8 +632,8 @@ watch(() => searchError.value, async (error) => {
 
 .mapboxgl-ctrl-geocoder .suggestions > .active > a,
 .mapboxgl-ctrl-geocoder .suggestions > li > a:hover {
-  color: rgb(var(--md-sys-color-on-surface));
-  background-color: rgb(var(--md-sys-color-surface-container));
+  color: var(--md-sys-color-on-surface);
+  background-color: var(--md-sys-color-surface-container);
   text-decoration: none;
   cursor: pointer;
 }
@@ -668,8 +667,8 @@ watch(() => searchError.value, async (error) => {
 }
 
 .search-error {
-  color: rgb(var(--md-sys-color-on-error-container));
-  background-color: rgb(var(--md-sys-color-error-container));
+  color: var(--md-sys-color-on-error-container);
+  background-color: var(--md-sys-color-error-container);
   padding: 12px 16px;
   border-radius: 12px;
   margin-bottom: 16px;
@@ -749,7 +748,7 @@ watch(() => searchError.value, async (error) => {
 .search-error-dismiss {
   background: transparent;
   border: none;
-  color: rgb(var(--md-sys-color-on-error-container));
+  color: var(--md-sys-color-on-error-container);
   opacity: 0.7;
   width: 28px;
   height: 28px;
@@ -765,12 +764,12 @@ watch(() => searchError.value, async (error) => {
 }
 
 .search-error-dismiss:hover {
-  background-color: rgba(var(--md-sys-color-on-error-container) / 0.08);
+  background-color: color-mix(in srgb, var(--md-sys-color-on-error-container) 8%, transparent);
   opacity: 0.9;
 }
 
 .search-error-dismiss:active {
-  background-color: rgba(var(--md-sys-color-on-error-container) / 0.12);
+  background-color: color-mix(in srgb, var(--md-sys-color-on-error-container) 12%, transparent);
   opacity: 1;
 }
 
@@ -780,13 +779,13 @@ watch(() => searchError.value, async (error) => {
 }
 
 .walks-count-header {
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   margin-bottom: 12px;
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 12px;
-  background-color: rgb(var(--md-sys-color-surface-container-low));
+  background-color: var(--md-sys-color-surface-container-low);
   border-radius: 12px;
 }
 
@@ -797,14 +796,14 @@ watch(() => searchError.value, async (error) => {
   justify-content: center;
   padding: 20px;
   text-align: center;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   border-radius: 16px;
 }
 
 .empty-state-icon {
   font-size: 40px;
   margin-bottom: 12px;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   opacity: 0.5;
 }
 
@@ -812,19 +811,19 @@ watch(() => searchError.value, async (error) => {
   font-size: 14px;
   font-weight: 500;
   margin-bottom: 6px;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
 }
 
 .empty-state-suggestion {
   font-size: 13px;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   margin: 0;
 }
 
 .loading-spinner {
   width: 24px;
   height: 24px;
-  border: 2px solid rgb(var(--md-sys-color-primary));
+  border: 2px solid var(--md-sys-color-primary);
   border-top-color: transparent;
   border-radius: 50%;
   animation: spinner 0.8s linear infinite;
@@ -843,7 +842,7 @@ watch(() => searchError.value, async (error) => {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(var(--md-sys-color-surface) / 0.7);
+  background-color: color-mix(in srgb, var(--md-sys-color-surface) 70%, transparent);
   border-radius: 24px;
   z-index: 11;
   pointer-events: none;
@@ -858,7 +857,7 @@ watch(() => searchError.value, async (error) => {
   transform: translate(-50%, -50%);
   width: 20px;
   height: 20px;
-  border: 2px solid rgb(var(--md-sys-color-primary));
+  border: 2px solid var(--md-sys-color-primary);
   border-top-color: transparent;
   border-radius: 50%;
   animation: spinner 0.8s linear infinite;
@@ -891,19 +890,19 @@ watch(() => searchError.value, async (error) => {
   border: none;
   border-radius: 16px;
   background: transparent;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   cursor: pointer;
   opacity: 0.75;
   transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
 }
 
 .location-search-back-button:hover {
-  background: rgb(var(--md-sys-color-on-surface-variant) / 0.08);
+  background: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 8%, transparent);
   opacity: 0.85;
 }
 
 .location-search-back-button:active {
-  background: rgb(var(--md-sys-color-on-surface-variant) / 0.12);
+  background: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 12%, transparent);
   opacity: 1;
 }
 

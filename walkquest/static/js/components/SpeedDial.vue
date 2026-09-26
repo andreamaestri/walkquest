@@ -147,8 +147,8 @@ function handleAction(actionId) {
 }
 
 .speed-dial-item-label {
-  background-color: rgb(var(--md-sys-color-surface-container-high));
-  color: rgb(var(--md-sys-color-on-surface));
+  background-color: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
   padding: 6px 16px; /* MD3 label padding */
   border-radius: 16px;
   font-size: 14px;

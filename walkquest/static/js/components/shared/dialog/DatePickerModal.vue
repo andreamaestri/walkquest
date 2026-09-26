@@ -116,7 +116,7 @@ function close() {
   bottom: 0;
   left: 0;
   right: 0;
-  background-color: rgb(var(--md-sys-color-surface));
+  background-color: var(--md-sys-color-surface);
   border-radius: 28px 28px 0 0;
   box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
   z-index: 1001;
@@ -137,7 +137,7 @@ function close() {
 .date-picker-header h3 {
   font-size: 20px;
   font-weight: 500;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   margin: 0;
 }
 
@@ -146,7 +146,7 @@ function close() {
   border: none;
   padding: 8px;
   cursor: pointer;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   font-size: 24px;
   display: flex;
   align-items: center;
@@ -165,7 +165,7 @@ function close() {
   border: none;
   padding: 8px;
   cursor: pointer;
-  color: rgb(var(--md-sys-color-primary));
+  color: var(--md-sys-color-primary);
   font-size: 24px;
   display: flex;
   align-items: center;
@@ -175,7 +175,7 @@ function close() {
 .month-year {
   font-size: 18px;
   font-weight: 500;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
 }
 
 .calendar-days-header {
@@ -189,7 +189,7 @@ function close() {
   text-align: center;
   font-size: 14px;
   font-weight: 500;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   padding: 8px 0;
 }
 
@@ -208,27 +208,27 @@ function close() {
   cursor: pointer;
   border-radius: 50%;
   font-size: 14px;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   transition: background-color 0.2s;
 }
 
 .calendar-day:not(.calendar-day-empty):hover {
-  background-color: rgba(var(--md-sys-color-on-surface), 0.05);
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface) 5%, transparent);
 }
 
 .calendar-day-empty {
   cursor: default;
-  color: rgba(var(--md-sys-color-on-surface), 0.38);
+  color: color-mix(in srgb, var(--md-sys-color-on-surface) 38%, transparent);
 }
 
 .calendar-day-today {
   font-weight: bold;
-  color: rgb(var(--md-sys-color-primary));
+  color: var(--md-sys-color-primary);
 }
 
 .calendar-day-selected {
-  background-color: rgb(var(--md-sys-color-primary));
-  color: rgb(var(--md-sys-color-on-primary));
+  background-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
   font-weight: 500;
 }
 
@@ -251,25 +251,25 @@ function close() {
 
 .cancel-btn {
   background: none;
-  color: rgb(var(--md-sys-color-primary));
+  color: var(--md-sys-color-primary);
 }
 
 .confirm-btn {
-  background-color: rgb(var(--md-sys-color-primary-container));
-  color: rgb(var(--md-sys-color-on-primary-container));
+  background-color: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
 }
 
 .cancel-btn:hover {
-  background-color: rgba(var(--md-sys-color-primary), 0.05);
+  background-color: color-mix(in srgb, var(--md-sys-color-primary) 5%, transparent);
 }
 
 .confirm-btn:hover {
-  background-color: rgba(var(--md-sys-color-primary-container), 0.8);
+  background-color: color-mix(in srgb, var(--md-sys-color-primary-container) 80%, transparent);
 }
 
 /* Calendar day with in-range state */
 .calendar-day.in-range {
-  background-color: rgba(var(--md-sys-color-primary), 0.1);
+  background-color: color-mix(in srgb, var(--md-sys-color-primary) 10%, transparent);
 }
 
 /* Mobile adaptations */

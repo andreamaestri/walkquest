@@ -53,9 +53,9 @@ export function useDrawerAnimations() {
 
   // Animation configurations
   const animationConfigs = {
-    fluid: { duration: 0.5, easing: [0.22, 1, 0.36, 1] },
-    standard: { duration: 0.3, easing: "easeOut" },
-    exit: { duration: 0.25, easing: "easeIn" },
+    fluid: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
+    standard: { duration: 0.3, ease: "easeOut" },
+    exit: { duration: 0.25, ease: "easeIn" },
   };
 
   // Component state for animations
@@ -98,7 +98,7 @@ export function useDrawerAnimations() {
         },
         {
           duration: 0.4,
-          easing: [0.05, 0.7, 0.1, 1.0], // MD3 emphasized decelerate curve
+          ease: [0.05, 0.7, 0.1, 1.0], // MD3 emphasized decelerate curve
         }
       );
 
@@ -115,7 +115,7 @@ export function useDrawerAnimations() {
               { scaleY: [0, 1], opacity: [0, 0.8] },
               { 
                 duration: 0.5,
-                easing: [0.2, 0, 0.2, 1]  
+                ease: [0.2, 0, 0.2, 1]  
               }
             );
           }
@@ -151,7 +151,7 @@ export function useDrawerAnimations() {
           { scaleY: [1, 0], opacity: [0.8, 0] },
           { 
             duration: 0.2,
-            easing: [0.4, 0.0, 1.0, 1.0]
+            ease: [0.4, 0.0, 1.0, 1.0]
           }
         );
       }
@@ -168,7 +168,7 @@ export function useDrawerAnimations() {
         },
         {
           duration: 0.35,
-          easing: [0.3, 0.0, 0.8, 0.15], // MD3 emphasized accelerate curve
+          ease: [0.3, 0.0, 0.8, 0.15], // MD3 emphasized accelerate curve
         }
       );
 
@@ -215,7 +215,7 @@ export function useDrawerAnimations() {
           },
           {
             duration: 0.3,
-            easing: [0.4, 0.0, 0.2, 1], // Modern easing curve
+            ease: [0.4, 0.0, 0.2, 1], // Modern easing curve
             delay: stagger(0.03, { from: "last" }),
           }
         )
@@ -257,7 +257,7 @@ export function useDrawerAnimations() {
             },
             {
               duration: 0.4,
-              easing: [0.0, 0.0, 0.2, 1], // Modern deceleration curve
+              ease: [0.0, 0.0, 0.2, 1], // Modern deceleration curve
               delay: stagger(0.1),
             }
           )
@@ -277,7 +277,7 @@ export function useDrawerAnimations() {
             {
               delay: stagger(0.08, { start: 0.2 }),
               duration: 0.5,
-              easing: [0.0, 0.0, 0.2, 1], // Modern deceleration curve
+              ease: [0.0, 0.0, 0.2, 1], // Modern deceleration curve
             }
           )
         );
@@ -297,7 +297,7 @@ export function useDrawerAnimations() {
               {
                 delay: stagger(0.06, { start: 0.5 }),
                 duration: 0.4,
-                easing: [0.0, 0.0, 0.2, 1],
+                ease: [0.0, 0.0, 0.2, 1],
               }
             )
           );
@@ -353,7 +353,7 @@ export function useDrawerAnimations() {
                 {
                   delay: stagger(0.04),
                   duration: 0.4,
-                  easing: [0.0, 0.0, 0.2, 1],
+                  ease: [0.0, 0.0, 0.2, 1],
                 }
               )
             );
@@ -374,7 +374,7 @@ export function useDrawerAnimations() {
                 {
                   delay: stagger(0.06),
                   duration: 0.45,
-                  easing: [0.0, 0.0, 0.2, 1],
+                  ease: [0.0, 0.0, 0.2, 1],
                 }
               )
             );
@@ -417,7 +417,7 @@ export function useDrawerAnimations() {
           opacity: [0, 1],
           transform: ["translateY(-20px)", "translateY(0px)"],
         },
-        { duration: 0.4, easing: [0.0, 0.0, 0.2, 1] }
+        { duration: 0.4, ease: [0.0, 0.0, 0.2, 1] }
       ).finished.then(() => {
         content.style.height = "auto";
         content.style.overflow = "visible";
@@ -434,7 +434,7 @@ export function useDrawerAnimations() {
           opacity: [1, 0],
           transform: ["translateY(0px)", "translateY(-20px)"],
         },
-        { duration: 0.35, easing: [0.4, 0.0, 0.2, 1] }
+        { duration: 0.35, ease: [0.4, 0.0, 0.2, 1] }
       );
     }
   }
@@ -457,11 +457,11 @@ export function useDrawerAnimations() {
           scale: [1, 1.08, 1],
           backgroundColor: [
             'currentColor',
-            'rgb(var(--md-sys-color-primary-container))',
+            'var(--md-sys-color-primary-container)',
             'currentColor'
           ]
         },
-        { duration: 0.4, easing: [0.2, 0.8, 0.2, 1] }
+        { duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }
       ).finished;
     }
   }

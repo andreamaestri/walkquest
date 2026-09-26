@@ -896,8 +896,6 @@ defineExpose({
 </script>
 
 <style scoped>
-@import "tailwindcss";
-@import "../../../css/material3.css";
 
 .hardware-accelerated {
   transform: translateZ(0);
@@ -925,15 +923,15 @@ defineExpose({
 }
 
 .m3-surface-container {
-  background-color: rgb(var(--md-sys-color-surface-container));
+  background-color: var(--md-sys-color-surface-container);
 }
 
 .text-on-surface {
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
 }
 
 .border-primary {
-  border-color: rgb(var(--md-sys-color-primary));
+  border-color: var(--md-sys-color-primary);
 }
 
 :deep(.mapboxgl-popup-close-button) {
@@ -967,8 +965,8 @@ defineExpose({
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.1);
   padding: 0;
   overflow: hidden;
-  border: 1px solid rgb(var(--md-sys-color-outline-variant));
-  background-color: rgb(var(--md-sys-color-surface-container-highest));
+  border: 1px solid var(--md-sys-color-outline-variant);
+  background-color: var(--md-sys-color-surface-container-highest);
 }
 
 /* Fix popup positioning for various anchors */
@@ -1019,11 +1017,11 @@ defineExpose({
   border-radius: 16px;
   box-shadow: var(--md-sys-elevation-3);
   padding: 0 !important;
-  background: rgb(var(--md-sys-color-surface-container-highest));
-  color: rgb(var(--md-sys-color-on-surface));
+  background: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface);
   min-width: 0;
   width: 100%;
-  border: 1px solid rgb(var(--md-sys-color-outline-variant));
+  border: 1px solid var(--md-sys-color-outline-variant);
   overflow: hidden;
   font-family: "Outfit", sans-serif !important;
   font-size: 14px;
@@ -1064,7 +1062,7 @@ defineExpose({
 }
 
 :deep(.mapboxgl-popup-content h3) {
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   font-family: inherit;
   font-size: 1.125rem;
   line-height: 1.4;
@@ -1078,8 +1076,8 @@ defineExpose({
   min-height: 48px;
   justify-content: center;
   margin: 0;
-  background-color: rgb(var(--md-sys-color-primary));
-  color: rgb(var(--md-sys-color-on-primary));
+  background-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
   border-radius: 12px;
   font-family: inherit;
   font-size: 0.9375rem;
@@ -1093,11 +1091,11 @@ defineExpose({
 }
 
 :deep(.m3-button:hover) {
-  background-color: rgb(var(--md-sys-color-primary) / 0.92);
+  background-color: color-mix(in srgb, var(--md-sys-color-primary) 92%, transparent);
 }
 
 :deep(.m3-button:active) {
-  background-color: rgb(var(--md-sys-color-primary) / 0.85);
+  background-color: color-mix(in srgb, var(--md-sys-color-primary) 85%, transparent);
   transform: scale(0.98);
 }
 
@@ -1125,7 +1123,7 @@ defineExpose({
   content: "";
   position: absolute;
   inset: 0;
-  background: rgb(var(--md-sys-color-surface-tint));
+  background: var(--md-sys-color-surface-tint);
   opacity: 0.05;
   pointer-events: none;
 }
@@ -1142,8 +1140,8 @@ defineExpose({
 :deep(.popup-info-badge) {
   display: flex;
   align-items: center;
-  background-color: rgb(var(--md-sys-color-surface-container));
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  background-color: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface-variant);
   padding: 6px 12px;
   border-radius: 8px;
   font-weight: 500;
@@ -1159,18 +1157,18 @@ defineExpose({
 }
 
 :deep(.difficulty-easy) {
-  background-color: rgb(var(--md-sys-color-tertiary-container));
-  color: rgb(var(--md-sys-color-on-tertiary-container));
+  background-color: var(--md-sys-color-tertiary-container);
+  color: var(--md-sys-color-on-tertiary-container);
 }
 
 :deep(.difficulty-medium) {
-  background-color: rgb(var(--md-sys-color-secondary-container));
-  color: rgb(var(--md-sys-color-on-secondary-container));
+  background-color: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
 }
 
 :deep(.difficulty-hard) {
-  background-color: rgb(var(--md-sys-color-error-container));
-  color: rgb(var(--md-sys-color-on-error-container));
+  background-color: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
 }
 
 /* Feature badges */
@@ -1179,8 +1177,8 @@ defineExpose({
   align-items: center;
   gap: 4px;
   padding: 4px 10px;
-  background-color: rgb(var(--md-sys-color-surface-container-high));
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  background-color: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface-variant);
   font-size: 0.75rem;
   border-radius: 16px;
   font-weight: 500;
@@ -1188,7 +1186,7 @@ defineExpose({
 
 :deep(.popup-feature-icon) {
   font-size: 16px;
-  color: rgb(var(--md-sys-color-primary));
+  color: var(--md-sys-color-primary);
 }
 
 /* Add ripple effect for better touch feedback */

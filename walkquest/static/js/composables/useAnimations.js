@@ -2,7 +2,7 @@
  * Primary animation composable that combines both Motion and Motion-V capabilities
  */
 import { animate as motionAnimate } from 'motion';
-import { animate as motionVAnimate } from 'motion-v';
+import { animate as motionVAnimate } from 'motion';
 import { useMotionV } from './useMotionV';
 import { useAnimation } from './useAnimation';
 import { useScrollAnimation } from './useScrollAnimation';
@@ -64,7 +64,7 @@ export function useAnimations() {
     
     return motionAnimations.animateElement(element, { y, opacity }, {
       duration: 0.2,
-      easing: motionV.easings.standard
+      ease: motionV.easings.standard
     });
   }
   
@@ -79,7 +79,7 @@ export function useAnimations() {
       y: [10, 0]
     }, {
       duration: 0.35,
-      easing: motionV.easings.emphasizedDecelerate
+      ease: motionV.easings.emphasizedDecelerate
     });
   }
   
@@ -94,7 +94,7 @@ export function useAnimations() {
       y: [0, 10]
     }, {
       duration: 0.25,
-      easing: motionV.easings.emphasizedAccelerate
+      ease: motionV.easings.emphasizedAccelerate
     });
   }
   
@@ -108,13 +108,13 @@ export function useAnimations() {
     await motionAnimations.animateElement(categoryEl, {
       scale: [1, 1.05, 1],
       backgroundColor: [
-        'rgb(var(--md-sys-color-surface-container))',
-        'rgb(var(--md-sys-color-secondary-container))',
-        'rgb(var(--md-sys-color-surface-container))'
+        'var(--md-sys-color-surface-container)',
+        'var(--md-sys-color-secondary-container)',
+        'var(--md-sys-color-surface-container)'
       ]
     }, {
       duration: 0.3,
-      easing: motionV.easings.spring
+      ease: motionV.easings.spring
     }).finished;
   }
   
@@ -135,14 +135,14 @@ export function useAnimations() {
         height: ['0px', 'auto']
       }, {
         duration: 0.3,
-        easing: motionV.easings.emphasizedDecelerate
+        ease: motionV.easings.emphasizedDecelerate
       });
       
       motionAnimations.animateElement(summary.querySelector('.toggle-icon'), {
         rotate: ['0deg', '180deg']
       }, {
         duration: 0.3,
-        easing: motionV.easings.standard
+        ease: motionV.easings.standard
       });
     } else {
       // Setup for animating closed - we need the starting height
@@ -154,14 +154,14 @@ export function useAnimations() {
         height: [startHeight, '0px']
       }, {
         duration: 0.25,
-        easing: motionV.easings.emphasizedAccelerate
+        ease: motionV.easings.emphasizedAccelerate
       });
       
       motionAnimations.animateElement(summary.querySelector('.toggle-icon'), {
         rotate: ['180deg', '0deg']
       }, {
         duration: 0.25,
-        easing: motionV.easings.standard
+        ease: motionV.easings.standard
       });
     }
   }

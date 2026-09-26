@@ -1,33 +1,49 @@
 import { computed, ref } from 'vue';
 
 const STORAGE_KEY = 'walkquest-theme';
+const MODES = ['light', 'dark', 'system'];
+
+/** The user's choice: 'light' | 'dark' | 'system'. */
+const mode = ref('system');
+/** The theme actually applied: 'light' | 'dark'. */
 const theme = ref('light');
 let initialized = false;
+let media = null;
 
-function systemTheme() {
-  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+function readStoredMode() {
+  try {
+    const saved = window.localStorage.getItem(STORAGE_KEY);
+    return MODES.includes(saved) ? saved : 'system';
+  } catch {
+    return 'system';
+  }
 }
 
-function applyTheme(value) {
-  theme.value = value;
-  document.documentElement.dataset.theme = value;
-  const themeColor = document.querySelector('meta[name="theme-color"]');
-  if (themeColor) {
-    themeColor.setAttribute('content', value === 'dark' ? '#141318' : '#fffbff');
-  }
+function resolve(value) {
+  if (value === 'system') return media?.matches ? 'dark' : 'light';
+  return value;
+}
+
+function apply() {
+  const next = resolve(mode.value);
+  theme.value = next;
+  const root = document.documentElement;
+  root.dataset.theme = next;
+  // Keep the browser UI colour in sync with the generated surface token.
+  const surface = getComputedStyle(root).getPropertyValue('--md-sys-color-surface').trim();
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta && surface) meta.setAttribute('content', surface);
+  window.dispatchEvent(new CustomEvent('walkquest:theme-change', { detail: { theme: next } }));
 }
 
 export function initializeTheme() {
   if (initialized || typeof window === 'undefined') return;
   initialized = true;
-
-  const savedTheme = window.localStorage.getItem(STORAGE_KEY);
-  applyTheme(savedTheme === 'dark' || savedTheme === 'light' ? savedTheme : systemTheme());
-
-  window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener('change', (event) => {
-    if (!window.localStorage.getItem(STORAGE_KEY)) {
-      applyTheme(event.matches ? 'dark' : 'light');
-    }
+  media = window.matchMedia?.('(prefers-color-scheme: dark)') ?? null;
+  mode.value = readStoredMode();
+  apply();
+  media?.addEventListener('change', () => {
+    if (mode.value === 'system') apply();
   });
 }
 
@@ -36,13 +52,19 @@ export function useTheme() {
 
   const isDark = computed(() => theme.value === 'dark');
 
-  const setTheme = (value) => {
-    const nextTheme = value === 'dark' ? 'dark' : 'light';
-    window.localStorage.setItem(STORAGE_KEY, nextTheme);
-    applyTheme(nextTheme);
+  const setMode = (value) => {
+    mode.value = MODES.includes(value) ? value : 'system';
+    try {
+      window.localStorage.setItem(STORAGE_KEY, mode.value);
+    } catch {
+      /* storage unavailable (private mode) — keep the in-memory choice */
+    }
+    apply();
   };
 
-  const toggleTheme = () => setTheme(isDark.value ? 'light' : 'dark');
+  /** Cycles light → dark → system. */
+  const cycleMode = () => setMode(MODES[(MODES.indexOf(mode.value) + 1) % MODES.length]);
+  const toggleTheme = () => setMode(isDark.value ? 'light' : 'dark');
 
-  return { theme, isDark, setTheme, toggleTheme };
+  return { mode, theme, isDark, setMode, setTheme: setMode, cycleMode, toggleTheme };
 }

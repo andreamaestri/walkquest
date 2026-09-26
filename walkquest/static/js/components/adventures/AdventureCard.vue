@@ -68,7 +68,7 @@ const formatDate = (dateString) => {
 };
 
 const generateColorFromTitle = (title) => {
-  if (!title) return 'rgb(var(--md-sys-color-primary))';
+  if (!title) return 'var(--md-sys-color-primary)';
   
   let hash = 0;
   for (let i = 0; i < title.length; i++) {
@@ -81,7 +81,7 @@ const generateColorFromTitle = (title) => {
 
 <style scoped>
 .adventure-card {
-  background-color: rgb(var(--md-sys-color-surface-container));
+  background-color: var(--md-sys-color-surface-container);
   border-radius: 16px;
   overflow: hidden;
   position: relative;
@@ -102,12 +102,12 @@ const generateColorFromTitle = (title) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: rgb(var(--md-sys-color-primary-container));
+  background-color: var(--md-sys-color-primary-container);
 }
 
 .adventure-icon {
   font-size: 48px;
-  color: rgb(var(--md-sys-color-on-primary-container));
+  color: var(--md-sys-color-on-primary-container);
 }
 
 .adventure-content {
@@ -119,13 +119,13 @@ const generateColorFromTitle = (title) => {
 
 .adventure-title {
   margin: 0 0 0.5rem;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   font-size: 1.2rem;
 }
 
 .adventure-description {
   margin: 0 0 1rem;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   font-size: 0.9rem;
   flex-grow: 1;
 }
@@ -134,7 +134,7 @@ const generateColorFromTitle = (title) => {
   display: flex;
   justify-content: space-between;
   font-size: 0.8rem;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .adventure-distance,
@@ -167,18 +167,18 @@ const generateColorFromTitle = (title) => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  background-color: rgb(var(--md-sys-color-surface));
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  background-color: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface-variant);
   transition: background-color 0.2s, color 0.2s;
 }
 
 .action-btn.edit:hover {
-  background-color: rgb(var(--md-sys-color-primary-container));
-  color: rgb(var(--md-sys-color-on-primary-container));
+  background-color: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
 }
 
 .action-btn.delete:hover {
-  background-color: rgb(var(--md-sys-color-error-container));
-  color: rgb(var(--md-sys-color-on-error-container));
+  background-color: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
 }
 </style>

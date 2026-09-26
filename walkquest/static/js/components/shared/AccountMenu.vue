@@ -122,7 +122,7 @@ const authUrls = computed(() => ({
 // Avatar color generation
 const avatarBgColor = computed(() => {
   const identifier = emailComputed.value;
-  if (!identifier) return 'rgb(var(--md-sys-color-primary))';
+  if (!identifier) return 'var(--md-sys-color-primary)';
   
   let hash = 0;
   for (let i = 0; i < identifier.length; i++) {
@@ -284,7 +284,7 @@ onMounted(() => {
         },
         {
           duration: 0.2,
-          easing: [0.4, 0, 0.2, 1]
+          ease: [0.4, 0, 0.2, 1]
         }
       );
     } catch (error) {
@@ -352,7 +352,7 @@ function getCsrfCookie() {
 <style scoped>
 .account-menu {
   position: absolute;
-  background-color: rgb(var(--md-sys-color-surface));
+  background-color: var(--md-sys-color-surface);
   border-radius: 16px;
   min-width: 280px;
   box-shadow: var(--md-sys-elevation-3);
@@ -388,16 +388,16 @@ function getCsrfCookie() {
   display: flex;
   align-items: center;
   gap: 12px;
-  background-color: rgb(var(--md-sys-color-surface-container-highest));
-  border-bottom: 1px solid rgb(var(--md-sys-color-outline));
+  background-color: var(--md-sys-color-surface-container-highest);
+  border-bottom: 1px solid var(--md-sys-color-outline);
 }
 
 .avatar {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background-color: rgb(var(--md-sys-color-primary));
-  color: rgb(var(--md-sys-color-on-primary));
+  background-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -415,7 +415,7 @@ function getCsrfCookie() {
 .user-email {
   display: block;
   font-size: 14px;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -423,7 +423,7 @@ function getCsrfCookie() {
 
 .user-loading {
   font-size: 12px;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   font-style: italic;
 }
 
@@ -439,7 +439,7 @@ function getCsrfCookie() {
   display: flex;
   align-items: center;
   gap: 12px;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   font-size: 14px;
   cursor: pointer;
   border-radius: 8px;
@@ -448,18 +448,18 @@ function getCsrfCookie() {
 }
 
 .menu-item:hover {
-  background-color: rgb(var(--md-sys-color-surface-container-highest));
-  color: rgb(var(--md-sys-color-on-surface));
+  background-color: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface);
 }
 
 .menu-item:active {
-  background-color: rgb(var(--md-sys-color-surface-container-highest));
+  background-color: var(--md-sys-color-surface-container-highest);
   transform: scale(0.98);
 }
 
 .menu-icon {
   font-size: 20px;
-  color: rgb(var(--md-sys-color-primary));
+  color: var(--md-sys-color-primary);
 }
 
 /* Transitions */
@@ -486,7 +486,7 @@ function getCsrfCookie() {
 /* Update loading state styles */
 .user-loading {
   font-size: 12px;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   font-style: italic;
 }
 
@@ -502,7 +502,7 @@ function getCsrfCookie() {
   display: flex;
   align-items: center;
   gap: 12px;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   font-size: 14px;
   cursor: pointer;
   border-radius: 8px;
@@ -511,12 +511,12 @@ function getCsrfCookie() {
 }
 
 .menu-item:hover {
-  background-color: rgb(var(--md-sys-color-surface-container-highest));
+  background-color: var(--md-sys-color-surface-container-highest);
 }
 
 .menu-icon {
   font-size: 20px;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 /* Transitions */

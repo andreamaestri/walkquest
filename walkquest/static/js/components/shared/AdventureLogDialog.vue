@@ -743,8 +743,8 @@ onUnmounted(() => {
 
 /* Dialog Container */
 .adventure-log-dialog {
-  background-color: rgb(var(--md-sys-color-surface));
-  color: rgb(var(--md-sys-color-on-surface));
+  background-color: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
   border-radius: 28px;
   width: 100%;
   max-width: 550px;
@@ -802,13 +802,13 @@ onUnmounted(() => {
   gap: 8px;
   padding: 12px 16px;
   border-radius: 8px;
-  background-color: rgba(var(--md-sys-color-error-container), 0.7);
-  color: rgb(var(--md-sys-color-on-error-container));
+  background-color: color-mix(in srgb, var(--md-sys-color-error-container) 70%, transparent);
+  color: var(--md-sys-color-on-error-container);
 }
 
 .md3-error-icon {
   font-size: 20px;
-  color: rgb(var(--md-sys-color-error));
+  color: var(--md-sys-color-error);
 }
 
 /* Transitions */

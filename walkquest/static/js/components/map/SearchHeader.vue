@@ -314,7 +314,7 @@ defineExpose({
   top: calc(8px + var(--safe-area-top, 0px));
   right: 68px;
   z-index: 12;
-  background: rgb(var(--md-sys-color-surface-container-highest) / 0.92);
+  background: color-mix(in srgb, var(--md-sys-color-surface-container-highest) 92%, transparent);
   box-shadow: var(--md-sys-elevation-1);
 }
 
@@ -341,7 +341,7 @@ defineExpose({
   width: min(720px, 70%);
   margin: 0 auto;
   border-radius: 28px;
-  background-color: rgb(var(--md-sys-color-surface-container));
+  background-color: var(--md-sys-color-surface-container);
   padding: 4px 8px;
   box-shadow: var(--md-sys-elevation-0);
 }
@@ -350,7 +350,7 @@ defineExpose({
   width: 100%;
   height: calc(100% - env(safe-area-inset-top, 0px));
   margin: 0;
-  background-color: rgb(var(--md-sys-color-surface));
+  background-color: var(--md-sys-color-surface);
   padding-top: env(safe-area-inset-top, 0px);
 }
 
@@ -368,7 +368,7 @@ defineExpose({
   display: flex;
   align-items: center;
   border-radius: 28px;
-  background-color: rgb(var(--md-sys-color-surface-container-highest));
+  background-color: var(--md-sys-color-surface-container-highest);
 }
 
 .search-wrapper.search-active {
@@ -385,14 +385,14 @@ defineExpose({
 }
 
 .search-backdrop {
-  background-color: rgb(var(--md-sys-color-scrim) / 0.4);
+  background-color: color-mix(in srgb, var(--md-sys-color-scrim) 40%, transparent);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   pointer-events: auto;
 }
 
 .bg-surface-variant {
-  background-color: rgb(var(--md-sys-color-surface-variant));
+  background-color: var(--md-sys-color-surface-variant);
 }
 
 /* Position avatar as trailing icon in desktop search bar */
@@ -445,17 +445,17 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: rgb(var(--md-sys-color-surface-container-high));
+  background-color: var(--md-sys-color-surface-container-high);
   border: none;
   box-shadow: var(--md-sys-elevation-1);
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .search-fab:hover,
 .search-fab:focus {
-  background-color: rgb(var(--md-sys-color-surface-container-highest));
+  background-color: var(--md-sys-color-surface-container-highest);
   box-shadow: var(--md-sys-elevation-2);
 }
 
@@ -488,12 +488,12 @@ defineExpose({
 .mobile-search-results-sheet {
   --vsbs-backdrop-bg: rgba(0, 0, 0, 0.4);
   --vsbs-shadow-color: rgba(0, 0, 0, 0.2);
-  --vsbs-background: rgb(var(--md-sys-color-surface));
+  --vsbs-background: var(--md-sys-color-surface);
   --vsbs-border-radius: 28px 28px 0 0;
   --vsbs-max-width: 100%;
-  --vsbs-border-color: rgba(var(--md-sys-color-outline-variant), 0.08);
+  --vsbs-border-color: color-mix(in srgb, var(--md-sys-color-outline-variant) 8%, transparent);
   --vsbs-padding-x: 0px;
-  --vsbs-handle-background: rgba(var(--md-sys-color-on-surface-variant), 0.28);
+  --vsbs-handle-background: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 28%, transparent);
   --vsbs-handle-width: 40px;
   --vsbs-safe-area-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -520,7 +520,7 @@ defineExpose({
   align-items: center;
   padding: 12px 16px;
   position: relative;
-  border-bottom: 1px solid rgba(var(--md-sys-color-outline-variant), 0.08);
+  border-bottom: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 8%, transparent);
 }
 
 .sheet-handle {
@@ -534,7 +534,7 @@ defineExpose({
 .sheet-title {
   font-size: 16px;
   font-weight: 500;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   margin: 0;
 }
 
@@ -555,9 +555,9 @@ defineExpose({
 .map-preview-placeholder {
   width: 100%;
   height: 100%;
-  background-color: rgb(var(--md-sys-color-surface-container-low));
+  background-color: var(--md-sys-color-surface-container-low);
   position: relative;
-  border-bottom: 1px solid rgba(var(--md-sys-color-outline-variant), 0.08);
+  border-bottom: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 8%, transparent);
 }
 
 .map-preview-gradient {
@@ -568,8 +568,8 @@ defineExpose({
   height: 40px;
   background: linear-gradient(
     to bottom,
-    rgba(var(--md-sys-color-surface) / 0) 0%,
-    rgba(var(--md-sys-color-surface) / 1) 100%
+    color-mix(in srgb, var(--md-sys-color-surface) 0%, transparent) 0%,
+    color-mix(in srgb, var(--md-sys-color-surface) 100%, transparent) 100%
   );
 }
 </style>

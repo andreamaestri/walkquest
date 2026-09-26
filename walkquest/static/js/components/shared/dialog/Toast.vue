@@ -22,8 +22,8 @@ defineProps({
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
-  background-color: rgb(var(--md-sys-color-inverse-surface));
-  color: rgb(var(--md-sys-color-inverse-on-surface));
+  background-color: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
   padding: 12px 16px;
   border-radius: 4px;
   display: flex;

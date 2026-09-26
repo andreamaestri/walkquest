@@ -8,13 +8,7 @@ const projectDir = dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig({
   plugins: [
-    vue({
-      template: {
-        compilerOptions: {
-          isCustomElement: tag => tag.startsWith('motion.')
-        }
-      }
-    }),
+    vue(),
     tailwindcss()
   ],
   base: '/static/',
@@ -38,7 +32,7 @@ export default defineConfig({
         manualChunks: {
           'vue-vendor': ['vue', 'vue-router', 'pinia'],
           'ui-components': ['@iconify/vue'],
-          'motion': ['motion-v']
+          'mapbox': ['mapbox-gl']
         }
       }
     },

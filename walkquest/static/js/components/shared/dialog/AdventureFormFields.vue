@@ -97,25 +97,25 @@ defineEmits(['update:title', 'update:description', 'update:active-field'])
 .md3-text-field-label {
   font-size: 14px;
   font-weight: 500;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   margin-bottom: 4px;
 }
 
 .md3-text-field {
   position: relative;
-  background-color: rgb(var(--md-sys-color-surface-container-highest));
+  background-color: var(--md-sys-color-surface-container-highest);
   border-radius: 4px;
-  border: 1px solid rgba(var(--md-sys-color-outline), 0.5);
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline) 50%, transparent);
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .md3-text-field.focused {
-  border-color: rgb(var(--md-sys-color-primary));
-  box-shadow: 0 0 0 2px rgba(var(--md-sys-color-primary), 0.2);
+  border-color: var(--md-sys-color-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--md-sys-color-primary) 20%, transparent);
 }
 
 .md3-text-field.error {
-  border-color: rgb(var(--md-sys-color-error));
+  border-color: var(--md-sys-color-error);
 }
 
 .md3-text-field-input {
@@ -124,7 +124,7 @@ defineEmits(['update:title', 'update:description', 'update:active-field'])
   border: none;
   background: transparent;
   font-size: 16px;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
 }
 
 .md3-text-field-input:focus {
@@ -136,18 +136,18 @@ defineEmits(['update:title', 'update:description', 'update:active-field'])
 }
 
 .md3-text-field-input::placeholder {
-  color: rgba(var(--md-sys-color-on-surface), 0.6);
+  color: color-mix(in srgb, var(--md-sys-color-on-surface) 60%, transparent);
 }
 
 .md3-text-field-helper {
   font-size: 12px;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   margin-top: 4px;
 }
 
 .md3-text-field-error {
   font-size: 12px;
-  color: rgb(var(--md-sys-color-error));
+  color: var(--md-sys-color-error);
   margin-top: 4px;
 }
 

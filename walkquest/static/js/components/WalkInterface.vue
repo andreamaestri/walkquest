@@ -710,13 +710,11 @@ onMounted(() => {
 </script>
 
 <style>
-@import "tailwindcss";
-@import "../../css/material3.css";
 
 /* CSS variable is now defined in material3.css */
 
 .bg-surface {
-  background-color: rgb(var(--md-sys-color-surface));
+  background-color: var(--md-sys-color-surface);
   min-height: 100vh;
   min-height: -webkit-fill-available;
   min-height: calc(100vh + env(safe-area-inset-top)); /* Add this line */
@@ -740,7 +738,7 @@ onMounted(() => {
   position: relative;
   display: flex;
   align-items: center;
-  background-color: rgb(var(--md-sys-color-surface-container-high));
+  background-color: var(--md-sys-color-surface-container-high);
   border-radius: 28px;
   height: 48px;
   padding: 0 16px;
@@ -757,7 +755,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   margin-right: 12px;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .md3-search-icon {
@@ -769,14 +767,14 @@ onMounted(() => {
   height: 100%;
   background-color: transparent;
   border: none;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   font-size: 16px;
   outline: none;
   padding: 0;
 }
 
 .md3-search-input::placeholder {
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   opacity: 0.7;
 }
 
@@ -789,20 +787,20 @@ onMounted(() => {
   border-radius: 16px;
   background: transparent;
   border: none;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   cursor: pointer;
 }
 
 .md3-search-clear:hover {
-  background-color: rgba(var(--md-sys-color-on-surface-variant), 0.08);
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 8%, transparent);
 }
 
 .md3-search-clear:active {
-  background-color: rgba(var(--md-sys-color-on-surface-variant), 0.12);
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 12%, transparent);
 }
 
 .md3-surface {
-  background-color: rgb(var(--md-sys-color-surface));
-  color: rgb(var(--md-sys-color-on-surface));
+  background-color: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
 }
 </style>

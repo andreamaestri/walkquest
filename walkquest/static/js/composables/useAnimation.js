@@ -23,7 +23,7 @@ export function useAnimation() {
     
     return animate(element, keyframes, {
       duration: 0.3,
-      easing: easings.standard,
+      ease: easings.standard,
       ...options
     });
   }
@@ -86,7 +86,7 @@ export function useAnimation() {
     
     return animateElement(element, keyframes, {
       duration: direction === 'in' ? 0.3 : 0.2,
-      easing: direction === 'in' ? easings.emphasizedDecelerate : easings.emphasizedAccelerate,
+      ease: direction === 'in' ? easings.emphasizedDecelerate : easings.emphasizedAccelerate,
       ...options
     });
   }
@@ -106,7 +106,7 @@ export function useAnimation() {
     
     return animateElement(element, keyframes, {
       duration: direction === 'in' ? 0.35 : 0.25,
-      easing: direction === 'in' ? easings.spring : easings.standard,
+      ease: direction === 'in' ? easings.spring : easings.standard,
       ...options
     });
   }
@@ -121,7 +121,7 @@ export function useAnimation() {
     const defaultOptions = {
       scale: 0.97,
       duration: 0.1,
-      easing: easings.standard,
+      ease: easings.standard,
       ...options
     };
     
@@ -130,7 +130,7 @@ export function useAnimation() {
       up: () => animateElement(element, { scale: 1 }, { 
         ...defaultOptions, 
         duration: 0.2,
-        easing: easings.spring 
+        ease: easings.spring 
       })
     };
   }

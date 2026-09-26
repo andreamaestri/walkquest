@@ -149,7 +149,7 @@ const formattedTime = computed(() => {
 }
 
 .md3-time-picker-container {
-  background-color: rgb(var(--md-sys-color-surface));
+  background-color: var(--md-sys-color-surface);
   border-radius: 28px;
   width: 100%;
   max-width: 360px;
@@ -165,8 +165,8 @@ const formattedTime = computed(() => {
   justify-content: space-between;
   align-items: center;
   padding: 16px 24px;
-  background-color: rgb(var(--md-sys-color-primary-container));
-  color: rgb(var(--md-sys-color-on-primary-container));
+  background-color: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
 }
 
 .md3-close-button {
@@ -179,7 +179,7 @@ const formattedTime = computed(() => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: rgb(var(--md-sys-color-on-primary-container));
+  color: var(--md-sys-color-on-primary-container);
   transition: background-color 0.2s;
 }
 
@@ -199,7 +199,7 @@ const formattedTime = computed(() => {
   font-size: 36px;
   font-weight: 400;
   margin-bottom: 24px;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
 }
 
 .md3-time-picker-controls {
@@ -220,7 +220,7 @@ const formattedTime = computed(() => {
   padding: 8px 16px;
   min-width: 60px;
   text-align: center;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
 }
 
 .md3-time-unit-button {
@@ -233,19 +233,19 @@ const formattedTime = computed(() => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   transition: all 0.2s;
 }
 
 .md3-time-unit-button:hover {
-  background-color: rgba(var(--md3-sys-color-on-surface), 0.08);
-  color: rgb(var(--md-sys-color-on-surface));
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
+  color: var(--md-sys-color-on-surface);
 }
 
 .md3-time-separator {
   font-size: 36px;
   margin: 0 8px;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   align-self: center;
 }
 
@@ -261,15 +261,15 @@ const formattedTime = computed(() => {
   border-radius: 16px;
   font-size: 14px;
   font-weight: 500;
-  background-color: rgb(var(--md-sys-color-surface-container-high));
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  background-color: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface-variant);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .md3-period-button.active {
-  background-color: rgb(var(--md-sys-color-primary-container));
-  color: rgb(var(--md-sys-color-on-primary-container));
+  background-color: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
 }
 
 .md3-time-picker-actions {
@@ -293,22 +293,22 @@ const formattedTime = computed(() => {
 }
 
 .md3-filled-button {
-  background-color: rgb(var(--md-sys-color-primary));
-  color: rgb(var(--md-sys-color-on-primary));
+  background-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
 }
 
 .md3-filled-button:hover {
-  background-color: rgb(var(--md-sys-color-primary));
+  background-color: var(--md-sys-color-primary);
   filter: brightness(1.1);
 }
 
 .md3-text-button {
   background-color: transparent;
-  color: rgb(var(--md-sys-color-primary));
+  color: var(--md-sys-color-primary);
 }
 
 .md3-text-button:hover {
-  background-color: rgba(var(--md-sys-color-primary), 0.08);
+  background-color: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
 }
 
 @media (max-width: 600px) {

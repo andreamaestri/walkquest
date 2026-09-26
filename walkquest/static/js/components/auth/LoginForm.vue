@@ -352,11 +352,11 @@ async function fetchCsrfToken() {
   align-items: center;
   justify-content: center;
   padding: 16px;
-  background-color: rgb(var(--md-sys-color-surface));
+  background-color: var(--md-sys-color-surface);
 }
 
 .auth-card {
-  background-color: rgb(var(--md-sys-color-surface-container));
+  background-color: var(--md-sys-color-surface-container);
   border-radius: 28px;
   padding: 32px;
   width: 100%;
@@ -368,17 +368,17 @@ async function fetchCsrfToken() {
   font-size: 24px;
   font-weight: 500;
   margin: 0 0 8px;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
 }
 
 .auth-subtitle {
   font-size: 14px;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   margin-bottom: 24px;
 }
 
 .auth-link {
-  color: rgb(var(--md-sys-color-primary));
+  color: var(--md-sys-color-primary);
   text-decoration: none;
   font-weight: 500;
 }
@@ -393,7 +393,7 @@ async function fetchCsrfToken() {
   margin-bottom: 16px;
   padding: 12px;
   border-radius: 8px;
-  background-color: rgb(var(--md-sys-color-error-container));
+  background-color: var(--md-sys-color-error-container);
 }
 
 .md3-field-container {
@@ -405,12 +405,12 @@ async function fetchCsrfToken() {
   height: 56px;
   width: 100%;
   border-radius: 4px;
-  background-color: rgb(var(--md-sys-color-surface-container-highest));
+  background-color: var(--md-sys-color-surface-container-highest);
   transition: all 0.2s;
 }
 
 .md3-text-field.focused {
-  background-color: rgb(var(--md-sys-color-surface-container-highest));
+  background-color: var(--md-sys-color-surface-container-highest);
 }
 
 .md3-input {
@@ -420,7 +420,7 @@ async function fetchCsrfToken() {
   border: none;
   background: transparent;
   font-size: 16px;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
   outline: none;
 }
 
@@ -429,7 +429,7 @@ async function fetchCsrfToken() {
   left: 16px;
   top: 18px;
   font-size: 16px;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   pointer-events: none;
   transition: all 0.2s ease;
 }
@@ -447,18 +447,18 @@ async function fetchCsrfToken() {
   right: 0;
   bottom: 0;
   border-radius: 4px;
-  border: 1px solid rgba(var(--md-sys-color-outline), 0.6);
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline) 60%, transparent);
   pointer-events: none;
   transition: all 0.2s;
 }
 
 .md3-text-field.focused .md3-outline {
-  border-color: rgb(var(--md-sys-color-primary));
+  border-color: var(--md-sys-color-primary);
   border-width: 2px;
 }
 
 .md3-text-field.error .md3-outline {
-  border-color: rgb(var(--md-sys-color-error));
+  border-color: var(--md-sys-color-error);
 }
 
 .md3-error-message {
@@ -466,7 +466,7 @@ async function fetchCsrfToken() {
   align-items: center;
   gap: 8px;
   font-size: 12px;
-  color: rgb(var(--md-sys-color-error));
+  color: var(--md-sys-color-error);
   margin-top: 4px;
   margin-left: 16px;
 }
@@ -480,7 +480,7 @@ async function fetchCsrfToken() {
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   cursor: pointer;
 }
 
@@ -492,7 +492,7 @@ async function fetchCsrfToken() {
   background: transparent;
   border: none;
   padding: 8px;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   cursor: pointer;
   border-radius: 50%;
   display: flex;
@@ -501,7 +501,7 @@ async function fetchCsrfToken() {
 }
 
 .password-toggle:hover {
-  background-color: rgba(var(--md-sys-color-on-surface-variant), 0.08);
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 8%, transparent);
 }
 
 .auth-links {
@@ -511,7 +511,7 @@ async function fetchCsrfToken() {
 }
 
 .text-link {
-  color: rgb(var(--md-sys-color-primary));
+  color: var(--md-sys-color-primary);
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
@@ -545,13 +545,13 @@ async function fetchCsrfToken() {
 }
 
 .md3-filled-button {
-  background-color: rgb(var(--md-sys-color-primary));
-  color: rgb(var(--md-sys-color-on-primary));
+  background-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
 }
 
 .md3-filled-button:disabled {
-  background-color: rgba(var(--md-sys-color-on-surface), 0.12);
-  color: rgba(var(--md-sys-color-on-surface), 0.38);
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface) 12%, transparent);
+  color: color-mix(in srgb, var(--md-sys-color-on-surface) 38%, transparent);
   cursor: not-allowed;
 }
 

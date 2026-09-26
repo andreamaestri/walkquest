@@ -282,7 +282,7 @@ const handleSubmit = () => {
 }
 
 .modal-container {
-  background-color: rgb(var(--md-sys-color-surface));
+  background-color: var(--md-sys-color-surface);
   border-radius: 28px;
   width: 100%;
   max-width: 600px;
@@ -297,13 +297,13 @@ const handleSubmit = () => {
   justify-content: space-between;
   align-items: center;
   padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid rgb(var(--md-sys-color-outline));
+  border-bottom: 1px solid var(--md-sys-color-outline);
 }
 
 .modal-title {
   margin: 0;
   font-size: 1.25rem;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
 }
 
 .close-btn {
@@ -316,13 +316,13 @@ const handleSubmit = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   transition: all 0.2s;
 }
 
 .close-btn:hover {
-  background-color: rgb(var(--md-sys-color-surface-container-highest));
-  color: rgb(var(--md-sys-color-on-surface));
+  background-color: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface);
 }
 
 .modal-body {
@@ -355,21 +355,21 @@ const handleSubmit = () => {
 label {
   font-size: 0.9rem;
   font-weight: 500;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .required {
-  color: rgb(var(--md-sys-color-error));
+  color: var(--md-sys-color-error);
 }
 
 .form-input,
 .form-textarea,
 .form-select {
   padding: 0.75rem;
-  border: 1px solid rgb(var(--md-sys-color-outline));
+  border: 1px solid var(--md-sys-color-outline);
   border-radius: 8px;
-  background-color: rgb(var(--md-sys-color-surface-container));
-  color: rgb(var(--md-sys-color-on-surface));
+  background-color: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface);
   font-size: 1rem;
   transition: all 0.2s;
 }
@@ -377,25 +377,25 @@ label {
 .form-input:focus,
 .form-textarea:focus,
 .form-select:focus {
-  border-color: rgb(var(--md-sys-color-primary));
+  border-color: var(--md-sys-color-primary);
   outline: none;
-  box-shadow: 0 0 0 2px rgba(var(--md-sys-color-primary), 0.2);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--md-sys-color-primary) 20%, transparent);
 }
 
 .form-input.error,
 .form-textarea.error,
 .form-select.error {
-  border-color: rgb(var(--md-sys-color-error));
+  border-color: var(--md-sys-color-error);
 }
 
 .error-text {
-  color: rgb(var(--md-sys-color-error));
+  color: var(--md-sys-color-error);
   font-size: 0.8rem;
   margin: 0.25rem 0 0;
 }
 
 .help-text {
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   font-size: 0.8rem;
   margin: 0.25rem 0 0;
 }
@@ -421,22 +421,22 @@ label {
 }
 
 .submit-btn {
-  background-color: rgb(var(--md-sys-color-primary));
-  color: rgb(var(--md-sys-color-on-primary));
+  background-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
 }
 
 .submit-btn:hover:not(:disabled) {
-  background-color: rgb(var(--md-sys-color-primary-container));
-  color: rgb(var(--md-sys-color-on-primary-container));
+  background-color: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
 }
 
 .cancel-btn {
   background-color: transparent;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .cancel-btn:hover:not(:disabled) {
-  background-color: rgb(var(--md-sys-color-surface-container-highest));
+  background-color: var(--md-sys-color-surface-container-highest);
 }
 
 .btn:disabled {
@@ -459,7 +459,7 @@ label {
 
 .toggle-label {
   font-size: 0.8rem;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .toggle-switch {
@@ -482,8 +482,8 @@ label {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgb(var(--md-sys-color-surface-container-highest));
-  border: 1px solid rgb(var(--md-sys-color-outline));
+  background-color: var(--md-sys-color-surface-container-highest);
+  border: 1px solid var(--md-sys-color-outline);
   transition: .2s;
   border-radius: 34px;
 }
@@ -495,18 +495,18 @@ label {
   width: 18px;
   left: 2px;
   bottom: 2px;
-  background-color: rgb(var(--md-sys-color-outline));
+  background-color: var(--md-sys-color-outline);
   transition: .2s;
   border-radius: 50%;
 }
 
 .toggle-switch input:checked + label {
-  background-color: rgb(var(--md-sys-color-primary-container));
-  border-color: rgb(var(--md-sys-color-primary));
+  background-color: var(--md-sys-color-primary-container);
+  border-color: var(--md-sys-color-primary);
 }
 
 .toggle-switch input:checked + label:before {
-  background-color: rgb(var(--md-sys-color-primary));
+  background-color: var(--md-sys-color-primary);
   transform: translateX(20px);
 }
 

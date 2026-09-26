@@ -131,7 +131,7 @@ const userInitialsComputed = computed(() => {
 // Avatar color generation using email or username
 const avatarBgColor = computed(() => {
   const identifier = authStore.user?.email || authStore.user?.username;
-  if (!identifier) return 'rgb(var(--md-sys-color-primary))';
+  if (!identifier) return 'var(--md-sys-color-primary)';
   
   let hash = 0;
   for (let i = 0; i < identifier.length; i++) {
@@ -268,7 +268,7 @@ onUnmounted(() => {
 
 /* Desktop version styling */
 .account-circle-button.desktop {
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 /* Mobile version styling */
@@ -277,7 +277,7 @@ onUnmounted(() => {
   height: 52px;
   padding: 0!important;
   background-color: transparent;
-  color: rgb(var(--md-sys-color-surface));
+  color: var(--md-sys-color-surface);
 }
 
 .account-circle-button.mobile:hover,
@@ -294,7 +294,7 @@ onUnmounted(() => {
 }
 
 .account-icon.active {
-  color: rgb(var(--md-sys-color-primary));
+  color: var(--md-sys-color-primary);
 }
 
 /* Avatar styling for authenticated users */
@@ -318,7 +318,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgb(var(--md-sys-color-on-primary));
+  color: var(--md-sys-color-on-primary);
   font-weight: 500;
   font-size: 14px;
   user-select: none;
@@ -348,11 +348,11 @@ onUnmounted(() => {
 }
 
 .account-circle-button.desktop .state-layer.hovered {
-  background-color: rgb(var(--md-sys-color-on-surface-variant) / 0.08);
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 8%, transparent);
 }
 
 .account-circle-button.mobile .state-layer.hovered {
-  background-color: rgb(var(--md-sys-color-on-surface) / 0.08);
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
 }
 
 .search-wrapper:not(.search-active) .desktop-avatar {
@@ -361,18 +361,18 @@ onUnmounted(() => {
 }
 
 .state-layer.focused {
-  background-color: rgb(var(--md-sys-color-on-surface-variant) / 0.12);
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 12%, transparent);
 }
 
 .state-layer.pressed {
-  background-color: rgb(var(--md-sys-color-on-surface-variant) / 0.16);
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 16%, transparent);
   animation: ripple 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Auth Menu for unauthenticated users */
 .auth-menu {
   position: absolute;
-  background-color: rgb(var(--md-sys-color-surface));
+  background-color: var(--md-sys-color-surface);
   border-radius: 16px;
   width: 280px;
   box-shadow: var(--md-sys-elevation-3);
@@ -421,15 +421,15 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 16px;
-  background-color: rgb(var(--md-sys-color-surface-container-highest));
-  border-bottom: 1px solid rgb(var(--md-sys-color-outline));
+  background-color: var(--md-sys-color-surface-container-highest);
+  border-bottom: 1px solid var(--md-sys-color-outline);
 }
 
 .auth-menu-title {
   margin: 0;
   font-size: 18px;
   font-weight: 500;
-  color: rgb(var(--md-sys-color-on-surface));
+  color: var(--md-sys-color-on-surface);
 }
 
 .close-button {
@@ -439,7 +439,7 @@ onUnmounted(() => {
   border: none;
   background: none;
   border-radius: 50%;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -448,11 +448,11 @@ onUnmounted(() => {
 }
 
 .close-button:hover {
-  background-color: rgb(var(--md-sys-color-surface-container-high));
+  background-color: var(--md-sys-color-surface-container-high);
 }
 
 .close-button:active {
-  background-color: rgb(var(--md-sys-color-surface-container-highest));
+  background-color: var(--md-sys-color-surface-container-highest);
   transform: scale(0.96);
 }
 
@@ -463,7 +463,7 @@ onUnmounted(() => {
 .auth-menu-text {
   margin-bottom: 16px;
   font-size: 14px;
-  color: rgb(var(--md-sys-color-on-surface-variant));
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .auth-links {
@@ -482,11 +482,11 @@ onUnmounted(() => {
   text-decoration: none;
   transition: all 0.2s;
   font-weight: 500;
-  background-color: rgb(var(--md-sys-color-surface-container));
+  background-color: var(--md-sys-color-surface-container);
 }
 
 .auth-link:hover {
-  background-color: rgb(var(--md-sys-color-surface-container-high));
+  background-color: var(--md-sys-color-surface-container-high);
   transform: translateY(-1px);
 }
 
@@ -495,7 +495,7 @@ onUnmounted(() => {
 }
 
 .auth-link-primary {
-  background-color: rgb(var(--md-sys-color-primary));
+  background-color: var(--md-sys-color-primary);
   color: #FFFFFF;
 }
 
@@ -505,7 +505,7 @@ onUnmounted(() => {
 }
 
 .auth-link-secondary {
-  background-color: rgb(var(--md-sys-color-secondary-container));
+  background-color: var(--md-sys-color-secondary-container);
   color: #4A4458;
 }
 
@@ -551,7 +551,7 @@ onUnmounted(() => {
   }
   
   .account-circle-button:active .state-layer {
-    background-color: rgb(var(--md-sys-color-on-surface-variant) / 0.16);
+    background-color: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 16%, transparent);
   }
 }
 
