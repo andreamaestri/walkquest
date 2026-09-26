@@ -444,8 +444,9 @@ onMounted(async () => {
   z-index: 25;
 }
 .mobile-top :deep(.search__bar) { box-shadow: var(--md-sys-elevation-2); background: var(--md-sys-color-surface-container-high); }
-.mobile-top__account :deep(.account-circle-container) { position: static; }
-.mobile-top__account :deep(.account-circle-button.mobile) { inline-size: 40px; block-size: 40px; color: var(--md-sys-color-on-surface-variant); }
+.mobile-top__account { display: inline-flex; }
+.mobile-top__account :deep(.account-button) { inline-size: 40px; block-size: 40px; }
+.mobile-top__account :deep(.account-avatar) { inline-size: 32px; block-size: 32px; font-size: 14px; }
 /* Rides on top of the sheet; translated every frame from its live height. */
 .mobile-fab {
   position: fixed;

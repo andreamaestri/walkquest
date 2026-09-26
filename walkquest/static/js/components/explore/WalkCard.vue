@@ -1,6 +1,6 @@
 <template>
   <article
-    class="walk-card state-layer shape-morph"
+    class="walk-card state-layer"
     :class="{ 'is-selected': selected, 'is-dimmed': dimmed }"
     tabindex="0"
     role="button"
@@ -15,7 +15,7 @@
     @blur="$emit('hover', null)"
   >
     <WalkThumb
-      class="walk-card__media shape-morph"
+      class="walk-card__media"
       :src="walk.thumb?.url"
       :alt="''"
       :width="96"
@@ -102,11 +102,22 @@ const tags = computed(() => {
   cursor: pointer;
   outline-offset: -2px;
   contain: layout paint;
+  /* Only cheap properties animate: scale is composited, radius/colour repaint one card. */
+  transition:
+    border-radius var(--md-sys-motion-spring-fast-spatial-duration) var(--md-sys-motion-spring-fast-spatial),
+    scale var(--md-sys-motion-spring-fast-spatial-duration) var(--md-sys-motion-spring-fast-spatial),
+    background-color var(--md-sys-motion-spring-default-effects-duration) var(--md-sys-motion-spring-default-effects);
 }
 .walk-card__media {
   inline-size: 96px;
   block-size: 96px;
   border-radius: var(--md-sys-shape-corner-medium);
+  transition: border-radius var(--md-sys-motion-spring-default-spatial-duration) var(--md-sys-motion-spring-default-spatial);
+}
+.walk-card .walk-card__media :deep(img) {
+  transition:
+    opacity var(--md-sys-motion-spring-slow-effects-duration) var(--md-sys-motion-spring-slow-effects),
+    scale var(--md-sys-motion-spring-slow-spatial-duration) var(--md-sys-motion-spring-slow-spatial);
 }
 .walk-card__body { min-inline-size: 0; padding-block: 4px; }
 .walk-card__title {
@@ -147,13 +158,23 @@ const tags = computed(() => {
 .walk-card__tag svg { flex: none; font-size: 14px; color: var(--md-sys-color-primary); }
 .walk-card__fav { margin-top: -2px; }
 
-/* Expressive selection: corners and colour morph with a spring. */
+/* M3E hover: the thumbnail rounds up and the photo drifts in. */
+@media (hover: hover) and (pointer: fine) {
+  .walk-card:hover .walk-card__media { border-radius: var(--md-sys-shape-corner-large); }
+  .walk-card:hover .walk-card__media :deep(img) { scale: 1.06; }
+}
+/* M3E press: squish and morph the corners on the fast spatial spring. */
+.walk-card:active { --_radius: var(--md-sys-shape-corner-extra-large); scale: 0.97; }
+
+/* Expressive selection: tonal container, rounder shape, and a spring "pop". */
 .walk-card.is-selected {
   --_radius: var(--md-sys-shape-corner-extra-large);
   background: var(--md-sys-color-secondary-container);
   color: var(--md-sys-color-on-secondary-container);
+  animation: walk-card-pop var(--md-sys-motion-spring-fast-spatial-duration) var(--md-sys-motion-spring-fast-spatial);
 }
+.walk-card.is-selected .walk-card__title { color: var(--md-sys-color-on-secondary-container); }
 .walk-card.is-selected .walk-card__media { border-radius: var(--md-sys-shape-corner-extra-large); }
-.walk-card:active { transform: scale(0.985); }
+@keyframes walk-card-pop { from { scale: 0.96; } }
 .walk-card.is-dimmed { opacity: 0.55; }
 </style>
