@@ -1,4 +1,6 @@
 # ruff: noqa: E501
+import mimetypes
+
 from .base import *  # noqa: F403
 from .base import DATABASES
 from .base import INSTALLED_APPS
@@ -78,6 +80,9 @@ STORAGES = {
 
 # Media (walk photos) on Cloudflare R2 when configured; local MEDIA_ROOT otherwise.
 R2_BUCKET = env("DJANGO_R2_BUCKET", default="")
+# Python < 3.13 has no .webp mapping, so django-storages would upload
+# walk photos as application/octet-stream.
+mimetypes.add_type("image/webp", ".webp")
 if R2_BUCKET:
     STORAGES["default"] = {
         "BACKEND": "storages.backends.s3.S3Storage",
