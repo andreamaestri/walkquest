@@ -25,7 +25,8 @@
 - Clean up map listeners/observers in onBeforeUnmount
 
 # Motion
-- CSS: --md-sys-motion-spring-* tokens; JS: springs from js/design/motion.js with motion's animate({ ease | type: 'spring' })
+- CSS: --md-sys-motion-spring-* tokens (linear() springs); JS: motion-v (AnimatePresence, m.div, animate) with springs/presets from js/design/motion.js
+- Map camera: pass cameraMotion(duration) to flyTo/easeTo/fitBounds; never animate the map container's size
 - Respect prefers-reduced-motion
 
 # Development flow
