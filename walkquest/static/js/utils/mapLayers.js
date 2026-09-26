@@ -105,10 +105,15 @@ export function walkLayers(colors) {
       type: 'circle',
       source: 'walks',
       paint: {
+        // Zoom must be the top-level input, so scale each stop by the state factor.
         'circle-radius': [
-          '*',
-          ['interpolate', ['linear'], ['zoom'], 7, 4.5, 10, 6.5, 13, 8.5, 16, 11],
-          ['case', selected, 1.35, hover, 1.25, matched, 1, 0.7],
+          'interpolate',
+          ['linear'],
+          ['zoom'],
+          ...[[7, 4.5], [10, 6.5], [13, 8.5], [16, 11]].flatMap(([zoom, radius]) => [
+            zoom,
+            ['*', radius, ['case', selected, 1.35, hover, 1.25, matched, 1, 0.7]],
+          ]),
         ],
         'circle-color': ['case', ['==', ['get', 'fav'], 1], colors.tertiary, colors.primary],
         'circle-opacity': ['case', matched, 1, 0.35],

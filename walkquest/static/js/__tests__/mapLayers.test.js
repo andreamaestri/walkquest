@@ -50,3 +50,15 @@ describe('walkLayers', () => {
     expect(layers.every((l) => l.source === 'walks')).toBe(true);
   });
 });
+
+describe('layer expressions', () => {
+  it('keeps zoom interpolation at the top level of every paint/layout value', () => {
+    const layers = walkLayers({ primary: '#000', tertiary: '#111', surface: '#fff', onSurface: '#222' });
+    const usesZoom = (v) => JSON.stringify(v).includes('["zoom"]');
+    for (const layer of layers) {
+      for (const value of [...Object.values(layer.paint || {}), ...Object.values(layer.layout || {})]) {
+        if (usesZoom(value)) expect(['interpolate', 'step']).toContain(value[0]);
+      }
+    }
+  });
+});

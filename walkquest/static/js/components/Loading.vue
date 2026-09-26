@@ -2,7 +2,7 @@
   <div class="loading-overlay" role="alert" aria-live="polite">
     <div class="loading-content">
       <div class="loading-spinner">
-        <Icon icon="mdi:loading" class="animate-spin text-4xl" />
+        <M3LoadingIndicator :size="56" contained />
       </div>
       <div v-if="message" class="loading-message">
         {{ message }}
@@ -14,6 +14,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { useUiStore } from '../stores/ui'
+import M3LoadingIndicator from './m3/M3LoadingIndicator.vue'
 
 const uiStore = useUiStore()
 const message = ref('')

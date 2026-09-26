@@ -1,7 +1,7 @@
 <template>
   <div class="map-toolbar" role="toolbar" aria-label="Map controls" aria-orientation="vertical">
-    <M3IconButton icon="material-symbols:add-rounded" label="Zoom in" @click="$emit('zoom-in')" />
-    <M3IconButton icon="material-symbols:remove-rounded" label="Zoom out" @click="$emit('zoom-out')" />
+    <M3IconButton class="zoom" icon="material-symbols:add-rounded" label="Zoom in" @click="$emit('zoom-in')" />
+    <M3IconButton class="zoom" icon="material-symbols:remove-rounded" label="Zoom out" @click="$emit('zoom-out')" />
     <M3IconButton
       icon="material-symbols:navigation-outline-rounded"
       label="Reset north"
@@ -42,5 +42,7 @@ defineEmits(['zoom-in', 'zoom-out', 'reset-north', 'locate']);
 }
 .map-toolbar__divider { inline-size: 24px; block-size: 1px; margin-block: 2px; background: var(--md-sys-color-outline-variant); }
 .is-spinning :deep(svg) { animation: spin 1s linear infinite; }
+/* Pinch-zoom covers zooming on touch screens. */
+@media (max-width: 767px) { .zoom, .map-toolbar__divider { display: none; } }
 @keyframes spin { to { transform: rotate(1turn); } }
 </style>

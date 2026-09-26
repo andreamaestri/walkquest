@@ -5,9 +5,7 @@
 @import "@fontsource-variable/google-sans-flex/rond.css";
 @import "./m3e/color.generated.css";
 @import "./m3e/foundation.css";
-@import "./legacy.css";
-@import "./material3.css";
-@import "./expressive.css";
+@import "./m3e/shared-surfaces.css";
 
 /* Map M3 tokens into Tailwind so utilities follow the theme:
    bg-surface-container-low, text-on-surface, rounded-m3-xl, ease-spring-fast … */

@@ -68,8 +68,8 @@ const scroller = ref(null);
 /** Brings the selected walk into view (e.g. after a pin is clicked on the map). */
 function scrollToWalk(id) {
   const index = props.walks.findIndex((walk) => walk.id === id);
-  if (index < 0 || !scroller.value) return;
-  const el = scroller.value.$el;
+  const el = scroller.value?.$el;
+  if (index < 0 || !el) return;
   const top = index * ITEM_SIZE;
   if (top < el.scrollTop || top + ITEM_SIZE > el.scrollTop + el.clientHeight) {
     el.scrollTo({ top: Math.max(0, top - el.clientHeight / 3), behavior: 'smooth' });
@@ -78,10 +78,11 @@ function scrollToWalk(id) {
 
 // New results start from the top.
 watch(() => props.walks, async (next, prev) => {
-  if (next !== prev && scroller.value) {
-    await nextTick();
-    scroller.value.$el.scrollTop = 0;
-  }
+  if (next === prev) return;
+  await nextTick();
+  // The scroller unmounts when results become empty.
+  const el = scroller.value?.$el;
+  if (el) el.scrollTop = 0;
 });
 
 defineExpose({ scrollToWalk });

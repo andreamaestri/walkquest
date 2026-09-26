@@ -61,14 +61,12 @@ const routes = [
     meta: { requiresAuth: true }
   },
   // Handle redirects from Django auth
-  {
-    path: '/accounts/login',
-    redirect: '/users/login-page/'
-  },
-  {
-    path: '/accounts/signup',
-    redirect: '/users/signup-page/'
-  },
+  // Django serves these URLs with the SPA shell; show the Vue auth screens
+  // (the old redirects pointed at paths the router didn't know → blank page).
+  { path: '/accounts/login', redirect: (to) => ({ path: '/login', query: to.query }) },
+  { path: '/accounts/signup', redirect: (to) => ({ path: '/signup', query: to.query }) },
+  { path: '/users/login-page', redirect: (to) => ({ path: '/login', query: to.query }) },
+  { path: '/users/signup-page', redirect: (to) => ({ path: '/signup', query: to.query }) },
   {
     path: '/accounts/logout',
     redirect: '/'

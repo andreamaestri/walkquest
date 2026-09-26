@@ -1,0 +1,60 @@
+/* Shared M3 surface styles for the account, auth, dialog and snackbar
+   components that still use global class names. New components style
+   themselves with the tokens and utilities in app.css. */
+
+.m3-icon-button {
+  min-width: 48px;
+  min-height: 48px;
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  cursor: pointer;
+}
+.m3-icon-button:hover {
+  background: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
+  color: var(--md-sys-color-on-surface);
+}
+
+.account-menu,
+.modal-container {
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+  border-radius: var(--md-sys-shape-corner-extra-large);
+  box-shadow: var(--md-sys-elevation-3);
+}
+
+.modal-overlay {
+  background: color-mix(in srgb, var(--md-sys-color-scrim) 40%, transparent);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+.close-btn,
+.password-toggle,
+.snackbar-close {
+  min-width: 40px;
+  min-height: 40px;
+}
+
+.btn,
+.md3-button,
+.auth-link-primary {
+  min-height: 40px;
+  border-radius: var(--md-sys-shape-corner-full);
+  font-weight: 600;
+  letter-spacing: 0.1px;
+  transition: border-radius var(--md-sys-motion-spring-fast-spatial-duration) var(--md-sys-motion-spring-fast-spatial);
+}
+.btn:active,
+.md3-button:active,
+.auth-link-primary:active {
+  border-radius: var(--md-sys-shape-corner-small);
+}
+
+.snackbar {
+  border-radius: var(--md-sys-shape-corner-extra-small);
+  background: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
+  box-shadow: var(--md-sys-elevation-3);
+}

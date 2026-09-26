@@ -185,11 +185,12 @@ onUnmounted(() => {
 }
 
 .snackbar {
-  background-color: #322F35;
-  color: #F5EFF7;
-  max-height: 48px;
+  background-color: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
+  min-height: 48px;
   padding: 12px 16px;
-  border-radius: 8px;
+  border-radius: var(--md-sys-shape-corner-extra-small);
+  font-size: var(--md-sys-typescale-body-medium-size);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -198,7 +199,8 @@ onUnmounted(() => {
   margin: 0 auto;
   transform: translateY(100px);
   opacity: 0;
-  transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+  transition: transform var(--md-sys-motion-spring-default-spatial-duration) var(--md-sys-motion-spring-default-spatial),
+    opacity var(--md-sys-motion-spring-default-effects-duration) var(--md-sys-motion-spring-default-effects);
   pointer-events: auto;
   will-change: transform, opacity;
 }
@@ -208,31 +210,13 @@ onUnmounted(() => {
   opacity: 1;
 }
 
-/* Type-specific styles */
-.snackbar-success {
-  background-color: var(--md-sys-color-success-container);
-  color: var(--md-sys-color-on-success-container);
-}
+/* M3 snackbars always use the inverse surface; type is conveyed by the icon. */
+.snackbar-success :deep(svg:first-child) { color: var(--md-sys-color-inverse-primary); }
+.snackbar-error { box-shadow: inset 4px 0 0 var(--md-sys-color-error), var(--md-sys-elevation-3); }
+.snackbar-warning :deep(svg:first-child) { color: var(--md-sys-color-tertiary-container); }
+.snackbar-info :deep(svg:first-child) { color: var(--md-sys-color-inverse-primary); }
 
-.snackbar-error {
-  background-color: var(--md-sys-color-error-container);
-  color: var(--md-sys-color-on-error-container);
-}
-
-.snackbar-warning {
-  background-color: var(--md-sys-color-warning-container);
-  color: var(--md-sys-color-on-warning-container);
-}
-
-.snackbar-info {
-  background-color: var(--md-sys-color-secondary-container);
-  color: var(--md-sys-color-on-secondary-container);
-}
-
-.snackbar-default {
-  background-color: #322F35;
-  color: #D0BCFF;
-}
+.snackbar-default :deep(svg:first-child) { color: var(--md-sys-color-inverse-primary); }
 
 .snackbar-icon {
   display: flex;
@@ -242,7 +226,7 @@ onUnmounted(() => {
 }
 
 .snackbar-message {
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: inherit;
   font-optical-sizing: auto;
   font-size: 14px;
   font-weight: 400;
@@ -254,15 +238,14 @@ onUnmounted(() => {
 .snackbar-action {
   background: none;
   border: none;
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: inherit;
   font-size: 14px;
   font-weight: 500;
   letter-spacing: 0.5px;
-  color: #D0BCFF;
-  padding: 4px 8px;
-  border-radius: 4px;
+  color: var(--md-sys-color-inverse-primary);
+  padding: 4px 12px;
+  border-radius: var(--md-sys-shape-corner-full);
   cursor: pointer;
-  text-transform: uppercase;
 }
 
 .snackbar-close {
@@ -280,11 +263,11 @@ onUnmounted(() => {
 }
 
 .snackbar-close:hover {
-  background-color: rgba(208, 188, 255, 0.08);
+  background-color: color-mix(in srgb, var(--md-sys-color-inverse-on-surface) 8%, transparent);
 }
 
 .snackbar-close:active {
-  background-color: rgba(208, 188, 255, 0.12);
+  background-color: color-mix(in srgb, var(--md-sys-color-inverse-on-surface) 12%, transparent);
 }
 
 .fade-enter-active,

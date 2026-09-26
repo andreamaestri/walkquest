@@ -302,6 +302,7 @@ onMounted(() => {
   }
   map.value = instance;
   setMapInstance(instance);
+  if (import.meta.env.DEV) window.__walkquestMap = instance; // debugging / e2e hook
   instance.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right');
 
   geolocate = new mapboxgl.GeolocateControl({
@@ -381,6 +382,10 @@ defineExpose({ recenter, flyTo, locate });
 }
 .walk-map__fallback svg { font-size: 48px; color: var(--md-sys-color-primary); }
 .walk-map__toolbar { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); z-index: 2; }
+@media (max-width: 767px) {
+  .walk-map__toolbar { top: calc(84px + env(safe-area-inset-top, 0px)); right: 12px; transform: none; }
+  .walk-map__route-loading { top: calc(84px + env(safe-area-inset-top, 0px)); }
+}
 .walk-map__route-loading { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); z-index: 2; }
 /* Keep Mapbox's logo + attribution above bottom sheets. */
 .walk-map :deep(.mapboxgl-ctrl-bottom-left),
