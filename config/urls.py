@@ -38,6 +38,10 @@ urlpatterns += [
     # Headless allauth API endpoint
     path("_allauth/", include("allauth.headless.urls")),
     
+    # Client-side (Vue Router) pages: serve the SPA shell on full page loads
+    # instead of letting the walk-slug catch-all below 404 them.
+    *[path(route, index) for route in ("profile/", "adventures/", "signup/", "verify-email/")],
+
     # Include walkquest URLs
     path("", include("walkquest.urls")),
     

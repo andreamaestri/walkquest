@@ -7,6 +7,8 @@ const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const AUTH_POLL_INTERVAL = 30000; // 30s default polling interval
 const SESSION_IDLE_TIMEOUT = 30 * 60 * 1000; // 30 min idle timeout
 
+let initAuthPromise = null;
+
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null,
@@ -656,7 +658,19 @@ export const useAuthStore = defineStore('auth', {
     },
     
     // Initialization and cleanup
-    async initAuth() {
+    initAuth() {
+      // App.vue and the router guard both call this at startup; share one
+      // in-flight check so the guard never sees a half-initialised state.
+      if (!initAuthPromise) {
+        initAuthPromise = this._initAuth().catch((error) => {
+          initAuthPromise = null;
+          throw error;
+        });
+      }
+      return initAuthPromise;
+    },
+
+    async _initAuth() {
       const isAuthenticated = await this.checkAuth();
       
       if (!IS_PRODUCTION) {

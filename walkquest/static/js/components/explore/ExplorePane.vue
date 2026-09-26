@@ -43,8 +43,8 @@
         </div>
       </template>
       <template #footer>
-        <p v-if="search.results.length" class="explore__credit type-body-small">
-          Photos © iWalk Cornwall · route data from WalkQuest
+        <p v-if="hasPhotos && search.results.length" class="explore__credit type-body-small">
+          Walk photos © iWalk Cornwall
         </p>
       </template>
     </WalkList>
@@ -69,6 +69,7 @@ defineEmits(['select', 'hover', 'nearby']);
 const search = useSearchStore();
 const walksStore = useWalksStore();
 const listRef = ref(null);
+const hasPhotos = computed(() => walksStore.walks.some((walk) => walk.thumb));
 
 const sortItems = computed(() => [
   { value: 'relevance', label: search.origin && search.mode === 'nearby' ? 'Nearest first' : 'Best match', icon: 'material-symbols:auto-awesome-outline-rounded' },
