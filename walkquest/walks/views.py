@@ -199,10 +199,9 @@ class HomePageView(ListView):
         try:
             config = WalkQuestConfig.get_config()
             context["api_config"] = json.dumps(config)
-            context["initial_walks"] = [
-                self.serialize_walk(walk)
-                for walk in self.get_queryset()
-            ]
+            # The SPA loads walks from /api/walks (cached + ETag); serializing
+            # them here cost one favourite query per walk and was never used.
+            context["initial_walks"] = []
 
             # Handle tag counts with proper Tagulous integration
             tags_with_counts = []

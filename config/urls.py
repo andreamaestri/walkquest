@@ -2,13 +2,21 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import include, path, re_path
 from django.views import defaults as default_views
 from django.views.generic import TemplateView
 from walkquest.walks.views import HomePageView 
-from walkquest.views import index, legacy_walk_view, csrf_token_view
+from walkquest.views import index, legacy_walk_view, csrf_token_view, serve_walk_media
 
-urlpatterns = [
+urlpatterns = []
+
+if getattr(settings, "SERVE_MEDIA", False) and not settings.DEBUG:
+    # Imported walk photos (python manage.py import_iwalk_photos).
+    urlpatterns.append(
+        re_path(r"^media/(?P<path>walks/.+)$", serve_walk_media, name="walk-media"),
+    )
+
+urlpatterns += [
     path("", HomePageView.as_view(), name="home"),
     path(
         "about/",

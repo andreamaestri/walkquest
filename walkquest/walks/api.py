@@ -1,3 +1,4 @@
+import hashlib
 import math
 from typing import List
 from typing import Optional
@@ -9,11 +10,16 @@ from django.core.cache import cache
 from django.db import transaction
 from django.db.models import Count
 from django.db.models import Exists
+from django.db.models import Max
+from django.db.models import Prefetch
+from django.db.models import Q
 from django.db.models import FloatField
 from django.db.models import OuterRef
 from django.db.models import Value
 from django.db.models.expressions import RawSQL
 from django.http import HttpRequest
+from django.http import HttpResponse
+from django.http import HttpResponseNotModified
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from ninja import Path
@@ -30,8 +36,11 @@ from .models import Companion
 from .models import Walk
 from .models import WalkCategoryTag
 from .models import WalkFeatureTag
+from .models import WalkPhoto
+from .difficulty import normalize_difficulty
 from .schemas import ConfigSchema
 from .schemas import TagResponseSchema
+from .schemas import WalkDetailSchema
 from .schemas import WalkOutSchema
 
 
@@ -81,95 +90,177 @@ def api_root(request):
     }
 
 
-@api.get("/walks", response=List[WalkOutSchema])
+SUMMARY_FIELDS = (
+    "id",
+    "walk_id",
+    "walk_name",
+    "distance",
+    "latitude",
+    "longitude",
+    "steepness_level",
+    "highlights",
+    "points_of_interest",
+    "has_pub",
+    "has_cafe",
+    "has_stiles",
+    "has_bus_access",
+    "updated_at",
+)
+LIST_CACHE_TIMEOUT = 60 * 60
+LIST_CACHE_CONTROL = "public, max-age=300, stale-while-revalidate=86400"
+EXCERPT_LENGTH = 140
+
+
+def make_excerpt(text: str | None, length: int = EXCERPT_LENGTH) -> str:
+    """First sentence-ish of the highlights, trimmed on a word boundary."""
+    text = " ".join((text or "").split())
+    if len(text) <= length:
+        return text
+    cut = text[:length].rsplit(" ", 1)[0].rstrip(",;:")
+    return f"{cut}…"
+
+
+def split_points_of_interest(value: str | None) -> list[str]:
+    return [poi.strip() for poi in (value or "").split(";") if poi.strip()]
+
+
+def photo_thumb(photo: WalkPhoto | None) -> dict | None:
+    if photo is None:
+        return None
+    width = height = None
+    if photo.width and photo.height:
+        width = min(photo.width, 320) if photo.thumb else photo.width
+        height = round(photo.height * width / photo.width)
+    return {"url": photo.thumb_url, "width": width, "height": height}
+
+
+def walk_summary(walk: Walk) -> dict:
+    main_photo = walk.list_photos[0] if getattr(walk, "list_photos", None) else None
+    return {
+        "id": walk.id,
+        "walk_id": walk.walk_id,
+        "walk_name": walk.walk_name,
+        "distance": walk.distance,
+        "latitude": walk.latitude,
+        "longitude": walk.longitude,
+        "steepness_level": walk.steepness_level,
+        "difficulty": normalize_difficulty(walk.steepness_level),
+        "excerpt": make_excerpt(walk.highlights),
+        "points_of_interest": split_points_of_interest(walk.points_of_interest),
+        # Slugs only; names come from /api/tags (cached client-side).
+        "categories": sorted(
+            {c.slug for c in walk.categories.all()} | {c.slug for c in walk.related_categories.all()}
+        ),
+        "features": [f.slug for f in walk.features.all()],
+        "has_pub": walk.has_pub,
+        "has_cafe": walk.has_cafe,
+        "has_stiles": walk.has_stiles,
+        "has_bus_access": walk.has_bus_access,
+        "thumb": photo_thumb(main_photo),
+    }
+
+
+def walks_data_version() -> str:
+    """Cheap fingerprint of everything the summary list depends on."""
+    walks = Walk.objects.aggregate(n=Count("id"), t=Max("updated_at"))
+    photos = WalkPhoto.objects.aggregate(n=Count("id"), t=Max("fetched_at"))
+    tags = Walk.categories.through.objects.count() + Walk.related_categories.through.objects.count()
+    raw = f"{walks['n']}|{walks['t']}|{photos['n']}|{photos['t']}|{tags}"
+    return hashlib.sha1(raw.encode()).hexdigest()[:16]  # noqa: S324 - not security sensitive
+
+
+def etag_matches(request: HttpRequest, etag: str) -> bool:
+    header = request.headers.get("If-None-Match", "")
+    candidates = {tag.strip().removeprefix("W/") for tag in header.split(",") if tag.strip()}
+    return "*" in candidates or etag in candidates
+
+
+def build_walk_list(filters: dict) -> bytes:
+    walks = (
+        Walk.objects.only(*SUMMARY_FIELDS)
+        .prefetch_related(
+            "features",
+            "categories",
+            "related_categories",
+            Prefetch(
+                "photos",
+                queryset=WalkPhoto.objects.filter(Q(is_main=True) | Q(position__lte=1)).only(
+                    "id", "walk_id", "is_main", "position", "image", "thumb", "source_url", "width", "height",
+                ),
+                to_attr="list_photos",
+            ),
+        )
+        .order_by("walk_name")
+    )
+    if filters.get("search"):
+        walks = walks.filter(walk_name__icontains=filters["search"])
+    if filters.get("categories"):
+        walks = walks.filter(categories__slug__in=filters["categories"].split(","))
+    if filters.get("features"):
+        walks = walks.filter(features__slug__in=filters["features"].split(","))
+    if filters.get("difficulty"):
+        walks = walks.filter(steepness_level=filters["difficulty"])
+    if filters.get("has_stiles") is not None:
+        walks = walks.filter(has_stiles=filters["has_stiles"])
+    if filters.get("has_bus_access") is not None:
+        walks = walks.filter(has_bus_access=filters["has_bus_access"])
+    # A walk can match several many-to-many filters; keep one row per walk.
+    return orjson.dumps([walk_summary(walk) for walk in walks.distinct()])
+
+
+@api.get("/walks")
 def list_walks(
     request: HttpRequest,
     search: Optional[str] = None,
     categories: Optional[str] = None,
     features: Optional[str] = None,
     difficulty: Optional[str] = None,
-    has_bus_access: Optional[bool] = None,  # renamed parameter
+    has_bus_access: Optional[bool] = None,
     has_stiles: Optional[bool] = None,
 ):
-    """List walks with optional filtering"""
-    try:
-        walks = Walk.objects.prefetch_related(
-            "features", "categories", "related_categories"
-        ).annotate(
-            is_favorite=Exists(
-                Walk.favorites.through.objects.filter(
-                    walk_id=OuterRef("pk"), user=request.user
-                )
-            )
-            if request.user.is_authenticated
-            else Value(False)
+    """Every walk as a compact, cacheable summary (intentionally unpaginated).
+
+    The payload is identical for every user (favourites come from
+    ``/walks/favorites``), so it can be cached server-side, revalidated with
+    ETags and stored by the browser. Full details are served by
+    ``/walks/{identifier}``.
+    """
+    filters = {
+        "search": search,
+        "categories": categories,
+        "features": features,
+        "difficulty": difficulty,
+        "has_bus_access": has_bus_access,
+        "has_stiles": has_stiles,
+    }
+    filter_key = hashlib.sha1(orjson.dumps(filters, option=orjson.OPT_SORT_KEYS)).hexdigest()[:10]  # noqa: S324
+    etag = f'"{walks_data_version()}-{filter_key}"'
+    if etag_matches(request, etag):
+        response = HttpResponseNotModified()
+    else:
+        cache_key = f"walkquest:api:walks:v3:{etag.strip('\"')}"
+        body = cache.get(cache_key)
+        if body is None:
+            body = build_walk_list(filters)
+            cache.set(cache_key, body, LIST_CACHE_TIMEOUT)
+        response = HttpResponse(body, content_type="application/json")
+    response["ETag"] = etag
+    response["Cache-Control"] = LIST_CACHE_CONTROL
+    return response
+
+
+@api.get("/walks/favorites")
+def list_favorite_walks(request: HttpRequest):
+    """IDs of the current user's favourite walks (empty for anonymous users)."""
+    if not request.user.is_authenticated:
+        ids = []
+    else:
+        ids = list(
+            Walk.favorites.through.objects.filter(user=request.user).values_list("walk_id", flat=True)
         )
-        if search:
-            walks = walks.filter(walk_name__icontains=search)
-        if categories:
-            walks = walks.filter(categories__slug__in=categories.split(","))
-        if features:
-            walks = walks.filter(features__slug__in=features.split(","))
-        if difficulty:
-            walks = walks.filter(steepness_level=difficulty)
-        if has_stiles is not None:
-            walks = walks.filter(has_stiles=has_stiles)
-        if has_bus_access is not None:  # updated filtering
-            walks = walks.filter(has_bus_access=has_bus_access)
-
-        # A walk can match multiple many-to-many filters. Keep the response
-        # one-row-per-walk while retaining the existing unpaginated API.
-        walks = walks.distinct()
-
-        walk_list = []
-        for walk in walks:
-            # Format points_of_interest as a list by splitting on semicolons and stripping whitespace
-            formatted_pubs = []
-            # ...existing code for walk conversion...
-            walk_list.append(
-                WalkOutSchema(
-                    id=walk.id,
-                    walk_id=walk.walk_id,
-                    walk_name=walk.walk_name,
-                    distance=walk.distance,
-                    latitude=walk.latitude,
-                    longitude=walk.longitude,
-                    has_pub=walk.has_pub,
-                    has_cafe=walk.has_cafe,
-                    is_favorite=walk.is_favorite,
-                    features=[
-                        {"name": f.name, "slug": f.slug} for f in walk.features.all()
-                    ],
-                    categories=[
-                        {"name": c.name, "slug": c.slug} for c in walk.categories.all()
-                    ],
-                    related_categories=[
-                        {"name": rc.name, "slug": rc.slug}
-                        for rc in walk.related_categories.all()
-                    ],
-                    highlights=walk.highlights,
-                    points_of_interest=[poi.strip() for poi in walk.points_of_interest.split(';')] if walk.points_of_interest else [],
-                    os_explorer_reference=walk.os_explorer_reference,
-                    steepness_level=walk.steepness_level,
-                    footwear_category=walk.footwear_category,
-                    recommended_footwear=walk.recommended_footwear,
-                    pubs_list=[
-                        pub
-                        if isinstance(pub, dict) and "name" in pub
-                        else {"name": str(pub)}
-                        for pub in walk.pubs_list
-                    ],
-                    trail_considerations=walk.trail_considerations,
-                    has_stiles=walk.has_stiles,
-                    has_bus_access=walk.has_bus_access,
-                    created_at=walk.created_at.isoformat(),
-                    updated_at=walk.updated_at.isoformat(),
-                )
-            )
-        return walk_list
-    except Exception as e:
-        print(f"Error in list_walks: {e}")
-        return []
+    response = JsonResponse({"ids": [str(i) for i in ids]})
+    response["Cache-Control"] = "private, no-cache"
+    return response
 
 
 @api.get("/walks/nearby", response=List[WalkOutSchema])
@@ -294,75 +385,78 @@ def find_nearby_walks(
         return []
 
 
-@api.get("/walks/{identifier}", response=WalkOutSchema)
+def walk_detail(walk: Walk) -> dict:
+    photos = list(walk.photos.all())
+    return {
+        "id": walk.id,
+        "walk_id": walk.walk_id,
+        "walk_name": walk.walk_name,
+        "distance": walk.distance,
+        "latitude": walk.latitude,
+        "longitude": walk.longitude,
+        "has_pub": walk.has_pub,
+        "has_cafe": walk.has_cafe,
+        "is_favorite": walk.is_favorite,
+        "features": [{"name": f.name, "slug": f.slug} for f in walk.features.all()],
+        "categories": [{"name": c.name, "slug": c.slug} for c in walk.categories.all()],
+        "related_categories": [{"name": rc.name, "slug": rc.slug} for rc in walk.related_categories.all()],
+        "highlights": walk.highlights,
+        "points_of_interest": split_points_of_interest(walk.points_of_interest),
+        "os_explorer_reference": walk.os_explorer_reference,
+        "steepness_level": walk.steepness_level,
+        "difficulty": normalize_difficulty(walk.steepness_level),
+        "footwear_category": walk.footwear_category,
+        "recommended_footwear": walk.recommended_footwear,
+        "pubs_list": [
+            pub if isinstance(pub, dict) and "name" in pub else {"name": str(pub)}
+            for pub in walk.pubs_list
+        ],
+        "trail_considerations": walk.trail_considerations,
+        "has_stiles": walk.has_stiles,
+        "has_bus_access": walk.has_bus_access,
+        "created_at": walk.created_at.isoformat(),
+        "updated_at": walk.updated_at.isoformat(),
+        "photos": [
+            {
+                "url": photo.url,
+                "thumb": photo.thumb_url,
+                "caption": photo.caption,
+                "width": photo.width,
+                "height": photo.height,
+                "is_main": photo.is_main,
+                "credit": photo.credit,
+            }
+            for photo in photos
+        ],
+        "photo_source_url": walk.photo_source_url or None,
+        "photo_credit": photos[0].credit if photos else None,
+    }
+
+
+@api.get("/walks/{identifier}", response={200: WalkDetailSchema, 404: dict})
 def get_walk(request: HttpRequest, identifier: str):
-    """Get a single walk by ID or slug"""
+    """Full details for one walk (by UUID or slug), including its photos."""
     try:
-        # Try UUID first
-        try:
-            lookup = {"id": UUID(identifier)}
-        except ValueError:
-            lookup = {"walk_id": identifier}
+        lookup = {"id": UUID(identifier)}
+    except ValueError:
+        lookup = {"walk_id": identifier}
 
-        walk = (
-            Walk.objects.prefetch_related(
-                "features", "categories", "related_categories"
+    walk = (
+        Walk.objects.defer("route_geometry")
+        .prefetch_related("features", "categories", "related_categories", "photos")
+        .annotate(
+            is_favorite=Exists(
+                Walk.favorites.through.objects.filter(walk_id=OuterRef("pk"), user=request.user)
             )
-            .annotate(
-                is_favorite=Exists(
-                    Walk.favorites.through.objects.filter(
-                        walk_id=OuterRef("pk"), user=request.user
-                    )
-                )
-                if request.user.is_authenticated
-                else Value(False)
-            )
-            .get(**lookup)
+            if request.user.is_authenticated
+            else Value(False)
         )
-
-        return WalkOutSchema(
-            id=walk.id,
-            walk_id=walk.walk_id,
-            walk_name=walk.walk_name,
-            distance=walk.distance,
-            latitude=walk.latitude,
-            longitude=walk.longitude,
-            has_pub=walk.has_pub,
-            has_cafe=walk.has_cafe,
-            is_favorite=walk.is_favorite,
-            features=[{"name": f.name, "slug": f.slug} for f in walk.features.all()],
-            categories=[{"name": c.name, "slug": c.slug} for c in walk.categories.all()],
-            related_categories=[
-                {"name": rc.name, "slug": rc.slug}
-                for rc in walk.related_categories.all()
-            ],
-            highlights=walk.highlights,
-            points_of_interest=[poi.strip() for poi in walk.points_of_interest.split(';')] if walk.points_of_interest else [],
-            os_explorer_reference=walk.os_explorer_reference,
-            steepness_level=walk.steepness_level,
-            footwear_category=walk.footwear_category,
-            recommended_footwear=walk.recommended_footwear,
-            pubs_list=[
-                pub if isinstance(pub, dict) and "name" in pub else {"name": str(pub)}
-                for pub in walk.pubs_list
-            ],
-            trail_considerations=walk.trail_considerations,
-            has_stiles=walk.has_stiles,
-            has_bus_access=walk.has_bus_access,
-            created_at=walk.created_at.isoformat(),
-            updated_at=walk.updated_at.isoformat(),
-        )
-    except Walk.DoesNotExist:
-        return JsonResponse(
-            {"error": "Walk not found"}, 
-            status=404
-        )
-    except Exception as e:
-        print(f"Error getting walk details: {e}")
-        return JsonResponse(
-            {"error": "Internal server error"}, 
-            status=500
-        )
+        .filter(**lookup)
+        .first()
+    )
+    if walk is None:
+        return 404, {"error": "Walk not found"}
+    return 200, walk_detail(walk)
 
 
 @api.post("/walks/{id}/favorite")
@@ -494,34 +588,33 @@ class GeometrySchema(Schema):
     properties: dict
 
 
-@api.get("/walks/{id}/geometry", response=GeometrySchema)
+GEOMETRY_CACHE_TIMEOUT = 60 * 60 * 24
+
+
+@api.get("/walks/{id}/geometry")
 def get_walk_geometry(request: HttpRequest, id: UUID):
-    """Get GeoJSON geometry for a walk route"""
-    try:
-        walk = get_object_or_404(
-            Walk.objects.only("id", "walk_name", "distance", "route_geometry"), id=id
-        )
-
-        # Convert the geometry to GeoJSON
-        if walk.route_geometry:
-            geojson = orjson.loads(walk.route_geometry.geojson)
-
-            # Create a GeoJSON Feature
-            feature = {
+    """GeoJSON Feature for a walk's route (cached; routes rarely change)."""
+    cache_key = f"walkquest:api:geometry:v2:{id}"
+    body = cache.get(cache_key)
+    if body is None:
+        walk = Walk.objects.only("id", "walk_name", "distance", "route_geometry").filter(id=id).first()
+        if walk is None or not walk.route_geometry:
+            return JsonResponse({"error": "Route geometry not found"}, status=404)
+        body = orjson.dumps(
+            {
                 "type": "Feature",
-                "geometry": geojson,
+                "geometry": orjson.loads(walk.route_geometry.geojson),
                 "properties": {
                     "id": str(walk.id),
                     "name": walk.walk_name,
                     "distance": float(walk.distance) if walk.distance else 0,
                 },
             }
-
-            return feature
-
-    except Exception as e:
-        print(f"Error fetching geometry for walk {id}: {e}")
-        return JsonResponse({"error": "Failed to fetch route geometry"}, status=404)
+        )
+        cache.set(cache_key, body, GEOMETRY_CACHE_TIMEOUT)
+    response = HttpResponse(body, content_type="application/json")
+    response["Cache-Control"] = "public, max-age=86400"
+    return response
 
 
 def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:

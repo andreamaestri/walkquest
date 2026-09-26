@@ -194,6 +194,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#middleware
 MIDDLEWARE = [
+    "django.middleware.gzip.GZipMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -265,6 +266,8 @@ DEBUG_PROPAGATE_EXCEPTIONS = True
 MEDIA_ROOT = str(APPS_DIR / "media")
 # https://docs.djangoproject.com/en/dev/ref/settings/#media-url
 MEDIA_URL = "/media/"
+# Serve /media/walks/ from Django in production when no web server does it.
+SERVE_MEDIA = env.bool("DJANGO_SERVE_MEDIA", default=False)
 
 # TEMPLATES
 # ------------------------------------------------------------------------------

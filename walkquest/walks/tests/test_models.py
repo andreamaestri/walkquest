@@ -2,7 +2,7 @@ from datetime import date
 
 from django.test import TestCase
 
-from .models import Adventure
+from walkquest.walks.models import Adventure
 
 
 class AdventureModelTest(TestCase):

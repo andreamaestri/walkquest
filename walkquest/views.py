@@ -83,3 +83,15 @@ def csrf_token_view(request):
 def email_confirmed_view(request):
     """Custom view for displaying email confirmation success"""
     return render(request, "account/email_confirmed.html")
+
+def serve_walk_media(request, path):
+    """Serve imported walk photos when no web server handles MEDIA_URL.
+
+    Enabled with SERVE_MEDIA=True (see README). Prefer an nginx
+    ``location /media/`` block in production; this is a small fallback.
+    """
+    from django.views.static import serve
+
+    response = serve(request, path, document_root=settings.MEDIA_ROOT)
+    response["Cache-Control"] = "public, max-age=2592000, immutable"
+    return response

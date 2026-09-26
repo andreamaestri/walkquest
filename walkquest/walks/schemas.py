@@ -105,6 +105,52 @@ class WalkOutSchema(Schema):
     created_at: str
     updated_at: str
 
+class DifficultySchema(Schema):
+    key: str
+    level: int
+    label: str
+    short: str
+
+class PhotoRefSchema(Schema):
+    url: str
+    width: int | None = None
+    height: int | None = None
+
+class WalkSummarySchema(Schema):
+    """Compact per-walk record returned by the (unpaginated) list endpoint."""
+    id: UUID
+    walk_id: str
+    walk_name: str
+    distance: float | None = None
+    latitude: float
+    longitude: float
+    steepness_level: str | None = None
+    difficulty: DifficultySchema
+    excerpt: str = ""
+    points_of_interest: list[str] = []
+    categories: list[str] = []
+    features: list[str] = []
+    has_pub: bool
+    has_cafe: bool
+    has_stiles: bool
+    has_bus_access: bool
+    thumb: PhotoRefSchema | None = None
+
+class WalkPhotoSchema(Schema):
+    url: str
+    thumb: str
+    caption: str = ""
+    width: int | None = None
+    height: int | None = None
+    is_main: bool = False
+    credit: str = ""
+
+class WalkDetailSchema(WalkOutSchema):
+    difficulty: DifficultySchema
+    photos: list[WalkPhotoSchema] = []
+    photo_source_url: str | None = None
+    photo_credit: str | None = None
+
 class TagResponseSchema(Schema):
     name: str
     slug: str

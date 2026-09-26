@@ -286,7 +286,7 @@ class Walk(models.Model):
     )
     distance = models.FloatField(
         default=0.0,
-        help_text="Distance of the walk in kilometers.",
+        help_text="Distance of the walk in miles.",
     )
     steepness_level = models.CharField(
         _("Steepness Level"),
@@ -354,6 +354,12 @@ class Walk(models.Model):
     has_stiles = models.BooleanField(default=False)
     has_cafe = models.BooleanField(default=False)
     has_bus_access = models.BooleanField(default=False)
+    photo_source_url = models.URLField(
+        _("Photo source page"),
+        max_length=500,
+        blank=True,
+        help_text=_("Page the walk's photos were imported from (credited in the UI)"),
+    )
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -427,6 +433,63 @@ class Walk(models.Model):
 
     def get_categories(self):
         return [category.to_dict() for category in self.categories.all()]
+
+def walk_photo_upload_to(instance, filename):
+    return f"walks/{instance.walk.walk_id}/{filename}"
+
+
+class WalkPhoto(models.Model):
+    """A photo of a walk: the main (list) photo or one slide of its slideshow."""
+
+    walk = models.ForeignKey(Walk, on_delete=models.CASCADE, related_name="photos")
+    position = models.PositiveSmallIntegerField(default=0)
+    is_main = models.BooleanField(default=False, db_index=True)
+    source_url = models.URLField(
+        max_length=500,
+        help_text=_("Original image URL the photo was imported from"),
+    )
+    caption = models.TextField(blank=True)
+    image = models.ImageField(
+        upload_to=walk_photo_upload_to,
+        blank=True,
+        help_text=_("Large WebP rendition (max 960px wide)"),
+    )
+    thumb = models.ImageField(
+        upload_to=walk_photo_upload_to,
+        blank=True,
+        help_text=_("Small WebP rendition for lists (max 320px wide)"),
+    )
+    width = models.PositiveIntegerField(null=True, blank=True)
+    height = models.PositiveIntegerField(null=True, blank=True)
+    credit = models.CharField(max_length=255, default="iWalk Cornwall", blank=True)
+    fetched_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-is_main", "position"]
+        verbose_name = _("walk photo")
+        verbose_name_plural = _("walk photos")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["walk", "source_url"],
+                name="unique_walk_photo_source",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["walk", "is_main", "position"], name="walks_photo_order_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.walk.walk_name} #{self.position}"
+
+    @property
+    def url(self) -> str:
+        """Local rendition when downloaded, otherwise the hotlinked original."""
+        return self.image.url if self.image else self.source_url
+
+    @property
+    def thumb_url(self) -> str:
+        return self.thumb.url if self.thumb else self.url
+
 
 class WalkFavorite(models.Model):
     user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)

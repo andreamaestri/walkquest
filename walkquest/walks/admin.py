@@ -7,6 +7,7 @@ from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 from tagulous.admin import TagModelAdmin
 from unfold.admin import ModelAdmin
+from unfold.admin import TabularInline
 from unfold.contrib.filters.admin import ChoicesDropdownFilter
 from unfold.contrib.forms.widgets import WysiwygWidget
 
@@ -15,6 +16,7 @@ from .models import Companion
 from .models import Walk
 from .models import WalkCategoryTag
 from .models import WalkFeatureTag
+from .models import WalkPhoto
 
 
 @admin.register(Companion)
@@ -103,15 +105,38 @@ class AdventureAdmin(ModelAdmin):
         return str(obj.related_categories)
 
 
+class WalkPhotoInline(TabularInline):
+    model = WalkPhoto
+    extra = 0
+    ordering = ("-is_main", "position")
+    fields = ("preview", "is_main", "position", "caption", "credit", "source_url")
+    readonly_fields = ("preview",)
+
+    @admin.display(description=_("Photo"))
+    def preview(self, obj):
+        if not obj or not obj.pk:
+            return "-"
+        return format_html(
+            '<img src="{}" alt="" style="width:96px;height:64px;object-fit:cover;border-radius:8px">',
+            obj.thumb_url,
+        )
+
+
 # Fix the WalkAdmin class by using the correct field names from your model
 class WalkAdmin(GISModelAdmin, TagModelAdmin):
+    inlines = (WalkPhotoInline,)
     # Break the long line
     list_display = (
         "walk_name",
         "distance",
         "steepness_level",
+        "photo_count",
         "amenities_summary",
     )
+
+    @admin.display(description=_("Photos"))
+    def photo_count(self, obj):
+        return obj.photos.count()
     
     # Using search_fields with the correct field names
     search_fields = ("walk_name", "walk_id", "highlights")
