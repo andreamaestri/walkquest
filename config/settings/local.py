@@ -20,10 +20,7 @@ ALLOWED_HOSTS = ["*"]  # noqa: S104
 
 # DATABASES
 # ------------------------------------------------------------------------------
-DATABASES = {
-    "default": env.db("DATABASE_URL"),
-}
-DATABASES["default"]["ENGINE"] = "django.contrib.gis.db.backends.postgis"
+# Configured in base.py via config/settings/database.py (DJANGO_DB_BACKEND).
 
 # SECURITY SETTINGS FOR LOCAL DEVELOPMENT
 # ------------------------------------------------------------------------------

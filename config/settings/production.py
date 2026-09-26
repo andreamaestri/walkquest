@@ -1,6 +1,5 @@
 # ruff: noqa: E501
 from .base import *  # noqa: F403
-from .base import DATABASES
 from .base import INSTALLED_APPS
 from .base import env
 
@@ -16,16 +15,7 @@ ALLOWED_HOSTS = env.list(
 
 # DATABASES
 # ------------------------------------------------------------------------------
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.contrib.gis.db.backends.postgis',
-        'NAME': env('POSTGRES_DB'),
-        'USER': env('POSTGRES_USER'),
-        'PASSWORD': env('POSTGRES_PASSWORD'),
-        'HOST': env('POSTGRES_HOST'),
-        'PORT': env('POSTGRES_PORT', default='5432'),
-    }
-}
+# Configured in base.py via config/settings/database.py (DJANGO_DB_BACKEND).
 
 # Share metadata and geometry caches across Gunicorn workers.
 CACHES = {

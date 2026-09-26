@@ -72,22 +72,9 @@ LOCALE_PATHS = [str(BASE_DIR / "locale")]
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#databases
 
-DATABASES = {
-    "default": env.db(
-        "DATABASE_URL",
-        default="postgres:///walkquest",
-    ),
-}
-DATABASES["default"]["ATOMIC_REQUESTS"] = env.bool(
-    "ATOMIC_REQUESTS",
-    default=False,
-)
+from .database import database_settings  # noqa: E402
 
-# Database performance optimizations
-DATABASES["default"]["CONN_MAX_AGE"] = env.int("CONN_MAX_AGE", default=60)  # Persistent connections
-DATABASES["default"]["OPTIONS"] = {
-    "connect_timeout": 10,
-}
+DATABASES = database_settings(env)
 
 # https://docs.djangoproject.com/en/stable/ref/settings/#std:setting-DEFAULT_AUTO_FIELD
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

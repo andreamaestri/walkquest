@@ -10,6 +10,8 @@ Group=opc
 WorkingDirectory=/srv/django/walkquest
 EnvironmentFile=/etc/walkquest.env
 Environment="DJANGO_SETTINGS_MODULE=config.settings.production"
+# One connection per process keeps Oracle Always Free under its 20-session cap.
+Environment=ORACLE_POOL_MAX=1
 ExecStart=/srv/django/walkquest/.venv/bin/celery -A config.celery_app worker --loglevel=INFO --concurrency=2
 Restart=always
 RestartSec=5
