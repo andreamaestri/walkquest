@@ -32,19 +32,24 @@ import MapToolbar from './MapToolbar.vue';
 import M3LoadingIndicator from '../m3/M3LoadingIndicator.vue';
 import { getGeometry } from '../../services/api';
 import { useMap } from '../../composables/useMap';
-import { radiiToPath, sampleShape } from '../../design/shapes';
+import { addPinImages } from '../../design/mapPin';
 import { cameraMotion, ease, prefersReducedMotion } from '../../design/motion';
 import {
   CORNWALL_BOUNDS,
   CORNWALL_CENTER,
+  PIN_HOVER_SCALE,
+  PIN_SELECTED_SIZE,
   buildIdIndex,
   geojsonBounds,
   hitBox,
   hitRadius,
   nearestHit,
+  pinHeadOffset,
   routeEndpoints,
   supportsWebGL2,
   routeLayers,
+  selectedPinLayer,
+  stateDependent,
   walkLayers,
   walksToGeoJSON,
 } from '../../utils/mapLayers';
@@ -101,26 +106,6 @@ function tokens() {
   };
 }
 
-/** M3E "cookie" badge used to mark the selected walk. */
-function drawSelectedPin(colors) {
-  const size = 64;
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  const path = new Path2D(radiiToPath(sampleShape('cookie9', 96), size / 2, size / 2, size / 2 - 4));
-  ctx.fillStyle = colors.primary;
-  ctx.strokeStyle = colors.surface;
-  ctx.lineWidth = 4;
-  ctx.fill(path);
-  ctx.stroke(path);
-  ctx.beginPath();
-  ctx.arc(size / 2, size / 2, 8, 0, Math.PI * 2);
-  ctx.fillStyle = colors.surface;
-  ctx.fill();
-  return ctx.getImageData(0, 0, size, size);
-}
-
 function walkData() {
   idIndex = buildIdIndex(props.walks);
   walkByFeatureId = new Map(props.walks.map((walk) => [idIndex.get(walk.id), walk]));
@@ -133,19 +118,60 @@ function setState(featureId, state) {
   }
 }
 
+let pinDrop = null;
+
+/** The selected pin drops in from above and settles with a little squash. */
+function dropSelectedPin() {
+  const m = map.value;
+  pinDrop?.stop();
+  if (!m?.getLayer('walks-selected')) return;
+  const set = (lift, scale, opacity) => {
+    m.setPaintProperty('walks-selected', 'icon-translate', [0, -lift]);
+    m.setPaintProperty('walks-selected', 'icon-opacity', stateDependent(opacity));
+    m.setLayoutProperty('walks-selected', 'icon-size', PIN_SELECTED_SIZE * scale);
+  };
+  if (prefersReducedMotion()) {
+    set(0, 1, 1);
+    return;
+  }
+  set(28, 0.7, 0);
+  pinDrop = animate(0, 1, {
+    type: 'spring',
+    stiffness: 380,
+    damping: 14,
+    // Overshoot (p > 1) dips the tip into the ground and swells the pin: a bounce.
+    onUpdate: (p) => {
+      if (map.value) set(28 * (1 - p), 0.7 + 0.3 * p, Math.min(1, p * 3));
+    },
+  });
+}
+
 function applySelection() {
   const m = map.value;
   if (!m?.getLayer('walks-selected')) return;
+  const previous = selectedFeatureId;
   setState(selectedFeatureId, { selected: false });
   selectedFeatureId = props.selectedId ? idIndex.get(props.selectedId) ?? null : null;
   setState(selectedFeatureId, { selected: true });
   m.setFilter('walks-selected', ['==', ['get', 'walkId'], props.selectedId || '']);
+  if (selectedFeatureId != null && selectedFeatureId !== previous) dropSelectedPin();
+}
+
+/** Hovered pins (map or list) are redrawn larger by the 'walks-hover' layer. */
+function syncHoverLayer() {
+  const m = map.value;
+  if (!m?.getLayer('walks-hover')) return;
+  const ids = [hoverFeatureId, externalHoverId]
+    .map((id) => walkByFeatureId.get(id)?.id)
+    .filter(Boolean);
+  m.setFilter('walks-hover', ['in', ['get', 'walkId'], ['literal', ids]]);
 }
 
 function applyExternalHover() {
   setState(externalHoverId, { hover: false });
   externalHoverId = props.hoveredId ? idIndex.get(props.hoveredId) ?? null : null;
   setState(externalHoverId, { hover: true });
+  syncHoverLayer();
 }
 
 function addLayers() {
@@ -154,16 +180,10 @@ function addLayers() {
   m.addSource('walks', { type: 'geojson', data: walkData() });
   m.addSource('route', { type: 'geojson', data: EMPTY, lineMetrics: true });
   m.addSource('route-ends', { type: 'geojson', data: EMPTY });
-  if (!m.hasImage('walk-selected')) m.addImage('walk-selected', drawSelectedPin(colors), { pixelRatio: 2 });
+  addPinImages(m, colors);
   for (const layer of routeLayers(colors)) m.addLayer(layer);
   for (const layer of walkLayers(colors)) m.addLayer(layer);
-  m.addLayer({
-    id: 'walks-selected',
-    type: 'symbol',
-    source: 'walks',
-    filter: ['==', ['get', 'walkId'], ''],
-    layout: { 'icon-image': 'walk-selected', 'icon-allow-overlap': true, 'icon-ignore-placement': true },
-  });
+  m.addLayer(selectedPinLayer());
   applyThemeToStyle(colors);
   applySelection();
   applyExternalHover();
@@ -172,15 +192,12 @@ function addLayers() {
 function applyThemeToStyle(colors = tokens()) {
   const m = map.value;
   if (!m?.getLayer('walks-points')) return;
-  m.setPaintProperty('walks-halo', 'circle-color', colors.primary);
-  m.setPaintProperty('walks-points', 'circle-color', ['case', ['==', ['get', 'fav'], 1], colors.tertiary, colors.primary]);
-  m.setPaintProperty('walks-points', 'circle-stroke-color', colors.surface);
+  addPinImages(m, colors);
   m.setPaintProperty('walks-labels', 'text-color', colors.onSurface);
   m.setPaintProperty('walks-labels', 'text-halo-color', colors.surface);
   m.setPaintProperty('route-casing', 'line-color', colors.surface);
   m.setPaintProperty('route-line', 'line-color', colors.primary);
   m.setPaintProperty('route-ends', 'circle-stroke-color', colors.surface);
-  m.updateImage('walk-selected', drawSelectedPin(colors));
   // Styles built on Mapbox Standard can switch light preset without a reload.
   try {
     if (m.getStyle()?.imports?.some((entry) => entry.id === 'basemap')) {
@@ -204,7 +221,9 @@ function bindInteractions() {
   const canHover = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
   tooltip = new mapboxgl.Popup({ closeButton: false, closeOnClick: false, offset: 14, className: 'm3-map-tooltip', maxWidth: '280px' });
 
-  m.on('mousemove', 'walks-points', (event) => {
+  // Both layers: the enlarged hover pin covers more than the base pin under it.
+  const pinLayers = ['walks-points', 'walks-hover'];
+  m.on('mousemove', pinLayers, (event) => {
     const feature = event.features?.[0];
     if (!feature) return;
     m.getCanvas().style.cursor = 'pointer';
@@ -212,28 +231,40 @@ function bindInteractions() {
       setState(hoverFeatureId, { hover: false });
       hoverFeatureId = feature.id;
       setState(hoverFeatureId, { hover: true });
+      syncHoverLayer();
       const walk = walkByFeatureId.get(feature.id);
       emit('hover', walk || null);
-      if (canHover && walk) tooltip.setLngLat(feature.geometry.coordinates).setHTML(tooltipHtml(walk)).addTo(m);
+      if (canHover && walk) {
+        // Pins hang above their location: float the tooltip over the pin's head.
+        const lift = pinHeadOffset(m.getZoom(), PIN_HOVER_SCALE) * 2 - 4;
+        tooltip
+          .setOffset({ bottom: [0, -lift], top: [0, 6], left: [14, -lift / 2], right: [-14, -lift / 2] })
+          .setLngLat(feature.geometry.coordinates)
+          .setHTML(tooltipHtml(walk))
+          .addTo(m);
+      }
     }
   });
-  m.on('mouseleave', 'walks-points', () => {
+  m.on('mouseleave', pinLayers, () => {
     m.getCanvas().style.cursor = '';
     setState(hoverFeatureId, { hover: false });
     hoverFeatureId = null;
+    syncHoverLayer();
     tooltip.remove();
     emit('hover', null);
   });
   // Resolve taps with a finger-sized hit area instead of the pin's few pixels.
   const radius = hitRadius(window.matchMedia('(pointer: coarse)').matches);
   m.on('click', (event) => {
+    const head = pinHeadOffset(m.getZoom());
     const candidates = m
-      .queryRenderedFeatures(hitBox(event.point, radius), { layers: ['walks-points'] })
+      .queryRenderedFeatures(hitBox(event.point, radius), { layers: [...pinLayers, 'walks-selected'] })
       .map((feature) => {
+        // Measure to the pin's head, which sits above the walk's location.
         const { x, y } = m.project(feature.geometry.coordinates);
-        return { feature, x, y };
+        return { feature, x, y: y - head };
       });
-    const hit = nearestHit(candidates, event.point, radius * Math.SQRT2);
+    const hit = nearestHit(candidates, event.point, radius * Math.SQRT2 + head);
     const walk = hit && walkByFeatureId.get(hit.feature.id);
     if (walk) {
       tooltip.remove();
@@ -449,6 +480,7 @@ onBeforeUnmount(() => {
   resizeObserver?.disconnect();
   tooltip?.remove();
   routeDraw?.stop();
+  pinDrop?.stop();
   map.value?.remove();
   map.value = null;
   setMapInstance(null);

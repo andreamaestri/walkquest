@@ -82,6 +82,54 @@ export function routeEndpoints(feature) {
   return { type: 'FeatureCollection', features };
 }
 
+/**
+ * Walk pin geometry in logical px (see design/mapPin.js): a teardrop whose head
+ * is centred at (cx, cy) with its tip at tipY, plus room for the ground shadow.
+ */
+export const PIN = { width: 30, height: 39, cx: 15, cy: 15, r: 12.5, tipY: 35 };
+/** icon-size per zoom for a matching walk; filtered-out walks shrink to 72%. */
+export const PIN_SIZE_STOPS = [[7, 0.62], [10, 0.78], [13, 0.95], [16, 1.1]];
+export const PIN_HOVER_SCALE = 1.2;
+export const PIN_SELECTED_SIZE = 1.3;
+
+// Zoom must be the top-level input, so scale each stop by the factor.
+function pinSize(factor) {
+  return ['interpolate', ['linear'], ['zoom'], ...PIN_SIZE_STOPS.flatMap(([zoom, size]) => [zoom, ['*', size, factor]])];
+}
+
+/** Screen px from a pin's anchor (the walk's location) up to the centre of its head. */
+export function pinHeadOffset(zoom, scale = 1) {
+  const stops = PIN_SIZE_STOPS;
+  let size = zoom <= stops[0][0] ? stops[0][1] : stops[stops.length - 1][1];
+  for (let i = 1; i < stops.length; i++) {
+    const [z0, s0] = stops[i - 1];
+    const [z1, s1] = stops[i];
+    if (zoom > z0 && zoom <= z1) size = s0 + ((zoom - z0) / (z1 - z0)) * (s1 - s0);
+  }
+  return (PIN.tipY - PIN.cy) * size * scale;
+}
+
+const pinLayout = {
+  'icon-image': ['case', ['==', ['get', 'fav'], 1], 'walk-pin-fav', 'walk-pin'],
+  'icon-anchor': 'bottom',
+  // Shift down past the shadow so the tip sits exactly on the walk's location.
+  'icon-offset': [0, PIN.height - PIN.tipY],
+  'icon-allow-overlap': true,
+  'icon-ignore-placement': true,
+  // Pins lower on screen overlap the ones behind them, like real map pins.
+  'symbol-z-order': 'viewport-y',
+};
+
+/**
+ * Mapbox GL (3.x) throws in updateBuckets when a symbol layer's paint changes
+ * while its source has feature-state but the layer itself has no state-dependent
+ * paint (it reads `.paint` of an empty layer list). Every symbol layer on the
+ * walks source therefore wraps one paint value in this no-op feature-state case.
+ */
+export function stateDependent(value) {
+  return ['case', ['boolean', ['feature-state', 'selected'], false], value, value];
+}
+
 /** Layer definitions; colours come from the M3 tokens at runtime. */
 export function walkLayers(colors) {
   const selected = ['boolean', ['feature-state', 'selected'], false];
@@ -89,38 +137,26 @@ export function walkLayers(colors) {
   const matched = ['==', ['get', 'match'], 1];
   return [
     {
-      id: 'walks-halo',
-      type: 'circle',
+      id: 'walks-points',
+      type: 'symbol',
       source: 'walks',
+      layout: { ...pinLayout, 'icon-size': pinSize(['case', matched, 1, 0.72]) },
       paint: {
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 10, 12, 16, 16, 22],
-        'circle-color': colors.primary,
-        'circle-opacity': ['case', selected, 0.28, hover, 0.2, 0],
-        'circle-opacity-transition': { duration: 150 },
-        'circle-pitch-alignment': 'map',
+        // Hovered/selected pins are redrawn larger by the layers above
+        // (feature-state can't drive icon-size, only paint properties).
+        'icon-opacity': ['case', selected, 0, hover, 0, matched, 1, 0.5],
+        'icon-emissive-strength': 1,
       },
     },
     {
-      id: 'walks-points',
-      type: 'circle',
+      id: 'walks-hover',
+      type: 'symbol',
       source: 'walks',
+      filter: ['in', ['get', 'walkId'], ['literal', []]],
+      layout: { ...pinLayout, 'icon-size': pinSize(PIN_HOVER_SCALE) },
       paint: {
-        // Zoom must be the top-level input, so scale each stop by the state factor.
-        'circle-radius': [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          ...[[7, 4.5], [10, 6.5], [13, 8.5], [16, 11]].flatMap(([zoom, radius]) => [
-            zoom,
-            ['*', radius, ['case', selected, 1.35, hover, 1.25, matched, 1, 0.7]],
-          ]),
-        ],
-        'circle-color': ['case', ['==', ['get', 'fav'], 1], colors.tertiary, colors.primary],
-        'circle-opacity': ['case', matched, 1, 0.35],
-        'circle-stroke-width': ['case', selected, 3, 2],
-        'circle-stroke-color': colors.surface,
-        'circle-stroke-opacity': ['case', matched, 1, 0.35],
-        'circle-pitch-alignment': 'map',
+        'icon-opacity': ['case', selected, 0, 1],
+        'icon-emissive-strength': 1,
       },
     },
     {
@@ -133,7 +169,7 @@ export function walkLayers(colors) {
         'text-field': ['get', 'name'],
         'text-font': ['DIN Pro Medium', 'Arial Unicode MS Regular'],
         'text-size': 12,
-        'text-offset': [0, 1.1],
+        'text-offset': [0, 0.5],
         'text-anchor': 'top',
         'text-max-width': 10,
         'text-optional': true,
@@ -142,9 +178,22 @@ export function walkLayers(colors) {
         'text-color': colors.onSurface,
         'text-halo-color': colors.surface,
         'text-halo-width': 1.5,
+        'text-opacity': stateDependent(1),
       },
     },
   ];
+}
+
+/** The selected walk's pin, above everything; WalkMap animates it dropping in. */
+export function selectedPinLayer() {
+  return {
+    id: 'walks-selected',
+    type: 'symbol',
+    source: 'walks',
+    filter: ['==', ['get', 'walkId'], ''],
+    layout: { ...pinLayout, 'icon-size': PIN_SELECTED_SIZE },
+    paint: { 'icon-opacity': stateDependent(1), 'icon-emissive-strength': 1 },
+  };
 }
 
 export function routeLayers(colors) {
@@ -184,9 +233,9 @@ export function routeLayers(colors) {
 }
 
 /**
- * Tap targets: walk pins are drawn 5–11px wide, far smaller than a fingertip,
+ * Tap targets: walk pins are ~12–22px wide, still smaller than a fingertip,
  * so taps are resolved against a box around the touch point (M3 recommends
- * 48dp targets, i.e. a ~24px radius) and the closest pin wins.
+ * 48dp targets, i.e. a ~24px radius) and the pin whose head is closest wins.
  */
 export function hitRadius(coarsePointer) {
   return coarsePointer ? 24 : 8;

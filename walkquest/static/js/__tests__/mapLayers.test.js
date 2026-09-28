@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildIdIndex, geojsonBounds, hitBox, hitRadius, nearestHit, routeEndpoints, walkLayers, walksToGeoJSON } from '../utils/mapLayers';
+import { PIN, PIN_SIZE_STOPS, buildIdIndex, geojsonBounds, hitBox, hitRadius, nearestHit, pinHeadOffset, routeEndpoints, selectedPinLayer, walkLayers, walksToGeoJSON } from '../utils/mapLayers';
 
 const walks = [
   { id: 'x', walk_name: 'X', latitude: 50.1, longitude: -5.1, difficulty: { level: 2 } },
@@ -78,5 +78,29 @@ describe('tap targets', () => {
     ];
     expect(nearestHit(candidates, { x: 100, y: 100 }, 34).feature.id).toBe(2);
     expect(nearestHit(candidates, { x: 300, y: 300 }, 34)).toBeNull();
+  });
+});
+
+describe('walk pins', () => {
+  const colors = { primary: '#000', tertiary: '#111', surface: '#fff', onSurface: '#222' };
+
+  it('draws every walk layer as a tip-anchored pin symbol', () => {
+    const pins = [...walkLayers(colors), selectedPinLayer()].filter((l) => l.layout?.['icon-image']);
+    expect(pins.map((l) => l.id)).toEqual(['walks-points', 'walks-hover', 'walks-selected']);
+    for (const layer of pins) {
+      expect(layer.type).toBe('symbol');
+      expect(layer.layout['icon-anchor']).toBe('bottom');
+      expect(layer.layout['icon-offset']).toEqual([0, PIN.height - PIN.tipY]);
+    }
+  });
+
+  it('puts the head above the location, growing with zoom and scale', () => {
+    const [[minZoom, minSize]] = PIN_SIZE_STOPS;
+    const [maxZoom, maxSize] = PIN_SIZE_STOPS[PIN_SIZE_STOPS.length - 1];
+    expect(pinHeadOffset(minZoom - 1)).toBeCloseTo((PIN.tipY - PIN.cy) * minSize);
+    expect(pinHeadOffset(maxZoom + 1)).toBeCloseTo((PIN.tipY - PIN.cy) * maxSize);
+    expect(pinHeadOffset(11.5)).toBeGreaterThan(pinHeadOffset(10));
+    expect(pinHeadOffset(11.5)).toBeLessThan(pinHeadOffset(13));
+    expect(pinHeadOffset(12, 1.2)).toBeCloseTo(pinHeadOffset(12) * 1.2);
   });
 });
