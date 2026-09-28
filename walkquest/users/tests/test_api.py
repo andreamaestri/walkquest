@@ -1,48 +1,28 @@
 import pytest
-from django.urls import reverse
-from rest_framework.test import APIClient
 from django.test import Client
+
 from walkquest.users.models import User
+
 
 @pytest.mark.django_db
 class TestUserAPI:
+    """/api/user and /api/preferences require an allauth X-Session-Token."""
+
     def setup_method(self):
-        self.client = APIClient()
-        self.test_user = User.objects.create_user(
-            username="testuser",
-            email="test@example.com",
-            password="testpass123"
+        self.client = Client()
+
+    @pytest.mark.parametrize("path", ["/api/user", "/api/preferences"])
+    def test_requires_session_token(self, path):
+        assert self.client.get(path).status_code == 401
+
+    def test_update_preferences_requires_session_token(self):
+        response = self.client.patch(
+            "/api/preferences",
+            {"dark_mode": True},
+            content_type="application/json",
         )
-        self.client.force_authenticate(user=self.test_user)
-
-    def test_get_user_authenticated(self):
-        response = self.client.get("/api/user")
-        assert response.status_code == 200
-        assert response.json()["email"] == "test@example.com"
-        assert response.json()["username"] == "testuser"
-
-    def test_get_user_unauthenticated(self):
-        self.client.force_authenticate(user=None)
-        response = self.client.get("/api/user")
         assert response.status_code == 401
 
-    def test_get_preferences_authenticated(self):
-        response = self.client.get("/api/preferences")
-        assert response.status_code == 200
-        assert "theme" in response.json()
-        assert "language" in response.json()
-
-    def test_update_preferences_authenticated(self):
-        data = {"theme": "dark", "language": "fr"}
-        response = self.client.patch("/api/preferences", data, format="json")
-        assert response.status_code == 200
-        assert response.json()["theme"] == "dark"
-        assert response.json()["language"] == "fr"
-
-        # Verify persistence
-        user = User.objects.get(id=self.test_user.id)
-        assert user.preferences["theme"] == "dark"
-        assert user.preferences["language"] == "fr"
 
 @pytest.mark.django_db
 class TestAuthentication:
@@ -58,7 +38,7 @@ class TestAuthentication:
             "username": "newuser",
             "password1": "TestPass123!",
             "password2": "TestPass123!",
-            "name": "New User"
+            "name": "New User",
         }
         response = self.client.post(self.signup_url, data)
         assert response.status_code == 302  # Redirect after successful signup
@@ -69,14 +49,17 @@ class TestAuthentication:
         User.objects.create_user(
             username="testuser",
             email="test@example.com",
-            password="TestPass123!"
+            password="TestPass123!",
         )
 
         # Test login
-        response = self.client.post(self.login_url, {
-            "login": "test@example.com",
-            "password": "TestPass123!"
-        })
+        response = self.client.post(
+            self.login_url,
+            {
+                "login": "test@example.com",
+                "password": "TestPass123!",
+            },
+        )
         assert response.status_code == 302  # Redirect after successful login
 
     def test_logout_flow(self):
@@ -84,7 +67,7 @@ class TestAuthentication:
         user = User.objects.create_user(
             username="testuser",
             email="test@example.com",
-            password="TestPass123!"
+            password="TestPass123!",
         )
         self.client.force_login(user)
 

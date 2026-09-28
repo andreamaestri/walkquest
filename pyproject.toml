@@ -132,6 +132,13 @@ extend-unsafe-fixes = [
     "UP038",
 ]
 
+[tool.ruff.lint.per-file-ignores]
+# Tests: plain asserts, literal status codes and throwaway passwords are fine.
+"**/tests/**" = ["S101", "S106", "PLR2004"]
+# Standalone ops scripts run from cron: they print, shell out to pg_dump and
+# are not part of a package.
+"scripts/*.py" = ["INP001", "T201", "S603", "S607", "BLE001"]
+
 [tool.ruff.lint.isort]
 force-single-line = true
 
