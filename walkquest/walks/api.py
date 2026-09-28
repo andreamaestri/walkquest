@@ -176,8 +176,26 @@ def etag_matches(request: HttpRequest, etag: str) -> bool:
 
 
 def build_walk_list(filters: dict) -> bytes:
+    # Filter on ids first: a walk can match several many-to-many filters, and
+    # de-duplicating ids (not full rows) keeps TextField/LOB columns out of
+    # SELECT DISTINCT, which Oracle doesn't allow.
+    matching = Walk.objects.all()
+    if filters.get("search"):
+        matching = matching.filter(walk_name__icontains=filters["search"])
+    if filters.get("categories"):
+        matching = matching.filter(categories__slug__in=filters["categories"].split(","))
+    if filters.get("features"):
+        matching = matching.filter(features__slug__in=filters["features"].split(","))
+    if filters.get("difficulty"):
+        matching = matching.filter(steepness_level=filters["difficulty"])
+    if filters.get("has_stiles") is not None:
+        matching = matching.filter(has_stiles=filters["has_stiles"])
+    if filters.get("has_bus_access") is not None:
+        matching = matching.filter(has_bus_access=filters["has_bus_access"])
+
     walks = (
-        Walk.objects.only(*SUMMARY_FIELDS)
+        Walk.objects.filter(id__in=matching.values("id"))
+        .only(*SUMMARY_FIELDS)
         .prefetch_related(
             "features",
             "categories",
@@ -192,20 +210,7 @@ def build_walk_list(filters: dict) -> bytes:
         )
         .order_by("walk_name")
     )
-    if filters.get("search"):
-        walks = walks.filter(walk_name__icontains=filters["search"])
-    if filters.get("categories"):
-        walks = walks.filter(categories__slug__in=filters["categories"].split(","))
-    if filters.get("features"):
-        walks = walks.filter(features__slug__in=filters["features"].split(","))
-    if filters.get("difficulty"):
-        walks = walks.filter(steepness_level=filters["difficulty"])
-    if filters.get("has_stiles") is not None:
-        walks = walks.filter(has_stiles=filters["has_stiles"])
-    if filters.get("has_bus_access") is not None:
-        walks = walks.filter(has_bus_access=filters["has_bus_access"])
-    # A walk can match several many-to-many filters; keep one row per walk.
-    return orjson.dumps([walk_summary(walk) for walk in walks.distinct()])
+    return orjson.dumps([walk_summary(walk) for walk in walks])
 
 
 @api.get("/walks")
@@ -293,11 +298,13 @@ def find_nearby_walks(
         # Calculate the exact distance in PostgreSQL after the indexed
         # latitude/longitude bounding-box filter. This avoids materializing
         # and sorting the entire candidate set in Python.
+        # Degrees → radians by multiplication: portable across PostgreSQL and
+        # Oracle (which has no RADIANS function).
         distance_sql = """
             6371000 * 2 * ASIN(LEAST(1.0, SQRT(
-                POWER(SIN(RADIANS(latitude - %s) / 2), 2) +
-                COS(RADIANS(%s)) * COS(RADIANS(latitude)) *
-                POWER(SIN(RADIANS(longitude - %s) / 2), 2)
+                POWER(SIN((latitude - %s) * 0.017453292519943295 / 2), 2) +
+                COS(%s * 0.017453292519943295) * COS(latitude * 0.017453292519943295) *
+                POWER(SIN((longitude - %s) * 0.017453292519943295 / 2), 2)
             )))
         """
 

@@ -345,9 +345,8 @@ class WalkFilterView(ListView):
         if categories:
             # Use a more flexible approach that matches category names
             # This will work better with the client-side category clicks
-            queryset = queryset.filter(
-                related_categories__name__in=categories
-            ).distinct()
+            matching = self.model.objects.filter(related_categories__name__in=categories)
+            queryset = queryset.filter(id__in=matching.values("id"))
 
         walks = [self.serialize_walk(walk) for walk in queryset[:20]]
         return JsonResponse(walks, safe=False)

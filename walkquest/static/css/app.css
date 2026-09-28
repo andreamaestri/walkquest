@@ -100,7 +100,10 @@
     z-index: -1;
     transition: opacity var(--md-sys-motion-spring-fast-effects-duration) var(--md-sys-motion-spring-fast-effects);
   }
-  &:hover::before { opacity: var(--md-sys-state-hover-state-layer-opacity); }
+  /* Touch screens emulate :hover after a tap, which leaves the layer stuck on. */
+  @media (hover: hover) {
+    &:hover::before { opacity: var(--md-sys-state-hover-state-layer-opacity); }
+  }
   &:focus-visible::before { opacity: var(--md-sys-state-focus-state-layer-opacity); }
   &:active::before { opacity: var(--md-sys-state-pressed-state-layer-opacity); }
 }
@@ -123,6 +126,8 @@
     font-family: var(--md-ref-typeface-plain);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* No pull-to-refresh or rubber-banding while panning the map on phones. */
+    overscroll-behavior: none;
   }
 
   :focus-visible {

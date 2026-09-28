@@ -451,7 +451,7 @@ onMounted(async () => {
 .mobile-fab {
   position: fixed;
   right: 16px;
-  bottom: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   z-index: 26;
   pointer-events: none; /* the menu re-enables it on its own buttons */
 }

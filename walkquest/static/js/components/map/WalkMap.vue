@@ -39,7 +39,11 @@ import {
   CORNWALL_CENTER,
   buildIdIndex,
   geojsonBounds,
+  hitBox,
+  hitRadius,
+  nearestHit,
   routeEndpoints,
+  supportsWebGL2,
   routeLayers,
   walkLayers,
   walksToGeoJSON,
@@ -220,8 +224,17 @@ function bindInteractions() {
     tooltip.remove();
     emit('hover', null);
   });
-  m.on('click', 'walks-points', (event) => {
-    const walk = walkByFeatureId.get(event.features?.[0]?.id);
+  // Resolve taps with a finger-sized hit area instead of the pin's few pixels.
+  const radius = hitRadius(window.matchMedia('(pointer: coarse)').matches);
+  m.on('click', (event) => {
+    const candidates = m
+      .queryRenderedFeatures(hitBox(event.point, radius), { layers: ['walks-points'] })
+      .map((feature) => {
+        const { x, y } = m.project(feature.geometry.coordinates);
+        return { feature, x, y };
+      });
+    const hit = nearestHit(candidates, event.point, radius * Math.SQRT2);
+    const walk = hit && walkByFeatureId.get(hit.feature.id);
     if (walk) {
       tooltip.remove();
       emit('select', walk);
@@ -355,7 +368,13 @@ onMounted(() => {
     unavailable.value = 'Map unavailable: set VITE_MAPBOX_TOKEN to show walks on the map.';
     return;
   }
+  if (!supportsWebGL2()) {
+    unavailable.value =
+      'This browser can’t show the map (WebGL 2 is unavailable or turned off). Try updating it, or turning off data/battery saver. The walk list still works.';
+    return;
+  }
   mapboxgl.accessToken = token;
+  const coarse = window.matchMedia('(pointer: coarse)').matches;
   let instance;
   try {
     instance = new mapboxgl.Map({
@@ -373,6 +392,8 @@ onMounted(() => {
       logoPosition: 'bottom-left',
       performanceMetricsCollection: false,
       cooperativeGestures: false,
+      // Phones: no accidental 3D tilts from two-finger vertical drags.
+      touchPitch: !coarse,
     });
   } catch (error) {
     unavailable.value = 'Map unavailable in this browser.';
@@ -402,6 +423,13 @@ onMounted(() => {
     instance.setPadding(cameraPadding(0));
     if (props.selectedId) showRoute(props.selectedId);
     emit('ready', instance);
+  });
+  // Mobile browsers can drop the GPU context when backgrounded or low on
+  // memory; Mapbox restores it, we just explain the blank moment.
+  instance.on('webglcontextlost', () => { unavailable.value = 'Map paused to save memory. Reopening…'; });
+  instance.on('webglcontextrestored', () => {
+    unavailable.value = '';
+    instance.triggerRepaint();
   });
   instance.on('error', (event) => {
     if (event?.error?.status === 401) unavailable.value = 'Map unavailable: the Mapbox token was rejected.';

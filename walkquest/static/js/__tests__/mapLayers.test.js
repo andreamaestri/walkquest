@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildIdIndex, geojsonBounds, routeEndpoints, walkLayers, walksToGeoJSON } from '../utils/mapLayers';
+import { buildIdIndex, geojsonBounds, hitBox, hitRadius, nearestHit, routeEndpoints, walkLayers, walksToGeoJSON } from '../utils/mapLayers';
 
 const walks = [
   { id: 'x', walk_name: 'X', latitude: 50.1, longitude: -5.1, difficulty: { level: 2 } },
@@ -60,5 +60,23 @@ describe('layer expressions', () => {
         if (usesZoom(value)) expect(['interpolate', 'step']).toContain(value[0]);
       }
     }
+  });
+});
+
+describe('tap targets', () => {
+  it('uses a finger-sized radius on touch screens', () => {
+    expect(hitRadius(true)).toBeGreaterThanOrEqual(24);
+    expect(hitRadius(false)).toBeLessThan(hitRadius(true));
+    expect(hitBox({ x: 100, y: 50 }, 24)).toEqual([[76, 26], [124, 74]]);
+  });
+
+  it('picks the pin closest to the touch point within the radius', () => {
+    const candidates = [
+      { feature: { id: 1 }, x: 110, y: 110 },
+      { feature: { id: 2 }, x: 104, y: 98 },
+      { feature: { id: 3 }, x: 160, y: 100 },
+    ];
+    expect(nearestHit(candidates, { x: 100, y: 100 }, 34).feature.id).toBe(2);
+    expect(nearestHit(candidates, { x: 300, y: 300 }, 34)).toBeNull();
   });
 });

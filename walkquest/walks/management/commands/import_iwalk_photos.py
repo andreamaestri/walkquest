@@ -96,11 +96,9 @@ class Command(BaseCommand):
             walks = walks.filter(walk_id__in=options["walk"])
         elif not options["refresh"]:
             walks = walks.filter(photos__isnull=True)
-        walks = list(
-            walks.distinct()[: options["limit"]]
-            if options["limit"]
-            else walks.distinct(),
-        )
+        # photos__isnull=True is a LEFT JOIN that yields one row per walk, so no
+        # DISTINCT is needed (Oracle can't DISTINCT over TextField/LOB columns).
+        walks = list(walks[: options["limit"]] if options["limit"] else walks)
         if not walks:
             self.stdout.write("No walks to import.")
             return

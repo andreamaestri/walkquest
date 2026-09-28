@@ -179,6 +179,62 @@ The API is available under `/api/` and interactive documentation is exposed by D
 
 The walk list intentionally returns every walk in one response (see *Walk list and map performance*). Search, category, difficulty and nearby filtering happen client-side over that index; `/api/walks/nearby` remains available for other clients.
 
+## Running on Oracle (Always Free Autonomous Database)
+
+WalkQuest runs on PostgreSQL/PostGIS by default and can also run on Oracle
+Database 19c+ with Oracle Spatial, for example an Oracle Cloud **Always Free
+Autonomous Database** (2 databases, 20 GB, 1 OCPU, 20 sessions each). Select it
+with `DJANGO_DB_BACKEND=oracle`; see `config/settings/database.py` and
+`.env.example` for the variables.
+
+> Oracle **NoSQL** (Always Free: 3 tables) can't host the app: Django has no
+> NoSQL backend and WalkQuest needs ~40 relational tables (accounts, allauth,
+> favourites, adventures, tags, Celery beat, route geometry).
+
+Notes:
+
+- `walkquest.db.oracle` is GeoDjango's Oracle backend plus one fix: older
+  migrations declare duplicate indexes that Oracle rejects (ORA-01408), so
+  those statements are skipped instead of rewriting migration history.
+- Oracle can't `SELECT DISTINCT` over text (LOB) columns and treats `''` like
+  `NULL`; the code avoids both pitfalls (see `walks/api.py`).
+- Connections use Django 5.2 pooling. Keep the total under 20 sessions:
+  web `ORACLE_POOL_MAX=4` × 2 Gunicorn workers, Celery worker/beat
+  `ORACLE_POOL_MAX=1` (set in `Procfile` and the systemd units).
+
+### Local Oracle for development
+
+```bash
+docker run -d --name oracle -p 1521:1521 \
+  -e ORACLE_PASSWORD=oraclepw -e APP_USER=walkquest -e APP_USER_PASSWORD=walkquest \
+  gvenzl/oracle-free:23-faststart          # the -slim images omit Oracle Spatial
+# test-suite privileges: run the commented grants in deploy/oracle/grants.sql as SYSDBA
+DJANGO_DB_BACKEND=oracle ORACLE_DSN=localhost:1521/FREEPDB1 \
+  ORACLE_USER=walkquest ORACLE_PASSWORD=walkquest python manage.py migrate
+```
+
+### Moving production from PostgreSQL to Autonomous Database
+
+1. In OCI, create an Always Free Autonomous Database (Transaction Processing,
+   23ai if your region offers it). Under *Network*, set an access control list
+   allowing your VM and turn off *Require mutual TLS* so python-oracledb can use
+   one-way TLS without a wallet. Copy the TLS connection string.
+2. As `ADMIN`, run `deploy/oracle/grants.sql` (set your own password).
+3. On the VM, keep `DJANGO_DB_BACKEND=postgis` and add `ORACLE_DSN`,
+   `ORACLE_USER` and `ORACLE_PASSWORD`, then:
+   ```bash
+   python manage.py copy_to_oracle --dry-run   # row counts
+   python manage.py copy_to_oracle             # migrate, copy, verify counts + geometries
+   ```
+4. For the final switch: stop Gunicorn/Celery, run `copy_to_oracle --force`
+   again for the latest data, set `DJANGO_DB_BACKEND=oracle`, and restart.
+5. Keep PostgreSQL for a while; rolling back is setting
+   `DJANGO_DB_BACKEND=postgis` and restarting.
+
+Always Free databases stop after 7 days without activity (live traffic and
+Celery beat keep it active) and are capped at 20 GB. Check the backup options
+for Always Free in the OCI console, or schedule a periodic `dumpdata` export.
+
 ## Deployment
 
 The `Procfile` starts Gunicorn with the Django WSGI application:
