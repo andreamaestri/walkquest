@@ -19,63 +19,88 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Lints only the files a push or PR changes, so older code is cleaned up as it
+  # is touched instead of in one repo-wide reformat.
   linter:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code Repository
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - name: Run pre-commit
-        uses: pre-commit/action@v3.0.1
 
-  # With no caching at all the entire ci process takes 3m to complete!
+      - name: Cache pre-commit environments
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+
+      - name: Run pre-commit on changed files
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: |
+          pip install pre-commit
+          if [ "$EVENT" = "pull_request" ]; then FROM="$PR_BASE"; else FROM="$PUSH_BEFORE"; fi
+          # New branches report an all-zero "before" commit; fall back to the parent.
+          if [ -z "$FROM" ] || ! git cat-file -e "$FROM^{commit}" 2>/dev/null; then FROM=HEAD~1; fi
+          pre-commit run --show-diff-on-failure --color=always --from-ref "$FROM" --to-ref HEAD
+
   pytest:
     runs-on: ubuntu-latest
 
     services:
       redis:
-        image: redis:6
+        image: redis:7
         ports:
           - 6379:6379
       postgres:
-        image: postgres:16
+        # GeoDjango needs the PostGIS extension.
+        image: postgis/postgis:16-3.4
         ports:
           - 5432:5432
         env:
           POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
 
     env:
+      DJANGO_SETTINGS_MODULE: config.settings.test
+      DATABASE_URL: 'postgis://postgres:postgres@localhost:5432/postgres'
       REDIS_URL: 'redis://localhost:6379/0'
-      # postgres://user:password@host:port/database
-      DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/postgres'
 
     steps:
       - name: Checkout Code Repository
         uses: actions/checkout@v6
 
+      - name: Install GeoDjango system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gdal-bin libgdal-dev
+
+      - name: Install Poetry
+        run: pipx install poetry
+
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-          cache: pip
-          cache-dependency-path: |
-            requirements/base.txt
-            requirements/local.txt
+          cache: poetry
 
       - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements/local.txt
+        run: poetry install --with dev --no-root --no-interaction
 
       - name: Check DB Migrations
-        run: python manage.py makemigrations --check
-
-      - name: Run DB Migrations
-        run: python manage.py migrate
+        run: poetry run python manage.py makemigrations --check --dry-run
 
       - name: Test with pytest
-        run: pytest
+        run: poetry run pytest
