@@ -1,20 +1,50 @@
 <template>
+  <MotionConfig reduced-motion="user">
+  <LazyMotion :features="domAnimation">
   <div class="shell" :class="isMobile ? 'is-mobile' : 'is-desktop'">
     <!-- ── Desktop: rail · list/detail pane · map ─────────────────────── -->
-    <template v-if="!isMobile">
-      <AppRail
-        :active="railActive"
-        :pane-open="paneOpen"
-        @navigate="navigate"
-        @home="goHome"
-        @toggle-pane="paneOpen = !paneOpen"
-      />
-      <Transition name="pane">
-        <aside v-show="paneOpen" class="pane" aria-label="Walks">
-          <Transition name="swap" mode="out-in">
+    <AppRail
+      v-if="!isMobile"
+      :active="railActive"
+      :pane-open="paneOpen"
+      @navigate="navigate"
+      @home="goHome"
+      @toggle-pane="paneOpen = !paneOpen"
+    />
+
+    <div class="stage" :class="{ 'is-pane-open': !isMobile && paneOpen }">
+      <!-- The map fills the stage under the pane and is revealed with a clip, so
+           opening/closing the pane never resizes the WebGL canvas. -->
+      <main class="map-area">
+        <WalkMap
+          ref="mapRef"
+          :token="mapboxToken"
+          :walks="walksStore.walks"
+          :match-ids="search.isFiltered ? search.matchIds : null"
+          :favorite-ids="walksStore.favoriteIds"
+          :selected-id="selectedId"
+          :hovered-id="hoveredId"
+          :padding="mapPadding"
+          :control-inset="controlInset"
+          @select="selectWalk"
+          @hover="walksStore.prefetchDetail($event)"
+          @located="onLocated"
+        />
+      </main>
+
+      <aside v-if="!isMobile" class="pane" aria-label="Walks" :inert="!paneOpen">
+        <AnimatePresence mode="wait" :custom="navDirection" :initial="false">
+          <m.div
+            :key="selectedWalk ? selectedWalk.id : 'list'"
+            class="pane__view"
+            :variants="sharedAxisX"
+            :custom="navDirection"
+            initial="initial"
+            animate="enter"
+            exit="exit"
+          >
             <WalkDetail
               v-if="selectedWalk"
-              :key="selectedWalk.id"
               :walk="selectedWalk"
               :detail="selectedDetail"
               :loading-detail="detailLoading"
@@ -49,30 +79,14 @@
                 </div>
               </template>
             </ExplorePane>
-          </Transition>
-        </aside>
-      </Transition>
-    </template>
-
-    <!-- ── Map (shared) ───────────────────────────────────────────────── -->
-    <main class="map-area">
-      <WalkMap
-        ref="mapRef"
-        :token="mapboxToken"
-        :walks="walksStore.walks"
-        :match-ids="search.isFiltered ? search.matchIds : null"
-        :favorite-ids="walksStore.favoriteIds"
-        :selected-id="selectedId"
-        :hovered-id="hoveredId"
-        :padding="mapPadding"
-        @select="selectWalk"
-        @hover="walksStore.prefetchDetail($event)"
-        @located="onLocated"
-      />
-    </main>
+          </m.div>
+        </AnimatePresence>
+      </aside>
+    </div>
 
     <!-- ── Mobile: floating search + bottom sheet ─────────────────────── -->
     <template v-if="isMobile">
+      <Transition name="top-bar">
       <div v-show="!selectedWalk || sheetSnap < 2" class="mobile-top">
         <SearchBar
           :mapbox-token="mapboxToken"
@@ -87,17 +101,12 @@
           </template>
         </SearchBar>
       </div>
+      </Transition>
 
-      <!-- Rides on top of the sheet: same transform + spring as the sheet, and no
-           transition while dragging, so it tracks the finger without lagging. -->
-      <div
-        class="mobile-fab"
-        :class="{ 'is-dragging': sheetDragging }"
-        :style="{ transform: `translate3d(0, ${-sheetHeight}px, 0)` }"
-      >
+      <div class="mobile-fab" :style="{ transform: `translateY(${-sheetHeight}px)` }">
         <Transition name="fab">
           <M3FabMenu
-            v-if="!selectedWalk && sheetSnap === 0"
+            v-show="!selectedWalk && sheetSnap === 0"
             icon="material-symbols:explore-rounded"
             label="Browse walks"
             :items="fabItems"
@@ -112,13 +121,21 @@
         :snap-points="[132, '52%', '94%']"
         :header-height="36"
         @height="sheetHeight = $event"
-        @dragging="sheetDragging = $event"
+        @settle="sheetSettle = $event"
       >
         <template #default>
-          <Transition name="swap" mode="out-in">
+          <AnimatePresence mode="wait" :custom="navDirection" :initial="false">
+            <m.div
+              :key="selectedWalk ? selectedWalk.id : 'list'"
+              class="sheet__view"
+              :variants="sharedAxisX"
+              :custom="navDirection"
+              initial="initial"
+              animate="enter"
+              exit="exit"
+            >
             <WalkDetail
               v-if="selectedWalk"
-              :key="selectedWalk.id"
               :walk="selectedWalk"
               :detail="selectedDetail"
               :loading-detail="detailLoading"
@@ -139,15 +156,21 @@
               @select="selectWalk"
               @nearby="navigate('nearby')"
             />
-          </Transition>
+            </m.div>
+          </AnimatePresence>
         </template>
       </M3BottomSheet>
     </template>
   </div>
+  </LazyMotion>
+  </MotionConfig>
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { AnimatePresence, LazyMotion, MotionConfig, domAnimation, m } from 'motion-v';
+import { useWindowSize } from '@vueuse/core';
+import { sharedAxisX } from '../design/motion';
 import { useRoute, useRouter } from 'vue-router';
 import { useUiStore } from '../stores/ui';
 import { useWalksStore } from '../stores/walks';
@@ -184,7 +207,12 @@ const hoveredId = ref(null);
 const paneOpen = ref(true);
 const sheetSnap = ref(0);
 const sheetHeight = ref(132);
-const sheetDragging = ref(false);
+const sheetSettle = ref(132);
+/** 1 when navigating into a walk, -1 when going back: sets the shared-axis direction. */
+const navDirection = ref(1);
+/** Walk to bring into view once the list has animated back in. */
+let returnToId = null;
+const { width: viewportWidth, height: viewportHeight } = useWindowSize();
 const detailLoading = ref(false);
 
 const isMobile = computed(() => uiStore.isMobile);
@@ -196,6 +224,17 @@ const selectedWalk = computed(() => {
   return route.name === 'walk-by-id' ? walksStore.getWalkById(param) : walksStore.getWalkBySlug(param);
 });
 const selectedId = computed(() => selectedWalk.value?.id || null);
+watch(selectedId, (id, previous) => {
+  navDirection.value = id ? 1 : -1;
+  if (!id && previous) returnToId = previous;
+});
+watch(exploreRef, async (list) => {
+  if (!list || !returnToId) return;
+  const id = returnToId;
+  returnToId = null;
+  await nextTick();
+  list.scrollToWalk(id);
+});
 const selectedDetail = computed(() => (selectedWalk.value ? walksStore.details.get(selectedWalk.value.id) || null : null));
 
 watch(selectedWalk, async (walk, previous) => {
@@ -225,10 +264,7 @@ function selectWalk(walk) {
 }
 
 function goHome() {
-  const previous = selectedId.value;
-  router.push({ name: 'home' }).then(() => {
-    if (previous) requestAnimationFrame(() => exploreRef.value?.scrollToWalk(previous));
-  });
+  router.push({ name: 'home' });
 }
 
 // ── Navigation (rail / FAB menu) ─────────────────────────────────────────
@@ -308,8 +344,21 @@ function openDirections(walk) {
   window.open(url, '_blank', 'noopener');
 }
 
-// ── Map framing: keep routes clear of the sheet ──────────────────────────
-const mapPadding = computed(() => (isMobile.value ? { top: 80, right: 72, bottom: sheetHeight.value, left: 0 } : { top: 16, right: 80, bottom: 16, left: 16 }));
+// ── Map framing: keep routes clear of the pane / sheet ──────────────────
+// Desktop: the map spans the whole stage; the pane (clamp(360px, 30vw, 440px),
+// mirrored by --pane-w) plus an 8px gap covers its left edge while open.
+const paneCover = computed(() => {
+  if (!paneOpen.value) return 8;
+  return Math.min(440, Math.max(360, viewportWidth.value * 0.3)) + 8;
+});
+// Mobile: frame against where the sheet is going, not every frame of a drag;
+// cap it so a full-height sheet still leaves the top of the map usable.
+const mapPadding = computed(() => (isMobile.value
+  ? { top: 80, right: 72, bottom: Math.min(sheetSettle.value, viewportHeight.value * 0.55), left: 0 }
+  : { top: 16, right: 80, bottom: 16, left: paneCover.value + 16 }));
+const controlInset = computed(() => (isMobile.value
+  ? { left: 0, bottom: sheetHeight.value }
+  : { left: paneCover.value + 16, bottom: 16 }));
 
 // ── Data ─────────────────────────────────────────────────────────────────
 watch(() => authStore.isAuthenticated, (signedIn) => {
@@ -341,31 +390,53 @@ onMounted(async () => {
   color: var(--md-sys-color-on-surface);
   overflow: hidden;
 }
-.pane {
+.stage {
+  --pane-w: clamp(360px, 30vw, 440px);
+  --_reveal: 8px;
   position: relative;
+  flex: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+}
+.stage.is-pane-open { --_reveal: calc(var(--pane-w) + 8px); }
+.pane {
+  position: absolute;
   z-index: 10;
+  inset-block: 8px;
+  inset-inline-start: 0;
   display: flex;
   flex-direction: column;
-  inline-size: clamp(360px, 30vw, 440px);
-  flex: none;
-  margin: 8px 0 8px 0;
+  inline-size: var(--pane-w);
   border-radius: var(--md-sys-shape-corner-extra-large);
   background: var(--md-sys-color-surface-container-low);
   overflow: hidden;
+  /* Slides out under the rail edge; hidden once it has left so it can't take focus. */
+  transform: translateX(calc(-100% - 16px));
+  visibility: hidden;
+  transition:
+    transform var(--md-sys-motion-spring-default-spatial-duration) var(--md-sys-motion-spring-default-spatial),
+    visibility 0s linear var(--md-sys-motion-spring-default-spatial-duration);
 }
-.pane > * { flex: 1; min-block-size: 0; }
+.is-pane-open .pane {
+  transform: none;
+  visibility: visible;
+  transition:
+    transform var(--md-sys-motion-spring-default-spatial-duration) var(--md-sys-motion-spring-default-spatial),
+    visibility 0s;
+}
+.pane__view, .sheet__view { display: flex; flex-direction: column; flex: 1; min-block-size: 0; }
+.pane__view > *, .sheet__view > * { flex: 1; min-block-size: 0; }
 .pane__header { padding: 20px 16px 12px; }
 .pane__eyebrow { margin: 0 4px; color: var(--md-sys-color-primary); letter-spacing: 0.08em; text-transform: uppercase; }
 .pane__title { margin: 0 4px 16px; color: var(--md-sys-color-on-surface); font-weight: 500; font-variation-settings: 'ROND' 100; }
 .map-area {
-  position: relative;
-  flex: 1;
-  min-inline-size: 0;
-  margin: 8px;
-  border-radius: var(--md-sys-shape-corner-extra-large);
-  overflow: hidden;
+  position: absolute;
+  inset: 8px 8px 8px 0;
+  /* Same spring as the pane, so the map edge follows it exactly. */
+  clip-path: inset(0 0 0 var(--_reveal) round var(--md-sys-shape-corner-extra-large));
+  transition: clip-path var(--md-sys-motion-spring-default-spatial-duration) var(--md-sys-motion-spring-default-spatial);
 }
-.is-mobile .map-area { margin: 0; border-radius: 0; }
+.is-mobile .map-area { inset: 0; clip-path: none; }
 .mobile-top {
   position: fixed;
   top: calc(12px + env(safe-area-inset-top, 0px));
@@ -373,37 +444,30 @@ onMounted(async () => {
   z-index: 25;
 }
 .mobile-top :deep(.search__bar) { box-shadow: var(--md-sys-elevation-2); background: var(--md-sys-color-surface-container-high); }
-.mobile-top__account :deep(.account-circle-container) { position: static; }
-.mobile-top__account :deep(.account-circle-button.mobile) { inline-size: 40px; block-size: 40px; color: var(--md-sys-color-on-surface-variant); }
+.mobile-top__account { display: inline-flex; }
+.mobile-top__account :deep(.account-button) { inline-size: 40px; block-size: 40px; }
+.mobile-top__account :deep(.account-avatar) { inline-size: 32px; block-size: 32px; font-size: 14px; }
+/* Rides on top of the sheet; translated every frame from its live height. */
 .mobile-fab {
   position: fixed;
   right: 16px;
   bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   z-index: 26;
-  pointer-events: none;
-  will-change: transform;
-  transition: transform var(--md-sys-motion-spring-default-spatial-duration) var(--md-sys-motion-spring-default-spatial);
+  pointer-events: none; /* the menu re-enables it on its own buttons */
 }
-.mobile-fab.is-dragging { transition: none; }
-/* FAB enter/exit: scale out of its own centre like an M3 FAB. */
-.fab-enter-active,
-.fab-leave-active {
-  transform-origin: bottom right;
-  transition:
-    transform var(--md-sys-motion-spring-fast-spatial-duration) var(--md-sys-motion-spring-fast-spatial),
+/* M3E FAB: scales in from its centre on the fast spatial spring. */
+.fab-enter-active {
+  transition: scale var(--md-sys-motion-spring-fast-spatial-duration) var(--md-sys-motion-spring-fast-spatial),
     opacity var(--md-sys-motion-spring-fast-effects-duration) var(--md-sys-motion-spring-fast-effects);
 }
-.fab-enter-from,
-.fab-leave-to { transform: scale(0.4); opacity: 0; }
-.pane-enter-active, .pane-leave-active {
-  transition: margin-inline-start var(--md-sys-motion-spring-default-spatial-duration) var(--md-sys-motion-spring-default-spatial),
+.fab-leave-active {
+  transition: scale var(--md-sys-motion-spring-default-effects-duration) var(--md-sys-motion-spring-default-effects),
+    opacity var(--md-sys-motion-spring-fast-effects-duration) var(--md-sys-motion-spring-fast-effects);
+}
+.fab-enter-from, .fab-leave-to { scale: 0.4; opacity: 0; }
+.top-bar-enter-active, .top-bar-leave-active {
+  transition: translate var(--md-sys-motion-spring-default-spatial-duration) var(--md-sys-motion-spring-default-spatial),
     opacity var(--md-sys-motion-spring-default-effects-duration) var(--md-sys-motion-spring-default-effects);
 }
-.pane-enter-from, .pane-leave-to { margin-inline-start: calc(-1 * clamp(360px, 30vw, 440px)); opacity: 0; }
-.swap-enter-active, .swap-leave-active {
-  transition: opacity var(--md-sys-motion-spring-fast-effects-duration) var(--md-sys-motion-spring-fast-effects),
-    transform var(--md-sys-motion-spring-fast-spatial-duration) var(--md-sys-motion-spring-fast-spatial);
-}
-.swap-enter-from { opacity: 0; transform: translateX(24px); }
-.swap-leave-to { opacity: 0; transform: translateX(-24px); }
+.top-bar-enter-from, .top-bar-leave-to { translate: 0 -24px; opacity: 0; }
 </style>

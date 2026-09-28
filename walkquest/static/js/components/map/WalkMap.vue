@@ -1,5 +1,5 @@
 <template>
-  <div class="walk-map" :style="{ '--map-inset-bottom': `${padding.bottom || 0}px`, '--map-inset-left': `${padding.left || 0}px` }">
+  <div class="walk-map" :style="{ '--map-inset-bottom': `${insets.bottom || 0}px`, '--map-inset-left': `${insets.left || 0}px` }">
     <div ref="container" class="walk-map__canvas" />
     <div v-if="unavailable" class="walk-map__fallback">
       <Icon icon="material-symbols:map-outline-rounded" aria-hidden="true" />
@@ -10,19 +10,22 @@
       class="walk-map__toolbar"
       :locating="locating"
       :bearing="bearing"
-      @zoom-in="map.zoomIn()"
-      @zoom-out="map.zoomOut()"
-      @reset-north="map.easeTo({ bearing: 0, pitch: 0 })"
+      @zoom-in="map.zoomIn(cameraMotion(300, 'standard'))"
+      @zoom-out="map.zoomOut(cameraMotion(300, 'standard'))"
+      @reset-north="map.easeTo({ bearing: 0, pitch: 0, ...cameraMotion(500) })"
       @locate="locate"
     />
-    <div v-if="loadingRoute" class="walk-map__route-loading">
-      <M3LoadingIndicator :size="40" contained label="Loading route" />
-    </div>
+    <Transition name="route-loading">
+      <div v-if="loadingRoute" class="walk-map__route-loading">
+        <M3LoadingIndicator :size="40" contained label="Loading route" />
+      </div>
+    </Transition>
   </div>
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
+import { animate } from 'motion-v';
 import { Icon } from '@iconify/vue';
 import mapboxgl from 'mapbox-gl';
 import MapToolbar from './MapToolbar.vue';
@@ -30,6 +33,7 @@ import M3LoadingIndicator from '../m3/M3LoadingIndicator.vue';
 import { getGeometry } from '../../services/api';
 import { useMap } from '../../composables/useMap';
 import { radiiToPath, sampleShape } from '../../design/shapes';
+import { cameraMotion, ease, prefersReducedMotion } from '../../design/motion';
 import {
   CORNWALL_BOUNDS,
   CORNWALL_CENTER,
@@ -55,6 +59,8 @@ const props = defineProps({
   hoveredId: { type: String, default: null },
   /** Area covered by UI (pane/sheet) so the camera frames routes in the visible part. */
   padding: { type: Object, default: () => ({ top: 0, right: 0, bottom: 0, left: 0 }) },
+  /** Where UI covers the map edges right now (logo/attribution placement). Defaults to `padding`. */
+  controlInset: { type: Object, default: null },
 });
 const emit = defineEmits(['select', 'hover', 'located', 'ready']);
 
@@ -65,6 +71,7 @@ const loadingRoute = ref(false);
 const locating = ref(false);
 const bearing = ref(0);
 const { setMapInstance } = useMap();
+const insets = computed(() => props.controlInset || props.padding);
 
 let idIndex = new Map();
 let walkByFeatureId = new Map();
@@ -75,6 +82,10 @@ let geolocate = null;
 let tooltip = null;
 let resizeObserver = null;
 let routeRequest = 0;
+let routeFeature = null;
+let routeDraw = null;
+/** Camera before a walk was opened; restored on back unless the user moved the map. */
+let homeCamera = null;
 
 const EMPTY = { type: 'FeatureCollection', features: [] };
 
@@ -141,7 +152,7 @@ function addLayers() {
   const m = map.value;
   const colors = tokens();
   m.addSource('walks', { type: 'geojson', data: walkData() });
-  m.addSource('route', { type: 'geojson', data: EMPTY });
+  m.addSource('route', { type: 'geojson', data: EMPTY, lineMetrics: true });
   m.addSource('route-ends', { type: 'geojson', data: EMPTY });
   if (!m.hasImage('walk-selected')) m.addImage('walk-selected', drawSelectedPin(colors), { pixelRatio: 2 });
   for (const layer of routeLayers(colors)) m.addLayer(layer);
@@ -230,6 +241,56 @@ function bindInteractions() {
     }
   });
   m.on('rotate', () => { bearing.value = m.getBearing(); });
+  // Only gestures carry an originalEvent; programmatic camera moves don't.
+  m.on('movestart', (event) => {
+    if (event.originalEvent && homeCamera) homeCamera.moved = true;
+  });
+}
+
+/** Draws the route along its length (line-trim-offset), then fades in the endpoints. */
+function drawRoute() {
+  const m = map.value;
+  routeDraw?.stop();
+  const setTrim = (value) => {
+    for (const id of ['route-casing', 'route-line']) m.setPaintProperty(id, 'line-trim-offset', value);
+  };
+  const setEnds = (opacity) => {
+    m.setPaintProperty('route-ends', 'circle-opacity', opacity);
+    m.setPaintProperty('route-ends', 'circle-stroke-opacity', opacity);
+  };
+  setEnds(0);
+  if (prefersReducedMotion()) {
+    setTrim([0, 0]);
+    setEnds(1);
+    return;
+  }
+  setTrim([0, 1]);
+  routeDraw = animate(0, 1, {
+    duration: 1.1,
+    delay: 0.15,
+    ease: ease.emphasizedDecelerate,
+    onUpdate: (progress) => {
+      if (map.value) setTrim([Math.min(progress, 0.9999), 1]);
+    },
+    onComplete: () => {
+      if (!map.value) return;
+      setTrim([0, 0]);
+      setEnds(1);
+    },
+  });
+}
+
+function clearRoute() {
+  routeDraw?.stop();
+  routeFeature = null;
+  map.value.getSource('route').setData(EMPTY);
+  map.value.getSource('route-ends').setData(EMPTY);
+}
+
+/** Frames the loaded route in the part of the map not covered by UI. */
+function fitRoute(duration = 1200) {
+  const bounds = routeFeature && geojsonBounds(routeFeature);
+  if (bounds) map.value.fitBounds(bounds, { padding: cameraPadding(48), maxZoom: 15, ...cameraMotion(duration) });
 }
 
 async function showRoute(walkId) {
@@ -237,8 +298,8 @@ async function showRoute(walkId) {
   const request = ++routeRequest;
   if (!m?.getSource('route')) return;
   if (!walkId) {
-    m.getSource('route').setData(EMPTY);
-    m.getSource('route-ends').setData(EMPTY);
+    clearRoute();
+    loadingRoute.value = false;
     return;
   }
   const walk = props.walks.find((w) => w.id === walkId);
@@ -246,27 +307,44 @@ async function showRoute(walkId) {
   try {
     const feature = await getGeometry(walkId);
     if (request !== routeRequest || !map.value) return;
+    routeFeature = feature;
     m.getSource('route').setData(feature);
     m.getSource('route-ends').setData(routeEndpoints(feature));
-    const bounds = geojsonBounds(feature);
-    if (bounds) m.fitBounds(bounds, { padding: cameraPadding(64), maxZoom: 15, duration: 1200, essential: true });
+    drawRoute();
+    fitRoute();
   } catch {
     if (walk && request === routeRequest) {
-      m.easeTo({ center: [walk.longitude, walk.latitude], zoom: 13, padding: cameraPadding(0), duration: 900 });
+      m.easeTo({ center: [walk.longitude, walk.latitude], zoom: 13, padding: cameraPadding(0), ...cameraMotion(900) });
     }
   } finally {
     if (request === routeRequest) loadingRoute.value = false;
   }
 }
 
+/**
+ * Map padding plus `extra`, scaled down when UI covers so much of the map
+ * (e.g. a full-height sheet) that Mapbox couldn't fit anything in the rest.
+ */
 function cameraPadding(extra = 0) {
   const p = props.padding;
-  return {
-    top: (p.top || 0) + extra,
-    right: (p.right || 0) + extra,
-    bottom: (p.bottom || 0) + extra,
-    left: (p.left || 0) + extra,
+  const el = map.value?.getContainer();
+  const fit = (a, b, size) => {
+    const total = a + b + extra * 2;
+    const room = Math.max(0, size - 96); // always keep a 96px window for the route
+    const scale = total > room ? room / total : 1;
+    return [Math.floor((a + extra) * scale), Math.floor((b + extra) * scale)];
   };
+  const [top, bottom] = fit(p.top || 0, p.bottom || 0, el?.clientHeight || window.innerHeight);
+  const [left, right] = fit(p.left || 0, p.right || 0, el?.clientWidth || window.innerWidth);
+  return { top, right, bottom, left };
+}
+
+/** Covered area changed (pane toggled, sheet snapped): glide the view to stay framed. */
+function onPaddingChange(next, prev) {
+  const m = map.value;
+  if (!m?.getSource('route') || JSON.stringify(next) === JSON.stringify(prev)) return;
+  if (routeFeature) fitRoute(700);
+  else m.easeTo({ padding: cameraPadding(0), ...cameraMotion(500) });
 }
 
 /** Re-frames the selected route (e.g. "show on map" in the detail view). */
@@ -275,7 +353,7 @@ function recenter() {
 }
 
 function flyTo({ longitude, latitude, zoom = 11.5 }) {
-  map.value?.flyTo({ center: [longitude, latitude], zoom, padding: cameraPadding(0), duration: 1400, essential: true });
+  map.value?.flyTo({ center: [longitude, latitude], zoom, padding: cameraPadding(0), ...cameraMotion(1400) });
 }
 
 function locate() {
@@ -342,6 +420,7 @@ onMounted(() => {
   instance.on('load', () => {
     addLayers();
     bindInteractions();
+    instance.setPadding(cameraPadding(0));
     if (props.selectedId) showRoute(props.selectedId);
     emit('ready', instance);
   });
@@ -369,6 +448,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('walkquest:theme-change', onThemeChange);
   resizeObserver?.disconnect();
   tooltip?.remove();
+  routeDraw?.stop();
   map.value?.remove();
   map.value = null;
   setMapInstance(null);
@@ -385,10 +465,24 @@ watch(
     applyExternalHover();
   },
 );
-watch(() => props.selectedId, (id) => {
+watch(() => props.selectedId, (id, previous) => {
   applySelection();
+  const m = map.value;
+  if (m && id && !previous) {
+    // Opening a walk from the overview: remember where we were.
+    homeCamera = { center: m.getCenter(), zoom: m.getZoom(), bearing: m.getBearing(), pitch: m.getPitch(), moved: false };
+  }
   showRoute(id);
+  if (m && !id && previous) {
+    // Back to the overview: return the camera, unless the user explored meanwhile.
+    if (homeCamera && !homeCamera.moved) {
+      const { moved, ...camera } = homeCamera;
+      m.easeTo({ ...camera, padding: cameraPadding(0), ...cameraMotion(900) });
+    }
+    homeCamera = null;
+  }
 });
+watch(() => props.padding, onPaddingChange, { deep: true });
 watch(() => props.hoveredId, applyExternalHover);
 
 defineExpose({ recenter, flyTo, locate });
@@ -410,15 +504,29 @@ defineExpose({ recenter, flyTo, locate });
 }
 .walk-map__fallback svg { font-size: 48px; color: var(--md-sys-color-primary); }
 .walk-map__toolbar { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); z-index: 2; }
+.walk-map__route-loading { position: absolute; top: 16px; left: calc(50% + var(--map-inset-left, 0px) / 2); translate: -50% 0; z-index: 2; }
 @media (max-width: 767px) {
   .walk-map__toolbar { top: calc(84px + env(safe-area-inset-top, 0px)); right: 12px; transform: none; }
-  .walk-map__route-loading { top: calc(84px + env(safe-area-inset-top, 0px)); }
+  .walk-map__route-loading { top: calc(84px + env(safe-area-inset-top, 0px)); left: 50%; }
 }
-.walk-map__route-loading { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); z-index: 2; }
+/* M3E: indicator scales in from its centre, like a FAB. */
+.route-loading-enter-active {
+  transition: scale var(--md-sys-motion-spring-fast-spatial-duration) var(--md-sys-motion-spring-fast-spatial),
+    opacity var(--md-sys-motion-spring-fast-effects-duration) var(--md-sys-motion-spring-fast-effects);
+}
+.route-loading-leave-active {
+  transition: scale var(--md-sys-motion-spring-default-effects-duration) var(--md-sys-motion-spring-default-effects),
+    opacity var(--md-sys-motion-spring-default-effects-duration) var(--md-sys-motion-spring-default-effects);
+}
+.route-loading-enter-from, .route-loading-leave-to { scale: 0.4; opacity: 0; }
 /* Keep Mapbox's logo + attribution above bottom sheets. */
 .walk-map :deep(.mapboxgl-ctrl-bottom-left),
-.walk-map :deep(.mapboxgl-ctrl-bottom-right) { bottom: var(--map-inset-bottom, 0px); transition: bottom var(--md-sys-motion-spring-default-spatial-duration) var(--md-sys-motion-spring-default-spatial); }
-.walk-map :deep(.mapboxgl-ctrl-bottom-left) { left: var(--map-inset-left, 0px); }
+.walk-map :deep(.mapboxgl-ctrl-bottom-right) { bottom: var(--map-inset-bottom, 0px); }
+/* Bottom inset tracks the sheet frame-by-frame already; the left inset follows the pane. */
+.walk-map :deep(.mapboxgl-ctrl-bottom-left) {
+  left: var(--map-inset-left, 0px);
+  transition: left var(--md-sys-motion-spring-default-spatial-duration) var(--md-sys-motion-spring-default-spatial);
+}
 /* The geolocate control is driven from the M3 toolbar. */
 .walk-map :deep(.mapboxgl-ctrl-top-right .mapboxgl-ctrl-group) { display: none; }
 </style>

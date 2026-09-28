@@ -173,6 +173,11 @@ export function routeLayers(colors) {
         'circle-stroke-width': 2,
         'circle-stroke-color': colors.surface,
         'circle-emissive-strength': 1,
+        // Faded in once the route has drawn itself on (see WalkMap drawRoute).
+        'circle-opacity': 0,
+        'circle-stroke-opacity': 0,
+        'circle-opacity-transition': { duration: 200, delay: 0 },
+        'circle-stroke-opacity-transition': { duration: 200, delay: 0 },
       },
     },
   ];

@@ -94,7 +94,7 @@ DJANGO_APPS = [
     "django.contrib.sessions",
     "django.contrib.sites",
     "django.contrib.messages",
-    "django.contrib.staticfiles",
+    "config.apps.WalkQuestStaticFilesConfig",
     "django.contrib.gis",
     "unfold",
     "unfold.contrib.filters",  # optional, if special filters are needed

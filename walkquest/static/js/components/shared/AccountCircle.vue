@@ -1,568 +1,403 @@
 <template>
-  <div>
-    <div 
-      class="account-circle-container"
-      :class="{ 'desktop': !isMobileComputed, 'mobile': isMobileComputed }"
-    >
-      <button
-        ref="buttonRef"
-        class="m3-icon-button account-circle-button"
-        :class="{ 
-          'desktop': !isMobileComputed, 
-          'mobile': isMobileComputed,
-          'authenticated': isAuthenticatedComputed
-        }"
-        aria-label="Account menu"
-        @click="handleClick"
-        @mouseenter="isHovered = true"
-        @mouseleave="isHovered = false"
-        @focus="isFocused = true"
-        @blur="isFocused = false"
+  <button
+    ref="buttonRef"
+    type="button"
+    class="account-button state-layer"
+    :class="{ 'is-open': open }"
+    :aria-label="isAuthenticated ? `Account menu for ${displayName}` : 'Account menu'"
+    aria-haspopup="menu"
+    :aria-expanded="String(open)"
+    :aria-controls="menuId"
+    @click="toggle"
+  >
+    <span v-if="isAuthenticated" class="account-avatar" :style="{ '--_hue': avatarHue }" aria-hidden="true">
+      {{ initials }}
+    </span>
+    <Icon v-else icon="material-symbols:account-circle" class="account-button__icon" aria-hidden="true" />
+  </button>
+
+  <Teleport to="body">
+    <Transition name="account-menu" @after-leave="onAfterLeave">
+      <div
+        v-if="open"
+        :id="menuId"
+        ref="menuRef"
+        class="account-menu"
+        :class="`from-${placement.origin}`"
+        :style="{ top: `${placement.top}px`, left: `${placement.left}px`, visibility: placed ? 'visible' : 'hidden' }"
+        role="menu"
+        :aria-label="isAuthenticated ? 'Account' : 'Sign in'"
+        @keydown="onMenuKeydown"
       >
-        <div 
-          class="state-layer" 
-          :class="{
-            'hovered': isHovered && !isPressed,
-            'focused': isFocused && !isPressed,
-            'pressed': isPressed
-          }"
-        ></div>
-        <div v-if="isAuthenticatedComputed && (userInitialsComputed || 'U')" class="avatar-container">
-          <div class="avatar-circle" :style="{ backgroundColor: avatarBgColor }">
-            <span class="avatar-initials">{{ userInitialsComputed || 'U' }}</span>
-          </div>
-        </div>
-        <Icon
-          v-else
-          icon="mdi:account-circle"
-          class="account-icon"
-          :class="{ 'active': isActive }"
-        />
-        <span class="sr-only">Account</span>
-      </button>
-    </div>
-    
-    <!-- Account Menu for authenticated users -->
-    <AccountMenu
-      v-if="buttonRef && isAuthenticatedComputed"
-      :is-open="showMenu"
-      :anchor-el="buttonRef"
-      @close="showMenu = false"
-      @action="handleMenuAction"
-    />
-    
-    <!-- Auth menu for unauthenticated users -->
-    <Teleport to="#portal-root">
-      <Transition name="fade">
-        <div 
-          v-if="showAuthMenu && !isAuthenticatedComputed" 
-          class="auth-menu" 
-          :class="{ 'mobile': isMobileComputed }"
-          :style="menuPosition"
-        >
-          <div class="auth-menu-header">
-            <h3 class="auth-menu-title">Account</h3>
-            <button class="close-button" @click="showAuthMenu = false">
-              <Icon icon="mdi:close" />
-            </button>
-          </div>
-          <div class="auth-menu-content">
-            <p class="auth-menu-text">Sign in to save your favorite walks, track your adventures and more.</p>
-            <div class="auth-links">
-              <RouterLink to="/login" class="auth-link auth-link-primary" @click="showAuthMenu = false">
-                <Icon icon="mdi:login" class="auth-icon" />
-                <span>Sign In</span>
-              </RouterLink>
-              <RouterLink to="/signup" class="auth-link auth-link-secondary" @click="showAuthMenu = false">
-                <Icon icon="mdi:account-plus" class="auth-icon" />
-                <span>Create Account</span>
-              </RouterLink>
+        <template v-if="isAuthenticated">
+          <div class="account-menu__header" role="none">
+            <span class="account-avatar account-avatar--large" :style="{ '--_hue': avatarHue }" aria-hidden="true">{{ initials }}</span>
+            <div class="account-menu__who">
+              <span class="type-title-medium account-menu__name">{{ displayName }}</span>
+              <span v-if="email && email !== displayName" class="type-body-medium account-menu__email">{{ email }}</span>
             </div>
           </div>
-        </div>
-      </Transition>
-    </Teleport>
-  </div>
+          <div class="account-menu__divider" role="separator" />
+          <component
+            :is="item.href ? 'a' : 'button'"
+            v-for="(item, index) in items"
+            :key="item.id"
+            :type="item.href ? undefined : 'button'"
+            :href="item.href"
+            class="account-menu__item state-layer"
+            :class="{ 'is-danger': item.danger }"
+            :style="{ '--_i': index }"
+            role="menuitem"
+            tabindex="-1"
+            @click="onItem(item)"
+          >
+            <Icon :icon="item.icon" aria-hidden="true" />
+            <span>{{ item.label }}</span>
+          </component>
+        </template>
+
+        <template v-else>
+          <div class="account-menu__intro" role="none">
+            <span class="account-menu__badge" aria-hidden="true"><Icon icon="material-symbols:hiking-rounded" /></span>
+            <p class="type-title-medium account-menu__name">Walk further with an account</p>
+            <p class="type-body-medium account-menu__email">Save walks, log adventures and pick up where you left off.</p>
+          </div>
+          <div class="account-menu__actions">
+            <RouterLink to="/login" class="account-menu__cta is-filled state-layer" role="menuitem" tabindex="-1" style="--_i: 0" @click="close()">
+              <Icon icon="material-symbols:login-rounded" aria-hidden="true" />Sign in
+            </RouterLink>
+            <RouterLink to="/signup" class="account-menu__cta is-tonal state-layer" role="menuitem" tabindex="-1" style="--_i: 1" @click="close()">
+              <Icon icon="material-symbols:person-add-rounded" aria-hidden="true" />Create account
+            </RouterLink>
+          </div>
+        </template>
+      </div>
+    </Transition>
+
+    <ConfirmationModal
+      v-if="confirmSignOut"
+      title="Sign out?"
+      message="You'll need to sign in again to see your saved walks and adventures."
+      confirm-text="Sign out"
+      cancel-text="Cancel"
+      :is-submitting="signingOut"
+      @confirm="signOut"
+      @cancel="confirmSignOut = false"
+    />
+  </Teleport>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, useId, watch } from 'vue';
 import { Icon } from '@iconify/vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../../stores/auth';
-import { useUiStore } from '../../stores/ui';
-import AccountMenu from './AccountMenu.vue';
+import { useToastStore } from '../../stores/toast';
+import ConfirmationModal from './ConfirmationModal.vue';
 
-// Props with defaults
-const props = defineProps({
-  isActive: {
-    type: Boolean,
-    default: false
-  }
-});
-
-// Emit events
-const emit = defineEmits(['click']);
-
-// Router instance
-const router = useRouter();
-
-// Use the UI store for responsive layout
-const uiStore = useUiStore();
-const isMobileComputed = computed(() => uiStore.isMobile);
-
-// State for interactive feedback
-const isHovered = ref(false);
-const isFocused = ref(false);
-const isPressed = ref(false);
-const showAuthMenu = ref(false);
-const showMenu = ref(false);
-const buttonRef = ref(null);
-
-// Use auth store with better reactive state handling
 const authStore = useAuthStore();
-const isAuthenticatedComputed = computed(() => authStore.isAuthenticated);
-const userInitialsComputed = computed(() => {
-  // Only show initials if user data is fully loaded
-  if (!authStore.userDataLoaded || !authStore.user) return '';
-  return authStore.userInitials;
-});
+const toast = useToastStore();
+const router = useRouter();
+const route = useRoute();
 
-// Avatar color generation using email or username
-const avatarBgColor = computed(() => {
-  const identifier = authStore.user?.email || authStore.user?.username;
-  if (!identifier) return 'var(--md-sys-color-primary)';
-  
+const menuId = `account-menu-${useId()}`;
+const buttonRef = ref(null);
+const menuRef = ref(null);
+const open = ref(false);
+const placed = ref(false);
+const placement = reactive({ top: 0, left: 0, origin: 'top-right' });
+const confirmSignOut = ref(false);
+const signingOut = ref(false);
+let returnFocus = false;
+
+const isAuthenticated = computed(() => authStore.isAuthenticated);
+const email = computed(() => authStore.user?.email || '');
+const displayName = computed(() => {
+  const user = authStore.user || {};
+  const full = [user.first_name, user.last_name].filter(Boolean).join(' ');
+  return full || user.username || email.value.split('@')[0] || 'Your account';
+});
+const initials = computed(() => (authStore.userDataLoaded && authStore.userInitials) || displayName.value.slice(0, 1).toUpperCase() || '·');
+/** Stable per-user hue; the avatar's lightness/chroma come from the theme so contrast holds in both modes. */
+const avatarHue = computed(() => {
+  const id = email.value || authStore.user?.username || '';
   let hash = 0;
-  for (let i = 0; i < identifier.length; i++) {
-    hash = identifier.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const hue = hash % 360;
-  return `oklch(70% 0.14 ${hue}deg)`;
+  for (let i = 0; i < id.length; i++) hash = (id.charCodeAt(i) + ((hash << 5) - hash)) | 0;
+  return Math.abs(hash) % 360;
 });
 
-// Add menuPosition computed property
-const menuPosition = computed(() => {
-  if (!buttonRef.value || isMobileComputed.value) return {};
-  
+const allauth = () => window.djangoAllAuth || {};
+const items = computed(() => [
+  { id: 'profile', label: 'Profile settings', icon: 'material-symbols:manage-accounts-outline-rounded', to: '/profile' },
+  { id: 'adventures', label: 'My adventures', icon: 'material-symbols:auto-stories-outline-rounded', to: '/adventures' },
+  { id: 'email', label: 'Email addresses', icon: 'material-symbols:mail-outline-rounded', href: allauth().emailUrl || '/accounts/email/' },
+  { id: 'password', label: 'Change password', icon: 'material-symbols:key-outline-rounded', href: allauth().passwordChangeUrl || '/accounts/password/change/' },
+  { id: 'signout', label: 'Sign out', icon: 'material-symbols:logout-rounded', danger: true },
+]);
+
+// ── Placement ────────────────────────────────────────────────────────────
+// Next to the button when it sits on the left edge (desktop rail), otherwise
+// below it (or above, when there's no room). Always kept inside the viewport.
+const GAP = 8;
+const EDGE = 8;
+function place() {
+  const button = buttonRef.value;
+  const menu = menuRef.value;
+  if (!button || !menu) return;
+  const b = button.getBoundingClientRect();
+  const w = menu.offsetWidth;
+  const h = menu.offsetHeight;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const clamp = (value, min, max) => Math.min(Math.max(value, min), Math.max(min, max));
+  let top;
+  let left;
+  let vertical;
+  let horizontal;
+  if (b.left < vw * 0.2 && b.right + GAP + w <= vw - EDGE) {
+    // Beside the button, grow towards the free vertical space.
+    left = b.right + GAP;
+    horizontal = 'left';
+    const below = vh - b.top;
+    if (below >= h + EDGE) { top = b.top; vertical = 'top'; } else { top = b.bottom - h; vertical = 'bottom'; }
+  } else {
+    horizontal = b.left + b.width / 2 > vw / 2 ? 'right' : 'left';
+    left = horizontal === 'right' ? b.right - w : b.left;
+    if (vh - b.bottom >= h + GAP + EDGE || b.top < h + GAP + EDGE) { top = b.bottom + GAP; vertical = 'top'; } else { top = b.top - GAP - h; vertical = 'bottom'; }
+  }
+  placement.left = clamp(left, EDGE, vw - w - EDGE);
+  placement.top = clamp(top, EDGE, vh - h - EDGE);
+  placement.origin = `${vertical}-${horizontal}`;
+  placed.value = true;
+}
+
+// ── Open / close ─────────────────────────────────────────────────────────
+async function show() {
+  placed.value = false;
+  open.value = true;
+  if (isAuthenticated.value && !authStore.userDataLoaded && !authStore.isLoading) authStore.checkAuth();
+  await nextTick();
+  place();
+  focusItem(0);
+}
+function close({ focus = false } = {}) {
+  if (!open.value) return;
+  returnFocus = focus;
+  open.value = false;
+}
+function toggle() {
+  if (open.value) close();
+  else show();
+}
+function onAfterLeave() {
+  if (returnFocus) buttonRef.value?.focus();
+  returnFocus = false;
+}
+
+function menuItems() {
+  return [...(menuRef.value?.querySelectorAll('[role="menuitem"]') || [])];
+}
+function focusItem(index) {
+  const list = menuItems();
+  if (!list.length) return;
+  list[(index + list.length) % list.length].focus({ preventScroll: true });
+}
+function onMenuKeydown(event) {
+  const list = menuItems();
+  const current = list.indexOf(document.activeElement);
+  if (event.key === 'ArrowDown') { event.preventDefault(); focusItem(current + 1); }
+  else if (event.key === 'ArrowUp') { event.preventDefault(); focusItem(current - 1); }
+  else if (event.key === 'Home') { event.preventDefault(); focusItem(0); }
+  else if (event.key === 'End') { event.preventDefault(); focusItem(-1); }
+  else if (event.key === 'Escape') { event.preventDefault(); close({ focus: true }); }
+  else if (event.key === 'Tab') close();
+}
+
+function onItem(item) {
+  if (item.id === 'signout') {
+    close();
+    confirmSignOut.value = true;
+    return;
+  }
+  close();
+  if (item.to) router.push(item.to);
+}
+
+async function signOut() {
+  signingOut.value = true;
   try {
-    const rect = buttonRef.value.getBoundingClientRect();
-    return {
-      position: 'absolute',
-      top: `${rect.bottom + 15}px`,
-      right: `${window.innerWidth - rect.right}px`
-    };
-  } catch (error) {
-    console.error('Error computing menu position:', error);
-    return {};
+    await authStore.logout();
+    confirmSignOut.value = false;
+    toast.show('Signed out', 'info', 3000);
+    router.push('/');
+  } catch {
+    window.location.href = '/accounts/logout/';
+  } finally {
+    signingOut.value = false;
   }
+}
+
+function onPointerDown(event) {
+  if (!open.value) return;
+  if (menuRef.value?.contains(event.target) || buttonRef.value?.contains(event.target)) return;
+  close();
+}
+const onViewportChange = () => { if (open.value) place(); };
+
+watch(() => route.fullPath, () => close());
+watch(isAuthenticated, async () => {
+  if (!open.value) return;
+  await nextTick();
+  place();
 });
-
-// Handle click with authentication flow
-const handleClick = (event) => {
-  isPressed.value = true;
-  emit('click', event);
-  
-  if (!isAuthenticatedComputed.value) {
-    showAuthMenu.value = !showAuthMenu.value;
-  } else if (buttonRef.value) {
-    showMenu.value = !showMenu.value;
-  }
-  
-  // Reset pressed state after animation
-  setTimeout(() => {
-    isPressed.value = false;
-  }, 300);
-};
-
-// Handle menu actions for authenticated users
-const handleMenuAction = async (action) => {
-  if (action === 'logout' && !isPressed.value) {
-    try {
-      isPressed.value = true;
-      await authStore.logout();
-      showMenu.value = false;
-      router.push('/');
-    } catch (error) {
-      console.error('Logout failed:', error);
-    } finally {
-      isPressed.value = false;
-    }
-  } else if (action === 'profile') {
-    showMenu.value = false;
-    router.push('/profile');
-  }
-};
-
-// Add click outside handler
-const handleClickOutside = (event) => {
-  if (showAuthMenu.value && !isAuthenticatedComputed.value) {
-    const target = event.target;
-    if (buttonRef.value && !buttonRef.value.contains(target)) {
-      showAuthMenu.value = false;
-    }
-  }
-};
-
-// Update lifecycle hooks
-onMounted(async () => {
-  if (!buttonRef.value) {
-    console.warn('Button reference not initialized on mount');
-  }
-  
-  document.addEventListener('mousedown', handleClickOutside);
-  
-  // Force refresh user data if needed and not already loading
-  if (isAuthenticatedComputed.value && !authStore.userDataLoaded && !authStore.isLoading) {
-    await authStore.checkAuth();
-  }
+onMounted(() => {
+  document.addEventListener('pointerdown', onPointerDown, true);
+  window.addEventListener('resize', onViewportChange);
 });
-
-onUnmounted(() => {
-  document.removeEventListener('mousedown', handleClickOutside);
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', onPointerDown, true);
+  window.removeEventListener('resize', onViewportChange);
 });
 </script>
 
 <style scoped>
-.m3-icon-button  {  
-  left: 0!important;
-}
-
-.account-circle-container {
+.account-button {
   position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: auto; /* Ensure clicks are registered */
-}
-
-/* Desktop version (inside search bar as trailing icon) */
-.account-circle-container.desktop {
-  height: 40px;
-  width: 40px;
-}
-
-/* Mobile version (standalone) with proper safe area handling */
-.account-circle-container.mobile {
-  position: absolute;
-  top: calc(16px + env(safe-area-inset-top, 0px)); 
-  left: calc(16px + env(safe-area-inset-left, 0px));
-  z-index: 50;
-  pointer-events: auto;
-}
-
-.account-circle-button {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
+  display: inline-grid;
+  place-items: center;
+  inline-size: 48px;
+  block-size: 48px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-full);
   background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
   cursor: pointer;
-  overflow: hidden;
   -webkit-tap-highlight-color: transparent;
-  transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
-  outline: none;
-  border-radius: 50%;
 }
+.account-button__icon { font-size: 32px; }
+.account-button:focus-visible { outline: 2px solid var(--md-sys-color-secondary); outline-offset: 2px; }
 
-/* Desktop version styling */
-.account-circle-button.desktop {
-  color: var(--md-sys-color-on-surface-variant);
-}
-
-/* Mobile version styling */
-.account-circle-button.mobile {
-  width: 52px;
-  height: 52px;
-  padding: 0!important;
-  background-color: transparent;
-  color: var(--md-sys-color-surface);
-}
-
-.account-circle-button.mobile:hover,
-.account-circle-button.mobile:focus-visible {
-  scale: 1.25;
-}
-
-.account-icon {
-  font-size: 52px!important;
-  width: 52px;
-  height: 52px;
-  transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 1;
-}
-
-.account-icon.active {
-  color: var(--md-sys-color-primary);
-}
-
-/* Avatar styling for authenticated users */
-.avatar-container {
-  position: relative;
-  z-index: 1;
-  width: 34px;
-  height: 34px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0; /* Prevent container from shrinking */
-}
-
-.avatar-circle {
-  position: relative;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  margin-bottom: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--md-sys-color-on-primary);
-  font-weight: 500;
-  font-size: 14px;
-  user-select: none;
-  overflow: hidden; /* Prevent content from overflowing */
-  flex-shrink: 0; /* Prevent the circle from shrinking */
-  box-shadow: var(--md-sys-elevation-2);
-}
-
-.avatar-initials {
-  color: white;
+/* Avatar: hue per user, tone from the theme (tonal container pair). */
+.account-avatar {
+  display: grid;
+  place-items: center;
+  inline-size: 36px;
+  block-size: 36px;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: oklch(90% 0.07 var(--_hue));
+  color: oklch(30% 0.09 var(--_hue));
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1;
   text-transform: uppercase;
-  line-height: 1; /* Ensure consistent vertical alignment */
-  text-align: center; /* Center text horizontally */
+  user-select: none;
+  /* M3E: the avatar morphs to a rounded square while its menu is open. */
+  transition: border-radius var(--md-sys-motion-spring-fast-spatial-duration) var(--md-sys-motion-spring-fast-spatial),
+    scale var(--md-sys-motion-spring-fast-spatial-duration) var(--md-sys-motion-spring-fast-spatial);
 }
-
-.account-circle-button.authenticated {
-  background-color: transparent;
+:global([data-theme='dark']) .account-avatar {
+  background: oklch(40% 0.09 var(--_hue));
+  color: oklch(93% 0.05 var(--_hue));
 }
+.account-button:active .account-avatar { scale: 0.92; }
+.is-open .account-avatar { border-radius: var(--md-sys-shape-corner-medium); }
+.account-avatar--large { inline-size: 48px; block-size: 48px; font-size: 20px; flex: none; }
 
-/* Interactive states using state layer pattern from Material Design 3 */
-.state-layer {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  transition: background-color 200ms cubic-bezier(0.2, 0, 0, 1);
-}
-
-.account-circle-button.desktop .state-layer.hovered {
-  background-color: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 8%, transparent);
-}
-
-.account-circle-button.mobile .state-layer.hovered {
-  background-color: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
-}
-
-.search-wrapper:not(.search-active) .desktop-avatar {
-  top: 55%!important;
-  bottom: auto!important;
-}
-
-.state-layer.focused {
-  background-color: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 12%, transparent);
-}
-
-.state-layer.pressed {
-  background-color: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 16%, transparent);
-  animation: ripple 300ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Auth Menu for unauthenticated users */
-.auth-menu {
-  position: absolute;
-  background-color: var(--md-sys-color-surface);
-  border-radius: 16px;
-  width: 280px;
-  box-shadow: var(--md-sys-elevation-3);
-  overflow: hidden;
-  z-index: 1000;
-  transform-origin: top right;
-}
-
-.auth-menu.mobile {
+/* ── Menu surface ─────────────────────────────────────────────────────── */
+.account-menu {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  margin: 0;
-  border-radius: 28px 28px 0 0;
-  width: 100%;
-  max-width: 100%;
-  transform-origin: bottom center;
-  padding-bottom: env(safe-area-inset-bottom, 16px);
-  animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@keyframes slideUp {
-  from {
-    transform: translateY(100%);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-
-/* Transition animations */
-.fade-enter-active,
-.fade-leave-active {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-  transform: scale(0.95);
-}
-
-.auth-menu-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px;
-  background-color: var(--md-sys-color-surface-container-highest);
-  border-bottom: 1px solid var(--md-sys-color-outline);
-}
-
-.auth-menu-title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 500;
+  z-index: 1200;
+  inline-size: min(300px, calc(100vw - 16px));
+  padding: 8px;
+  border-radius: var(--md-sys-shape-corner-large);
+  background: var(--md-sys-color-surface-container);
   color: var(--md-sys-color-on-surface);
+  box-shadow: var(--md-sys-elevation-2);
+  font-family: var(--md-ref-typeface-plain);
 }
+.from-top-left { transform-origin: top left; }
+.from-top-right { transform-origin: top right; }
+.from-bottom-left { transform-origin: bottom left; }
+.from-bottom-right { transform-origin: bottom right; }
 
-.close-button {
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  border: none;
-  background: none;
-  border-radius: 50%;
-  color: var(--md-sys-color-on-surface-variant);
+.account-menu__header { display: flex; align-items: center; gap: 12px; padding: 8px 8px 12px; }
+.account-menu__who { display: flex; flex-direction: column; min-inline-size: 0; }
+.account-menu__name { margin: 0; font-weight: 600; color: var(--md-sys-color-on-surface); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.account-menu__email { margin: 0; color: var(--md-sys-color-on-surface-variant); overflow: hidden; text-overflow: ellipsis; }
+.account-menu__divider { block-size: 1px; margin: 0 8px 4px; background: var(--md-sys-color-outline-variant); }
+
+.account-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  inline-size: 100%;
+  block-size: 44px;
+  padding-inline: 12px;
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-medium);
+  background: transparent;
+  color: var(--md-sys-color-on-surface);
+  font: inherit;
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: 500;
+  text-align: start;
+  text-decoration: none;
   cursor: pointer;
+  transition: border-radius var(--md-sys-motion-spring-fast-spatial-duration) var(--md-sys-motion-spring-fast-spatial);
+}
+.account-menu__item svg { font-size: 22px; color: var(--md-sys-color-on-surface-variant); flex: none; }
+.account-menu__item:focus-visible { outline: 2px solid var(--md-sys-color-secondary); outline-offset: -2px; }
+.account-menu__item:active { border-radius: var(--md-sys-shape-corner-large); }
+.account-menu__item.is-danger, .account-menu__item.is-danger svg { color: var(--md-sys-color-error); }
+
+.account-menu__intro { display: flex; flex-direction: column; gap: 4px; padding: 8px 8px 16px; }
+.account-menu__intro .account-menu__name { white-space: normal; }
+.account-menu__badge {
+  display: grid;
+  place-items: center;
+  inline-size: 48px;
+  block-size: 48px;
+  margin-block-end: 8px;
+  border-radius: var(--md-sys-shape-corner-large);
+  background: var(--md-sys-color-tertiary-container);
+  color: var(--md-sys-color-on-tertiary-container);
+  font-size: 26px;
+}
+.account-menu__actions { display: grid; gap: 8px; }
+.account-menu__cta {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.2s;
-}
-
-.close-button:hover {
-  background-color: var(--md-sys-color-surface-container-high);
-}
-
-.close-button:active {
-  background-color: var(--md-sys-color-surface-container-highest);
-  transform: scale(0.96);
-}
-
-.auth-menu-content {
-  padding: 16px;
-}
-
-.auth-menu-text {
-  margin-bottom: 16px;
-  font-size: 14px;
-  color: var(--md-sys-color-on-surface-variant);
-}
-
-.auth-links {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.auth-link {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-  border-radius: 12px;
-  color: #FFFFFF;
+  gap: 8px;
+  block-size: 48px;
+  border-radius: var(--md-sys-shape-corner-full);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: 600;
   text-decoration: none;
-  transition: all 0.2s;
-  font-weight: 500;
-  background-color: var(--md-sys-color-surface-container);
+  transition: border-radius var(--md-sys-motion-spring-fast-spatial-duration) var(--md-sys-motion-spring-fast-spatial);
 }
+.account-menu__cta svg { font-size: 20px; }
+.account-menu__cta:active { border-radius: var(--md-sys-shape-corner-medium); }
+.account-menu__cta:focus-visible { outline: 2px solid var(--md-sys-color-secondary); outline-offset: 2px; }
+.account-menu__cta.is-filled { background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); }
+.account-menu__cta.is-tonal { background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
 
-.auth-link:hover {
-  background-color: var(--md-sys-color-surface-container-high);
-  transform: translateY(-1px);
+/* ── M3E motion: surface springs out of the avatar's corner, items follow ── */
+.account-menu-enter-active {
+  transition: scale var(--md-sys-motion-spring-fast-spatial-duration) var(--md-sys-motion-spring-fast-spatial),
+    opacity var(--md-sys-motion-spring-fast-effects-duration) var(--md-sys-motion-spring-fast-effects);
 }
-
-.auth-link:active {
-  transform: translateY(1px);
+.account-menu-leave-active {
+  transition: scale var(--md-sys-motion-spring-default-effects-duration) var(--md-sys-motion-spring-default-effects),
+    opacity var(--md-sys-motion-spring-fast-effects-duration) var(--md-sys-motion-spring-fast-effects);
 }
-
-.auth-link-primary {
-  background-color: var(--md-sys-color-primary);
-  color: #FFFFFF;
+.account-menu-enter-from { scale: 0.8; opacity: 0; }
+.account-menu-leave-to { scale: 0.92; opacity: 0; }
+/* Items mount with the menu, so this plays once per open (independent of the surface transition). */
+:is(.account-menu__item, .account-menu__cta, .account-menu__header, .account-menu__intro) {
+  animation: account-item-in var(--md-sys-motion-spring-default-spatial-duration) var(--md-sys-motion-spring-default-spatial) both;
+  animation-delay: calc(40ms + var(--_i, 0) * 25ms);
 }
-
-.auth-link-primary:hover {
-  background-color: #19093bec;
-  box-shadow: var(--md-sys-elevation-1);
-}
-
-.auth-link-secondary {
-  background-color: var(--md-sys-color-secondary-container);
-  color: #4A4458;
-}
-
-.auth-link-secondary:hover {
-  background-color: #8474a8ec;
-  color: #FFFFFF;
-  box-shadow: var(--md-sys-elevation-1);
-}
-
-.auth-icon {
-  font-size: 20px;
-}
-
-/* Ripple animation for pressed state */
-@keyframes ripple {
-  from {
-    transform: scale(0);
-    opacity: 0.5;
-  }
-  to {
-    transform: scale(2.5);
-    opacity: 0;
-  }
-}
-
-/* Screen reader only text */
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border-width: 0;
-}
-
-/* Improve touch interaction */
-@media (hover: none) and (pointer: coarse) {
-  .account-circle-button:active .account-icon {
-    transform: scale(0.95);
-  }
-  
-  .account-circle-button:active .state-layer {
-    background-color: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 16%, transparent);
-  }
-}
-
-@keyframes menuAppear {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
+@keyframes account-item-in { from { opacity: 0; translate: 0 -6px; } }
 </style>

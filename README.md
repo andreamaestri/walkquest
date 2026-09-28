@@ -89,8 +89,13 @@ npm audit         # Check JavaScript dependencies
   `text-on-surface`, `rounded-m3-xl` and `ease-spring-fast` follow the theme,
   and `type-*`, `state-layer` and `shape-morph` utilities provide M3 roles.
 - **Typeface:** Google Sans Flex (self-hosted, weight + roundness axes).
-- **Motion:** CSS uses the M3 Expressive spring tokens; JavaScript animations
-  use the matching springs in `js/design/motion.js`.
+- **Motion:** CSS uses the M3 Expressive spring tokens, played back as true
+  springs with `linear()` easings (`node scripts/generate-m3-springs.mjs`).
+  JavaScript animations use [motion-v](https://motion.unovue.com) with the
+  matching springs in `js/design/motion.js`: shared-axis list ⇄ detail
+  transitions, the velocity-aware bottom sheet, and Mapbox camera moves on the
+  M3 emphasized curve (`cameraMotion`). The desktop map sits under the pane and
+  is revealed with a clip, so toggling the pane never resizes the canvas.
 - **Components:** `js/components/m3/` (buttons, icon buttons, chips, menu,
   FAB menu, bottom sheet and the morphing-shape loading indicator).
 - **Icons:** Iconify icons are bundled offline (`scripts/build-icon-subset.mjs`),

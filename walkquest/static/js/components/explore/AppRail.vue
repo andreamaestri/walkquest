@@ -111,5 +111,4 @@ const items = [
 }
 .rail__item.is-active .rail__label { font-weight: 700; color: var(--md-sys-color-secondary); }
 .rail__footer { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: 12px; }
-.rail__account :deep(.account-circle-container) { position: static; }
 </style>
