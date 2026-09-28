@@ -13,8 +13,15 @@
       </p>
       <M3Button v-if="search.isFiltered" variant="text" size="xs" @click="search.clearFilters()">Clear</M3Button>
       <M3Menu :items="sortItems" :model-value="currentSort" @update:model-value="search.sort = $event">
-        <template #trigger="{ toggle }">
-          <M3Button variant="text" size="xs" icon="material-symbols:sort-rounded" @click="toggle">
+        <template #trigger="{ open, toggle }">
+          <M3Button
+            variant="text"
+            size="xs"
+            icon="material-symbols:sort-rounded"
+            aria-haspopup="menu"
+            :aria-expanded="String(open)"
+            @click="toggle"
+          >
             {{ sortLabel }}
           </M3Button>
         </template>
