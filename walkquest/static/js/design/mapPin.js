@@ -1,28 +1,36 @@
 /**
- * Walk map pins: a round, bubbly drop in a bright colour per difficulty, with a
- * white outline and a white dot (a heart for saved walks). Drawn once onto a
- * canvas per colour and handed to Mapbox as images (GPU symbols, no DOM markers).
+ * Walk map pins, M3 Expressive style: the "asymmetric corner" drop — a rounded
+ * square with three fully round corners and one small, soft corner, turned 45°
+ * so the soft corner points at the walk. Filled in a bright colour per
+ * difficulty with a tonal centre dot (a heart for saved walks), lifted off the
+ * map by a soft elevation shadow instead of an outline.
+ * Drawn once per colour onto a canvas and handed to Mapbox as GPU symbols.
  */
 import { PIN } from '../utils/mapLayers';
 
-/** Easy → Strenuous: green, teal, amber, coral, magenta. Bright on light and dark maps. */
-export const PIN_COLORS = ['#22b573', '#12a4c4', '#f5a623', '#f2643d', '#d8347f'];
-const OUTLINE = '#ffffff';
+/** Easy → Strenuous: green, teal, amber, coral, magenta. */
+export const PIN_COLORS = ['#1fae6c', '#0f9fbf', '#f29d12', '#ef5b36', '#d42f7c'];
 const SCALE = 4; // drawn at 4x so the enlarged hover/selected pins stay crisp
+const TIP_RADIUS = 0.22; // soft tip corner, as a fraction of the head radius
 
-/** Round head with a short, soft point. */
-function bubblePath(ctx) {
-  const { cx, cy, r, tipY } = PIN;
+/** Mix a hex colour towards white (M3 tonal "container" tint). */
+function tint(hex, amount) {
+  const n = parseInt(hex.slice(1), 16);
+  const mix = (c) => Math.round(c + (255 - c) * amount);
+  return `rgb(${mix(n >> 16)}, ${mix((n >> 8) & 255)}, ${mix(n & 255)})`;
+}
+
+function dropPath(ctx) {
+  const { cx, cy, r } = PIN;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(Math.PI / 4); // bottom-right corner → straight down
   ctx.beginPath();
-  ctx.moveTo(cx, tipY);
-  ctx.bezierCurveTo(cx - r * 0.2, tipY - r * 0.2, cx - r, cy + r * 0.95, cx - r, cy);
-  ctx.arc(cx, cy, r, Math.PI, 0);
-  ctx.bezierCurveTo(cx + r, cy + r * 0.95, cx + r * 0.2, tipY - r * 0.2, cx, tipY);
-  ctx.closePath();
+  ctx.roundRect(-r, -r, r * 2, r * 2, [r, r, r * TIP_RADIUS, r]);
+  ctx.restore();
 }
 
 function heartPath(ctx, x, y, size) {
-  // Two lobes and a soft point, in a size × size box centred on (x, y).
   const s = size / 2;
   ctx.beginPath();
   ctx.moveTo(x, y + s * 0.85);
@@ -36,37 +44,35 @@ function heartPath(ctx, x, y, size) {
  * @returns {ImageData} PIN.width × PIN.height at SCALE (register with pixelRatio: SCALE)
  */
 export function drawPin({ fill, favorite = false }) {
-  const { width, height, cx, cy, r, tipY } = PIN;
+  const { width, height, cx, cy, r } = PIN;
   const canvas = document.createElement('canvas');
   canvas.width = width * SCALE;
   canvas.height = height * SCALE;
   const ctx = canvas.getContext('2d');
   ctx.scale(SCALE, SCALE);
 
-  // Faint ground shadow so pins lift off busy map areas.
+  // Soft elevation (M3 level 2-ish): key + ambient shadow. Shadow units ignore
+  // the canvas transform, so scale them by hand.
   ctx.save();
-  ctx.filter = 'blur(1px)';
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
-  ctx.beginPath();
-  ctx.ellipse(cx, tipY + 0.5, 4.5, 1.6, 0, 0, Math.PI * 2);
+  ctx.fillStyle = fill;
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+  ctx.shadowBlur = 3 * SCALE;
+  ctx.shadowOffsetY = 1.5 * SCALE;
+  dropPath(ctx);
+  ctx.fill();
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
+  ctx.shadowBlur = 1 * SCALE;
+  ctx.shadowOffsetY = 0.5 * SCALE;
   ctx.fill();
   ctx.restore();
 
-  // White outline (a wide stroke under the fill), then the colour.
-  bubblePath(ctx);
-  ctx.lineJoin = 'round';
-  ctx.lineWidth = 5;
-  ctx.strokeStyle = OUTLINE;
-  ctx.stroke();
-  ctx.fillStyle = fill;
-  ctx.fill();
-
-  ctx.fillStyle = OUTLINE;
+  // Tonal centre: a pale tint of the pin colour.
+  ctx.fillStyle = tint(fill, 0.88);
   if (favorite) {
-    heartPath(ctx, cx, cy + 0.3, r * 0.95);
+    heartPath(ctx, cx, cy + 0.4, r * 0.95);
   } else {
     ctx.beginPath();
-    ctx.arc(cx, cy, r * 0.36, 0, Math.PI * 2);
+    ctx.arc(cx, cy, r * 0.38, 0, Math.PI * 2);
   }
   ctx.fill();
 

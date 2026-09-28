@@ -86,12 +86,12 @@ export function routeEndpoints(feature) {
  * Walk pin geometry in logical px (see design/mapPin.js): a teardrop whose head
  * is centred at (cx, cy) with its tip at tipY, plus room for the ground shadow.
  */
-export const PIN = { width: 28, height: 34, cx: 14, cy: 14, r: 11.5, tipY: 30 };
+export const PIN = { width: 32, height: 37, cx: 16, cy: 15, r: 13, tipY: 32 };
 /**
  * icon-size per zoom for a matching walk; filtered-out walks shrink to 72%.
- * Small when zoomed out (hundreds of walks), full size once you're exploring.
+ * Smaller when zoomed out (hundreds of walks), full size once you're exploring.
  */
-export const PIN_SIZE_STOPS = [[7, 0.4], [9, 0.52], [11, 0.75], [13, 0.92], [16, 1.08]];
+export const PIN_SIZE_STOPS = [[7, 0.6], [9, 0.72], [11, 0.88], [13, 1], [16, 1.12]];
 export const PIN_HOVER_SCALE = 1.2;
 export const PIN_SELECTED_SIZE = 1.3;
 
