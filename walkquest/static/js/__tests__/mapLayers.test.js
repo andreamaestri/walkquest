@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildIdIndex, geojsonBounds, hitBox, hitRadius, nearestHit, routeEndpoints, walkLayers, walksToGeoJSON } from '../utils/mapLayers';
+import { DIFFICULTY_SHAPES, walkPinImageExpression, walkPinImageId } from '../utils/mapMarkers';
 
 const walks = [
   { id: 'x', walk_name: 'X', latitude: 50.1, longitude: -5.1, difficulty: { level: 2 } },
@@ -48,6 +49,18 @@ describe('walkLayers', () => {
     const points = layers.find((l) => l.id === 'walks-points');
     expect(JSON.stringify(points.paint)).toContain('feature-state');
     expect(layers.every((l) => l.source === 'walks')).toBe(true);
+  });
+
+  it('draws every walk as an M3E shape pin keyed by difficulty and favourite', () => {
+    const layers = walkLayers({ primary: '#000', tertiary: '#111', surface: '#fff', onSurface: '#222' });
+    const points = layers.find((l) => l.id === 'walks-points');
+    expect(points.type).toBe('symbol');
+    expect(points.layout['icon-image']).toEqual(walkPinImageExpression());
+    for (const level of [1, 2, 3, 4, 5]) {
+      expect(DIFFICULTY_SHAPES[level]).toBeTruthy();
+      expect(walkPinImageId(level, true)).toBe(`walk-pin-${level}-fav`);
+    }
+    expect(layers.map((l) => l.id)).toEqual(['walks-halo', 'walks-points', 'walks-hover', 'walks-labels', 'walks-selected']);
   });
 });
 

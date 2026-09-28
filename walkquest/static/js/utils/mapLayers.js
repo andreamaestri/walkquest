@@ -3,6 +3,7 @@
  * single GeoJSON source (no clustering), drawn on the GPU; hover/selection
  * are feature-state changes, so interaction cost doesn't grow with walk count.
  */
+import { walkPinImageExpression } from './mapMarkers';
 
 export const CORNWALL_BOUNDS = [
   [-6.6, 49.6],
@@ -87,41 +88,49 @@ export function walkLayers(colors) {
   const selected = ['boolean', ['feature-state', 'selected'], false];
   const hover = ['boolean', ['feature-state', 'hover'], false];
   const matched = ['==', ['get', 'match'], 1];
+  const pin = {
+    'icon-image': walkPinImageExpression(),
+    'icon-allow-overlap': true,
+    'icon-ignore-placement': true,
+  };
   return [
     {
+      // M3 state layer: a tonal disc that blooms under hovered/selected pins.
       id: 'walks-halo',
       type: 'circle',
       source: 'walks',
       paint: {
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 10, 12, 16, 16, 22],
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 12, 12, 18, 16, 24],
         'circle-color': colors.primary,
-        'circle-opacity': ['case', selected, 0.28, hover, 0.2, 0],
+        'circle-opacity': ['case', selected, 0.24, hover, 0.16, 0],
         'circle-opacity-transition': { duration: 150 },
         'circle-pitch-alignment': 'map',
       },
     },
     {
       id: 'walks-points',
-      type: 'circle',
+      type: 'symbol',
       source: 'walks',
-      paint: {
-        // Zoom must be the top-level input, so scale each stop by the state factor.
-        'circle-radius': [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          ...[[7, 4.5], [10, 6.5], [13, 8.5], [16, 11]].flatMap(([zoom, radius]) => [
-            zoom,
-            ['*', radius, ['case', selected, 1.35, hover, 1.25, matched, 1, 0.7]],
-          ]),
-        ],
-        'circle-color': ['case', ['==', ['get', 'fav'], 1], colors.tertiary, colors.primary],
-        'circle-opacity': ['case', matched, 1, 0.35],
-        'circle-stroke-width': ['case', selected, 3, 2],
-        'circle-stroke-color': colors.surface,
-        'circle-stroke-opacity': ['case', matched, 1, 0.35],
-        'circle-pitch-alignment': 'map',
+      layout: {
+        ...pin,
+        'icon-size': pinSize(),
+        // Matches and favourites draw above filtered-out walks.
+        'symbol-sort-key': ['+', ['get', 'match'], ['get', 'fav']],
       },
+      paint: {
+        // The selected walk gets its own pin (walks-selected); hide the base one.
+        'icon-opacity': ['case', selected, 0, matched, 1, 0.4],
+        'icon-opacity-transition': { duration: 150 },
+      },
+    },
+    {
+      // Symbol layout can't read feature-state, so the enlarged hover pin is a
+      // filtered copy; WalkMap sets the filter to the hovered walk ids.
+      id: 'walks-hover',
+      type: 'symbol',
+      source: 'walks',
+      filter: ['in', ['get', 'walkId'], ['literal', []]],
+      layout: { ...pin, 'icon-size': pinSize(1.35) },
     },
     {
       id: 'walks-labels',
@@ -132,8 +141,8 @@ export function walkLayers(colors) {
       layout: {
         'text-field': ['get', 'name'],
         'text-font': ['DIN Pro Medium', 'Arial Unicode MS Regular'],
-        'text-size': 12,
-        'text-offset': [0, 1.1],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 11.5, 11, 15, 13],
+        'text-offset': [0, 1.2],
         'text-anchor': 'top',
         'text-max-width': 10,
         'text-optional': true,
@@ -141,10 +150,32 @@ export function walkLayers(colors) {
       paint: {
         'text-color': colors.onSurface,
         'text-halo-color': colors.surface,
-        'text-halo-width': 1.5,
+        'text-halo-width': 1.75,
+        'text-halo-blur': 0.5,
+        'text-opacity': ['case', selected, 0, 1],
+      },
+    },
+    {
+      // Teardrop pin standing on the selected walk; WalkMap springs its size in.
+      id: 'walks-selected',
+      type: 'symbol',
+      source: 'walks',
+      filter: ['==', ['get', 'walkId'], ''],
+      layout: {
+        'icon-image': 'walk-selected',
+        'icon-anchor': 'bottom',
+        'icon-size': 1,
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
       },
     },
   ];
+}
+
+/** Pin scale by zoom; the hover layer multiplies it. */
+const PIN_SIZES = [[7, 0.6], [10, 0.78], [13, 1], [16, 1.2]];
+function pinSize(factor = 1) {
+  return ['interpolate', ['linear'], ['zoom'], ...PIN_SIZES.flatMap(([zoom, size]) => [zoom, +(size * factor).toFixed(3)])];
 }
 
 export function routeLayers(colors) {
@@ -165,26 +196,27 @@ export function routeLayers(colors) {
     },
     {
       id: 'route-ends',
-      type: 'circle',
+      type: 'symbol',
       source: 'route-ends',
+      layout: {
+        // Badges from utils/mapMarkers: tertiary "play" start, primary flag finish.
+        'icon-image': ['match', ['get', 'kind'], 'start', 'route-start', 'route-end'],
+        'icon-size': ['interpolate', ['linear'], ['zoom'], 10, 0.75, 15, 1],
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
+      },
       paint: {
-        'circle-radius': 6,
-        'circle-color': ['match', ['get', 'kind'], 'start', colors.tertiary, colors.primary],
-        'circle-stroke-width': 2,
-        'circle-stroke-color': colors.surface,
-        'circle-emissive-strength': 1,
+        'icon-emissive-strength': 1,
         // Faded in once the route has drawn itself on (see WalkMap drawRoute).
-        'circle-opacity': 0,
-        'circle-stroke-opacity': 0,
-        'circle-opacity-transition': { duration: 200, delay: 0 },
-        'circle-stroke-opacity-transition': { duration: 200, delay: 0 },
+        'icon-opacity': 0,
+        'icon-opacity-transition': { duration: 200, delay: 0 },
       },
     },
   ];
 }
 
 /**
- * Tap targets: walk pins are drawn 5–11px wide, far smaller than a fingertip,
+ * Tap targets: walk pins are drawn 13–25px wide, far smaller than a fingertip,
  * so taps are resolved against a box around the touch point (M3 recommends
  * 48dp targets, i.e. a ~24px radius) and the closest pin wins.
  */
