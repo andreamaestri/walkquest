@@ -86,9 +86,12 @@ export function routeEndpoints(feature) {
  * Walk pin geometry in logical px (see design/mapPin.js): a teardrop whose head
  * is centred at (cx, cy) with its tip at tipY, plus room for the ground shadow.
  */
-export const PIN = { width: 30, height: 39, cx: 15, cy: 15, r: 12.5, tipY: 35 };
-/** icon-size per zoom for a matching walk; filtered-out walks shrink to 72%. */
-export const PIN_SIZE_STOPS = [[7, 0.62], [10, 0.78], [13, 0.95], [16, 1.1]];
+export const PIN = { width: 28, height: 34, cx: 14, cy: 14, r: 11.5, tipY: 30 };
+/**
+ * icon-size per zoom for a matching walk; filtered-out walks shrink to 72%.
+ * Small when zoomed out (hundreds of walks), full size once you're exploring.
+ */
+export const PIN_SIZE_STOPS = [[7, 0.4], [9, 0.52], [11, 0.75], [13, 0.92], [16, 1.08]];
 export const PIN_HOVER_SCALE = 1.2;
 export const PIN_SELECTED_SIZE = 1.3;
 
@@ -110,7 +113,13 @@ export function pinHeadOffset(zoom, scale = 1) {
 }
 
 const pinLayout = {
-  'icon-image': ['case', ['==', ['get', 'fav'], 1], 'walk-pin-fav', 'walk-pin'],
+  // Colour by difficulty (1–5); saved walks swap the dot for a heart.
+  'icon-image': [
+    'concat',
+    'walk-pin-',
+    ['to-string', ['max', 1, ['min', 5, ['round', ['to-number', ['get', 'level'], 1]]]]],
+    ['case', ['==', ['get', 'fav'], 1], '-fav', ''],
+  ],
   'icon-anchor': 'bottom',
   // Shift down past the shadow so the tip sits exactly on the walk's location.
   'icon-offset': [0, PIN.height - PIN.tipY],

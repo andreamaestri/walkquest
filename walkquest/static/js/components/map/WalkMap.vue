@@ -180,7 +180,7 @@ function addLayers() {
   m.addSource('walks', { type: 'geojson', data: walkData() });
   m.addSource('route', { type: 'geojson', data: EMPTY, lineMetrics: true });
   m.addSource('route-ends', { type: 'geojson', data: EMPTY });
-  addPinImages(m, colors);
+  addPinImages(m);
   for (const layer of routeLayers(colors)) m.addLayer(layer);
   for (const layer of walkLayers(colors)) m.addLayer(layer);
   m.addLayer(selectedPinLayer());
@@ -192,7 +192,6 @@ function addLayers() {
 function applyThemeToStyle(colors = tokens()) {
   const m = map.value;
   if (!m?.getLayer('walks-points')) return;
-  addPinImages(m, colors);
   m.setPaintProperty('walks-labels', 'text-color', colors.onSurface);
   m.setPaintProperty('walks-labels', 'text-halo-color', colors.surface);
   m.setPaintProperty('route-casing', 'line-color', colors.surface);

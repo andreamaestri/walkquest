@@ -1,46 +1,41 @@
 /**
- * Walk map pins: a plump teardrop with a white "face" disc holding a tiny
- * glyph, a soft ground shadow, and a little gloss. Drawn once per theme onto a
- * canvas and handed to Mapbox as images (GPU symbols, no DOM markers).
+ * Walk map pins: a round, bubbly drop in a bright colour per difficulty, with a
+ * white outline and a white dot (a heart for saved walks). Drawn once onto a
+ * canvas per colour and handed to Mapbox as images (GPU symbols, no DOM markers).
  */
-import collections from '../icons/subset.json';
 import { PIN } from '../utils/mapLayers';
 
-/** Glyphs shown inside the pin (also listed here so the icon subset bundles them). */
-export const PIN_GLYPHS = {
-  walk: 'material-symbols:hiking-rounded',
-  favorite: 'material-symbols:favorite-rounded',
-};
-
+/** Easy → Strenuous: green, teal, amber, coral, magenta. Bright on light and dark maps. */
+export const PIN_COLORS = ['#22b573', '#12a4c4', '#f5a623', '#f2643d', '#d8347f'];
+const OUTLINE = '#ffffff';
 const SCALE = 4; // drawn at 4x so the enlarged hover/selected pins stay crisp
 
-function glyphPaths(name) {
-  const [prefix, icon] = name.split(':');
-  const collection = collections.find((c) => c.prefix === prefix);
-  const data = collection?.icons[icon] || collection?.icons[collection?.aliases?.[icon]?.parent];
-  if (!data) return { paths: [], size: 24 };
-  return {
-    paths: [...data.body.matchAll(/\sd="([^"]+)"/g)].map((match) => new Path2D(match[1])),
-    size: data.width || collection.width || 24,
-  };
-}
-
-function dropPath(ctx) {
+/** Round head with a short, soft point. */
+function bubblePath(ctx) {
   const { cx, cy, r, tipY } = PIN;
   ctx.beginPath();
   ctx.moveTo(cx, tipY);
-  // Round shoulders and a short, soft tip: chubbier (cuter) than a classic pin.
-  ctx.bezierCurveTo(cx - r * 0.3, tipY - r * 0.35, cx - r, cy + r * 0.95, cx - r, cy);
+  ctx.bezierCurveTo(cx - r * 0.2, tipY - r * 0.2, cx - r, cy + r * 0.95, cx - r, cy);
   ctx.arc(cx, cy, r, Math.PI, 0);
-  ctx.bezierCurveTo(cx + r, cy + r * 0.95, cx + r * 0.3, tipY - r * 0.35, cx, tipY);
+  ctx.bezierCurveTo(cx + r, cy + r * 0.95, cx + r * 0.2, tipY - r * 0.2, cx, tipY);
+  ctx.closePath();
+}
+
+function heartPath(ctx, x, y, size) {
+  // Two lobes and a soft point, in a size × size box centred on (x, y).
+  const s = size / 2;
+  ctx.beginPath();
+  ctx.moveTo(x, y + s * 0.85);
+  ctx.bezierCurveTo(x - s * 1.25, y + s * 0.05, x - s * 0.75, y - s * 1.05, x, y - s * 0.4);
+  ctx.bezierCurveTo(x + s * 0.75, y - s * 1.05, x + s * 1.25, y + s * 0.05, x, y + s * 0.85);
   ctx.closePath();
 }
 
 /**
- * @param {{ fill: string, surface: string, glyph: string }} options
+ * @param {{ fill: string, favorite?: boolean }} options
  * @returns {ImageData} PIN.width × PIN.height at SCALE (register with pixelRatio: SCALE)
  */
-export function drawPin({ fill, surface, glyph }) {
+export function drawPin({ fill, favorite = false }) {
   const { width, height, cx, cy, r, tipY } = PIN;
   const canvas = document.createElement('canvas');
   canvas.width = width * SCALE;
@@ -48,68 +43,42 @@ export function drawPin({ fill, surface, glyph }) {
   const ctx = canvas.getContext('2d');
   ctx.scale(SCALE, SCALE);
 
-  // Soft ground shadow under the tip.
+  // Faint ground shadow so pins lift off busy map areas.
   ctx.save();
-  ctx.filter = 'blur(1.2px)';
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
+  ctx.filter = 'blur(1px)';
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
   ctx.beginPath();
-  ctx.ellipse(cx, tipY + 1, 5.5, 2, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx, tipY + 0.5, 4.5, 1.6, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
-  // Outline: a wide surface-coloured stroke under the fill reads as an outer ring.
-  dropPath(ctx);
+  // White outline (a wide stroke under the fill), then the colour.
+  bubblePath(ctx);
   ctx.lineJoin = 'round';
   ctx.lineWidth = 5;
-  ctx.strokeStyle = surface;
+  ctx.strokeStyle = OUTLINE;
   ctx.stroke();
   ctx.fillStyle = fill;
   ctx.fill();
 
-  // Gentle depth: the lower half darkens slightly.
-  ctx.save();
-  dropPath(ctx);
-  ctx.clip();
-  const shade = ctx.createLinearGradient(0, cy - r, 0, tipY);
-  shade.addColorStop(0, 'rgba(0, 0, 0, 0)');
-  shade.addColorStop(1, 'rgba(0, 0, 0, 0.18)');
-  ctx.fillStyle = shade;
-  ctx.fillRect(0, 0, width, height);
-  ctx.restore();
-
-  // Gloss highlight on the upper-left of the head.
-  ctx.save();
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-  ctx.beginPath();
-  ctx.ellipse(cx - r * 0.5, cy - r * 0.62, r * 0.2, r * 0.12, -0.6, 0, Math.PI * 2);
+  ctx.fillStyle = OUTLINE;
+  if (favorite) {
+    heartPath(ctx, cx, cy + 0.3, r * 0.95);
+  } else {
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * 0.36, 0, Math.PI * 2);
+  }
   ctx.fill();
-  ctx.restore();
-
-  // Face: surface disc with the glyph in the pin colour.
-  ctx.fillStyle = surface;
-  ctx.beginPath();
-  ctx.arc(cx, cy, r * 0.62, 0, Math.PI * 2);
-  ctx.fill();
-  const { paths, size } = glyphPaths(glyph);
-  const glyphSize = r * 0.95;
-  ctx.save();
-  ctx.translate(cx - glyphSize / 2, cy - glyphSize / 2);
-  ctx.scale(glyphSize / size, glyphSize / size);
-  ctx.fillStyle = fill;
-  for (const path of paths) ctx.fill(path);
-  ctx.restore();
 
   return ctx.getImageData(0, 0, canvas.width, canvas.height);
 }
 
-/** Registers (or refreshes, on theme change) the pin images on a map. */
-export function addPinImages(map, colors) {
-  const images = {
-    'walk-pin': drawPin({ fill: colors.primary, surface: colors.surface, glyph: PIN_GLYPHS.walk }),
-    'walk-pin-fav': drawPin({ fill: colors.tertiary, surface: colors.surface, glyph: PIN_GLYPHS.favorite }),
-  };
-  for (const [id, image] of Object.entries(images)) {
-    if (map.hasImage(id)) map.updateImage(id, image);
-    else map.addImage(id, image, { pixelRatio: SCALE });
-  }
+/** Registers the pin images on a map: `walk-pin-<level>` and `walk-pin-<level>-fav`. */
+export function addPinImages(map) {
+  PIN_COLORS.forEach((fill, i) => {
+    for (const favorite of [false, true]) {
+      const id = `walk-pin-${i + 1}${favorite ? '-fav' : ''}`;
+      if (!map.hasImage(id)) map.addImage(id, drawPin({ fill, favorite }), { pixelRatio: SCALE });
+    }
+  });
 }
