@@ -9,6 +9,7 @@ share the hit. Run ``refresh_bus_stops`` first. Needs TRANSPORTAPI_APP_ID and
 TRANSPORTAPI_APP_KEY; does nothing without them.
 """
 
+import os
 from datetime import UTC
 from datetime import datetime
 
@@ -35,8 +36,8 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, limit=DEFAULT_LIMIT, **options):
-        app_id = getattr(settings, "TRANSPORTAPI_APP_ID", "")
-        app_key = getattr(settings, "TRANSPORTAPI_APP_KEY", "")
+        app_id = _credential("TRANSPORTAPI_APP_ID")
+        app_key = _credential("TRANSPORTAPI_APP_KEY")
         if not (app_id and app_key):
             self.stdout.write("TRANSPORTAPI_APP_ID/APP_KEY not set; skipping")
             return
@@ -108,3 +109,8 @@ def _stops_to_check(walks, *, unchecked_only=False):
     if unchecked_only:
         return [atco for atco, checked in stops.items() if not checked]
     return sorted(stops, key=lambda atco: (stops[atco], atco))
+
+
+def _credential(name):
+    """A Django setting if defined (tests), else the environment (walkquest.env)."""
+    return getattr(settings, name, None) or os.environ.get(name, "")

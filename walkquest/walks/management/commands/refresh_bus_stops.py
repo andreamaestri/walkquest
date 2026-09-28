@@ -22,7 +22,8 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--from-csv", help="Use a saved NaPTAN CSV instead of downloading",
+            "--from-csv",
+            help="Use a saved NaPTAN CSV instead of downloading",
         )
         parser.add_argument("--dry-run", action="store_true")
 
@@ -52,7 +53,10 @@ class Command(BaseCommand):
         for walk in walks:
             start, end = _route_ends(walk)
             walk.transport_info = transport.build_transport_info(
-                start, end, stops, walk.transport_info,
+                start,
+                end,
+                stops,
+                walk.transport_info,
             )
             walk.has_bus_access = transport.has_bus_access(walk.transport_info)
 
@@ -65,7 +69,9 @@ class Command(BaseCommand):
             self.stdout.write("Dry run: nothing saved")
             return
         Walk.objects.bulk_update(
-            walks, ["transport_info", "has_bus_access"], batch_size=100,
+            walks,
+            ["transport_info", "has_bus_access"],
+            batch_size=100,
         )
         self.stdout.write(self.style.SUCCESS("Saved"))
 
