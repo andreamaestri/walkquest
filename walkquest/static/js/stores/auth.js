@@ -28,13 +28,13 @@ export const useAuthStore = defineStore('auth', {
     idleTimeoutCleanup: null,
     needsEmailVerification: false
   }),
-  
+
   getters: {
     userInitials: (state) => {
       if (!state.userDataLoaded || !state.isAuthenticated || !state.user) {
         return '';
       }
-      
+
       if (state.user.username) {
         const initials = state.user.username
           .split(' ')
@@ -43,7 +43,7 @@ export const useAuthStore = defineStore('auth', {
           .slice(0, 2);
         return initials || '';
       }
-      
+
       if (state.user.email) {
         const emailLocal = state.user.email.split('@')[0];
         const initials = emailLocal
@@ -53,25 +53,25 @@ export const useAuthStore = defineStore('auth', {
           .slice(0, 2);
         return initials || '';
       }
-      
+
       return '';
     }
   },
-  
+
   actions: {
     // Path management
     setRedirectPath(path) {
       this.redirectPath = path;
       sessionStorage.setItem('auth_redirect', path);
     },
-    
+
     getRedirectPath() {
       const path = this.redirectPath || sessionStorage.getItem('auth_redirect') || '/';
       this.redirectPath = null;
       sessionStorage.removeItem('auth_redirect');
       return path;
     },
-    
+
     // Authentication actions
     async login(email, password, remember = false) {
       // First, ensure we have a CSRF token - fetch from our dedicated endpoint if needed
@@ -82,19 +82,19 @@ export const useAuthStore = defineStore('auth', {
           credentials: 'include',
           cache: 'no-store' // Prevent caching
         });
-        
+
         if (!csrfResponse.ok) {
           console.warn('Failed to get CSRF token from endpoint, will try login anyway');
         }
       } catch (e) {
         console.warn('Failed to refresh CSRF token, will try login anyway:', e);
       }
-      
+
       console.log('Login requested:', { email });
       this.isLoading = true;
       this.error = null;
       this.loginError = null;
-      
+
       try {
         // Prepare login data with both email and login fields to ensure compatibility
         const loginData = {
@@ -103,36 +103,36 @@ export const useAuthStore = defineStore('auth', {
           password,
           remember
         };
-        
+
         // Get the login function from allauth.js
         const { login } = await import('../lib/allauth');
-        
+
         // Call the login function
         const result = await login(loginData);
-        
+
         console.log('Login result:', result);
-        
+
         // Handle login result - many possible success scenarios
         if (result.ok || result.status === 200) {
           // Extract user data from the response
           const userData = result.data?.user || {};
-          
+
           // Update user state
           this.user = userData;
           this.isAuthenticated = true;
           this.userDataLoaded = true;
-          
+
           // Check for email verification requirements
           this.needsEmailVerification = result.email_verification_needed ||
             (result.data?.flows && result.data.flows.includes('verify_email'));
-            
+
           // Show a success message
           this.showSnackbar('Login successful');
-          
+
           // Set up user session
           this.refreshToken();
           this.setupIdleTimeout();
-          
+
           // Return success
           return {
             success: true,
@@ -140,7 +140,7 @@ export const useAuthStore = defineStore('auth', {
             needsEmailVerification: this.needsEmailVerification
           };
         }
-        
+
         // Check for custom login response patterns
         if (result.meta && result.meta.is_authenticated) {
           // Some authentication successful response without ok/status
@@ -152,31 +152,31 @@ export const useAuthStore = defineStore('auth', {
           this.showSnackbar('Login successful');
           return { success: true, user: userData };
         }
-        
+
         // Handle authentication flow requirements
         if (result.status === 401 && result.flowInfo) {
           const { needsAuthentication, availableFlows } = result.flowInfo;
-          
+
           if (needsAuthentication && availableFlows) {
             if (availableFlows.includes('verify_email')) {
               this.needsEmailVerification = true;
               this.loginError = 'Please verify your email before logging in.';
               throw new Error('Email verification required');
             }
-            
+
             if (availableFlows.includes('mfa_authenticate')) {
               this.loginError = 'Multi-factor authentication required';
               throw new Error('MFA authentication required');
             }
           }
         }
-        
+
         // Handle error response with custom message
         if (result.message) {
           this.loginError = result.message;
           throw new Error(result.message);
         }
-        
+
         // Handle login errors
         if (result.errors) {
           throw { errors: result.errors };
@@ -191,7 +191,7 @@ export const useAuthStore = defineStore('auth', {
         this.isLoading = false;
       }
     },
-    
+
     // Force a fresh authentication check - different from checkAuth to avoid race conditions
     async forceAuthCheck() {
       try {
@@ -208,24 +208,24 @@ export const useAuthStore = defineStore('auth', {
           },
           credentials: 'same-origin'
         });
-        
+
         if (!response.ok) {
           throw new Error('Failed to verify authentication status');
         }
-        
+
         const data = await response.json();
-        
+
         if (data.meta?.is_authenticated || data.is_authenticated) {
           // Get user data from the response
           const userData = data.data?.user || data.user;
-          
+
           if (userData) {
             this.user = userData;
             this.isAuthenticated = true;
             this.userDataLoaded = true;
             this.setupIdleTimeout();
           }
-          
+
           // Check for email verification needed
           if (data.email_verification_needed || (data.data?.flows && data.data.flows.includes('verify_email'))) {
             console.log('Email verification needed according to server');
@@ -233,16 +233,16 @@ export const useAuthStore = defineStore('auth', {
           } else {
             this.needsEmailVerification = false;
           }
-          
+
           return true;
         }
-        
+
         // Reset state for unauthenticated user
         this.user = null;
         this.isAuthenticated = false;
         this.userDataLoaded = false;
         this.needsEmailVerification = false;
-        
+
         return false;
       } catch (error) {
         console.error('Force auth check failed:', error);
@@ -253,11 +253,11 @@ export const useAuthStore = defineStore('auth', {
     async signup(email, password1, password2) {
       this.isLoading = true;
       this.signupError = null;
-      
+
       try {
         // Use the signUp utility function from allauth.js instead of direct fetch
         const data = await signUp({ email, password1, password2 });
-        
+
         if (!data || data.status >= 400) {
           if (data && data.errors) {
             throw { errors: data.errors };
@@ -265,7 +265,7 @@ export const useAuthStore = defineStore('auth', {
             throw new Error(data?.message || 'Signup failed. Please try again.');
           }
         }
-        
+
         // Check if the server requested a redirect
         if (data.redirect_to) {
           console.log('Redirecting to:', data.redirect_to);
@@ -273,7 +273,7 @@ export const useAuthStore = defineStore('auth', {
           window.location.href = data.redirect_to;
           return true;
         }
-        
+
         // Check authentication state after signup
         await this.checkAuth();
         this.showSnackbar('Account created successfully!');
@@ -286,28 +286,28 @@ export const useAuthStore = defineStore('auth', {
         this.isLoading = false;
       }
     },
-    
+
     // CSRF Token handling
     getCSRFToken() {
       let csrfToken = this.getCSRFCookie();
-      
+
       if (!csrfToken) {
         const metaToken = document.querySelector('meta[name="csrf-token"]');
         if (metaToken) {
           csrfToken = metaToken.getAttribute('content');
         }
       }
-      
+
       if (!csrfToken) {
         const inputToken = document.querySelector('input[name="csrfmiddlewaretoken"]');
         if (inputToken) {
           csrfToken = inputToken.value;
         }
       }
-      
+
       return csrfToken;
     },
-    
+
     getCSRFCookie() {
       function getCookie(name) {
         let cookieValue = null;
@@ -325,88 +325,88 @@ export const useAuthStore = defineStore('auth', {
       }
       return getCookie('csrftoken');
     },
-    
+
     // Authentication state management
     async checkAuth() {
       if (this.isLoading) return; // Prevent concurrent checks
-      
+
       this.isLoading = true;
-      
+
       try {
         const data = await getAuth();
-        
+
         if (!IS_PRODUCTION) {
           console.log('Auth check response:', data);
         }
-        
+
         // Handle direct authentication info from the custom auth endpoint
         if (data.meta?.is_authenticated || data.is_authenticated) {
           // Get user data from different possible locations
           const userData = data.data?.user || data.user;
-          
+
           if (userData) {
             const wasAuthenticated = this.isAuthenticated;
             this.user = userData;
             this.isAuthenticated = true;
             this.userDataLoaded = true;
-            
+
             if (!wasAuthenticated) {
               this.setupIdleTimeout();
             }
-            
+
             // Check for email verification needed
-            if (data.email_verification_needed || 
+            if (data.email_verification_needed ||
                 (data.data?.flows && data.data.flows.includes('verify_email'))) {
               this.needsEmailVerification = true;
             } else {
               this.needsEmailVerification = false;
             }
-            
+
             // Show welcome message once
             if (!this.hasShownWelcome) {
               const username = this.user.username || '';
-              const welcomeMessage = username 
-                ? `Welcome to WalkQuest, ${username}!` 
+              const welcomeMessage = username
+                ? `Welcome to WalkQuest, ${username}!`
                 : "Welcome to WalkQuest!";
               this.showSnackbar(welcomeMessage);
               this.hasShownWelcome = true;
             }
-            
+
             // Handle any messages from the server
             if (data.messages && Array.isArray(data.messages)) {
               for (const message of data.messages) {
                 this.showSnackbar(message.message);
               }
             }
-            
+
             return true;
           }
         }
-        
+
         // Handle 401 with authentication flows (standard headless API format)
         if (data.status === 401 && data.flowInfo) {
           const { needsAuthentication, isAuthenticated, availableFlows } = data.flowInfo;
-          
+
           if (needsAuthentication) {
             // Store available authentication flows
             this.availableFlows = availableFlows;
-            
+
             // Reset auth state
             this.user = null;
             this.isAuthenticated = false;
             this.userDataLoaded = false;
-            
+
             // Check if email verification is needed
             if (availableFlows.includes('verify_email')) {
               this.needsEmailVerification = true;
             } else {
               this.needsEmailVerification = false;
             }
-            
+
             return false;
           }
         }
-        
+
         // Reset state for unauthenticated user
         this.user = null;
         this.isAuthenticated = false;
@@ -424,18 +424,18 @@ export const useAuthStore = defineStore('auth', {
         this.isLoading = false;
       }
     },
-    
+
     // Session refresh mechanism
     async refreshToken() {
       try {
         if (!this.isAuthenticated) return false;
-        
+
         const csrfToken = this.getCSRFToken();
         const sessionToken = localStorage.getItem('allauth_session_token');
-        
+
         // Import the URLs from allauth.js
         const { URLs } = await import('../lib/allauth');
-        
+
         // Use the standard SESSION_REFRESH URL from the URLs object
         const response = await fetch(URLs.SESSION_REFRESH, {
           method: 'POST',
@@ -449,7 +449,7 @@ export const useAuthStore = defineStore('auth', {
           credentials: 'same-origin',
           body: JSON.stringify({})
         });
-        
+
         if (response.ok) {
           // Try to get new session token from response if available
           try {
@@ -462,49 +462,55 @@ export const useAuthStore = defineStore('auth', {
           }
           return true;
         }
-        
+
         // If we got a 410 Gone, clear the session token
         if (response.status === 410) {
           localStorage.removeItem('allauth_session_token');
         }
-        
+
         return this.checkAuth();
       } catch (error) {
         this.handleError(error, 'refreshToken');
         return this.checkAuth();
       }
     },
-    
+
     // Polling and event management
     startPolling() {
       if (this.pollingInterval) return;
-      
+
       let pollCount = 0;
       const maxPollInterval = 300000; // 5 minutes max
       let currentInterval = AUTH_POLL_INTERVAL;
-      
+
+      // Only signed-in sessions need watching (expiry, sign-out elsewhere); guests
+      // are re-checked when the tab becomes visible instead of every 30s.
+      const poll = () => {
+        if (this.isAuthenticated) this.checkAuth();
+      };
       this.pollingInterval = setInterval(() => {
         pollCount++;
-        this.checkAuth();
-        
+        poll();
+
         // After 5 polls, increase the interval to reduce server load
         if (pollCount === 5) {
           clearInterval(this.pollingInterval);
           currentInterval = Math.min(currentInterval * 2, maxPollInterval);
-          this.pollingInterval = setInterval(() => this.checkAuth(), currentInterval);
+          this.pollingInterval = setInterval(poll, currentInterval);
         }
       }, currentInterval);
-      
+
       // Also set up event listeners for visibility changes
       document.addEventListener('visibilitychange', this.handleVisibilityChange);
     },
-    
+
     handleVisibilityChange() {
-      if (document.visibilityState === 'visible' && this.isAuthenticated) {
+      // Also catches a sign-in or sign-out made in another tab.
+      if (document.visibilityState === 'visible') {
         this.checkAuth();
       }
     },
-    
+
     stopPolling() {
       if (this.pollingInterval) {
         clearInterval(this.pollingInterval);
@@ -512,13 +518,13 @@ export const useAuthStore = defineStore('auth', {
       }
       document.removeEventListener('visibilitychange', this.handleVisibilityChange);
     },
-    
+
     handleAuthEvent(event) {
       if (event.detail?.is_authenticated) {
         this.user = event.detail.user;
         this.isAuthenticated = true;
         this.setupIdleTimeout();
-        
+
         if (event.detail.message) {
           this.showSnackbar(event.detail.message);
         }
@@ -526,30 +532,30 @@ export const useAuthStore = defineStore('auth', {
         const wasAuthenticated = this.isAuthenticated;
         this.user = null;
         this.isAuthenticated = false;
-        
+
         if (wasAuthenticated) {
           this.clearIdleTimeout();
         }
-        
+
         if (event.detail?.message) {
           this.showSnackbar(event.detail.message);
         }
       }
     },
-    
+
     // Session idle management
     setupIdleTimeout() {
       this.clearIdleTimeout();
-      
+
       if (!this.isAuthenticated) return;
-      
+
       let idleTimeout;
-      
+
       const resetIdleTimeout = () => {
         clearTimeout(idleTimeout);
         idleTimeout = setTimeout(() => {
           this.showSnackbar('Your session is about to expire due to inactivity.', 'warning');
-          
+
           // Give them a chance to continue
           setTimeout(() => {
             if (this.isAuthenticated) {
@@ -558,15 +564,15 @@ export const useAuthStore = defineStore('auth', {
           }, 60000);
         }, SESSION_IDLE_TIMEOUT);
       };
-      
+
       // Reset the timeout on user activity
       const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
       events.forEach(event => {
         document.addEventListener(event, resetIdleTimeout, false);
       });
-      
+
       resetIdleTimeout();
-      
+
       this.idleTimeoutCleanup = () => {
         events.forEach(event => {
           document.removeEventListener(event, resetIdleTimeout, false);
@@ -574,34 +580,34 @@ export const useAuthStore = defineStore('auth', {
         clearTimeout(idleTimeout);
       };
     },
-    
+
     clearIdleTimeout() {
       if (typeof this.idleTimeoutCleanup === 'function') {
         this.idleTimeoutCleanup();
         this.idleTimeoutCleanup = null;
       }
     },
-    
+
     // Notification handling
     showSnackbar(message, tags = '') {
       const messageKey = `${message}-${Date.now()}`;
       if (this.processedMessages.has(messageKey)) return;
-      
+
       const snackbar = useSnackbar();
       snackbar.show(message);
-      
+
       this.processedMessages.add(messageKey);
-      
+
       setTimeout(() => {
         this.processedMessages.delete(messageKey);
       }, 5000);
     },
-    
+
     processDjangoMessages() {
       if (window.djangoMessages?.messages) {
         const messages = window.djangoMessages.messages;
         window.djangoMessages.messages = []; // Clear immediately to prevent duplicates
-        
+
         for (const message of messages) {
           if (message.tags?.includes('md-snackbar')) {
             this.showSnackbar(message.message, message.tags);
@@ -609,35 +615,35 @@ export const useAuthStore = defineStore('auth', {
         }
       }
     },
-    
+
     // Event listener management
     setupAuthChangeListener() {
       this.removeAuthChangeListener();
-      
+
       this.authChangeListener = (e) => this.handleAuthEvent(e);
       document.addEventListener('allauth.auth.change', this.authChangeListener);
     },
-    
+
     removeAuthChangeListener() {
       if (this.authChangeListener) {
         document.removeEventListener('allauth.auth.change', this.authChangeListener);
         this.authChangeListener = null;
       }
     },
-    
+
     // Error handling
     handleError(error, context) {
       if (!IS_PRODUCTION) {
         console.error(`Auth error (${context}):`, error);
       }
-      
+
       // For production, implement structured logging
       if (IS_PRODUCTION) {
         // Example: logErrorToService(error, context, 'auth');
       }
-      
+
       let errorMessage = 'An unexpected error occurred';
-      
+
       if (error.errors) {
         const firstError = Object.values(error.errors)[0];
         errorMessage = Array.isArray(firstError) ? firstError[0] : firstError;
@@ -646,17 +652,17 @@ export const useAuthStore = defineStore('auth', {
       } else if (typeof error === 'string') {
         errorMessage = error;
       }
-      
+
       return errorMessage;
     },
-    
+
     // Navigation
     redirectToLogin() {
       const loginUrl = window.djangoAllAuth?.loginUrl || '/accounts/login/';
       const currentUrl = encodeURIComponent(window.location.pathname + window.location.search);
       window.location.href = `${loginUrl}?next=${currentUrl}`;
     },
-    
+
     // Initialization and cleanup
     initAuth() {
       // App.vue and the router guard both call this at startup; share one
@@ -672,32 +678,32 @@ export const useAuthStore = defineStore('auth', {
 
     async _initAuth() {
       const isAuthenticated = await this.checkAuth();
-      
+
       if (!IS_PRODUCTION) {
         console.log('Initial auth check completed, authenticated:', isAuthenticated, 'user:', this.user);
       }
-      
+
       this.setupAuthChangeListener();
       this.processDjangoMessages();
       this.startPolling();
-      
+
       if (isAuthenticated) {
         this.setupIdleTimeout();
       }
-      
+
       this.initialized = true;
     },
-    
+
     async logout() {
       this.isLoading = true;
       this.error = null;
-      
+
       try {
         // Try our custom endpoint directly first
         try {
           console.log('Attempting logout via custom endpoint');
           const csrfToken = this.getCSRFToken();
-          
+
           const response = await fetch('/users/api/logout/', {
             method: 'POST',
             headers: {
@@ -708,7 +714,7 @@ export const useAuthStore = defineStore('auth', {
             },
             credentials: 'include'
           });
-          
+
           if (response.ok) {
             console.log('Custom logout successful');
             // Clear auth state
@@ -717,24 +723,24 @@ export const useAuthStore = defineStore('auth', {
             this.userDataLoaded = false;
             this.needsEmailVerification = false;
             this.clearIdleTimeout();
-            
+
             // Clear session token
             localStorage.removeItem('allauth_session_token');
-            
+
             // Show a snackbar message
             this.showSnackbar('You have been successfully logged out');
-            
+
             return { success: true };
           }
         } catch (directError) {
           console.error('Direct logout failed:', directError);
         }
-        
+
         // Fall back to allauth.js logout
         console.log('Falling back to allauth.js logout');
         const { logout } = await import('../lib/allauth');
         const data = await logout();
-        
+
         if (data.status === 200 || data.ok) {
           // Clear auth state
           this.user = null;
@@ -742,12 +748,12 @@ export const useAuthStore = defineStore('auth', {
           this.userDataLoaded = false;
           this.needsEmailVerification = false;
           this.clearIdleTimeout();
-          
+
           // Show a snackbar message
           this.showSnackbar('You have been successfully logged out');
           return { success: true };
         }
-        
+
         // If both failed, try one last Django standard logout
         console.log('Trying standard Django logout');
         window.location.href = '/accounts/logout/';
@@ -760,7 +766,7 @@ export const useAuthStore = defineStore('auth', {
         this.isLoading = false;
       }
     },
-    
+
     // Complete cleanup
     cleanup() {
       this.stopPolling();
