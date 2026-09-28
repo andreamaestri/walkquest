@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildSearchIndex,
   describeBusAccess,
+  describeTrainAccess,
   distanceMiles,
   estimateMinutes,
   filterWalks,
@@ -96,35 +97,68 @@ describe('formatting', () => {
 });
 
 describe('describeBusAccess', () => {
-  const stop = (extra) => ({ atco: 'A', name: 'The Quay', locality: 'Calstock', distance_m: 150, ...extra });
+  const line79 = {
+    line: '79', operator: 'Go Cornwall Bus', directions: ['Callington', 'Tavistock'], days: 'Mon–Sat', per_day: 38,
+  };
+  const stop = (extra) => ({
+    atco: 'A', name: 'The Quay', locality: 'Calstock', distance_m: 150, lines: [line79], ...extra,
+  });
 
   it('returns null without transport data', () => {
     expect(describeBusAccess({ transport: null })).toBeNull();
     expect(describeBusAccess(null)).toBeNull();
   });
 
-  it('describes a nearby stop and its lines', () => {
+  it('describes nearby stops and their lines', () => {
+    const lines = ['1', '2', '3', '4'].map((line) => ({ ...line79, line, per_day: 1, directions: [] }));
     const info = describeBusAccess({
       transport: {
-        start_stop: stop({ lines: [{ line: '79' }] }),
-        end_stop: stop({ atco: 'B', name: 'Car Park', distance_m: 40, lines: [{ line: '79' }, { line: '12' }] }),
+        start_stop: stop(),
+        end_stop: stop({ atco: 'B', name: 'Car Park', locality: 'St Ives', distance_m: 40, lines }),
       },
     });
     expect(info.reachable).toBe(true);
-    expect(info.headline).toBe('Bus stop 2 min walk from the start');
-    expect(info.stops.map((s) => s.label)).toEqual(['The Quay, Calstock', 'Car Park, Calstock']);
-    expect(info.lines).toEqual(['79', '12']);
+    expect(info.headline).toBe('Buses 2 min walk from the start');
+    const [start, finish] = info.stops;
+    expect(start.label).toBe('The Quay, Calstock');
+    expect(start.lines).toEqual([
+      { line: '79', detail: 'Go Cornwall Bus · to Callington, Tavistock · Mon–Sat · ~38 a day' },
+    ]);
+    expect(finish.lines.map((l) => l.line)).toEqual(['1', '2', '3']);
+    expect(finish.lines[0].detail).toBe('Go Cornwall Bus · Mon–Sat · limited service');
+    expect(finish.more).toBe(1);
   });
 
-  it('gives the distance to a far stop', () => {
+  it('gives the distance to far-off buses', () => {
     const info = describeBusAccess({ transport: { start_stop: stop({ distance_m: 3620 }) } });
     expect(info.reachable).toBe(false);
-    expect(info.headline).toBe('Nearest bus stop 2.2 mi from the start');
+    expect(info.headline).toBe('Nearest buses 2.2 mi from the start');
   });
 
-  it('flags a nearby stop with no timetabled service', () => {
+  it('says so when no stop nearby has buses', () => {
     const info = describeBusAccess({ transport: { start_stop: stop({ lines: [] }) } });
     expect(info.reachable).toBe(false);
-    expect(info.headline).toBe('No timetabled buses at the nearest stop');
+    expect(info.headline).toBe('No buses nearby');
+    expect(info.stops).toEqual([]);
+  });
+});
+
+describe('describeTrainAccess', () => {
+  const station = { atco: '9100CALSTCK', name: 'Calstock', distance_m: 1210 };
+
+  it('returns null without a station', () => {
+    expect(describeTrainAccess({ transport: { station: null } })).toBeNull();
+  });
+
+  it('describes the station, with services once checked', () => {
+    expect(describeTrainAccess({ transport: { station } })).toEqual({
+      headline: 'Calstock station · 15 min walk from the start',
+      detail: '',
+    });
+    const services = { operators: ['Great Western Railway'], destinations: ['Plymouth', 'Gunnislake'] };
+    expect(describeTrainAccess({ transport: { station: { ...station, distance_m: 4000, services } } })).toEqual({
+      headline: 'Calstock station · 2.5 mi from the start',
+      detail: 'Great Western Railway to Plymouth, Gunnislake',
+    });
   });
 });
