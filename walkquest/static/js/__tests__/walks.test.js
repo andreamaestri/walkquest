@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildSearchIndex,
+  describeBusAccess,
   distanceMiles,
   estimateMinutes,
   filterWalks,
@@ -91,5 +92,39 @@ describe('formatting', () => {
     expect(estimateMinutes(5, 1)).toBe(120);
     expect(estimateMinutes(5, 5) % 15).toBe(0);
     expect(estimateMinutes(0)).toBeNull();
+  });
+});
+
+describe('describeBusAccess', () => {
+  const stop = (extra) => ({ atco: 'A', name: 'The Quay', locality: 'Calstock', distance_m: 150, ...extra });
+
+  it('returns null without transport data', () => {
+    expect(describeBusAccess({ transport: null })).toBeNull();
+    expect(describeBusAccess(null)).toBeNull();
+  });
+
+  it('describes a nearby stop and its lines', () => {
+    const info = describeBusAccess({
+      transport: {
+        start_stop: stop({ lines: [{ line: '79' }] }),
+        end_stop: stop({ atco: 'B', name: 'Car Park', distance_m: 40, lines: [{ line: '79' }, { line: '12' }] }),
+      },
+    });
+    expect(info.reachable).toBe(true);
+    expect(info.headline).toBe('Bus stop 2 min walk from the start');
+    expect(info.stops.map((s) => s.label)).toEqual(['The Quay, Calstock', 'Car Park, Calstock']);
+    expect(info.lines).toEqual(['79', '12']);
+  });
+
+  it('gives the distance to a far stop', () => {
+    const info = describeBusAccess({ transport: { start_stop: stop({ distance_m: 3620 }) } });
+    expect(info.reachable).toBe(false);
+    expect(info.headline).toBe('Nearest bus stop 2.2 mi from the start');
+  });
+
+  it('flags a nearby stop with no timetabled service', () => {
+    const info = describeBusAccess({ transport: { start_stop: stop({ lines: [] }) } });
+    expect(info.reachable).toBe(false);
+    expect(info.headline).toBe('No timetabled buses at the nearest stop');
   });
 });

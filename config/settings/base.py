@@ -468,6 +468,11 @@ STATICFILES_FINDERS = [
 # Maps
 MAPBOX_TOKEN = env("MAPBOX_TOKEN", default=None)
 
+# Public transport: TransportAPI free plan (30 hits/day) confirms bus lines at
+# walks' stops; see walkquest/walks/transport.py. Unset = NaPTAN stops only.
+TRANSPORTAPI_APP_ID = env("TRANSPORTAPI_APP_ID", default="")
+TRANSPORTAPI_APP_KEY = env("TRANSPORTAPI_APP_KEY", default="")
+
 APPEND_SLASH = True
 
 # Your stuff...

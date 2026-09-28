@@ -141,6 +141,45 @@ export function estimateMinutes(miles, level = 1) {
   return Math.max(15, Math.round(minutes / 15) * 15);
 }
 
+const BUS_WALK_RADIUS_M = 800;
+
+function stopLabel(stop) {
+  const name = stop.name || 'Bus stop';
+  return stop.locality && !name.includes(stop.locality) ? `${name}, ${stop.locality}` : name;
+}
+
+function walkingDistance(metres) {
+  if (metres <= BUS_WALK_RADIUS_M) return `${Math.max(1, Math.round(metres / 80))} min walk`;
+  return formatMiles(metres / 1609.34);
+}
+
+/**
+ * Bus access summary from a walk detail's `transport` (NaPTAN stops, plus
+ * TransportAPI lines once checked). Returns null when there's no data.
+ *
+ * @returns {{ reachable: boolean, headline: string, stops: object[], lines: string[] } | null}
+ */
+export function describeBusAccess(detail) {
+  const start = detail?.transport?.start_stop;
+  if (!start) return null;
+  const end = detail.transport.end_stop;
+  const near = start.distance_m <= BUS_WALK_RADIUS_M;
+  const noService = Array.isArray(start.lines) && start.lines.length === 0;
+  const reachable = near && !noService;
+
+  let headline;
+  if (reachable) headline = `Bus stop ${walkingDistance(start.distance_m)} from the start`;
+  else if (near) headline = 'No timetabled buses at the nearest stop';
+  else headline = `Nearest bus stop ${walkingDistance(start.distance_m)} from the start`;
+
+  const stops = [{ role: 'Start', label: stopLabel(start), distance: walkingDistance(start.distance_m) }];
+  if (end && end.atco !== start.atco) {
+    stops.push({ role: 'Finish', label: stopLabel(end), distance: walkingDistance(end.distance_m) });
+  }
+  const lines = [...new Set([...(start.lines || []), ...(end?.lines || [])].map((l) => l.line))];
+  return { reachable, headline, stops, lines };
+}
+
 export function formatDuration(minutes) {
   if (!minutes) return '–';
   const h = Math.floor(minutes / 60);

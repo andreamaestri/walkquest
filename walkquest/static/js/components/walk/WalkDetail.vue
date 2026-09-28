@@ -118,9 +118,17 @@
               <Icon icon="material-symbols:steps-outline-rounded" aria-hidden="true" />
               <span>{{ detail.has_stiles ? 'Has stiles' : 'No stiles' }}</span>
             </div>
-            <div class="fact">
-              <Icon icon="material-symbols:directions-bus-outline-rounded" aria-hidden="true" />
-              <span>{{ detail.has_bus_access ? 'Reachable by bus' : 'No bus access' }}</span>
+            <div v-if="bus" class="fact fact--wide" :class="{ 'fact--muted': !bus.reachable }">
+              <Icon :icon="bus.reachable ? 'material-symbols:directions-bus-outline-rounded' : 'material-symbols:no-transfer-outline-rounded'" aria-hidden="true" />
+              <div class="fact__body">
+                <span class="type-label-large-emphasized">{{ bus.headline }}</span>
+                <span v-for="stop in bus.stops" :key="stop.role" class="fact__sub">
+                  {{ bus.stops.length > 1 ? `${stop.role}: ` : '' }}{{ stop.label }} · {{ stop.distance }}
+                </span>
+                <span v-if="bus.lines.length" class="fact__sub">
+                  {{ bus.lines.length > 1 ? 'Lines' : 'Line' }} {{ bus.lines.join(', ') }}
+                </span>
+              </div>
             </div>
             <div v-if="detail.footwear_category" class="fact">
               <Icon icon="material-symbols:hiking-rounded" aria-hidden="true" />
@@ -162,6 +170,7 @@ import { useToastStore } from '../../stores/toast';
 import {
   categoryIcon,
   categoryLabel,
+  describeBusAccess,
   estimateMinutes,
   formatDuration,
   formatMiles,
@@ -197,6 +206,8 @@ const highlights = computed(() => {
     .filter(Boolean)
     .map((item) => item.charAt(0).toUpperCase() + item.slice(1));
 });
+
+const bus = computed(() => describeBusAccess(props.detail));
 
 const NOTE_ICONS = {
   Dogs: 'material-symbols:pets-rounded',
@@ -349,6 +360,10 @@ async function share() {
   font-size: var(--md-sys-typescale-body-medium-size);
 }
 .fact svg { flex: none; font-size: 20px; color: var(--md-sys-color-primary); }
+.fact--wide { grid-column: 1 / -1; align-items: flex-start; }
+.fact--muted svg { color: var(--md-sys-color-on-surface-variant); }
+.fact__body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.fact__sub { color: var(--md-sys-color-on-surface-variant); }
 .note { margin-top: 12px; }
 .note__title { display: flex; align-items: center; gap: 6px; margin: 0 0 4px; color: var(--md-sys-color-on-surface); }
 .note__title svg { color: var(--md-sys-color-tertiary); font-size: 18px; }
