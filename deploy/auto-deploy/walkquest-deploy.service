@@ -1,0 +1,17 @@
+# /etc/systemd/system/walkquest-deploy.service — see README.md
+[Unit]
+Description=Deploy walkquest from origin/main if it changed
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=opc
+Group=opc
+WorkingDirectory=/srv/django/walkquest
+EnvironmentFile=/etc/walkquest.env
+Environment=DJANGO_SETTINGS_MODULE=config.settings.production
+Environment=HOME=/home/opc
+StateDirectory=walkquest-deploy
+ExecStart=/usr/local/bin/walkquest-deploy
+TimeoutStartSec=15min
