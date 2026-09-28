@@ -46,7 +46,7 @@ class TestUserAdmin:
 
     @pytest.fixture
     def _force_allauth(self, settings):
-        settings.DJANGO_ADMIN_FORCE_ALLAUTH = True
+        settings.ADMIN_FORCE_ALLAUTH = True
         # Reload the admin module to apply the setting change
         import walkquest.users.admin as users_admin
 
