@@ -8,16 +8,19 @@
       @scroll.passive="onScroll"
       @keydown.left.prevent="go(index - 1)"
       @keydown.right.prevent="go(index + 1)"
+      @keydown.enter.prevent="openViewer"
+      @keydown.space.prevent="openViewer"
     >
       <div
         v-for="(photo, i) in slides"
         :key="photo.url"
         class="carousel__item"
         :class="{ 'is-current': i === index }"
+        :style="{ viewTransitionName: morph && !viewerOpen && i === index ? 'wq-photo' : 'none' }"
         role="group"
         aria-roledescription="slide"
         :aria-label="`${i + 1} of ${slides.length}`"
-        @click="i !== index && go(i)"
+        @click="i !== index ? go(i) : openViewer()"
       >
         <WalkThumb
           class="carousel__media"
@@ -26,8 +29,25 @@
           :width="photo.width || 960"
           :height="photo.height || 640"
         />
+        <M3IconButton
+          v-if="i === index"
+          class="carousel__expand"
+          icon="material-symbols:fullscreen-rounded"
+          label="View photo fullscreen"
+          size="xs"
+          @click.stop="openViewer"
+        />
       </div>
     </div>
+
+    <PhotoViewer
+      v-if="viewerOpen"
+      v-model:index="viewerIndex"
+      :slides="slides"
+      :title="title"
+      :morph="morph"
+      @close="closeViewer"
+    />
 
     <div v-if="current?.caption || slides.length > 1" class="carousel__bar">
       <Transition name="caption" mode="out-in">
@@ -45,9 +65,11 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import M3IconButton from '../m3/M3IconButton.vue';
 import WalkThumb from '../explore/WalkThumb.vue';
+import PhotoViewer from './PhotoViewer.vue';
+import { prefersReducedMotion } from '../../design/motion';
 
 const props = defineProps({
   photos: { type: Array, default: () => [] },
@@ -80,11 +102,55 @@ function onScroll() {
   index.value = atEnd ? slides.value.length - 1 : Math.round(el.scrollLeft / stride(el));
 }
 
-function go(i) {
+function go(i, behavior = 'smooth') {
   const el = track.value;
   if (!el) return;
   const next = Math.max(0, Math.min(slides.value.length - 1, i));
-  el.scrollTo({ left: next * stride(el), behavior: 'smooth' });
+  el.scrollTo({ left: next * stride(el), behavior });
+}
+
+// ── Fullscreen viewer ────────────────────────────────────────────────────
+// The photo morphs between the card and fullscreen with a shared-element view
+// transition: `morph` names the card (closed) or the viewer photo (open) for
+// the length of the transition only.
+const viewerOpen = ref(false);
+const viewerIndex = ref(0);
+const morph = ref(false);
+
+async function withMorph(update) {
+  if (!document.startViewTransition || prefersReducedMotion()) {
+    update();
+    return;
+  }
+  morph.value = true;
+  await nextTick(); // the "old" snapshot needs the name in place
+  document.documentElement.classList.add('photo-vt');
+  const transition = document.startViewTransition(async () => {
+    update();
+    await nextTick();
+  });
+  try {
+    await transition.finished;
+  } finally {
+    document.documentElement.classList.remove('photo-vt');
+    morph.value = false;
+  }
+}
+
+function openViewer() {
+  if (viewerOpen.value || !slides.value.length) return;
+  viewerIndex.value = index.value;
+  withMorph(() => { viewerOpen.value = true; });
+}
+
+function closeViewer() {
+  if (!viewerOpen.value) return;
+  withMorph(() => {
+    // Land the carousel on the photo the viewer ended on, so it morphs home to it.
+    index.value = viewerIndex.value;
+    go(viewerIndex.value, 'instant');
+    viewerOpen.value = false;
+  });
 }
 </script>
 
@@ -117,7 +183,17 @@ function go(i) {
   cursor: pointer;
   view-timeline: --carousel-item inline;
 }
-.carousel__item.is-current { cursor: default; }
+.carousel__item.is-current { cursor: zoom-in; }
+/* Expand affordance on the hero photo; the whole photo is also a tap target. */
+.carousel__expand {
+  position: absolute;
+  z-index: 1;
+  inset-block-start: 12px;
+  inset-inline-end: 12px;
+  background: rgb(0 0 0 / 0.45);
+  color: #fff;
+  backdrop-filter: blur(8px);
+}
 .is-single .carousel__item { flex-basis: 100%; }
 .carousel__media { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; }
 
