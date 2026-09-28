@@ -32,8 +32,8 @@ import MapToolbar from './MapToolbar.vue';
 import M3LoadingIndicator from '../m3/M3LoadingIndicator.vue';
 import { getGeometry } from '../../services/api';
 import { useMap } from '../../composables/useMap';
-import { radiiToPath, sampleShape } from '../../design/shapes';
-import { cameraMotion, ease, prefersReducedMotion } from '../../design/motion';
+import { cameraMotion, ease, prefersReducedMotion, springs } from '../../design/motion';
+import { syncMarkerImages } from '../../utils/mapMarkers';
 import {
   CORNWALL_BOUNDS,
   CORNWALL_CENTER,
@@ -84,6 +84,7 @@ let resizeObserver = null;
 let routeRequest = 0;
 let routeFeature = null;
 let routeDraw = null;
+let selectPop = null;
 /** Camera before a walk was opened; restored on back unless the user moved the map. */
 let homeCamera = null;
 
@@ -94,31 +95,13 @@ function tokens() {
   const get = (name, fallback) => css.getPropertyValue(`--md-sys-color-${name}`).trim() || fallback;
   return {
     primary: get('primary', '#1a696c'),
+    onPrimary: get('on-primary', '#e3feff'),
     tertiary: get('tertiary', '#3c637e'),
+    onTertiary: get('on-tertiary', '#f5f9ff'),
     surface: get('surface', '#f6fafa'),
     onSurface: get('on-surface', '#2a3435'),
     isDark: document.documentElement.dataset.theme === 'dark',
   };
-}
-
-/** M3E "cookie" badge used to mark the selected walk. */
-function drawSelectedPin(colors) {
-  const size = 64;
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  const path = new Path2D(radiiToPath(sampleShape('cookie9', 96), size / 2, size / 2, size / 2 - 4));
-  ctx.fillStyle = colors.primary;
-  ctx.strokeStyle = colors.surface;
-  ctx.lineWidth = 4;
-  ctx.fill(path);
-  ctx.stroke(path);
-  ctx.beginPath();
-  ctx.arc(size / 2, size / 2, 8, 0, Math.PI * 2);
-  ctx.fillStyle = colors.surface;
-  ctx.fill();
-  return ctx.getImageData(0, 0, size, size);
 }
 
 function walkData() {
@@ -142,10 +125,34 @@ function applySelection() {
   m.setFilter('walks-selected', ['==', ['get', 'walkId'], props.selectedId || '']);
 }
 
+/** M3E: the selected pin springs up from the map with a little overshoot. */
+function popSelectedPin() {
+  const m = map.value;
+  selectPop?.stop();
+  if (!m?.getLayer('walks-selected')) return;
+  if (prefersReducedMotion()) {
+    m.setLayoutProperty('walks-selected', 'icon-size', 1);
+    return;
+  }
+  selectPop = animate(0.3, 1, {
+    ...springs.fastSpatial,
+    onUpdate: (size) => map.value?.setLayoutProperty('walks-selected', 'icon-size', Math.max(0, size)),
+  });
+}
+
+/** The enlarged hover pin follows both map hover and list hover. */
+function applyHoverFilter() {
+  const ids = [hoverFeatureId, externalHoverId]
+    .map((id) => walkByFeatureId.get(id)?.id)
+    .filter((id) => id && id !== props.selectedId);
+  map.value?.setFilter('walks-hover', ['in', ['get', 'walkId'], ['literal', ids]]);
+}
+
 function applyExternalHover() {
   setState(externalHoverId, { hover: false });
   externalHoverId = props.hoveredId ? idIndex.get(props.hoveredId) ?? null : null;
   setState(externalHoverId, { hover: true });
+  applyHoverFilter();
 }
 
 function addLayers() {
@@ -154,16 +161,9 @@ function addLayers() {
   m.addSource('walks', { type: 'geojson', data: walkData() });
   m.addSource('route', { type: 'geojson', data: EMPTY, lineMetrics: true });
   m.addSource('route-ends', { type: 'geojson', data: EMPTY });
-  if (!m.hasImage('walk-selected')) m.addImage('walk-selected', drawSelectedPin(colors), { pixelRatio: 2 });
+  syncMarkerImages(m, colors);
   for (const layer of routeLayers(colors)) m.addLayer(layer);
   for (const layer of walkLayers(colors)) m.addLayer(layer);
-  m.addLayer({
-    id: 'walks-selected',
-    type: 'symbol',
-    source: 'walks',
-    filter: ['==', ['get', 'walkId'], ''],
-    layout: { 'icon-image': 'walk-selected', 'icon-allow-overlap': true, 'icon-ignore-placement': true },
-  });
   applyThemeToStyle(colors);
   applySelection();
   applyExternalHover();
@@ -173,14 +173,11 @@ function applyThemeToStyle(colors = tokens()) {
   const m = map.value;
   if (!m?.getLayer('walks-points')) return;
   m.setPaintProperty('walks-halo', 'circle-color', colors.primary);
-  m.setPaintProperty('walks-points', 'circle-color', ['case', ['==', ['get', 'fav'], 1], colors.tertiary, colors.primary]);
-  m.setPaintProperty('walks-points', 'circle-stroke-color', colors.surface);
   m.setPaintProperty('walks-labels', 'text-color', colors.onSurface);
   m.setPaintProperty('walks-labels', 'text-halo-color', colors.surface);
   m.setPaintProperty('route-casing', 'line-color', colors.surface);
   m.setPaintProperty('route-line', 'line-color', colors.primary);
-  m.setPaintProperty('route-ends', 'circle-stroke-color', colors.surface);
-  m.updateImage('walk-selected', drawSelectedPin(colors));
+  syncMarkerImages(m, colors);
   // Styles built on Mapbox Standard can switch light preset without a reload.
   try {
     if (m.getStyle()?.imports?.some((entry) => entry.id === 'basemap')) {
@@ -202,7 +199,7 @@ function tooltipHtml(walk) {
 function bindInteractions() {
   const m = map.value;
   const canHover = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
-  tooltip = new mapboxgl.Popup({ closeButton: false, closeOnClick: false, offset: 14, className: 'm3-map-tooltip', maxWidth: '280px' });
+  tooltip = new mapboxgl.Popup({ closeButton: false, closeOnClick: false, offset: 18, className: 'm3-map-tooltip', maxWidth: '280px' });
 
   m.on('mousemove', 'walks-points', (event) => {
     const feature = event.features?.[0];
@@ -212,6 +209,7 @@ function bindInteractions() {
       setState(hoverFeatureId, { hover: false });
       hoverFeatureId = feature.id;
       setState(hoverFeatureId, { hover: true });
+      applyHoverFilter();
       const walk = walkByFeatureId.get(feature.id);
       emit('hover', walk || null);
       if (canHover && walk) tooltip.setLngLat(feature.geometry.coordinates).setHTML(tooltipHtml(walk)).addTo(m);
@@ -221,6 +219,7 @@ function bindInteractions() {
     m.getCanvas().style.cursor = '';
     setState(hoverFeatureId, { hover: false });
     hoverFeatureId = null;
+    applyHoverFilter();
     tooltip.remove();
     emit('hover', null);
   });
@@ -255,8 +254,7 @@ function drawRoute() {
     for (const id of ['route-casing', 'route-line']) m.setPaintProperty(id, 'line-trim-offset', value);
   };
   const setEnds = (opacity) => {
-    m.setPaintProperty('route-ends', 'circle-opacity', opacity);
-    m.setPaintProperty('route-ends', 'circle-stroke-opacity', opacity);
+    m.setPaintProperty('route-ends', 'icon-opacity', opacity);
   };
   setEnds(0);
   if (prefersReducedMotion()) {
@@ -449,6 +447,7 @@ onBeforeUnmount(() => {
   resizeObserver?.disconnect();
   tooltip?.remove();
   routeDraw?.stop();
+  selectPop?.stop();
   map.value?.remove();
   map.value = null;
   setMapInstance(null);
@@ -467,6 +466,8 @@ watch(
 );
 watch(() => props.selectedId, (id, previous) => {
   applySelection();
+  applyHoverFilter();
+  if (id) popSelectedPin();
   const m = map.value;
   if (m && id && !previous) {
     // Opening a walk from the overview: remember where we were.
