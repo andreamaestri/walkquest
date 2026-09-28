@@ -137,17 +137,17 @@ const chipEls = () => [...(trackRef.value?.querySelectorAll('.m3-chip') || [])];
 
 // ── Keyboard: ARIA toolbar pattern ───────────────────────────────────────
 // One tab stop for the whole row; arrow keys, Home and End move between chips.
-let activeChip = 0;
+// Tracked by element, not index: selecting a category moves its chip to the front.
+let activeChip = null;
 
 function syncTabStops() {
   const chips = chipEls();
-  activeChip = Math.min(activeChip, chips.length - 1);
-  chips.forEach((chip, i) => { chip.tabIndex = i === activeChip ? 0 : -1; });
+  if (!chips.includes(activeChip)) activeChip = chips[0] || null;
+  chips.forEach((chip) => { chip.tabIndex = chip === activeChip ? 0 : -1; });
 }
 function onFocusin(event) {
-  const index = chipEls().indexOf(event.target);
-  if (index === -1) return;
-  activeChip = index;
+  if (!chipEls().includes(event.target)) return;
+  activeChip = event.target;
   syncTabStops();
 }
 function onKeydown(event) {
@@ -180,18 +180,29 @@ function updateEdges() {
   canForward.value = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
 }
 useResizeObserver(trackRef, updateEdges);
-// Chips come and go (radius chip, category usage, labels) without resizing the track.
+// Chips come, go and reorder (radius chip, selected categories, labels) without
+// resizing the track. Moving a focused chip in the DOM blurs it, so put focus back.
 watch(
-  () => [categorySlugs.value.length, search.mode, search.origin, difficultyLabel.value, walksStore.categoryNames],
-  () => nextTick(() => { updateEdges(); syncTabStops(); }),
+  () => [categorySlugs.value.join(), search.mode, search.origin, difficultyLabel.value, walksStore.categoryNames],
+  () => {
+    const hadFocus = trackRef.value?.contains(document.activeElement);
+    nextTick(() => {
+      updateEdges();
+      syncTabStops();
+      if (hadFocus && activeChip && !trackRef.value?.contains(document.activeElement)) activeChip.focus();
+    });
+  },
 );
 
 function page(direction) {
   const el = trackRef.value;
-  el?.scrollBy({
-    left: direction * el.clientWidth * 0.75,
-    behavior: reducedMotion.value === 'reduce' ? 'auto' : 'smooth',
-  });
+  if (!el) return;
+  const max = el.scrollWidth - el.clientWidth;
+  let left = el.scrollLeft + direction * el.clientWidth * 0.75;
+  // Don't strand the row a few pixels short of either end.
+  if (left < 24) left = 0;
+  else if (left > max - 24) left = max;
+  el.scrollTo({ left, behavior: reducedMotion.value === 'reduce' ? 'auto' : 'smooth' });
 }
 
 /** Vertical wheel → horizontal scroll; once the row runs out, let the list scroll instead. */
