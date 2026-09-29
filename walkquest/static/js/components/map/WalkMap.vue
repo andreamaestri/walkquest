@@ -47,7 +47,10 @@ import {
   pinHeadOffset,
   routeEndpoints,
   supportsWebGL2,
+  basemapAtmosphere,
   routeLayers,
+  routeEndPaint,
+  routePalette,
   selectedPinLayer,
   stateDependent,
   walkLayers,
@@ -99,7 +102,6 @@ function tokens() {
   const get = (name, fallback) => css.getPropertyValue(`--md-sys-color-${name}`).trim() || fallback;
   return {
     primary: get('primary', '#1a696c'),
-    tertiary: get('tertiary', '#3c637e'),
     surface: get('surface', '#f6fafa'),
     onSurface: get('on-surface', '#2a3435'),
     isDark: document.documentElement.dataset.theme === 'dark',
@@ -181,7 +183,7 @@ function addLayers() {
   m.addSource('route', { type: 'geojson', data: EMPTY, lineMetrics: true });
   m.addSource('route-ends', { type: 'geojson', data: EMPTY });
   addPinImages(m);
-  for (const layer of routeLayers(colors)) m.addLayer(layer);
+  for (const layer of routeLayers(colors, mapIsDark(colors))) m.addLayer(layer);
   for (const layer of walkLayers(colors)) m.addLayer(layer);
   m.addLayer(selectedPinLayer());
   applyThemeToStyle(colors);
@@ -194,17 +196,32 @@ function applyThemeToStyle(colors = tokens()) {
   if (!m?.getLayer('walks-points')) return;
   m.setPaintProperty('walks-labels', 'text-color', colors.onSurface);
   m.setPaintProperty('walks-labels', 'text-halo-color', colors.surface);
-  m.setPaintProperty('route-casing', 'line-color', colors.surface);
-  m.setPaintProperty('route-line', 'line-color', colors.primary);
-  m.setPaintProperty('route-ends', 'circle-stroke-color', colors.surface);
-  // Styles built on Mapbox Standard can switch light preset without a reload.
+  const dark = mapIsDark(colors);
+  const route = routePalette(colors, dark);
+  m.setPaintProperty('route-shadow', 'line-color', route.shadow);
+  m.setPaintProperty('route-casing', 'line-color', route.casing);
+  m.setPaintProperty('route-line', 'line-color', route.line);
+  for (const [name, value] of Object.entries(routeEndPaint(route))) m.setPaintProperty('route-ends', name, value);
+  if (!hasStandardBasemap()) return;
+  // Standard-based styles switch light preset without a reload; the style's
+  // own root lights and fog would otherwise override it (see basemapAtmosphere).
+  const { lights, fog } = basemapAtmosphere(dark);
+  m.setConfigProperty('basemap', 'lightPreset', dark ? 'night' : 'day');
+  m.setLights(lights);
+  m.setFog(fog);
+}
+
+function hasStandardBasemap() {
   try {
-    if (m.getStyle()?.imports?.some((entry) => entry.id === 'basemap')) {
-      m.setConfigProperty('basemap', 'lightPreset', colors.isDark ? 'night' : 'day');
-    }
+    return Boolean(map.value?.getStyle()?.imports?.some((entry) => entry.id === 'basemap'));
   } catch {
-    /* not a Standard-based style */
+    return false;
   }
+}
+
+/** Only a Standard basemap follows the app theme; any other style stays light. */
+function mapIsDark(colors) {
+  return colors.isDark && hasStandardBasemap();
 }
 
 const onThemeChange = () => applyThemeToStyle();
@@ -282,7 +299,7 @@ function drawRoute() {
   const m = map.value;
   routeDraw?.stop();
   const setTrim = (value) => {
-    for (const id of ['route-casing', 'route-line']) m.setPaintProperty(id, 'line-trim-offset', value);
+    for (const id of ['route-shadow', 'route-casing', 'route-line']) m.setPaintProperty(id, 'line-trim-offset', value);
   };
   const setEnds = (opacity) => {
     m.setPaintProperty('route-ends', 'circle-opacity', opacity);

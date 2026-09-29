@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PIN, PIN_SIZE_STOPS, buildIdIndex, geojsonBounds, hitBox, hitRadius, nearestHit, pinHeadOffset, routeEndpoints, selectedPinLayer, walkLayers, walksToGeoJSON } from '../utils/mapLayers';
+import { PIN, PIN_SIZE_STOPS, basemapAtmosphere, buildIdIndex, geojsonBounds, hitBox, hitRadius, nearestHit, pinHeadOffset, routeEndpoints, routeEndPaint, routeLayers, routePalette, selectedPinLayer, walkLayers, walksToGeoJSON } from '../utils/mapLayers';
 
 const walks = [
   { id: 'x', walk_name: 'X', latitude: 50.1, longitude: -5.1, difficulty: { level: 2 } },
@@ -102,5 +102,35 @@ describe('walk pins', () => {
     expect(pinHeadOffset(11.5)).toBeGreaterThan(pinHeadOffset(10));
     expect(pinHeadOffset(11.5)).toBeLessThan(pinHeadOffset(13));
     expect(pinHeadOffset(12, 1.2)).toBeCloseTo(pinHeadOffset(12) * 1.2);
+  });
+});
+
+describe('route styling', () => {
+  const colors = { primary: '#1a696c', surface: '#0a0f0f', onSurface: '#dce8e8' };
+
+  it('uses a white casing on a light basemap and the surface colour on a dark one', () => {
+    expect(routePalette(colors, false).casing).toBe('#ffffff');
+    expect(routePalette(colors, true).casing).toBe(colors.surface);
+  });
+
+  it('draws the shadow, casing and line bottom-up, then the endpoints', () => {
+    expect(routeLayers(colors).map((layer) => layer.id)).toEqual(['route-shadow', 'route-casing', 'route-line', 'route-ends']);
+  });
+
+  it('draws the start as a ring and the finish as a solid dot', () => {
+    const paint = routeEndPaint(routePalette(colors, false));
+    expect(paint['circle-color']).toEqual(['case', ['==', ['get', 'kind'], 'start'], '#ffffff', colors.primary]);
+    expect(paint['circle-stroke-color']).toEqual(['case', ['==', ['get', 'kind'], 'start'], colors.primary, '#ffffff']);
+  });
+});
+
+describe('basemapAtmosphere', () => {
+  it('replaces the style lights with neutral day or dark night lights', () => {
+    const day = basemapAtmosphere(false);
+    const night = basemapAtmosphere(true);
+    expect(day.lights.map((light) => light.id)).toEqual(['ambient', 'directional']);
+    expect(day.lights[1].properties.color).toBe('hsl(0, 0%, 100%)');
+    expect(night.lights[0].properties.color).toBe('hsl(217, 100%, 11%)');
+    expect(night.fog['star-intensity']).toBeGreaterThan(0);
   });
 });
