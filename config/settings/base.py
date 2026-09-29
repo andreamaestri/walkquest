@@ -219,14 +219,8 @@ CORS_ALLOW_HEADERS = [
 
 # STATIC
 # ------------------------------------------------------------------------------
-STORAGES = {
-    "default": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
-    },
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-    },
-}
+# Default storages here; production.py sets WhiteNoise's manifest storage
+# (and R2 for media). The old STATICFILES_STORAGE setting was a no-op on Django 5.1+.
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATIC_URL = "/static/"
 
