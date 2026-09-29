@@ -150,6 +150,7 @@ class WalkDetailSchema(WalkOutSchema):
     photos: list[WalkPhotoSchema] = []
     photo_source_url: str | None = None
     photo_credit: str | None = None
+    transport: dict | None = None
 
 class TagResponseSchema(Schema):
     name: str

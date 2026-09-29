@@ -354,6 +354,12 @@ class Walk(models.Model):
     has_stiles = models.BooleanField(default=False)
     has_cafe = models.BooleanField(default=False)
     has_bus_access = models.BooleanField(default=False)
+    transport_info = models.JSONField(
+        _("Public transport"),
+        default=dict,
+        blank=True,
+        help_text=_("Nearest bus stops and lines, from NaPTAN/TransportAPI (see transport.py)"),
+    )
     photo_source_url = models.URLField(
         _("Photo source page"),
         max_length=500,

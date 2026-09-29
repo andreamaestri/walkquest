@@ -111,16 +111,49 @@
           </a>
         </section>
 
+        <section v-if="bus || train" class="card">
+          <h2 class="card__title type-title-medium-emphasized">Getting there</h2>
+          <div v-if="bus" class="transit" :class="{ 'transit--muted': !bus.reachable }">
+            <span class="list-row__icon">
+              <Icon
+                :icon="bus.stops.length ? 'material-symbols:directions-bus-outline-rounded' : 'material-symbols:no-transfer-outline-rounded'"
+                aria-hidden="true"
+              />
+            </span>
+            <div class="transit__body">
+              <p class="type-title-medium transit__headline">{{ bus.headline }}</p>
+              <div v-for="stop in bus.stops" :key="stop.role" class="transit__stop">
+                <p class="type-body-medium transit__sub">
+                  <template v-if="bus.stops.length > 1">{{ stop.role }}: </template>{{ stop.label }} · {{ stop.distance }}
+                </p>
+                <p v-for="line in stop.lines" :key="line.line" class="transit__line type-body-medium">
+                  <span class="transit__badge type-label-large-emphasized">{{ line.line }}</span>
+                  <span class="transit__sub">{{ line.detail }}</span>
+                </p>
+                <p v-if="stop.more" class="type-body-small transit__sub">
+                  +{{ stop.more }} more {{ stop.more === 1 ? 'line' : 'lines' }}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div v-if="train" class="transit">
+            <span class="list-row__icon"><Icon icon="material-symbols:train-outline-rounded" aria-hidden="true" /></span>
+            <div class="transit__body">
+              <p class="type-title-medium transit__headline">{{ train.headline }}</p>
+              <p v-if="train.detail" class="type-body-medium transit__sub">{{ train.detail }}</p>
+            </div>
+          </div>
+          <p class="type-body-small transit__source">
+            Timetables from Bus Open Data, NaPTAN and TransportAPI. Check before you travel.
+          </p>
+        </section>
+
         <section class="card">
           <h2 class="card__title type-title-medium-emphasized">Good to know</h2>
           <div class="facts">
             <div class="fact">
               <Icon icon="material-symbols:steps-outline-rounded" aria-hidden="true" />
               <span>{{ detail.has_stiles ? 'Has stiles' : 'No stiles' }}</span>
-            </div>
-            <div class="fact">
-              <Icon icon="material-symbols:directions-bus-outline-rounded" aria-hidden="true" />
-              <span>{{ detail.has_bus_access ? 'Reachable by bus' : 'No bus access' }}</span>
             </div>
             <div v-if="detail.footwear_category" class="fact">
               <Icon icon="material-symbols:hiking-rounded" aria-hidden="true" />
@@ -162,6 +195,8 @@ import { useToastStore } from '../../stores/toast';
 import {
   categoryIcon,
   categoryLabel,
+  describeBusAccess,
+  describeTrainAccess,
   estimateMinutes,
   formatDuration,
   formatMiles,
@@ -197,6 +232,9 @@ const highlights = computed(() => {
     .filter(Boolean)
     .map((item) => item.charAt(0).toUpperCase() + item.slice(1));
 });
+
+const bus = computed(() => describeBusAccess(props.detail));
+const train = computed(() => describeTrainAccess(props.detail));
 
 const NOTE_ICONS = {
   Dogs: 'material-symbols:pets-rounded',
@@ -349,6 +387,26 @@ async function share() {
   font-size: var(--md-sys-typescale-body-medium-size);
 }
 .fact svg { flex: none; font-size: 20px; color: var(--md-sys-color-primary); }
+.transit { display: flex; align-items: flex-start; gap: 16px; padding: 8px 0; }
+.transit__body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.transit__headline { margin: 0; color: var(--md-sys-color-on-surface); }
+.transit__stop { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.transit__sub { margin: 0; color: var(--md-sys-color-on-surface-variant); }
+.transit__line { display: flex; align-items: baseline; gap: 8px; margin: 0; }
+.transit__badge {
+  flex: none;
+  min-width: 36px;
+  padding: 2px 8px;
+  border-radius: var(--md-sys-shape-corner-small);
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  text-align: center;
+}
+.transit--muted .list-row__icon {
+  background: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface-variant);
+}
+.transit__source { margin: 8px 0 0; color: var(--md-sys-color-on-surface-variant); }
 .note { margin-top: 12px; }
 .note__title { display: flex; align-items: center; gap: 6px; margin: 0 0 4px; color: var(--md-sys-color-on-surface); }
 .note__title svg { color: var(--md-sys-color-tertiary); font-size: 18px; }

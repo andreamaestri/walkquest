@@ -421,6 +421,7 @@ def walk_detail(walk: Walk) -> dict:
         "trail_considerations": walk.trail_considerations,
         "has_stiles": walk.has_stiles,
         "has_bus_access": walk.has_bus_access,
+        "transport": walk.transport_info or None,
         "created_at": walk.created_at.isoformat(),
         "updated_at": walk.updated_at.isoformat(),
         "photos": [
