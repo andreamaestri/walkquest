@@ -1,8 +1,11 @@
 import uuid
+
 from django.contrib.auth import get_user_model
 from django.contrib.gis.db import models
 from django.utils.translation import gettext_lazy as _
-from tagulous.models import TagField, TagModel
+from tagulous.models import TagField
+from tagulous.models import TagModel
+
 
 class WalkCategoryTag(TagModel):
     class TagMeta:
@@ -26,9 +29,10 @@ class WalkCategoryTag(TagModel):
 
     def to_dict(self):
         return {
-            'name': self.name,
-            'slug': self.slug
+            "name": self.name,
+            "slug": self.slug,
         }
+
 
 class WalkFeatureTag(TagModel):
     class TagMeta:
@@ -64,9 +68,10 @@ class WalkFeatureTag(TagModel):
 
     def to_dict(self):
         return {
-            'name': self.name,
-            'slug': self.slug
+            "name": self.name,
+            "slug": self.slug,
         }
+
 
 class Companion(models.Model):
     id = models.UUIDField(
@@ -78,27 +83,28 @@ class Companion(models.Model):
     user = models.ForeignKey(
         get_user_model(),
         on_delete=models.CASCADE,
-        related_name='companions',
+        related_name="companions",
     )
     name = models.CharField(
         _("Name"),
         max_length=100,
-        help_text=_("Name of your walking companion")
+        help_text=_("Name of your walking companion"),
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['name']
-        verbose_name = _('companion')
-        verbose_name_plural = _('companions')
+        ordering = ["name"]
+        verbose_name = _("companion")
+        verbose_name_plural = _("companions")
         indexes = [
-            models.Index(fields=['user']),
-            models.Index(fields=['created_at']),
+            models.Index(fields=["user"]),
+            models.Index(fields=["created_at"]),
         ]
 
     def __str__(self):
         return self.name
+
 
 class Adventure(models.Model):
     DIFFICULTY_CHOICES = [
@@ -116,8 +122,8 @@ class Adventure(models.Model):
         db_index=True,
     )
     title = models.CharField(
-        _("Title"), 
-        max_length=255, 
+        _("Title"),
+        max_length=255,
         help_text=_("Name of your epic quest"),
     )
     description = models.TextField(
@@ -125,12 +131,12 @@ class Adventure(models.Model):
         help_text=_("Chronicle your adventure's tale"),
     )
     start_date = models.DateField(
-        _("Start Date"), 
-        help_text=_("When the walk begins")
+        _("Start Date"),
+        help_text=_("When the walk begins"),
     )
     end_date = models.DateField(
-        _("End Date"), 
-        help_text=_("When the walk concludes")
+        _("End Date"),
+        help_text=_("When the walk concludes"),
     )
     start_time = models.TimeField(
         _("Start Time"),
@@ -152,10 +158,10 @@ class Adventure(models.Model):
         db_index=True,
     )
     companions = models.ManyToManyField(
-        'Companion',
-        related_name='adventures',
+        "Companion",
+        related_name="adventures",
         blank=True,
-        help_text=_("Companions that joined this adventure")
+        help_text=_("Companions that joined this adventure"),
     )
     related_categories = TagField(
         to=WalkCategoryTag,
@@ -167,6 +173,14 @@ class Adventure(models.Model):
         default=True,
         help_text=_("Whether this adventure is visible to other users"),
     )
+    walk = models.ForeignKey(
+        "Walk",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="logs",
+        help_text=_("The walk this log entry is about (unset on catalogue rows)"),
+    )
     created_at = models.DateTimeField(_("Created"), auto_now_add=True)
     updated_at = models.DateTimeField(_("Updated"), auto_now=True)
 
@@ -177,7 +191,10 @@ class Adventure(models.Model):
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["difficulty_level"], name="walks_adv_diff_lvl_idx"),
-            models.Index(fields=["start_date", "end_date"], name="walks_adv_start_end_idx"),
+            models.Index(
+                fields=["start_date", "end_date"],
+                name="walks_adv_start_end_idx",
+            ),
             models.Index(fields=["is_public"], name="walks_adv_is_public_idx"),
             models.Index(fields=["created_at"], name="walks_adv_created_at_idx"),
             models.Index(fields=["title"], name="walks_adv_title_idx"),
@@ -192,12 +209,14 @@ class Adventure(models.Model):
     @property
     def duration(self):
         if self.start_time and self.end_time:
-            from datetime import datetime, timedelta
-            today = datetime.today()
-            start = datetime.combine(today, self.start_time)
-            end = datetime.combine(today, self.end_time)
+            from datetime import datetime
+
+            day = datetime.min.date()  # only the difference matters, not the date
+            start = datetime.combine(day, self.start_time)
+            end = datetime.combine(day, self.end_time)
             return end - start
         return None
+
 
 class Walk(models.Model):
     FOOTWEAR_CHOICES = [
@@ -235,11 +254,16 @@ class Walk(models.Model):
     ]
 
     id = models.UUIDField(
-        primary_key=True, default=uuid.uuid4, editable=False, db_index=True,
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+        db_index=True,
     )
+    # The catalogue's own Adventure row for this walk. A user's log of the walk
+    # points the other way (Adventure.walk); never overwrite this from a log.
     adventure = models.ForeignKey(
         Adventure,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         related_name="walks",
         to_field="id",
         db_index=True,
@@ -328,28 +352,28 @@ class Walk(models.Model):
         blank=True,
     )
     related_categories = models.ManyToManyField(
-        'WalkCategoryTag',
-        related_name='related_walks',
+        "WalkCategoryTag",
+        related_name="related_walks",
         blank=True,
-        help_text=_("Categories associated with this walk")
+        help_text=_("Categories associated with this walk"),
     )
     features = models.ManyToManyField(
-        'WalkFeatureTag',
-        related_name='walks',
+        "WalkFeatureTag",
+        related_name="walks",
         blank=True,
-        help_text=_("Features present on this walk")
+        help_text=_("Features present on this walk"),
     )
     categories = models.ManyToManyField(
-        'WalkCategoryTag',
-        related_name='categorized_walks',
+        "WalkCategoryTag",
+        related_name="categorized_walks",
         blank=True,
-        help_text=_("Primary categories for this walk")
+        help_text=_("Primary categories for this walk"),
     )
     favorites = models.ManyToManyField(
         get_user_model(),
-        related_name='favorite_walks',
+        related_name="favorite_walks",
         blank=True,
-        help_text=_("Users who have favorited this walk")
+        help_text=_("Users who have favorited this walk"),
     )
     has_stiles = models.BooleanField(default=False)
     has_cafe = models.BooleanField(default=False)
@@ -358,7 +382,9 @@ class Walk(models.Model):
         _("Public transport"),
         default=dict,
         blank=True,
-        help_text=_("Nearest bus stops and lines, from NaPTAN/TransportAPI (see transport.py)"),
+        help_text=_(
+            "Nearest bus stops and lines, from NaPTAN/TransportAPI (see transport.py)",
+        ),
     )
     photo_source_url = models.URLField(
         _("Photo source page"),
@@ -383,13 +409,16 @@ class Walk(models.Model):
             models.Index(fields=["has_pub"], name="walks_walk_has_pub_idx"),
             models.Index(fields=["has_cafe"], name="walks_walk_has_cafe_idx"),
             models.Index(fields=["adventure"], name="walks_walk_adventure_idx"),
-            models.Index(fields=["latitude", "longitude"], name="walks_walk_location_idx"),
+            models.Index(
+                fields=["latitude", "longitude"],
+                name="walks_walk_location_idx",
+            ),
         ]
 
     def __str__(self):
         return self.walk_name
 
-    def get_distance(self, in_miles=False):
+    def get_distance(self, in_miles=False):  # noqa: FBT002
         return self.distance_miles if in_miles else self.distance_km
 
     def get_steepness(self):
@@ -399,24 +428,26 @@ class Walk(models.Model):
         # Update boolean fields based on categories
         # Check for 'pub' and 'cafe' in related_categories without using get_tag_list()
         try:
-            # We need to save first before checking many-to-many relationships on a new instance
+            # Save first: many-to-many relations can't be read on an unsaved instance
             if not self.pk:
                 super().save(*args, **kwargs)
                 # Early return since we can't check m2m relationships until after save
                 return
 
             # Now we can check the many-to-many relationships
-            self.has_pub = self.related_categories.filter(slug='pub').exists()
-            self.has_cafe = self.related_categories.filter(slug='cafe').exists()
+            self.has_pub = self.related_categories.filter(slug="pub").exists()
+            self.has_cafe = self.related_categories.filter(slug="cafe").exists()
 
-            if not getattr(self, 'title', None):
+            if not getattr(self, "title", None):
                 self._title = self.walk_name
-            if not getattr(self, 'description', None):
-                self._description = "This historic walking route is waiting for its story to be told."
-            
+            if not getattr(self, "description", None):
+                self._description = (
+                    "This historic walking route is waiting for its story to be told."
+                )
+
             # Call super save only if we haven't already saved
             super().save(*args, **kwargs)
-        except Exception as e:
+        except Exception:  # noqa: BLE001
             # If there's an error, ensure we call the parent save method
             super().save(*args, **kwargs)
 
@@ -439,6 +470,7 @@ class Walk(models.Model):
 
     def get_categories(self):
         return [category.to_dict() for category in self.categories.all()]
+
 
 def walk_photo_upload_to(instance, filename):
     return f"walks/{instance.walk.walk_id}/{filename}"
@@ -481,7 +513,10 @@ class WalkPhoto(models.Model):
             ),
         ]
         indexes = [
-            models.Index(fields=["walk", "is_main", "position"], name="walks_photo_order_idx"),
+            models.Index(
+                fields=["walk", "is_main", "position"],
+                name="walks_photo_order_idx",
+            ),
         ]
 
     def __str__(self):
@@ -503,8 +538,8 @@ class WalkFavorite(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('user', 'walk')
+        unique_together = ("user", "walk")
         indexes = [
-            models.Index(fields=['user', 'walk']),
-            models.Index(fields=['created_at']),
+            models.Index(fields=["user", "walk"]),
+            models.Index(fields=["created_at"]),
         ]

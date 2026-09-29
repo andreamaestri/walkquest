@@ -51,6 +51,7 @@
               :favorite="walksStore.isFavorite(selectedWalk.id)"
               :pending="walksStore.isPendingFavorite(selectedWalk.id)"
               :category-names="walksStore.categoryNames"
+              :logged="adventures.latestFor(selectedWalk.id)"
               @close="goHome"
               @favorite="walksStore.toggleFavorite($event)"
               @directions="openDirections"
@@ -142,6 +143,7 @@
               :favorite="walksStore.isFavorite(selectedWalk.id)"
               :pending="walksStore.isPendingFavorite(selectedWalk.id)"
               :category-names="walksStore.categoryNames"
+              :logged="adventures.latestFor(selectedWalk.id)"
               @close="goHome"
               @favorite="walksStore.toggleFavorite($event)"
               @directions="openDirections"
@@ -177,6 +179,7 @@ import { useWalksStore } from '../stores/walks';
 import { useSearchStore } from '../stores/searchStore';
 import { useAuthStore } from '../stores/auth';
 import { useAdventureDialogStore } from '../stores/adventureDialog';
+import { useAdventureStore } from '../stores/adventure';
 import { useToastStore } from '../stores/toast';
 import AppRail from './explore/AppRail.vue';
 import ExplorePane from './explore/ExplorePane.vue';
@@ -199,6 +202,7 @@ const walksStore = useWalksStore();
 const search = useSearchStore();
 const authStore = useAuthStore();
 const adventureDialog = useAdventureDialogStore();
+const adventures = useAdventureStore();
 const toast = useToastStore();
 
 const mapRef = ref(null);
@@ -331,9 +335,18 @@ function filterByCategory(slug) {
   goHome();
 }
 
+// The dialog asks anonymous visitors to sign in first, then brings them back
+// here with ?log=1 so it reopens on the same walk (once; the flag is removed).
 function logAdventure(walk) {
-  adventureDialog.openDialog(walk);
+  adventureDialog.open(walk);
 }
+
+watch([selectedWalk, () => route.query.log], ([walk, flag]) => {
+  if (!flag || !walk) return;
+  const { log, ...query } = route.query;
+  router.replace({ query });
+  if (authStore.isAuthenticated) logAdventure(walk);
+}, { immediate: true });
 
 function openDirections(walk) {
   const destination = `${walk.latitude},${walk.longitude}`;
@@ -362,8 +375,12 @@ const controlInset = computed(() => (isMobile.value
 
 // ── Data ─────────────────────────────────────────────────────────────────
 watch(() => authStore.isAuthenticated, (signedIn) => {
-  if (signedIn) walksStore.loadFavorites();
-  else walksStore.clearFavorites();
+  if (signedIn) {
+    walksStore.loadFavorites();
+    adventures.load().catch(() => {}); // only decorates the walk page; failure is quiet
+  } else {
+    walksStore.clearFavorites();
+  }
 }, { immediate: true });
 
 onMounted(async () => {

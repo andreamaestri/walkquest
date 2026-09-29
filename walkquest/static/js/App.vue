@@ -8,14 +8,7 @@
       class="global-theme-toggle"
     />
     <Loading ref="loadingComponent" />
-    <Teleport to="#portal-root" :disabled="!portalRoot()">
-      <component 
-        :is="adventureDialogStore.currentWalk ? AdventureLogDialog : null"
-        v-if="adventureDialogStore.currentWalk && AdventureLogDialog"
-        :walk="adventureDialogStore.currentWalk"
-        @submit="handleAdventureSubmit"
-      />
-    </Teleport>
+    <LogAdventureDialog v-if="adventureDialogStore.isOpen" />
     <component :is="snackbarComponent" ref="snackbarRef" />
     <!-- Error boundary component -->
     <div v-if="hasError" class="error-boundary">
@@ -35,15 +28,14 @@ import { useUiStore } from './stores/ui';
 import { useAdventureDialogStore } from './stores/adventureDialog';
 import { useAdventureStore } from './stores/adventure';
 import { useAuthStore } from './stores/auth';
-import { usePortal } from './composables/usePortal';
 import { registerSnackbar } from './composables/useSnackbar';
 import Loading from './components/shared/Loading.vue';
 import { RouterView } from 'vue-router';
 import ThemeToggle from './components/shared/ThemeToggle.vue';
 
 // Async component imports
-const AdventureLogDialog = defineAsyncComponent(() => 
-  import('./components/shared/AdventureLogDialog.vue')
+const LogAdventureDialog = defineAsyncComponent(() =>
+  import('./components/adventures/LogAdventureDialog.vue')
 );
 const snackbarComponent = shallowRef(null);
 
@@ -68,16 +60,15 @@ onErrorCaptured((err, instance, info) => {
   console.error('Error captured in App.vue:', err);
   console.error('Component:', instance);
   console.error('Info:', info);
-  
+
   // Set error state
   hasError.value = true;
   errorMessage.value = err.message || 'An unexpected error occurred';
-  
+
   // Return false to prevent error propagation
   return false;
 });
 
-const { portalRoot } = usePortal();
 const adventureStore = useAdventureStore();
 const adventureDialogStore = useAdventureDialogStore();
 const uiStore = useUiStore();
@@ -88,20 +79,11 @@ const loadingComponent = ref(null);
 const snackbarRef = ref(null);
 const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
-// Handle adventure submission
-const handleAdventureSubmit = async (data) => {
-  try {
-    await adventureStore.createAdventure(data);
-    adventureDialogStore.closeDialog();
-    uiStore.showToast('Adventure created successfully!', 'success');
-  } catch (error) {
-    console.error('Failed to create adventure:', error);
-    uiStore.showToast('Failed to create adventure. Please try again.', 'error');
-  }
-};
+// Signing out must not leave the last user's logged walks in memory.
+watch(() => authStore.isAuthenticated, (signedIn) => {
+  if (!signedIn) adventureStore.clear();
+});
 
-// Setup beforeunload handler to clear dialog state
-let beforeUnloadHandler;
 let styleFixInterval;
 
 onMounted(() => {
@@ -111,28 +93,17 @@ onMounted(() => {
       registerSnackbar(value);
     }
   });
-  
+
   // Initialize auth store
   authStore.initAuth();
-  
+
   // Initialize UI responsive state and store cleanup function
   const cleanup = uiStore.initializeResponsiveState();
-  
+
   onBeforeUnmount(() => {
     // Call cleanup function when component unmounts
     cleanup();
-    
-    // Remove beforeunload handler
-    if (beforeUnloadHandler) {
-      window.removeEventListener('beforeunload', beforeUnloadHandler);
-    }
   });
-  
-  // Setup beforeunload handler
-  beforeUnloadHandler = () => {
-    adventureDialogStore.closeDialog();
-  };
-  window.addEventListener('beforeunload', beforeUnloadHandler);
 
   // Fix for portal click issue - with requestIdleCallback
   const fixPortalStyles = () => {
@@ -140,7 +111,7 @@ onMounted(() => {
     const portalRootElement = document.getElementById('portal-root');
     if (portalRootElement) {
       portalRootElement.style.pointerEvents = 'none';
-      
+
       // Ensure direct children have pointer events
       try {
         const children = portalRootElement.children;
@@ -152,7 +123,7 @@ onMounted(() => {
       }
     }
   };
-  
+
   // Use requestIdleCallback for non-critical styling tasks
   if (window.requestIdleCallback) {
     window.requestIdleCallback(fixPortalStyles);
@@ -164,7 +135,7 @@ onMounted(() => {
     fixPortalStyles();
     styleFixInterval = setInterval(fixPortalStyles, 2000);
   }
-  
+
   // Watch loading states to show/hide loading component
   watch(() => uiStore.isAnyLoading, (isLoading) => {
     if (isLoading) {
@@ -173,7 +144,7 @@ onMounted(() => {
                            uiStore.loadingStates.map ? 'Loading map...' :
                            uiStore.loadingStates.search ? 'Searching...' :
                            'Loading...';
-      
+
       if (loadingComponent.value?.show) {
         loadingComponent.value.show(loadingMessage);
       }
@@ -183,26 +154,21 @@ onMounted(() => {
       }
     }
   }, { immediate: true });
-  
+
 });
 
 // Cleanup handlers when component is unmounted
 onBeforeUnmount(() => {
-  // Remove beforeunload handler
-  if (beforeUnloadHandler) {
-    window.removeEventListener('beforeunload', beforeUnloadHandler);
-  }
-  
   // Clear style fix interval
   if (styleFixInterval) {
     clearInterval(styleFixInterval);
   }
-  
+
   // Clean up UI responsive state
   if (uiStore.cleanupResponsiveState) {
     uiStore.cleanupResponsiveState();
   }
-  
+
   // Clean up auth store
   authStore.cleanup();
 });
