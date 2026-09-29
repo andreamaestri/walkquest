@@ -187,6 +187,7 @@ def test_refresh_transport_uses_route_start_and_preserves_amenities(tmp_path):
         ),
     )
     Walk.objects.filter(pk=walk.pk).update(has_pub=True)
+    before = Walk.objects.get(pk=walk.pk).updated_at
 
     with mock.patch.object(transport, "date", wraps=date) as fake_date:
         fake_date.today.return_value = TODAY
@@ -200,6 +201,7 @@ def test_refresh_transport_uses_route_start_and_preserves_amenities(tmp_path):
     walk.refresh_from_db()
     assert walk.has_bus_access
     assert walk.has_pub
+    assert walk.updated_at > before  # invalidates the list cache/ETag
     assert walk.transport_info["start_stop"]["lines"][0]["line"] == "11"
     assert walk.transport_info["station"]["name"] == "Bodmin Parkway"
 
@@ -223,7 +225,7 @@ def test_refresh_train_services_shares_hits_and_respects_limit(settings):
     def info(atco):
         return {"start_stop": None, "end_stop": None, "station": {"atco": atco}}
 
-    make_walk("a", transport_info=info("9100A"))
+    before = make_walk("a", transport_info=info("9100A")).updated_at
     make_walk("b", transport_info=info("9100A"))
     make_walk("c", transport_info=info("9100C"))
     services = {"operators": ["GWR"], "destinations": ["Plymouth"]}
@@ -238,6 +240,7 @@ def test_refresh_train_services_shares_hits_and_respects_limit(settings):
     fetch.assert_called_once_with("9100A", "id", "key")
     a, b, c = (Walk.objects.get(walk_id=w).transport_info["station"] for w in "abc")
     assert a["services"] == services
+    assert Walk.objects.get(walk_id="a").updated_at > before
     assert b["services"] == services
     assert "services" not in c
 
