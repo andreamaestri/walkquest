@@ -45,7 +45,8 @@ async function json(path, options) {
     let message = `Request failed (${response.status})`;
     try {
       const data = await response.json();
-      message = data.error || data.message || message;
+      const detail = Array.isArray(data.detail) ? data.detail[0]?.msg : data.detail;
+      message = data.error || data.message || detail || message;
     } catch {
       /* non-JSON error body */
     }
@@ -97,6 +98,17 @@ export function getGeometry(walkId) {
   return geometryCache.get(walkId);
 }
 
+// ── Adventure logs ────────────────────────────────────────────────────────
+export const fetchAdventures = () => json('adventures/');
+export const logAdventure = (payload) => json('adventures/log', { method: 'POST', body: payload });
+export const updateAdventure = (id, changes) => json(`adventures/${id}`, { method: 'PATCH', body: changes });
+export async function deleteAdventure(id) {
+  const response = await request(`adventures/${id}`, { method: 'DELETE' });
+  if (!response.ok) throw new ApiError(`Request failed (${response.status})`, response.status);
+}
+export const fetchCompanions = async () => (await json('adventures/companions/')).companions || [];
+export const createCompanion = (name) => json('adventures/companions/', { method: 'POST', body: { name } });
+
 export async function toggleFavorite(walkId) {
   const data = await json(`walks/${walkId}/favorite`, { method: 'POST' });
   if (data.status !== 'success') throw new ApiError(data.message || 'Failed to update favourite', 401);
@@ -114,6 +126,12 @@ export const WalksAPI = {
   getGeometry,
   toggleFavorite,
   fetchTags,
+  fetchAdventures,
+  logAdventure,
+  updateAdventure,
+  deleteAdventure,
+  fetchCompanions,
+  createCompanion,
 };
 
 export default WalksAPI;

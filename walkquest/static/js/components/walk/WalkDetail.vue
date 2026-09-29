@@ -43,7 +43,7 @@
 
       <div class="detail__actions">
         <M3Button variant="filled" size="md" icon="material-symbols:edit-note-rounded" class="detail__primary" @click="$emit('log-adventure', detail || walk)">
-          Log adventure
+          {{ logged ? 'Log again' : 'Log adventure' }}
         </M3Button>
         <div class="detail__group" role="group" aria-label="Walk actions">
           <M3IconButton
@@ -61,6 +61,12 @@
           <M3IconButton variant="tonal" size="md" icon="material-symbols:share-outline" label="Share walk" @click="share" />
         </div>
       </div>
+
+      <p v-if="logged" class="detail__logged type-body-medium">
+        <Icon icon="material-symbols:check-circle-rounded" aria-hidden="true" />
+        <span>You walked this on {{ formatDay(logged.start_date) }}.</span>
+        <RouterLink :to="{ name: 'adventures' }">My adventures</RouterLink>
+      </p>
 
       <section class="card">
         <h2 class="card__title type-title-medium-emphasized">Highlights</h2>
@@ -192,6 +198,7 @@ import M3LoadingIndicator from '../m3/M3LoadingIndicator.vue';
 import DifficultyMeter from '../explore/DifficultyMeter.vue';
 import PhotoCarousel from './PhotoCarousel.vue';
 import { useToastStore } from '../../stores/toast';
+import { formatDay } from '../../utils/adventureLog';
 import {
   categoryIcon,
   categoryLabel,
@@ -209,6 +216,8 @@ const props = defineProps({
   favorite: { type: Boolean, default: false },
   pending: { type: Boolean, default: false },
   categoryNames: { type: Map, default: () => new Map() },
+  /** The signed-in user's latest log of this walk, if they have one. */
+  logged: { type: Object, default: null },
 });
 defineEmits(['close', 'favorite', 'directions', 'recenter', 'log-adventure', 'category']);
 
@@ -333,6 +342,17 @@ async function share() {
 .detail__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px; }
 .detail__primary { flex: 1 1 auto; }
 .detail__group { display: flex; gap: 4px; }
+.detail__logged {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: -4px 0 16px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+.detail__logged svg { flex: none; inline-size: 20px; block-size: 20px; color: var(--md-sys-color-primary); }
+.detail__logged a { color: var(--md-sys-color-primary); font-weight: 600; text-decoration: none; }
+.detail__logged a:hover { text-decoration: underline; }
 .card {
   margin-bottom: 12px;
   padding: 16px;

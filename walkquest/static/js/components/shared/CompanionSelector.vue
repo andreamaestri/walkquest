@@ -1,128 +1,112 @@
 <template>
-  <div class="space-y-2">
-    <div class="flex items-center justify-between">
-      <label class="m3-label-large text-[var(--md-sys-color-on-surface)]">
-        Companions
-      </label>
-      <button
-        type="button"
-        class="m3-button m3-text-button text-sm"
-        @click="showNewCompanionInput"
-        v-if="!isAddingNew"
-      >
-        Add New
-      </button>
-    </div>
-
-    <!-- New companion input -->
-    <div v-if="isAddingNew" class="flex gap-2">
-      <input
-        v-model="newCompanionName"
-        type="text"
-        class="flex-1 px-4 py-2 bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline)] rounded-md focus:outline-none focus:border-[var(--md-sys-color-primary)] focus:ring-2 focus:ring-[var(--md-sys-color-primary)/0.2]"
-        placeholder="Companion name"
-        @keyup.enter="saveNewCompanion"
-      />
-      <button
-        type="button"
-        class="m3-button m3-tonal-button"
-        @click="saveNewCompanion"
-      >
-        Add
-      </button>
-      <button
-        type="button"
-        class="m3-button m3-text-button"
-        @click="cancelNewCompanion"
-      >
-        Cancel
-      </button>
-    </div>
-
-    <!-- Selected companions list -->
-    <div class="flex flex-wrap gap-2">
-      <div 
-        v-for="companion in companionsStore.userCompanions" 
+  <div class="companions">
+    <div class="companions__chips" role="group" aria-label="Who joined you">
+      <M3Chip
+        v-for="companion in store.userCompanions"
         :key="companion.id"
-        class="flex items-center gap-2 px-4 py-2 rounded-full transition-colors duration-200"
-        :class="[
-          isSelected(companion)
-            ? 'bg-[var(--md-sys-color-secondary-container)] text-[var(--md-sys-color-on-secondary-container)]'
-            : 'bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-highest)]'
-        ]"
-        @click="toggleCompanion(companion)"
+        :selected="isSelected(companion.id)"
+        @click="toggle(companion.id)"
       >
-        <span>{{ companion.name }}</span>
-        <button 
-          v-if="isSelected(companion)"
-          type="button"
-          class="p-1 rounded-full hover:bg-[var(--md-sys-color-on-secondary-container)/0.12]"
-          @click.stop="removeCompanion(companion)"
-        >
-          <Icon icon="mdi:close" class="w-4 h-4" />
-        </button>
-      </div>
+        {{ companion.name }}
+      </M3Chip>
+      <M3Chip v-if="!adding" :filter="false" icon="material-symbols:add-rounded" @click="startAdding">Add someone</M3Chip>
     </div>
+
+    <form v-if="adding" class="companions__add" @submit.prevent="add">
+      <input
+        ref="inputEl"
+        v-model="name"
+        class="companions__input"
+        type="text"
+        maxlength="100"
+        autocomplete="off"
+        placeholder="Their name"
+        aria-label="Companion's name"
+        @keydown.esc.stop.prevent="stopAdding"
+      />
+      <M3Button type="submit" variant="tonal" size="sm" :disabled="!name.trim() || saving">Add</M3Button>
+      <M3Button variant="text" size="sm" @click="stopAdding">Cancel</M3Button>
+    </form>
+
+    <p v-if="error" class="companions__note is-error" role="alert">{{ error }}</p>
+    <p v-else-if="!store.userCompanions.length && !adding && !store.isLoading" class="companions__note type-body-small">
+      Walked solo? Skip this. People you add here are remembered for next time.
+    </p>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { Icon } from '@iconify/vue'
-import { useCompanionsStore } from '../../stores/companions'
+import { nextTick, onMounted, ref } from 'vue';
+import M3Button from '../m3/M3Button.vue';
+import M3Chip from '../m3/M3Chip.vue';
+import { useCompanionsStore } from '../../stores/companions';
 
 const props = defineProps({
-  modelValue: {
-    type: Array,
-    required: true
-  }
-})
+  /** Ids of the selected companions. */
+  modelValue: { type: Array, required: true },
+});
+const emit = defineEmits(['update:modelValue']);
 
-const emit = defineEmits(['update:modelValue'])
+const store = useCompanionsStore();
+const adding = ref(false);
+const name = ref('');
+const saving = ref(false);
+const error = ref('');
+const inputEl = ref(null);
 
-const companionsStore = useCompanionsStore()
-const isAddingNew = ref(false)
-const newCompanionName = ref('')
+onMounted(() => store.fetchUserCompanions());
 
-onMounted(async () => {
-  await companionsStore.fetchUserCompanions()
-})
+const isSelected = (id) => props.modelValue.includes(id);
+const toggle = (id) => {
+  emit('update:modelValue', isSelected(id) ? props.modelValue.filter((x) => x !== id) : [...props.modelValue, id]);
+};
 
-function showNewCompanionInput() {
-  isAddingNew.value = true
-  newCompanionName.value = ''
+async function startAdding() {
+  adding.value = true;
+  error.value = '';
+  await nextTick();
+  inputEl.value?.focus();
 }
 
-async function saveNewCompanion() {
-  if (!newCompanionName.value.trim()) return
+function stopAdding() {
+  adding.value = false;
+  name.value = '';
+  error.value = '';
+}
 
+async function add() {
+  if (!name.value.trim() || saving.value) return;
+  saving.value = true;
+  error.value = '';
   try {
-    const newCompanion = await companionsStore.addCompanion(newCompanionName.value)
-    emit('update:modelValue', [...props.modelValue, newCompanion.id])
-    isAddingNew.value = false
-  } catch (error) {
-    console.error('Failed to add companion:', error)
+    const companion = await store.addCompanion(name.value.trim());
+    if (!isSelected(companion.id)) emit('update:modelValue', [...props.modelValue, companion.id]);
+    stopAdding();
+  } catch (e) {
+    error.value = e.message || "Couldn't add them. Try again.";
+  } finally {
+    saving.value = false;
   }
-}
-
-function cancelNewCompanion() {
-  isAddingNew.value = false
-  newCompanionName.value = ''
-}
-
-function isSelected(companion) {
-  // Compare by string value to ensure consistent comparison
-  return props.modelValue.some(id => id.toString() === companion.id.toString())
-}
-
-function toggleCompanion(companion) {
-  const newValue = isSelected(companion)
-    ? props.modelValue.filter(id => id.toString() !== companion.id.toString())
-    : [...props.modelValue, companion.id]
-  emit('update:modelValue', newValue)
-}
-
-function removeCompanion(companion) {
-  emit('update:modelValue', props.modelValue.filter(id => id.toString() !== companion.id.toString()))
 }
 </script>
+
+<style scoped>
+.companions { display: grid; gap: 12px; }
+.companions__chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.companions__add { display: flex; align-items: center; gap: 8px; }
+.companions__input {
+  flex: 1;
+  min-inline-size: 0;
+  block-size: 40px;
+  padding-inline: 12px;
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-small);
+  background: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface);
+  box-shadow: inset 0 0 0 1px var(--md-sys-color-outline);
+  font: inherit;
+}
+.companions__input:focus-visible { outline: 2px solid var(--md-sys-color-primary); outline-offset: 0; }
+.companions__note { margin: 0; color: var(--md-sys-color-on-surface-variant); }
+.companions__note.is-error { color: var(--md-sys-color-error); }
+</style>
