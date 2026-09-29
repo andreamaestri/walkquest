@@ -91,6 +91,8 @@ let routeFeature = null;
 let routeDraw = null;
 /** Camera before a walk was opened; restored on back unless the user moved the map. */
 let homeCamera = null;
+// Camera being restored on the way back to the overview, until its animation ends.
+let cameraRestore = null;
 
 const EMPTY = { type: 'FeatureCollection', features: [] };
 
@@ -273,7 +275,9 @@ function bindInteractions() {
   m.on('rotate', () => { bearing.value = m.getBearing(); });
   // Only gestures carry an originalEvent; programmatic camera moves don't.
   m.on('movestart', (event) => {
-    if (event.originalEvent && homeCamera) homeCamera.moved = true;
+    if (!event.originalEvent) return;
+    if (homeCamera) homeCamera.moved = true;
+    cameraRestore = null;
   });
 }
 
@@ -333,11 +337,13 @@ async function showRoute(walkId) {
     return;
   }
   const walk = props.walks.find((w) => w.id === walkId);
+  // Drop the previous walk's route so it's never framed while this one loads (or fails).
+  if (routeFeature?.properties?.walkId !== walkId) clearRoute();
   loadingRoute.value = true;
   try {
     const feature = await getGeometry(walkId);
     if (request !== routeRequest || !map.value) return;
-    routeFeature = feature;
+    routeFeature = { ...feature, properties: { ...feature.properties, walkId } };
     m.getSource('route').setData(feature);
     m.getSource('route-ends').setData(routeEndpoints(feature));
     drawRoute();
@@ -374,7 +380,10 @@ function onPaddingChange(next, prev) {
   const m = map.value;
   if (!m?.getSource('route') || JSON.stringify(next) === JSON.stringify(prev)) return;
   if (routeFeature) fitRoute(700);
-  else m.easeTo({ padding: cameraPadding(0), ...cameraMotion(500) });
+  else if (cameraRestore && performance.now() < cameraRestore.until) {
+    // A new easeTo would cancel the restore, so carry it on with the new padding.
+    m.easeTo({ ...cameraRestore.camera, padding: cameraPadding(0), ...cameraMotion(700) });
+  } else m.easeTo({ padding: cameraPadding(0), ...cameraMotion(500) });
 }
 
 /** Re-frames the selected route (e.g. "show on map" in the detail view). */
@@ -508,6 +517,7 @@ watch(() => props.selectedId, (id, previous) => {
     // Back to the overview: return the camera, unless the user explored meanwhile.
     if (homeCamera && !homeCamera.moved) {
       const { moved, ...camera } = homeCamera;
+      cameraRestore = { camera, until: performance.now() + 900 };
       m.easeTo({ ...camera, padding: cameraPadding(0), ...cameraMotion(900) });
     }
     homeCamera = null;

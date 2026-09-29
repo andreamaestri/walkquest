@@ -146,7 +146,11 @@ function onPointerUp() {
 }
 
 function onHandleClick() {
-  if (moved) return;
+  // Swallow the click that ends a drag, then let keyboard activation through again.
+  if (moved) {
+    moved = false;
+    return;
+  }
   step(snapIndex.value === snaps.value.length - 1 ? -1 : 1);
 }
 
