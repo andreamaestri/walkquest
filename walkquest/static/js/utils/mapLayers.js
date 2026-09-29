@@ -186,7 +186,8 @@ export function walkLayers(colors) {
       paint: {
         'text-color': colors.onSurface,
         'text-halo-color': colors.surface,
-        'text-halo-width': 1.5,
+        'text-halo-width': 2,
+        'text-halo-blur': 0.5,
         'text-opacity': stateDependent(1),
       },
     },
@@ -205,31 +206,65 @@ export function selectedPinLayer() {
   };
 }
 
-export function routeLayers(colors) {
+/**
+ * Route colours for the basemap actually on screen: a light map needs a deep
+ * line in a white casing, a night map a bright line in a dark one. The soft
+ * shadow under the casing lifts the route off pale fields and moorland.
+ */
+export function routePalette(colors, mapIsDark) {
+  return mapIsDark
+    ? { line: colors.primary, casing: colors.surface, shadow: 'rgba(0, 0, 0, 0.55)' }
+    : { line: colors.primary, casing: '#ffffff', shadow: 'rgba(0, 32, 34, 0.35)' };
+}
+
+/** Start: a hollow ring in the route colour; finish: a solid dot in the casing. */
+export function routeEndPaint(palette) {
+  const isStart = ['==', ['get', 'kind'], 'start'];
+  return {
+    'circle-color': ['case', isStart, palette.casing, palette.line],
+    'circle-stroke-color': ['case', isStart, palette.line, palette.casing],
+  };
+}
+
+const zoomWidth = (low, high) => ['interpolate', ['linear'], ['zoom'], 10, low, 15, high];
+
+export function routeLayers(colors, mapIsDark = false) {
+  const palette = routePalette(colors, mapIsDark);
   return [
+    {
+      id: 'route-shadow',
+      type: 'line',
+      source: 'route',
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: {
+        'line-color': palette.shadow,
+        'line-width': zoomWidth(8, 16),
+        'line-blur': zoomWidth(3, 6),
+        'line-emissive-strength': 1,
+      },
+    },
     {
       id: 'route-casing',
       type: 'line',
       source: 'route',
       layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: { 'line-color': colors.surface, 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 5, 15, 10], 'line-emissive-strength': 1 },
+      paint: { 'line-color': palette.casing, 'line-width': zoomWidth(6, 11), 'line-emissive-strength': 1 },
     },
     {
       id: 'route-line',
       type: 'line',
       source: 'route',
       layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: { 'line-color': colors.primary, 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 3, 15, 6], 'line-emissive-strength': 1 },
+      paint: { 'line-color': palette.line, 'line-width': zoomWidth(3.5, 6.5), 'line-emissive-strength': 1 },
     },
     {
       id: 'route-ends',
       type: 'circle',
       source: 'route-ends',
       paint: {
-        'circle-radius': 6,
-        'circle-color': ['match', ['get', 'kind'], 'start', colors.tertiary, colors.primary],
-        'circle-stroke-width': 2,
-        'circle-stroke-color': colors.surface,
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 5, 15, 8],
+        ...routeEndPaint(palette),
+        'circle-stroke-width': 3,
         'circle-emissive-strength': 1,
         // Faded in once the route has drawn itself on (see WalkMap drawRoute).
         'circle-opacity': 0,
@@ -279,4 +314,61 @@ export function supportsWebGL2() {
   } catch {
     return false;
   }
+}
+
+/**
+ * Lights and fog for the Standard basemap. The WalkQuest Studio style sets its
+ * own root lights (a strong orange sun) and a salmon fog, and root expressions
+ * can't read the imported basemap's lightPreset, so they never change: every
+ * close-up came out pink-tinted and washed out, and "night" never got dark.
+ * These are Standard's own day/night values, applied over the root ones.
+ */
+export function basemapAtmosphere(isDark) {
+  const fogRange = ['interpolate', ['linear'], ['zoom'], 13, ['literal', [1, 10]], 15, ['literal', [1, 4]], 22, ['literal', [14, 20]]];
+  if (isDark) {
+    return {
+      lights: [
+        { id: 'ambient', type: 'ambient', properties: { color: 'hsl(217, 100%, 11%)', intensity: 0.5 } },
+        {
+          id: 'directional',
+          type: 'directional',
+          properties: {
+            direction: [270, 20],
+            color: 'hsl(225, 15%, 29%)',
+            intensity: ['interpolate', ['linear'], ['zoom'], 13, 0, 14, 0.5],
+            'cast-shadows': true,
+            'shadow-intensity': 0.5,
+          },
+        },
+      ],
+      fog: {
+        range: fogRange,
+        'vertical-range': [30, 120],
+        color: 'hsla(213, 63%, 20%, 0.9)',
+        'high-color': 'hsl(228, 38%, 20%)',
+        'space-color': 'hsl(211, 84%, 17%)',
+        'horizon-blend': 0.05,
+        'star-intensity': 0.4,
+      },
+    };
+  }
+  return {
+    lights: [
+      { id: 'ambient', type: 'ambient', properties: { color: 'hsl(0, 0%, 100%)', intensity: 0.8 } },
+      {
+        id: 'directional',
+        type: 'directional',
+        properties: { direction: [180, 20], color: 'hsl(0, 0%, 100%)', intensity: 0.2, 'cast-shadows': true, 'shadow-intensity': 1 },
+      },
+    ],
+    fog: {
+      range: fogRange,
+      'vertical-range': [30, 120],
+      color: 'hsla(200, 60%, 98%, 0.9)',
+      'high-color': 'hsl(205, 88%, 86%)',
+      'space-color': 'hsl(210, 100%, 80%)',
+      'horizon-blend': 0.05,
+      'star-intensity': 0,
+    },
+  };
 }
