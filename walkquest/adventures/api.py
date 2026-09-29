@@ -61,8 +61,6 @@ def create_companion(request, data: CompanionCreate):
     name = data.name.strip()
     if not name:
         return 422, ErrorResponse(message="Give your companion a name.")
-    if len(name) > Companion.name.field.max_length:
-        return 422, ErrorResponse(message="That name is too long.")
     # Adding the same person twice just selects them again.
     companion = Companion.objects.filter(user=request.user, name__iexact=name).first()
     if companion is None:

@@ -25,7 +25,8 @@
         <span class="log__gate-badge" aria-hidden="true"><Icon icon="material-symbols:hiking-rounded" /></span>
         <h3 class="type-title-large-emphasized">{{ expired ? 'Your session ended' : 'Sign in to log this walk' }}</h3>
         <p class="type-body-large log__gate-text">
-          <template v-if="expired">Sign in again to save it. What you've entered is kept.</template>
+          <template v-if="expired && editing">Sign in again to save your changes.</template>
+          <template v-else-if="expired">Sign in again to save it. What you've entered is kept.</template>
           <template v-else>Your walks are saved to your account, so you can look back on where you've been and see which ones you've done.</template>
         </p>
         <div class="log__gate-actions">
@@ -125,7 +126,7 @@
             <p v-if="errors.description" class="log__error" role="alert">{{ errors.description }}</p>
           </section>
 
-          <p v-if="formError" class="log__error log__error--form" role="alert">
+          <p v-if="formError" ref="formErrorEl" class="log__error log__error--form" role="alert">
             <Icon icon="material-symbols:error-outline-rounded" aria-hidden="true" />
             <span>{{ formError }}</span>
           </p>
@@ -198,8 +199,12 @@ const yesterday = computed(() => {
 });
 
 // ── Sign-in step ────────────────────────────────────────────────────────
-const expired = ref(false); // the session ended while the form was open
+const expired = ref(false); // the session ended while the dialog was open
 const needsSignIn = computed(() => !auth.isAuthenticated);
+// Signed out behind our back (idle timeout, another tab): say so, keep the draft.
+watch(() => auth.isAuthenticated, (signedIn, was) => {
+  if (was && !signedIn) expired.value = true;
+});
 
 function goToAuth(target) {
   // After signing in, come back to this walk with the dialog open again.
@@ -221,6 +226,7 @@ const form = ref(initialForm());
 const errors = ref({});
 const formError = ref('');
 const saving = ref(false);
+const formErrorEl = ref(null);
 
 // Keep what's been typed for this walk, so closing by accident loses nothing.
 watch(form, (value) => {
@@ -251,17 +257,22 @@ async function save() {
     );
     finish();
   } catch (error) {
-    if (error.status === 401 || error.status === 403) {
-      // Signed out behind our back: keep the draft and go back to the sign-in step.
+    if (error.status === 401) {
+      // Our own API says the session is gone: believe it over the store's cache.
+      auth.$patch({ isAuthenticated: false, user: null, userDataLoaded: false });
+      return;
+    }
+    if (error.status === 403) {
+      // Could be a signed-out session or a stale CSRF token: ask the server.
       await auth.checkAuth();
-      if (!auth.isAuthenticated) {
-        expired.value = true;
-        return;
-      }
+      if (!auth.isAuthenticated) return;
     }
     formError.value = error.status && error.status < 500 && error.status !== 403
       ? error.message
-      : "Couldn't save your walk. Check your connection and try again.";
+      : "Couldn't save your walk. Try again, or refresh the page if it keeps happening.";
+    // The message sits below the questions: bring it into view.
+    await nextTick();
+    formErrorEl.value?.scrollIntoView({ block: 'nearest', behavior: reducedMotion() ? 'auto' : 'smooth' });
   } finally {
     saving.value = false;
   }

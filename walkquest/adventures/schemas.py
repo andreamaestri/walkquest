@@ -2,7 +2,14 @@ from datetime import date
 from datetime import time
 from uuid import UUID
 
+from ninja import Field
 from ninja import Schema
+
+# Bounds on what a signed-in user can store per log (the notes limit matches
+# the dialog's counter; the title can only grow this long from the walk name).
+TITLE_MAX = 255
+NOTES_MAX = 500
+COMPANIONS_MAX = 50
 
 
 class CompanionOut(Schema):
@@ -25,11 +32,11 @@ class AdventureIn(Schema):
     end_date: date | None = None
     start_time: time | None = None
     end_time: time | None = None
-    title: str | None = None
-    description: str = ""
-    difficulty_level: str | None = None
-    categories: list[str] | None = None
-    companion_ids: list[UUID] = []
+    title: str | None = Field(None, max_length=TITLE_MAX)
+    description: str = Field("", max_length=NOTES_MAX)
+    difficulty_level: str | None = Field(None, max_length=40)
+    categories: list[str] | None = Field(None, max_length=20)
+    companion_ids: list[UUID] = Field(default_factory=list, max_length=COMPANIONS_MAX)
     is_public: bool = False
 
 
@@ -40,10 +47,10 @@ class AdventureUpdate(Schema):
     end_date: date | None = None
     start_time: time | None = None
     end_time: time | None = None
-    title: str | None = None
-    description: str | None = None
-    difficulty_level: str | None = None
-    companion_ids: list[UUID] | None = None
+    title: str | None = Field(None, max_length=TITLE_MAX)
+    description: str | None = Field(None, max_length=NOTES_MAX)
+    difficulty_level: str | None = Field(None, max_length=40)
+    companion_ids: list[UUID] | None = Field(None, max_length=COMPANIONS_MAX)
     is_public: bool | None = None
 
 
@@ -69,7 +76,7 @@ class ErrorResponse(Schema):
 
 
 class CompanionCreate(Schema):
-    name: str
+    name: str = Field(max_length=100)
 
 
 class CompanionList(Schema):

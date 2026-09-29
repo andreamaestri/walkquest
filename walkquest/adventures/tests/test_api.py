@@ -268,3 +268,31 @@ def test_a_companion_needs_a_name(signed_in):
         content_type="application/json",
     )
     assert response.status_code == 422
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        {"title": "x" * 256},
+        {"description": "x" * 501},
+        {"companion_ids": ["7c5c2b52-4a55-4b39-a4f9-7f53b8c1a111"] * 51},
+    ],
+)
+def test_oversized_input_is_rejected_before_it_reaches_the_database(
+    signed_in,
+    walk,
+    extra,
+):
+    body = {"walk_id": str(walk.id), "start_date": str(TODAY), **extra}
+    assert post(signed_in, body).status_code == 422
+    assert counts() == (0, 0)
+
+
+def test_an_overlong_companion_name_is_rejected(signed_in):
+    response = signed_in.post(
+        "/api/adventures/companions/",
+        {"name": "x" * 101},
+        content_type="application/json",
+    )
+    assert response.status_code == 422
+    assert Companion.objects.count() == 0

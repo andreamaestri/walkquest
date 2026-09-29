@@ -60,11 +60,11 @@ onErrorCaptured((err, instance, info) => {
   console.error('Error captured in App.vue:', err);
   console.error('Component:', instance);
   console.error('Info:', info);
-  
+
   // Set error state
   hasError.value = true;
   errorMessage.value = err.message || 'An unexpected error occurred';
-  
+
   // Return false to prevent error propagation
   return false;
 });
@@ -93,13 +93,13 @@ onMounted(() => {
       registerSnackbar(value);
     }
   });
-  
+
   // Initialize auth store
   authStore.initAuth();
-  
+
   // Initialize UI responsive state and store cleanup function
   const cleanup = uiStore.initializeResponsiveState();
-  
+
   onBeforeUnmount(() => {
     // Call cleanup function when component unmounts
     cleanup();
@@ -111,7 +111,7 @@ onMounted(() => {
     const portalRootElement = document.getElementById('portal-root');
     if (portalRootElement) {
       portalRootElement.style.pointerEvents = 'none';
-      
+
       // Ensure direct children have pointer events
       try {
         const children = portalRootElement.children;
@@ -123,7 +123,7 @@ onMounted(() => {
       }
     }
   };
-  
+
   // Use requestIdleCallback for non-critical styling tasks
   if (window.requestIdleCallback) {
     window.requestIdleCallback(fixPortalStyles);
@@ -135,7 +135,7 @@ onMounted(() => {
     fixPortalStyles();
     styleFixInterval = setInterval(fixPortalStyles, 2000);
   }
-  
+
   // Watch loading states to show/hide loading component
   watch(() => uiStore.isAnyLoading, (isLoading) => {
     if (isLoading) {
@@ -144,7 +144,7 @@ onMounted(() => {
                            uiStore.loadingStates.map ? 'Loading map...' :
                            uiStore.loadingStates.search ? 'Searching...' :
                            'Loading...';
-      
+
       if (loadingComponent.value?.show) {
         loadingComponent.value.show(loadingMessage);
       }
@@ -154,7 +154,7 @@ onMounted(() => {
       }
     }
   }, { immediate: true });
-  
+
 });
 
 // Cleanup handlers when component is unmounted
@@ -163,12 +163,12 @@ onBeforeUnmount(() => {
   if (styleFixInterval) {
     clearInterval(styleFixInterval);
   }
-  
+
   // Clean up UI responsive state
   if (uiStore.cleanupResponsiveState) {
     uiStore.cleanupResponsiveState();
   }
-  
+
   // Clean up auth store
   authStore.cleanup();
 });
