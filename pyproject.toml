@@ -211,7 +211,7 @@ factory-boy = "3.3.1"
 django-debug-toolbar = "4.4.6"
 django-extensions = "3.2.3"
 django-coverage-plugin = "3.1.0"
-pytest-django = "4.9.0"
+pytest-django = "4.14.0"
 
 [build-system]
 requires = ["poetry-core"]
