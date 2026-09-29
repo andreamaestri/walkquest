@@ -17,6 +17,7 @@ from datetime import timedelta
 import requests
 from django.conf import settings
 from django.core.management.base import BaseCommand
+from django.utils import timezone
 
 from walkquest.walks import transport
 from walkquest.walks.models import Walk
@@ -61,8 +62,14 @@ class Command(BaseCommand):
             if station["atco"] in checked:
                 station["services"] = checked[station["atco"]]
                 station["services_checked_at"] = now
+                # bulk_update skips auto_now; this invalidates API caches.
+                walk.updated_at = timezone.now()
                 changed.append(walk)
-        Walk.objects.bulk_update(changed, ["transport_info"], batch_size=100)
+        Walk.objects.bulk_update(
+            changed,
+            ["transport_info", "updated_at"],
+            batch_size=100,
+        )
         self.stdout.write(
             self.style.SUCCESS(
                 f"Checked {len(checked)} stations, updated {len(changed)} walks; "

@@ -17,6 +17,7 @@ from pathlib import Path
 
 from django.core.management.base import BaseCommand
 from django.core.management.base import CommandError
+from django.utils import timezone
 
 from walkquest.walks import transport
 from walkquest.walks.models import Walk
@@ -85,9 +86,14 @@ class Command(BaseCommand):
         if options["dry_run"]:
             self.stdout.write("Dry run: nothing saved")
             return
+        # bulk_update skips auto_now; bump updated_at so the walk list's
+        # cache key and ETag (walks_data_version) change and serve new data.
+        stamp = timezone.now()
+        for walk in walks:
+            walk.updated_at = stamp
         Walk.objects.bulk_update(
             walks,
-            ["transport_info", "has_bus_access"],
+            ["transport_info", "has_bus_access", "updated_at"],
             batch_size=100,
         )
         self.stdout.write(self.style.SUCCESS("Saved"))
