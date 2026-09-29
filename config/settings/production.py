@@ -90,6 +90,10 @@ if R2_BUCKET:
             "object_parameters": {"CacheControl": "public, max-age=604800"},
         },
     }
+else:
+    STORAGES["default"] = {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    }
 
 # Additional static files settings
 STATIC_ROOT = BASE_DIR / "staticfiles"
