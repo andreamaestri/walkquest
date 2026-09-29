@@ -2,7 +2,6 @@
 """Base settings to build other settings files upon."""
 
 import re
-import ssl
 from pathlib import Path
 
 import environ
@@ -32,12 +31,14 @@ CELERY_TASK_TIME_LIMIT = 5 * 60
 CELERY_TASK_SOFT_TIME_LIMIT = 4 * 60
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 
+
 # User display configuration - This determines how the user is displayed in messages
 def get_user_display(user):
     """Return a user-friendly display name"""
-    if hasattr(user, 'name') and user.name:
+    if hasattr(user, "name") and user.name:
         return user.name
-    return user.email.split('@')[0]
+    return user.email.split("@")[0]
+
 
 ACCOUNT_USER_DISPLAY = get_user_display
 
@@ -136,12 +137,10 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 # https://docs.djangoproject.com/en/dev/ref/settings/#migration-modules
 MIGRATION_MODULES = {"sites": "walkquest.contrib.sites.migrations"}
 
-SERIALIZATION_MODULES = {
-    "xml":    "tagulous.serializers.xml_serializer",
-    "json":   "tagulous.serializers.json",
-    "python": "tagulous.serializers.python",
-    "yaml":   "tagulous.serializers.pyyaml",
-}
+# Django's own serializers. Tagulous' overrides (tagulous.serializers.*)
+# call django.core.serializers.python._get_model, removed in Django 5.2,
+# so they broke dumpdata/loaddata (and the Oracle backup/copy).
+SILENCED_SYSTEM_CHECKS = ["tagulous.W001"]  # the recommended overrides are broken
 
 # AUTHENTICATION
 # ------------------------------------------------------------------------------
@@ -220,7 +219,8 @@ CORS_ALLOW_HEADERS = [
 
 # STATIC
 # ------------------------------------------------------------------------------
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+# Default storages here; production.py sets WhiteNoise's manifest storage
+# (and R2 for media). The old STATICFILES_STORAGE setting was a no-op on Django 5.1+.
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATIC_URL = "/static/"
 
@@ -300,15 +300,15 @@ FIXTURE_DIRS = (str(APPS_DIR / "fixtures"),)
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#session-cookie-httponly
 SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript to access the CSRF token
-CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = "Lax"
 CSRF_TRUSTED_ORIGINS = [
-    'http://localhost:8000',
-    'http://127.0.0.1:8000',
-    'http://localhost:5173',  # Vite dev server
-    'http://127.0.0.1:5173',  # Vite dev server
-    'https://walkquest-b4598371b54d.herokuapp.com',  # Production server
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://localhost:5173",  # Vite dev server
+    "http://127.0.0.1:5173",  # Vite dev server
+    "https://walkquest-b4598371b54d.herokuapp.com",  # Production server
 ]
 
 # CORS settings
@@ -338,23 +338,25 @@ CORS_ALLOW_HEADERS = [
 # ------------------------------------------------------------------------------
 EMAIL_BACKEND = env(
     "DJANGO_EMAIL_BACKEND",
-    default="django.core.mail.backends.smtp.EmailBackend",  
+    default="django.core.mail.backends.smtp.EmailBackend",
 )
-EMAIL_HOST = env('EMAIL_HOST', default='smtp.gmail.com')
-EMAIL_PORT = env.int('EMAIL_PORT', default=587)
-EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='walkquest.website@gmail.com')
-EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
+EMAIL_HOST = env("EMAIL_HOST", default="smtp.gmail.com")
+EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="walkquest.website@gmail.com")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 
 if not EMAIL_HOST_PASSWORD:
-    print("WARNING: EMAIL_HOST_PASSWORD is not set in .env file!")
-    
-EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
-EMAIL_USE_SSL = env.bool('EMAIL_USE_SSL', default=False)
+    print("WARNING: EMAIL_HOST_PASSWORD is not set in .env file!")  # noqa: T201
+
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+EMAIL_USE_SSL = env.bool("EMAIL_USE_SSL", default=False)
 DEFAULT_FROM_EMAIL = f"WalkQuest <{EMAIL_HOST_USER}>"
 SERVER_EMAIL = EMAIL_HOST_USER
 
 # Print email configuration at startup (for debugging)
-print(f"Email configuration: HOST={EMAIL_HOST}, USER={EMAIL_HOST_USER}, PORT={EMAIL_PORT}, TLS={EMAIL_USE_TLS}")
+print(  # noqa: T201
+    f"Email configuration: HOST={EMAIL_HOST}, USER={EMAIL_HOST_USER}, PORT={EMAIL_PORT}, TLS={EMAIL_USE_TLS}",
+)
 
 # django-allauth
 # ------------------------------------------------------------------------------
@@ -385,17 +387,17 @@ HEADLESS_CLIENTS = ("app", "browser")  # Support both client types
 # Frontend URLs for headless auth flows - simplified
 HEADLESS_FRONTEND_URLS = {
     # Use relative URLs to the base domain
-    'account_signup': '/',  
-    'account_login': '/',
-    'account_logout': '/',
-    'account_email_verification_sent': '/verify-email',
-    'account_confirm_email': None,  # Let Django handle this with a redirect
-    'account_reset_password': '/reset-password',
-    'account_reset_password_done': '/password-reset-done',
-    'account_reset_password_from_key': '/password-reset-confirm',
-    'account_reset_password_from_key_done': '/password-reset-complete',
-    'account_inactive': '/',
-    'account_email': '/profile',
+    "account_signup": "/",
+    "account_login": "/",
+    "account_logout": "/",
+    "account_email_verification_sent": "/verify-email",
+    "account_confirm_email": None,  # Let Django handle this with a redirect
+    "account_reset_password": "/reset-password",
+    "account_reset_password_done": "/password-reset-done",
+    "account_reset_password_from_key": "/password-reset-confirm",
+    "account_reset_password_from_key_done": "/password-reset-complete",
+    "account_inactive": "/",
+    "account_email": "/profile",
 }
 
 # CORS settings for headless auth
@@ -429,14 +431,14 @@ CORS_ALLOW_HEADERS = [
 
 # Ensure headless auth can work
 SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript to access the CSRF token
-CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = "Lax"
 CSRF_TRUSTED_ORIGINS = [
-    'http://localhost:8000',
-    'http://127.0.0.1:8000',
-    'http://localhost:5173',  # Vite dev server
-    'http://127.0.0.1:5173',  # Vite dev server
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://localhost:5173",  # Vite dev server
+    "http://127.0.0.1:5173",  # Vite dev server
 ]
 
 # CORS settings for headless auth
@@ -450,7 +452,7 @@ CORS_ALLOWED_ORIGINS = [
 
 # Django Ninja API settings
 NINJA_JWT = {
-    'AUTH_HEADER_TYPES': ('Bearer',),
+    "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
 # django-compressor
@@ -477,6 +479,7 @@ ICONIFY_COLLECTIONS = {
     "mdi": "https://api.iconify.design/mdi.json",
 }
 
+
 # Whitenoise configuration
 def immutable_file_test(_path, url):
     """Test if a file should be treated as immutable."""
@@ -486,7 +489,7 @@ def immutable_file_test(_path, url):
 WHITENOISE_IMMUTABLE_FILE_TEST = immutable_file_test
 
 ACCOUNT_FORMS = {
-    'login': 'walkquest.users.forms.UserLoginForm',
+    "login": "walkquest.users.forms.UserLoginForm",
 }
 
 # Force the `admin` sign in process to go through the `django-allauth` workflow
