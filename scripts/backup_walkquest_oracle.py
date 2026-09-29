@@ -6,7 +6,8 @@ the PostgreSQL dumps (``db-backups/`` prefix, 14-day bucket retention, 7 local).
 
 Run with the jobless venv (it has boto3/dotenv), like the other backup scripts:
 
-    /srv/django/jobless/.venv/bin/python /srv/django/walkquest/scripts/backup_walkquest_oracle.py
+    cd /srv/django/walkquest
+    /srv/django/jobless/.venv/bin/python scripts/backup_walkquest_oracle.py
 
 Restore into an empty, migrated database:
 
@@ -54,7 +55,14 @@ def dumpdata(json_path):
     # /etc/walkquest.env, parsed rather than sourced.
     env = {**os.environ, **dotenv_values("/etc/walkquest.env")}
     env["DJANGO_SETTINGS_MODULE"] = "config.settings.production"
-    args = [str(PYTHON), "manage.py", "dumpdata", "--natural-foreign", "--output", str(json_path)]
+    args = [
+        str(PYTHON),
+        "manage.py",
+        "dumpdata",
+        "--natural-foreign",
+        "--output",
+        str(json_path),
+    ]
     for label in EXCLUDE:
         args += ["--exclude", label]
     subprocess.run(args, cwd=BASE_DIR, env=env, check=True, stdout=subprocess.DEVNULL)
@@ -68,7 +76,10 @@ def main():
         json_path = Path(tmp) / "walkquest.json"
         dumpdata(json_path)
         gz_path = Path(tmp) / filename
-        with json_path.open("rb") as src, gzip.open(gz_path, "wb", compresslevel=9) as dst:
+        with (
+            json_path.open("rb") as src,
+            gzip.open(gz_path, "wb", compresslevel=9) as dst,
+        ):
             shutil.copyfileobj(src, dst)
 
         local_path = LOCAL_DIR / filename
@@ -107,6 +118,6 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception as e:  # noqa: BLE001 - report every failure in the log
+    except Exception as e:
         print(f"{datetime.now(UTC).isoformat()} backup FAILED: {e}", file=sys.stderr)
         sys.exit(1)
