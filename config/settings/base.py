@@ -136,12 +136,9 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 # https://docs.djangoproject.com/en/dev/ref/settings/#migration-modules
 MIGRATION_MODULES = {"sites": "walkquest.contrib.sites.migrations"}
 
-SERIALIZATION_MODULES = {
-    "xml":    "tagulous.serializers.xml_serializer",
-    "json":   "tagulous.serializers.json",
-    "python": "tagulous.serializers.python",
-    "yaml":   "tagulous.serializers.pyyaml",
-}
+# Django's own serializers. Tagulous' overrides (tagulous.serializers.*)
+# call django.core.serializers.python._get_model, removed in Django 5.2,
+# so they broke dumpdata/loaddata (and the Oracle backup/copy).
 
 # AUTHENTICATION
 # ------------------------------------------------------------------------------
