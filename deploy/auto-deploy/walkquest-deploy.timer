@@ -1,0 +1,11 @@
+# /etc/systemd/system/walkquest-deploy.timer — see README.md
+[Unit]
+Description=Poll origin/main for walkquest deploys
+
+[Timer]
+OnBootSec=2min
+OnUnitInactiveSec=2min
+RandomizedDelaySec=15s
+
+[Install]
+WantedBy=timers.target
